@@ -1,6 +1,48 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --breakpoint-xs: 475px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant mobile (@media (max-width: 767px));
+@custom-variant tablet (@media (min-width: 768px) and (max-width: 1023px));
+@custom-variant desktop (@media (min-width: 1024px));
+@custom-variant portrait (@media (orientation: portrait));
+@custom-variant landscape (@media (orientation: landscape));
+@custom-variant retina (@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi));
+
+/* Preserve the Tailwind 3 container configuration removed from JS config in v4. */
+@utility container {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: 1rem;
+
+  @media (min-width: 640px) {
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    padding-inline: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    padding-inline: 2rem;
+  }
+
+  @media (min-width: 1400px) {
+    max-width: 1400px;
+  }
+}
 
 :root {
   /* shadcn/ui design tokens (HSL component values for hsl(var(--token)) usage) */
@@ -80,7 +122,11 @@ body {
 }
 
 /* Canonical interaction behavior for the application shell. */
-* {
+*,
+::before,
+::after,
+::backdrop,
+::file-selector-button {
   border-color: hsl(var(--border));
 }
 
@@ -446,7 +492,7 @@ body,
 }
 
 .focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  @apply focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
 }
 
 /* Better table responsiveness */

@@ -89,7 +89,7 @@ function ResetPasswordContent() {
               onChange={(e) => setToken(e.target.value)}
               required
               disabled={loading}
-              className="mt-1 block min-h-11 w-full rounded-xl border border-[var(--pcms-border)] px-3 py-2 text-gray-900 shadow-sm placeholder-gray-400 focus:border-[var(--pcms-primary)] focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 sm:text-sm"
+              className="mt-1 block min-h-11 w-full rounded-xl border border-[var(--pcms-border)] px-3 py-2 text-gray-900 shadow-xs placeholder-gray-400 focus:border-[var(--pcms-primary)] focus:outline-hidden focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 sm:text-sm"
               placeholder="Paste your reset token"
             />
           </div>
@@ -106,7 +106,7 @@ function ResetPasswordContent() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
-              className="mt-1 block min-h-11 w-full rounded-xl border border-[var(--pcms-border)] px-3 py-2 text-gray-900 shadow-sm placeholder-gray-400 focus:border-[var(--pcms-primary)] focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 sm:text-sm"
+              className="mt-1 block min-h-11 w-full rounded-xl border border-[var(--pcms-border)] px-3 py-2 text-gray-900 shadow-xs placeholder-gray-400 focus:border-[var(--pcms-primary)] focus:outline-hidden focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 sm:text-sm"
               placeholder="Enter a new password"
             />
           </div>
@@ -123,7 +123,7 @@ function ResetPasswordContent() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               disabled={loading}
-              className="mt-1 block min-h-11 w-full rounded-xl border border-[var(--pcms-border)] px-3 py-2 text-gray-900 shadow-sm placeholder-gray-400 focus:border-[var(--pcms-primary)] focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 sm:text-sm"
+              className="mt-1 block min-h-11 w-full rounded-xl border border-[var(--pcms-border)] px-3 py-2 text-gray-900 shadow-xs placeholder-gray-400 focus:border-[var(--pcms-primary)] focus:outline-hidden focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 sm:text-sm"
               placeholder="Re-enter the new password"
             />
           </div>
@@ -134,7 +134,7 @@ function ResetPasswordContent() {
             className={`flex min-h-11 w-full justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-white shadow-[var(--pcms-button-shadow)] ${
               loading
                 ? 'cursor-not-allowed bg-blue-400'
-                : 'bg-[var(--pcms-primary)] hover:bg-[var(--pcms-primary-hover)] focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2'
+                : 'bg-[var(--pcms-primary)] hover:bg-[var(--pcms-primary-hover)] focus:outline-hidden focus:ring-2 focus:ring-blue-300 focus:ring-offset-2'
             }`}
           >
             {loading ? 'Resetting...' : 'Reset Password'}

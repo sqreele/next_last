@@ -164,7 +164,7 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
     </div>
   );
   return kpi.href ? (
-    <Link href={kpi.href} className="block snap-start rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+    <Link href={kpi.href} className="block snap-start rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       {inner}
     </Link>
   ) : (

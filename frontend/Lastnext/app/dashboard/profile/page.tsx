@@ -86,8 +86,8 @@ function ProfileLoading() {
       <Card>
         <CardContent className="space-y-5 py-10">
           <div className="mx-auto h-20 w-20 animate-pulse rounded-full bg-muted" />
-          <div className="mx-auto h-5 w-52 animate-pulse rounded bg-muted" />
-          <div className="mx-auto h-4 w-72 max-w-full animate-pulse rounded bg-muted" />
+          <div className="mx-auto h-5 w-52 animate-pulse rounded-sm bg-muted" />
+          <div className="mx-auto h-4 w-72 max-w-full animate-pulse rounded-sm bg-muted" />
           <span className="sr-only">Loading profile</span>
         </CardContent>
       </Card>

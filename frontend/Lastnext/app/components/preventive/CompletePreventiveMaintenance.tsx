@@ -355,7 +355,7 @@ export default function CompletePreventiveMaintenance({
 
         <div className="p-4 md:max-w-3xl md:mx-auto md:py-8 md:px-6 lg:px-8">
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
-            <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="h-5 w-5 mr-2 mt-0.5 shrink-0" />
             <div>
               <p className="text-sm md:text-base font-medium">
                 Error loading maintenance task
@@ -394,7 +394,7 @@ export default function CompletePreventiveMaintenance({
                     </div>
                     <Link
                       href={`/dashboard/preventive-maintenance/edit/${record.pm_id || record.id}?complete=true`}
-                      className="ml-3 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="ml-3 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                       {record.status === "Completed" ? "View" : "Complete"}
                     </Link>
@@ -536,7 +536,7 @@ export default function CompletePreventiveMaintenance({
         {successMessage && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mx-4 md:mx-0 mb-4 md:mb-6">
             <div className="flex items-start">
-              <CheckCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+              <CheckCircle className="h-5 w-5 mr-2 mt-0.5 shrink-0" />
               <div className="flex-1">
                 {successMessage.split("\n\n").map((line, index) => (
                   <p
@@ -555,7 +555,7 @@ export default function CompletePreventiveMaintenance({
         {selectedMaintenance &&
           canCompleteSelectedMaintenance &&
           !successMessage && (
-            <div className="bg-card md:shadow md:rounded-lg mb-4 md:mb-6">
+            <div className="bg-card md:shadow-sm md:rounded-lg mb-4 md:mb-6">
               <div className="px-4 py-4 md:py-5 md:px-6 bg-muted md:rounded-t-lg">
                 <h3 className="text-lg font-semibold text-foreground">
                   {selectedMaintenance.pmtitle || "Untitled Task"}
@@ -609,7 +609,7 @@ export default function CompletePreventiveMaintenance({
         {selectedMaintenance &&
           canCompleteSelectedMaintenance &&
           !successMessage && (
-            <div className="bg-card md:shadow md:rounded-lg">
+            <div className="bg-card md:shadow-sm md:rounded-lg">
               <div className="px-4 py-4 md:py-5 md:px-6 bg-muted md:rounded-t-lg">
                 <h3 className="text-lg font-semibold text-foreground">
                   Completion Details
@@ -658,7 +658,7 @@ export default function CompletePreventiveMaintenance({
                     rows={isMobile ? 3 : 4}
                     value={completionData.completion_notes || ""}
                     onChange={handleInputChange}
-                    className="w-full rounded-lg border border-border px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm md:text-base"
+                    className="w-full rounded-lg border border-border px-3 py-3 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm md:text-base"
                     placeholder="Enter any notes about the completed maintenance task..."
                   />
                 </div>
@@ -775,14 +775,14 @@ export default function CompletePreventiveMaintenance({
                 <div className="flex flex-col md:flex-row justify-end space-y-3 md:space-y-0 md:space-x-3 pt-4 border-t border-border">
                   <Link
                     href={`/preventive-maintenance/${pmId}`}
-                    className="w-full md:w-auto text-center bg-gray-200 text-foreground py-3 px-6 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm md:text-base"
+                    className="w-full md:w-auto text-center bg-gray-200 text-foreground py-3 px-6 rounded-lg hover:bg-gray-300 focus:outline-hidden focus:ring-2 focus:ring-gray-400 text-sm md:text-base"
                   >
                     Cancel
                   </Link>
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    className="w-full md:w-auto bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base flex items-center justify-center"
+                    className="w-full md:w-auto bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 focus:outline-hidden focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base flex items-center justify-center"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
@@ -804,10 +804,10 @@ export default function CompletePreventiveMaintenance({
 
         {/* Already Completed Message */}
         {selectedMaintenance && isSelectedMaintenanceCompleted && (
-          <div className="bg-card md:shadow md:rounded-lg mx-4 md:mx-0">
+          <div className="bg-card md:shadow-sm md:rounded-lg mx-4 md:mx-0">
             <div className="px-4 py-4 md:py-5 md:px-6 bg-green-50 md:rounded-t-lg">
               <div className="flex items-center">
-                <CheckCircle className="h-6 w-6 text-green-500 mr-2 flex-shrink-0" />
+                <CheckCircle className="h-6 w-6 text-green-500 mr-2 shrink-0" />
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">
                     Task Completed
@@ -835,7 +835,7 @@ export default function CompletePreventiveMaintenance({
               <div className="text-center">
                 <Link
                   href={`/preventive-maintenance/${pmId}`}
-                  className="inline-flex items-center bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
+                  className="inline-flex items-center bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   View Details

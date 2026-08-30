@@ -1,42 +1,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  darkMode: ["class"],
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
   theme: {
-    container: {
-      center: true,
-      padding: {
-        DEFAULT: "1rem",
-        sm: "1.25rem",
-        md: "1.5rem",
-        lg: "2rem",
-      },
-      screens: {
-        "2xl": "1400px",
-      },
-    },
-    screens: {
-      xs: "475px",
-      sm: "640px",
-      md: "768px",
-      lg: "1024px",
-      xl: "1280px",
-      "2xl": "1536px",
-      // Device-specific breakpoints
-      mobile: { max: "767px" },
-      tablet: { min: "768px", max: "1023px" },
-      desktop: { min: "1024px" },
-      // Orientation-specific breakpoints
-      portrait: { raw: "(orientation: portrait)" },
-      landscape: { raw: "(orientation: landscape)" },
-      // High-density screens
-      retina: { raw: "(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)" },
-    },
     extend: {
       colors: {
         // shadcn/ui design tokens (HSL-based, set via CSS vars in globals.css)

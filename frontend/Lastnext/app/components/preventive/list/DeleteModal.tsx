@@ -10,10 +10,10 @@ interface DeleteModalProps {
 
 const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-card p-4 sm:p-6">
         <div className="flex items-center mb-4">
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <div className="bg-red-100 rounded-full p-2">
               <AlertCircle className="h-6 w-6 text-red-600" />
             </div>

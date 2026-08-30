@@ -31,7 +31,7 @@ export default function FormField({
         autoComplete={autoComplete}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={`relative block h-11 w-full appearance-none rounded-xl border bg-white px-3.5 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
+        className={`relative block h-11 w-full appearance-none rounded-xl border bg-white px-3.5 text-sm text-slate-950 shadow-xs outline-hidden transition placeholder:text-slate-400 focus:ring-4 ${
           error
             ? "border-red-400 focus:border-red-500 focus:ring-red-100"
             : "border-slate-300 focus:border-blue-600 focus:ring-blue-100"

@@ -44,7 +44,7 @@ export default function CreateMaintenanceTaskPage() {
             <ol className="list-decimal list-inside space-y-2 text-blue-800 text-sm">
               <li>
                 Go to Django Admin:{" "}
-                <code className="bg-blue-100 px-2 py-1 rounded">
+                <code className="bg-blue-100 px-2 py-1 rounded-sm">
                   http://localhost:8000/admin/
                 </code>
               </li>

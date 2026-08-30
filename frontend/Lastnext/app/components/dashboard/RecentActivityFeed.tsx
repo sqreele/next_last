@@ -213,7 +213,7 @@ export function RecentActivityFeed({
               aria-selected={active}
               onClick={() => setFilter(opt.value)}
               className={cn(
-                "inline-flex min-h-10 flex-none items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "inline-flex min-h-10 flex-none items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-background text-muted-foreground hover:bg-primary/10 hover:text-primary",
@@ -249,7 +249,7 @@ export function RecentActivityFeed({
                 <Link
                   href={jobLink}
                   className={cn(
-                    "flex items-start gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-border hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "flex items-start gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-border hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   )}
                 >
                   <span
@@ -318,7 +318,7 @@ export function RecentActivityFeed({
         </div>
         <Link
           href="/dashboard/jobs"
-          className="hidden min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex"
+          className="hidden min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex"
         >
           View all <ArrowRight className="h-3 w-3" aria-hidden="true" />
         </Link>

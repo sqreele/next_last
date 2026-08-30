@@ -359,7 +359,7 @@ export default function MaintenanceTaskDetailPage({
                     key={index}
                     className="flex gap-4 p-4 bg-muted rounded-lg"
                   >
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
                         {step.step_number}
                       </div>
@@ -413,7 +413,7 @@ export default function MaintenanceTaskDetailPage({
           </CardHeader>
           <CardContent>
             <div className="flex gap-3">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-1" />
+              <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-1" />
               <p className="text-yellow-900 whitespace-pre-wrap">
                 {task.safety_notes}
               </p>
@@ -564,7 +564,7 @@ export default function MaintenanceTaskDetailPage({
                         </div>
 
                         {record.notes && (
-                          <div className="mt-2 p-2 bg-muted rounded border border-border">
+                          <div className="mt-2 p-2 bg-muted rounded-sm border border-border">
                             <p className="text-xs text-muted-foreground mb-1">
                               Notes:
                             </p>

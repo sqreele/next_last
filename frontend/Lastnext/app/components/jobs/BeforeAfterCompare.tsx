@@ -234,10 +234,10 @@ function SliderCompare({
           <SlidersHorizontal className="h-4 w-4 text-foreground" />
         </span>
       </div>
-      <span className="absolute left-3 top-3 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow">
+      <span className="absolute left-3 top-3 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">
         Before
       </span>
-      <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow">
+      <span className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">
         After
       </span>
     </div>
@@ -279,14 +279,14 @@ function SideCard({
       />
       <span
         className={cn(
-          "absolute left-3 top-3 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow",
+          "absolute left-3 top-3 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm",
           colorClass,
         )}
       >
         {label}
       </span>
       {total > 1 && (
-        <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+        <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
           {count}/{total}
         </span>
       )}
@@ -294,7 +294,7 @@ function SideCard({
         type="button"
         onClick={onZoom}
         aria-label="Open fullscreen"
-        className="absolute right-3 bottom-3 grid h-9 w-9 place-items-center rounded-full bg-card/90 text-foreground shadow hover:bg-card"
+        className="absolute right-3 bottom-3 grid h-9 w-9 place-items-center rounded-full bg-card/90 text-foreground shadow-sm hover:bg-card"
       >
         <Maximize2 className="h-4 w-4" />
       </button>
@@ -304,7 +304,7 @@ function SideCard({
             type="button"
             onClick={onPrev}
             aria-label="Previous"
-            className="absolute left-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-card/85 text-foreground shadow hover:bg-card"
+            className="absolute left-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-card/85 text-foreground shadow-sm hover:bg-card"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -312,7 +312,7 @@ function SideCard({
             type="button"
             onClick={onNext}
             aria-label="Next"
-            className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-card/85 text-foreground shadow hover:bg-card"
+            className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-card/85 text-foreground shadow-sm hover:bg-card"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -383,7 +383,7 @@ export function BeforeAfterCompare({
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-3 py-1 transition-colors",
                 mode === "side-by-side"
-                  ? "bg-card text-foreground shadow"
+                  ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground",
               )}
             >
@@ -397,7 +397,7 @@ export function BeforeAfterCompare({
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-3 py-1 transition-colors",
                 mode === "slider"
-                  ? "bg-card text-foreground shadow"
+                  ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground",
               )}
             >

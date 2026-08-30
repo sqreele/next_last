@@ -178,7 +178,7 @@ export default function MaintenanceJobCard({
     >
       <Link
         href={detailHref}
-        className="flex h-full min-h-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex h-full min-h-0 flex-col focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         aria-label={`Open maintenance job ${job.job_id}`}
       >
         <div className="job-card-image relative h-28 w-full overflow-hidden border-b border-border bg-muted sm:h-44">
@@ -198,7 +198,7 @@ export default function MaintenanceJobCard({
           ) : (
             <div className="grid h-full place-items-center bg-gradient-to-br from-muted to-background text-muted-foreground">
               <span className="job-card-photo-label flex flex-col items-center gap-2 text-center text-sm">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-card shadow-sm">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-card shadow-xs">
                   <ImageIcon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span>No job photo</span>
@@ -207,11 +207,11 @@ export default function MaintenanceJobCard({
           )}
 
           <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1 p-1.5 sm:gap-2 sm:p-3">
-            <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-white/90 px-1.5 py-1 text-[10px] font-bold text-slate-800 shadow-sm backdrop-blur sm:px-2.5 sm:text-xs">
+            <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-white/90 px-1.5 py-1 text-[10px] font-bold text-slate-800 shadow-xs backdrop-blur-sm sm:px-2.5 sm:text-xs">
               <MapPin className="h-3 w-3 flex-none text-slate-500" />
               <span className="truncate">{getLocation(job)}</span>
             </span>
-            <span className="max-w-[52%] flex-none truncate rounded-md bg-white/90 px-1.5 py-1 text-[9px] font-semibold text-slate-800 shadow-sm backdrop-blur sm:max-w-none sm:px-2.5 sm:text-xs">
+            <span className="max-w-[52%] flex-none truncate rounded-md bg-white/90 px-1.5 py-1 text-[9px] font-semibold text-slate-800 shadow-xs backdrop-blur-sm sm:max-w-none sm:px-2.5 sm:text-xs">
               Job #{job.job_id || "New"}
             </span>
           </div>
@@ -266,7 +266,7 @@ export default function MaintenanceJobCard({
             <span className="hidden truncate text-xs text-muted-foreground sm:block">
               Updated {formatDate(job.updated_at)}
             </span>
-            <span className="job-card-action mt-1 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2 text-[11px] font-bold uppercase text-blue-900 shadow-sm transition-colors group-hover:bg-blue-100 sm:min-h-11 sm:text-sm">
+            <span className="job-card-action mt-1 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2 text-[11px] font-bold uppercase text-blue-900 shadow-xs transition-colors group-hover:bg-blue-100 sm:min-h-11 sm:text-sm">
               View details
               <ArrowRight
                 className="h-4 w-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"

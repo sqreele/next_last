@@ -15,7 +15,7 @@ export function LoadingOverlay({
   return (
     <div
       className={cn(
-        "absolute inset-0 z-20 grid place-items-center rounded-inherit bg-card/70 p-4 backdrop-blur-sm",
+        "absolute inset-0 z-20 grid place-items-center rounded-inherit bg-card/70 p-4 backdrop-blur-xs",
         className,
       )}
       role="status"

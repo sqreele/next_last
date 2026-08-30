@@ -1077,7 +1077,7 @@ const PropertyJobsDashboard = ({
                   onChange={(e) =>
                     setSelectedTopicMonth(parseInt(e.target.value))
                   }
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
                     <option key={month} value={month}>
@@ -1097,7 +1097,7 @@ const PropertyJobsDashboard = ({
                   onChange={(e) =>
                     setSelectedTopicYear(parseInt(e.target.value))
                   }
-                  className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                   {availableJobYears.length > 0 ? (
                     availableJobYears.map((year) => (
@@ -1569,7 +1569,7 @@ const PropertyJobsDashboard = ({
                     onChange={(e) =>
                       setComparisonJobYear1(parseInt(e.target.value))
                     }
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   >
                     {availableJobYears.length > 0 ? (
                       availableJobYears.map((year) => (
@@ -1593,7 +1593,7 @@ const PropertyJobsDashboard = ({
                     onChange={(e) =>
                       setComparisonJobYear2(parseInt(e.target.value))
                     }
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   >
                     {availableJobYears.length > 0 ? (
                       availableJobYears.map((year) => (
@@ -1617,7 +1617,7 @@ const PropertyJobsDashboard = ({
                     onChange={(e) =>
                       setComparisonJobMonth(parseInt(e.target.value))
                     }
-                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
                       <option key={month} value={month}>

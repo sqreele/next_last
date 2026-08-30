@@ -1661,7 +1661,7 @@ export default function JobsReport({
                   value={searchFilter}
                   onChange={(event) => setSearchFilter(event.target.value)}
                   placeholder="Job ID, description, room, area, topic, or assignee"
-                  className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-3 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-3 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -1674,7 +1674,7 @@ export default function JobsReport({
               </label>
               <select
                 id="jobs-report-status"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={statusFilter}
                 onChange={(e) =>
                   setStatusFilter(e.target.value as JobStatus | "all")
@@ -1696,7 +1696,7 @@ export default function JobsReport({
               </label>
               <select
                 id="jobs-report-priority"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={priorityFilter}
                 onChange={(e) =>
                   setPriorityFilter(e.target.value as JobPriority | "all")
@@ -1718,7 +1718,7 @@ export default function JobsReport({
               </label>
               <select
                 id="jobs-report-pm"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={pmFilter}
                 onChange={(e) => setPmFilter(e.target.value as PmFilterType)}
               >
@@ -1738,7 +1738,7 @@ export default function JobsReport({
               </label>
               <select
                 id="jobs-report-topic"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={topicFilter}
                 onChange={(e) =>
                   setTopicFilter(e.target.value as TopicFilterValue)
@@ -1766,7 +1766,7 @@ export default function JobsReport({
               </label>
               <select
                 id="jobs-report-user"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={userFilter}
                 onChange={(e) =>
                   setUserFilter(e.target.value as UserFilterValue)
@@ -1795,7 +1795,7 @@ export default function JobsReport({
               <input
                 id="jobs-report-from"
                 type="date"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={createdFrom}
                 onChange={(e) => setCreatedFrom(e.target.value)}
                 max={createdTo || undefined}
@@ -1811,7 +1811,7 @@ export default function JobsReport({
               <input
                 id="jobs-report-to"
                 type="date"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={createdTo}
                 onChange={(e) => setCreatedTo(e.target.value)}
                 min={createdFrom || undefined}
@@ -1826,7 +1826,7 @@ export default function JobsReport({
               </label>
               <select
                 id="jobs-report-month"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={monthFilter}
                 onChange={(e) =>
                   setMonthFilter(e.target.value as "all" | string)
@@ -1849,7 +1849,7 @@ export default function JobsReport({
               </label>
               <select
                 id="jobs-report-year"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={yearFilter}
                 onChange={(e) =>
                   setYearFilter(e.target.value as "all" | string)
@@ -1990,7 +1990,7 @@ export default function JobsReport({
                       {detailHref ? (
                         <Link
                           href={detailHref}
-                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-border px-3 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-border px-3 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           View job detail
                         </Link>
@@ -2047,7 +2047,7 @@ export default function JobsReport({
                             {detailHref ? (
                               <Link
                                 href={detailHref}
-                                className="inline-flex min-h-9 items-center rounded-md px-3 font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="inline-flex min-h-9 items-center rounded-md px-3 font-semibold text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                               >
                                 View
                               </Link>

@@ -844,7 +844,7 @@ export default function PreventiveMaintenanceClient({
                         `${machineName || "Machine"} image`,
                       )
                     }
-                    className="group relative h-20 w-20 flex-none overflow-hidden rounded-xl border border-border bg-muted shadow-soft focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="group relative h-20 w-20 flex-none overflow-hidden rounded-xl border border-border bg-muted shadow-soft focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     aria-label={`Open image for ${machineName || machineId || "machine"}`}
                   >
                     <img
@@ -955,7 +955,7 @@ export default function PreventiveMaintenanceClient({
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Link
             href="/dashboard/preventive-maintenance"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ArrowUpRight
               className="h-4 w-4 rotate-180"
@@ -967,7 +967,7 @@ export default function PreventiveMaintenanceClient({
           {canOperate && (
             <Link
               href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
               Edit
@@ -978,7 +978,7 @@ export default function PreventiveMaintenanceClient({
             type="button"
             onClick={handleExportPdf}
             disabled={isExportingPdf}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
             {isExportingPdf ? "Generating..." : "PDF"}
@@ -989,7 +989,7 @@ export default function PreventiveMaintenanceClient({
               type="button"
               onClick={handleMarkComplete}
               disabled={isCompleting}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm font-semibold text-success shadow-soft transition-colors hover:bg-success/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm font-semibold text-success shadow-soft transition-colors hover:bg-success/15 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCircle className="h-4 w-4" aria-hidden="true" />
               {isCompleting ? "Completing..." : "Complete"}
@@ -1059,7 +1059,7 @@ export default function PreventiveMaintenanceClient({
                     <>
                       <Link
                         href={`/dashboard/maintenance-tasks/${maintenanceData.procedure_template_id || maintenanceData.procedure_template}`}
-                        className="flex items-start gap-1 break-all font-mono text-base font-semibold text-primary hover:text-[hsl(var(--primary-hover))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-lg"
+                        className="flex items-start gap-1 break-all font-mono text-base font-semibold text-primary hover:text-[hsl(var(--primary-hover))] hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-lg"
                       >
                         {maintenanceData.procedure_template_id ||
                           maintenanceData.procedure_template}
@@ -1079,7 +1079,7 @@ export default function PreventiveMaintenanceClient({
                       <p className="text-xs text-muted-foreground mt-1">
                         <Link
                           href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-                          className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           Edit this record
                         </Link>{" "}
@@ -1311,7 +1311,7 @@ export default function PreventiveMaintenanceClient({
                             <button
                               type="button"
                               onClick={() => openImageModal(image.image_url || null, alt)}
-                              className="h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-inset"
+                              className="h-full w-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-inset"
                               aria-label={`Open ${alt.toLowerCase()}`}
                             >
                               <img loading="lazy" decoding="async" src={image.image_url || ""} alt={alt} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
@@ -1324,7 +1324,7 @@ export default function PreventiveMaintenanceClient({
                                 type="button"
                                 onClick={() => void handleDeleteImage(image.id!)}
                                 disabled={deletingImageId === image.id}
-                                className="absolute right-1.5 top-1.5 grid h-11 w-11 place-items-center rounded-full bg-red-700 text-white shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-60"
+                                className="absolute right-1.5 top-1.5 grid h-11 w-11 place-items-center rounded-full bg-red-700 text-white shadow-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white disabled:opacity-60"
                                 aria-label={`Delete ${alt.toLowerCase()}`}
                               >
                                 <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -1367,7 +1367,7 @@ export default function PreventiveMaintenanceClient({
                             type="button"
                             onClick={() => setUploadType(type)}
                             aria-pressed={uploadType === type}
-                            className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold capitalize focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${uploadType === type ? "border-blue-700 bg-blue-700 text-white" : "border-border bg-card text-foreground"}`}
+                            className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold capitalize focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600 ${uploadType === type ? "border-blue-700 bg-blue-700 text-white" : "border-border bg-card text-foreground"}`}
                           >
                             {type}
                           </button>
@@ -1385,7 +1385,7 @@ export default function PreventiveMaintenanceClient({
                       multiple
                       onChange={handleImageSelection}
                       disabled={isUploadingImages}
-                      className="mt-2 block min-h-11 w-full rounded-lg border border-border bg-card p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:font-semibold file:text-blue-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                      className="mt-2 block min-h-11 w-full rounded-lg border border-border bg-card p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:font-semibold file:text-blue-900 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600"
                     />
                   </>
                 ) : (
@@ -1399,7 +1399,7 @@ export default function PreventiveMaintenanceClient({
                       {selectedImages.map(({ file, previewUrl, key }, index) => (
                         <div key={key} className="relative aspect-square overflow-hidden rounded-lg border border-border bg-muted">
                           <img src={previewUrl} alt={`Selected image ${index + 1}: ${file.name}`} className="h-full w-full object-cover" />
-                          <button type="button" onClick={() => removeSelectedImage(key)} className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-black/75 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={`Remove ${file.name} from upload`}>
+                          <button type="button" onClick={() => removeSelectedImage(key)} className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-black/75 text-white focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white" aria-label={`Remove ${file.name} from upload`}>
                             <X className="h-4 w-4" aria-hidden="true" />
                           </button>
                         </div>
@@ -1409,7 +1409,7 @@ export default function PreventiveMaintenanceClient({
                       type="button"
                       onClick={() => void handleUploadImages()}
                       disabled={isUploadingImages}
-                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
                       <Upload className="h-4 w-4" aria-hidden="true" />
                       {isUploadingImages ? "Uploading and optimizing…" : `Upload ${selectedImages.length} ${uploadType} image${selectedImages.length === 1 ? "" : "s"}`}
@@ -1424,8 +1424,8 @@ export default function PreventiveMaintenanceClient({
         </section>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
-            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm mb-4 flex items-center">
+            <AlertCircle className="h-5 w-5 mr-2 shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -1435,7 +1435,7 @@ export default function PreventiveMaintenanceClient({
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <Link
               href="/dashboard/preventive-maintenance"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-center text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-center text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <ArrowUpRight className="h-4 w-4 rotate-180" aria-hidden="true" />
               Back to List
@@ -1445,7 +1445,7 @@ export default function PreventiveMaintenanceClient({
               <button
                 onClick={handleExportPdf}
                 disabled={isExportingPdf}
-                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   isExportingPdf ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
@@ -1457,7 +1457,7 @@ export default function PreventiveMaintenanceClient({
                 <button
                   onClick={handleMarkComplete}
                   disabled={isCompleting}
-                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-success bg-success px-4 py-2 text-sm font-semibold text-success-foreground shadow-soft transition-colors hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-success bg-success px-4 py-2 text-sm font-semibold text-success-foreground shadow-soft transition-colors hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     isCompleting ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                 >
@@ -1469,7 +1469,7 @@ export default function PreventiveMaintenanceClient({
               {canOperate && (
                 <Link
                   href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Settings className="h-4 w-4" aria-hidden="true" />
                   Edit
@@ -1480,7 +1480,7 @@ export default function PreventiveMaintenanceClient({
                 <button
                   onClick={handleDelete}
                   disabled={isLoading}
-                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-destructive bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground shadow-soft transition-colors hover:border-[hsl(var(--destructive-hover))] hover:bg-[hsl(var(--destructive-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-destructive bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground shadow-soft transition-colors hover:border-[hsl(var(--destructive-hover))] hover:bg-[hsl(var(--destructive-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     isLoading ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                 >
@@ -1756,7 +1756,7 @@ export default function PreventiveMaintenanceClient({
       {/* Image modal */}
       {isImageModalOpen && currentImage && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4"
           onClick={closeImageModal}
           role="dialog"
           aria-modal="true"
@@ -1765,7 +1765,7 @@ export default function PreventiveMaintenanceClient({
           <div className="relative max-w-4xl max-h-screen w-full h-full flex items-center justify-center">
             <button
               ref={imageModalCloseRef}
-              className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-card focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-card focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600"
               onClick={(e) => {
                 e.stopPropagation();
                 closeImageModal();

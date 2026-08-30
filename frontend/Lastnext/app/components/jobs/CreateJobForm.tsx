@@ -345,7 +345,7 @@ function CreateJobHeader({
         <button
           type="button"
           onClick={onBack}
-          className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+          className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
           aria-label={t("createJob.header.back")}
         >
           <ArrowLeft className="h-[18px] w-[18px]" />
@@ -375,7 +375,7 @@ function CreateJobHeader({
                   .getElementById(step.target)
                   ?.scrollIntoView({ behavior: "smooth", block: "start" })
               }
-              className={`flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-full border px-3 py-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${
+              className={`flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-full border px-3 py-2 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${
                 done
                   ? "border-primary/30 bg-primary/10 font-semibold text-primary"
                   : "border-border bg-background text-muted-foreground hover:bg-muted"
@@ -1031,7 +1031,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         {/* Full-screen loading overlay (form data) */}
         {isLoading && (
           <div
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-card/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-card/90 backdrop-blur-xs"
             aria-live="polite"
             aria-busy="true"
             role="status"
@@ -1094,7 +1094,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                         {/* Upload loading overlay */}
                         {isSubmitting && (
                           <div
-                            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-card/90 backdrop-blur-sm"
+                            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-card/90 backdrop-blur-xs"
                             aria-live="polite"
                             aria-busy="true"
                             role="status"
@@ -1142,7 +1142,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   touched.description && errors.description
                                     ? "border border-red-300 focus:border-red-500 focus:ring-red-100"
                                     : FIELD_BASE_CLASS
-                                } pcms-textarea resize-none focus:outline-none focus:ring-2`}
+                                } pcms-textarea resize-none focus:outline-hidden focus:ring-2`}
                               />
                               {(touched.description || submitCount > 0) &&
                                 errors.description && (
@@ -1251,7 +1251,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                           false,
                                         );
                                       }}
-                                      className={`min-h-11 touch-manipulation rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${colorMap[option.value]}`}
+                                      className={`min-h-11 touch-manipulation rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${colorMap[option.value]}`}
                                     >
                                       {t(option.labelKey)}
                                     </button>
@@ -1301,7 +1301,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                           type.key === "pm",
                                         );
                                       }}
-                                      className={`min-h-[72px] touch-manipulation rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${
+                                      className={`min-h-[72px] touch-manipulation rounded-lg border p-3 text-left transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${
                                         active
                                           ? "border-primary/30 bg-primary/10 text-primary"
                                           : "border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10"
@@ -1714,7 +1714,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   errors.remarks
                                     ? "border border-red-300 focus:border-red-500 focus:ring-red-100"
                                     : FIELD_BASE_CLASS
-                                } pcms-textarea resize-none focus:outline-none focus:ring-2`}
+                                } pcms-textarea resize-none focus:outline-hidden focus:ring-2`}
                               />
                               {(touched.remarks || submitCount > 0) &&
                                 errors.remarks && (
@@ -1735,7 +1735,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     setFieldValue("is_defective", checked)
                                   }
                                   disabled={isSubmitting}
-                                  className="h-5 w-5 rounded border-primary"
+                                  className="h-5 w-5 rounded-sm border-primary"
                                 />
                                 <Label
                                   htmlFor="is_defective"
@@ -1756,7 +1756,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     )
                                   }
                                   disabled={isSubmitting}
-                                  className="h-5 w-5 rounded border-primary"
+                                  className="h-5 w-5 rounded-sm border-primary"
                                 />
                                 <Label
                                   htmlFor="is_preventivemaintenance"
@@ -2021,7 +2021,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 </span>
                                 <button
                                   type="button"
-                                  className="min-h-11 self-start rounded-lg border border-primary/30 bg-background px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                  className="min-h-11 self-start rounded-lg border border-primary/30 bg-background px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                   onClick={() => {
                                     if (typeof document !== "undefined") {
                                       document

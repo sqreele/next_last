@@ -1211,7 +1211,7 @@ export default function InventoryPage() {
                 <CardTitle className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     {item.image_url ? (
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         <img
                           loading="lazy"
                           decoding="async"
@@ -1233,7 +1233,7 @@ export default function InventoryPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-muted/50 text-2xl">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/50 text-2xl">
                         {CATEGORY_ICONS[item.category] || "📋"}
                       </div>
                     )}
@@ -1268,7 +1268,7 @@ export default function InventoryPage() {
 
                 {(item.property_name || item.location) && (
                   <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                     <span className="break-words">
                       {[item.property_name, item.location].filter(Boolean).join(" · ")}
                     </span>
@@ -1693,7 +1693,7 @@ export default function InventoryPage() {
 
           {selectedItem && (
             <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-muted/60 p-3">
-              <span className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-card text-2xl shadow-sm">
+              <span className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-card text-2xl shadow-xs">
                 {CATEGORY_ICONS[selectedItem.category] || "📋"}
               </span>
               <div className="min-w-0 flex-1">
@@ -1970,7 +1970,7 @@ export default function InventoryPage() {
                     setPageSize(Number(e.target.value));
                     setPage(1);
                   }}
-                  className="min-h-10 rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="min-h-10 rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <option value={12}>12</option>
                   <option value={24}>24</option>

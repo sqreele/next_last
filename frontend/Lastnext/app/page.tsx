@@ -91,7 +91,7 @@ export default function LandingPage() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
-            className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
+            className="flex items-center gap-2 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
           >
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow-sm)]">
               <Building className="h-5 w-5" />
@@ -271,7 +271,7 @@ export default function LandingPage() {
                     className="flex items-start gap-3 text-slate-700"
                   >
                     <CheckCircle
-                      className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500"
+                      className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500"
                       aria-hidden
                     />
                     <span className="text-sm sm:text-base">{benefit}</span>

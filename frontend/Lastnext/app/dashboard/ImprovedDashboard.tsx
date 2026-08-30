@@ -643,7 +643,7 @@ export default function ImprovedDashboard() {
                             : status.value,
                         )
                       }
-                      className="sneat-list__row rounded-lg border-0 bg-transparent p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="sneat-list__row rounded-lg border-0 bg-transparent p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <span className={`sneat-list__icon sneat-stat-card__icon--${status.tone}`}>
                         <Activity className="h-4 w-4" aria-hidden="true" />

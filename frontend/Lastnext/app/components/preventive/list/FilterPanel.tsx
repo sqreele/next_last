@@ -78,12 +78,12 @@ export default function FilterPanel({
           aria-label="Search preventive maintenance tasks"
           value={currentFilters.search || ""}
           onChange={(e) => onFilterChangeAction("search", e.target.value)}
-          className="h-12 w-full min-w-0 rounded-lg border border-input bg-background py-3 pl-10 pr-11 text-base text-foreground shadow-soft transition-[border-color,box-shadow] placeholder:text-muted-foreground hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
+          className="h-12 w-full min-w-0 rounded-lg border border-input bg-background py-3 pl-10 pr-11 text-base text-foreground shadow-soft transition-[border-color,box-shadow] placeholder:text-muted-foreground hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
         />
         {currentFilters.search && (
           <button
             onClick={() => onFilterChangeAction("search", "")}
-            className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Clear maintenance search"
           >
             <X className="h-4 w-4" aria-hidden="true" />
@@ -124,7 +124,7 @@ export default function FilterPanel({
               aria-label="Filter by maintenance status"
               value={currentFilters.status || ""}
               onChange={(e) => onFilterChangeAction("status", e.target.value)}
-              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
               <option value="">All Status</option>
               <option value="completed">Completed</option>
@@ -137,7 +137,7 @@ export default function FilterPanel({
               onChange={(e) =>
                 onFilterChangeAction("frequency", e.target.value)
               }
-              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
               <option value="">All Frequencies</option>
               <option value="daily">Daily</option>
@@ -157,7 +157,7 @@ export default function FilterPanel({
               aria-label="Filter by machine"
               value={currentFilters.machine || ""}
               onChange={(e) => onFilterChangeAction("machine", e.target.value)}
-              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
               <option value="">All Machines</option>
               {machineOptions.map((machine) => (
@@ -177,7 +177,7 @@ export default function FilterPanel({
                   onChange={(e) =>
                     onFilterChangeAction("startDate", e.target.value)
                   }
-                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
+                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
                 />
               </div>
               <div>
@@ -190,7 +190,7 @@ export default function FilterPanel({
                   onChange={(e) =>
                     onFilterChangeAction("endDate", e.target.value)
                   }
-                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
+                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
                 />
               </div>
             </div>
@@ -202,7 +202,7 @@ export default function FilterPanel({
             aria-label="Sort preventive maintenance tasks"
             value={`${sortBy}-${sortOrder}`}
             onChange={(e) => handleSortChange(e.target.value)}
-            className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
+            className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
           >
             <option value="date-desc">Date (Newest First)</option>
             <option value="date-asc">Date (Oldest First)</option>
@@ -226,7 +226,7 @@ export default function FilterPanel({
         </span>
         <button
           onClick={onClearFiltersAction}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 hover:text-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 hover:text-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           Clear all
         </button>
@@ -256,7 +256,7 @@ function FilterChip({
       className={`flex min-h-9 max-w-full items-center rounded-full px-3 py-1 text-sm ${colorClasses[color as keyof typeof colorClasses]}`}
     >
       <span className="min-w-0 break-words">{label}</span>
-      <button onClick={onRemove} className="ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Remove ${label} filter`}>
+      <button onClick={onRemove} className="ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-black/5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Remove ${label} filter`}>
         <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </div>
@@ -272,7 +272,7 @@ function FilterSection({
 }) {
   return (
     <details className="group">
-      <summary className="flex min-h-12 cursor-pointer select-none items-center justify-between gap-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+      <summary className="flex min-h-12 cursor-pointer select-none items-center justify-between gap-3 py-3 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
         <span className="font-semibold text-foreground">{title}</span>
         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
       </summary>

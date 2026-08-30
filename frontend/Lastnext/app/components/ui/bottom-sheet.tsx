@@ -18,7 +18,7 @@ const BottomSheetOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/60 backdrop-blur-xs data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -116,7 +116,7 @@ const BottomSheetContent = React.forwardRef<
           {showClose && (
             <DialogPrimitive.Close
               data-bottom-sheet-close
-              className="absolute right-3 top-3 rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="absolute right-3 top-3 rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               aria-label="Close"
             >
               <X className="h-4 w-4" />

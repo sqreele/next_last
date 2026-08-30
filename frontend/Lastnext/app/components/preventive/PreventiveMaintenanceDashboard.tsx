@@ -246,7 +246,7 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
         <Link
           href="/dashboard/preventive-maintenance/"
-          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           View All Maintenance Tasks
         </Link>
@@ -287,14 +287,14 @@ export default function PreventiveMaintenanceDashboard() {
         <div className="grid grid-cols-2 gap-2 sm:flex sm:space-x-3">
           <Link
             href="/dashboard/preventive-maintenance"
-            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-center text-sm font-semibold text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-center text-sm font-semibold text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
           >
             View All Tasks
           </Link>
           {canOperate && (
             <Link
               href="/dashboard/preventive-maintenance/create"
-              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
             >
               Create New
             </Link>
@@ -553,7 +553,7 @@ export default function PreventiveMaintenanceDashboard() {
                 <select
                   value={upcomingPageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                  className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20"
                   aria-label="Upcoming tasks per page"
                 >
                   <option value={5}>5</option>
@@ -580,7 +580,7 @@ export default function PreventiveMaintenanceDashboard() {
             <button
               type="button"
               onClick={() => void fetchUpcomingMaintenance(upcomingPage, upcomingPageSize)}
-              className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Try again
             </button>
@@ -614,14 +614,14 @@ export default function PreventiveMaintenanceDashboard() {
                     <div className="grid grid-cols-2 gap-2">
                       <Link
                         href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-primary shadow-soft hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-primary shadow-soft hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         View
                       </Link>
                       {canOperate && status !== "completed" && (
                         <Link
                           href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
-                          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-success bg-success px-3 py-2 text-sm font-semibold text-success-foreground shadow-soft hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-success bg-success px-3 py-2 text-sm font-semibold text-success-foreground shadow-soft hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                           Complete
                         </Link>
@@ -720,7 +720,7 @@ export default function PreventiveMaintenanceDashboard() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex space-x-2">
                               {beforeImageUrl && (
-                                <div className="h-10 w-10 rounded overflow-hidden border">
+                                <div className="h-10 w-10 rounded-sm overflow-hidden border">
                                   <Image
                                     src={beforeImageUrl}
                                     alt={`${title} before maintenance`}
@@ -735,7 +735,7 @@ export default function PreventiveMaintenanceDashboard() {
                                 </div>
                               )}
                               {afterImageUrl && (
-                                <div className="h-10 w-10 rounded overflow-hidden border">
+                                <div className="h-10 w-10 rounded-sm overflow-hidden border">
                                   <Image
                                     src={afterImageUrl}
                                     alt={`${title} after maintenance`}
@@ -756,14 +756,14 @@ export default function PreventiveMaintenanceDashboard() {
                             <div className="flex space-x-2">
                               <Link
                                 href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                                className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="rounded-sm text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                               >
                                 View
                               </Link>
                               {canOperate && status !== "completed" && (
                                 <Link
                                   href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
-                                  className="rounded text-success hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  className="rounded-sm text-success hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                   Complete
                                 </Link>
@@ -792,7 +792,7 @@ export default function PreventiveMaintenanceDashboard() {
                     <button
                       onClick={() => handlePageChange(upcomingPage - 1)}
                       disabled={upcomingPage <= 1}
-                      className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Previous
                     </button>
@@ -815,7 +815,7 @@ export default function PreventiveMaintenanceDashboard() {
                               onClick={() => handlePageChange(pageNum)}
                               aria-label={`Go to page ${pageNum}`}
                               aria-current={pageNum === upcomingPage ? "page" : undefined}
-                              className={`min-h-11 min-w-11 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                              className={`min-h-11 min-w-11 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                 pageNum === upcomingPage
                                   ? "border-primary bg-primary text-primary-foreground shadow-soft"
                                   : "border-border bg-background hover:bg-primary/10 hover:text-primary"
@@ -831,7 +831,7 @@ export default function PreventiveMaintenanceDashboard() {
                     <button
                       onClick={() => handlePageChange(upcomingPage + 1)}
                       disabled={upcomingPage >= totalPages}
-                      className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Next
                     </button>
@@ -870,14 +870,14 @@ export default function PreventiveMaintenanceDashboard() {
               {canOperate && (
                 <Link
                   href="/dashboard/preventive-maintenance/create"
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   Create New Task
                 </Link>
               )}
               <Link
                 href="/dashboard/preventive-maintenance"
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 View All Tasks
               </Link>
@@ -901,7 +901,7 @@ export default function PreventiveMaintenanceDashboard() {
           {canOperate && (
             <Link
               href="/dashboard/preventive-maintenance/create"
-              className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="mr-3 rounded-full bg-primary/10 p-2 text-primary">
                 <svg
@@ -926,7 +926,7 @@ export default function PreventiveMaintenanceDashboard() {
 
           <Link
             href="/dashboard/preventive-maintenance?status=overdue"
-            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <div className="mr-3 rounded-full bg-destructive/10 p-2 text-destructive">
               <svg
@@ -950,7 +950,7 @@ export default function PreventiveMaintenanceDashboard() {
 
           <Link
             href="/dashboard/preventive-maintenance?status=pending"
-            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-warning/40 hover:bg-warning/10 hover:text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-warning/40 hover:bg-warning/10 hover:text-warning focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <div className="mr-3 rounded-full bg-warning/10 p-2 text-warning">
               <svg

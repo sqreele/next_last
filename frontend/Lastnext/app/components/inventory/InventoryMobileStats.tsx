@@ -134,7 +134,7 @@ export function InventoryMobileStats({
             tone.card,
             tile.active && "ring-2 ring-warning ring-offset-2",
             interactive &&
-              "touch-manipulation hover:border-warning/60 hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "touch-manipulation hover:border-warning/60 hover:bg-warning/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           );
           const content = (
             <>

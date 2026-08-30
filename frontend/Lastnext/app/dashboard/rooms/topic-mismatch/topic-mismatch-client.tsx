@@ -634,7 +634,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
               </label>
               <select
                 id="topic-mismatch-topic"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={
                   selectedTopicId == null ? "none" : String(selectedTopicId)
                 }
@@ -664,7 +664,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
               </label>
               <select
                 id="topic-mismatch-pm"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={pmFilter}
                 onChange={(e) =>
                   setPmFilter(e.target.value as "all" | "pm" | "non_pm")
@@ -684,7 +684,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
               </label>
               <select
                 id="topic-mismatch-user"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={userFilter}
                 onChange={(e) => setUserFilter(e.target.value)}
               >
@@ -709,7 +709,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
               <input
                 id="topic-mismatch-from"
                 type="date"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={createdFrom}
                 onChange={(e) => setCreatedFrom(e.target.value)}
               />
@@ -724,7 +724,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
               <input
                 id="topic-mismatch-to"
                 type="date"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 value={createdTo}
                 onChange={(e) => setCreatedTo(e.target.value)}
               />
@@ -833,7 +833,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                     <Link
                       key={String(room.roomId)}
                       href={room.href}
-                      className="grid grid-cols-12 items-center gap-2 border-b px-3 py-2 last:border-b-0 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="grid grid-cols-12 items-center gap-2 border-b px-3 py-2 last:border-b-0 hover:bg-muted focus:outline-hidden focus:ring-2 focus:ring-primary"
                       aria-label={`Open room ${room.name}`}
                     >
                       <div className="col-span-6 sm:col-span-5 min-w-0">

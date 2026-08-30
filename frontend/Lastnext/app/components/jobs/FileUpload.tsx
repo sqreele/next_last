@@ -203,7 +203,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <label
               htmlFor={inputId}
               className={cn(
-                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-primary/30 bg-background px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-primary/30 bg-background px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 disabled ? "pointer-events-none" : "cursor-pointer",
               )}
             >
@@ -212,7 +212,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <label
               htmlFor={cameraInputId}
               className={cn(
-                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:hidden",
+                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:hidden",
                 disabled ? "pointer-events-none" : "cursor-pointer",
               )}
             >
@@ -250,7 +250,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               {!disabled && (
                 <button
                   type="button"
-                  className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-card/90 text-destructive shadow-sm transition-colors hover:bg-card sm:h-8 sm:w-8 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                  className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-card/90 text-destructive shadow-xs transition-colors hover:bg-card sm:h-8 sm:w-8 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
                   onClick={() => removeFile(index)}
                   aria-label={t("fileUpload.removeFile")}
                 >
@@ -264,7 +264,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <label
               htmlFor={inputId}
               className={cn(
-                "grid aspect-square w-full min-w-0 touch-manipulation place-items-center rounded-lg border border-dashed border-primary/40 bg-background text-2xl font-light leading-none text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "grid aspect-square w-full min-w-0 touch-manipulation place-items-center rounded-lg border border-dashed border-primary/40 bg-background text-2xl font-light leading-none text-primary transition-colors hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 disabled ? "pointer-events-none" : "cursor-pointer",
               )}
               aria-label={t("fileUpload.addPhotosLabel")}

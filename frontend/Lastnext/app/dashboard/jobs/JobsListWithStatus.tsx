@@ -220,7 +220,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     onChange={(event) =>
                       setPriority(event.target.value as JobPriority | "all")
                     }
-                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-40"
+                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-40"
                   >
                     <option value="all">All priorities</option>
                     <option value="high">High priority</option>
@@ -241,7 +241,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     onChange={(event) =>
                       setDate(event.target.value as DateFilter)
                     }
-                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-36"
+                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-36"
                   >
                     <option value="all">Any date</option>
                     <option value="today">Today</option>
@@ -262,7 +262,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     onChange={(event) =>
                       setOrdering(event.target.value as Ordering)
                     }
-                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-44"
+                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-44"
                   >
                     <option value="-created_at">Newest first</option>
                     <option value="created_at">Oldest first</option>
@@ -296,7 +296,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
               id="mobile-job-status"
               value={filter}
               onChange={(event) => setStatus(event.target.value as TabValue)}
-              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20"
             >
               {TABS.map((tab) => (
                 <option key={tab.value} value={tab.value}>
@@ -320,7 +320,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                   aria-selected={active}
                   onClick={() => setStatus(tab.value)}
                   className={cn(
-                    "inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     active
                       ? "border-primary bg-primary text-primary-foreground shadow-soft"
                       : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary",

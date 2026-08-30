@@ -34,7 +34,7 @@ function applyClass(resolved: 'light' | 'dark') {
   // don't flash the wrong background on push/install.
   const meta = document.querySelector('meta[name="theme-color"]:not([media])');
   if (meta) {
-    meta.setAttribute('content', resolved === 'dark' ? '#0f172a' : '#ffffff');
+    meta.setAttribute('content', resolved === 'dark' ? '#10282b' : '#0d9488');
   }
 }
 

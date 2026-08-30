@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { appSignOut } from "@/app/lib/logout";
 import {
-  Package2,
   PanelLeft,
   Search,
   Menu,
@@ -39,6 +38,7 @@ import { useScrollDirection } from "@/app/lib/hooks/useScrollDirection";
 import { NotificationBell } from "@/app/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
+import { Logo, StayMaintMark } from "@/app/components/branding/Logo";
 
 export default function DashboardLayout({
   children,
@@ -120,30 +120,32 @@ function DesktopNav({
   return (
     <aside
       className={cn(
-        "relative z-30 hidden min-h-screen-safe shrink-0 flex-col self-start border-r border-border bg-card/95 shadow-soft backdrop-blur-xl transition-[width] duration-300 desktop:sticky desktop:top-0 desktop:flex",
+        "relative z-30 hidden min-h-screen-safe shrink-0 flex-col self-start border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-soft transition-[width] duration-300 desktop:sticky desktop:top-0 desktop:flex",
         collapsed ? "w-20" : "w-64",
       )}
     >
       <div
         className={cn(
-          "flex h-16 items-center border-b border-border px-4",
+          "flex h-16 items-center border-b border-sidebar-border px-4",
           collapsed ? "justify-center" : "justify-between",
         )}
       >
         <Link
           href="/dashboard"
+          aria-label="StayMaint dashboard"
           className={cn(
-            "group flex min-h-11 items-center gap-2.5 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            "group flex min-h-11 items-center gap-2.5 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring",
             collapsed && "justify-center",
           )}
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-            <Package2 className="h-5 w-5" aria-hidden="true" />
-          </span>
-          {!collapsed && (
-            <span className="text-lg font-bold text-[var(--pcms-text)] transition-colors group-hover:text-[var(--pcms-primary-strong)]">
-              StayMaint
-            </span>
+          {collapsed ? (
+            <StayMaintMark tone="light" className="h-10 w-10" />
+          ) : (
+            <Logo
+              variant="horizontal"
+              tone="light"
+              markClassName="size-10"
+            />
           )}
         </Link>
         {!collapsed && (
@@ -151,7 +153,7 @@ function DesktopNav({
             variant="ghost"
             size="icon"
             onClick={toggleCollapse}
-            className="h-10 w-10 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="h-10 w-10 rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             aria-label="Collapse sidebar"
           >
             <PanelLeft className="h-4 w-4" aria-hidden="true" />
@@ -163,7 +165,7 @@ function DesktopNav({
           {navigationGroups.map((group) => (
             <div key={group.label}>
               {!collapsed ? (
-                <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/60">
                   {group.label}
                 </p>
               ) : null}
@@ -180,27 +182,27 @@ function DesktopNav({
                       href={item.href}
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
-                        "group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150",
-                        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        "group relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+                        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                         collapsed ? "justify-center" : "",
                         isActive
-                          ? "bg-primary/10 font-semibold text-primary ring-1 ring-inset ring-primary/20"
-                          : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                          ? "bg-sidebar-accent font-semibold text-sidebar-primary ring-1 ring-inset ring-sidebar-primary/25"
+                          : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
                       )}
                       title={collapsed ? item.name : undefined}
                     >
                       {isActive && (
                         <span
                           aria-hidden="true"
-                          className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary"
+                          className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-primary"
                         />
                       )}
                       <span
                         className={cn(
-                          "grid h-7 w-7 flex-none place-items-center rounded-lg transition-colors",
+                          "grid h-7 w-7 flex-none place-items-center rounded-md transition-colors",
                           isActive
-                            ? "bg-primary/20 text-primary"
-                            : "bg-transparent text-muted-foreground group-hover:bg-background group-hover:text-foreground",
+                            ? "bg-sidebar-primary/15 text-sidebar-primary"
+                            : "bg-transparent text-sidebar-foreground/65 group-hover:bg-sidebar-accent group-hover:text-sidebar-accent-foreground",
                         )}
                       >
                         <item.icon className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -216,13 +218,13 @@ function DesktopNav({
           ))}
         </nav>
       </div>
-      <div className="mt-auto border-t border-border bg-muted/[0.18] p-3">
+      <div className="mt-auto border-t border-sidebar-border bg-sidebar-accent/30 p-3">
         {!collapsed ? (
           <>
-            <User />
+            <User darkSurface />
             <Button
               variant="outline"
-              className="mt-3 h-11 w-full justify-start gap-2 border-destructive/25 bg-destructive/5 text-sm text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="mt-3 h-11 w-full justify-start gap-2 border-destructive/40 bg-destructive/10 text-sm text-rose-200 hover:bg-destructive/20 hover:text-white"
               onClick={() => appSignOut({ callbackUrl: "/auth/login" })}
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -233,7 +235,7 @@ function DesktopNav({
           <Button
             variant="outline"
             size="icon"
-            className="h-11 w-full border-destructive/25 bg-destructive/5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="h-11 w-full border-destructive/40 bg-destructive/10 text-rose-200 hover:bg-destructive/20 hover:text-white"
             onClick={() => appSignOut({ callbackUrl: "/auth/login" })}
             title="Logout"
           >
@@ -245,7 +247,7 @@ function DesktopNav({
             variant="ghost"
             size="icon"
             onClick={toggleCollapse}
-            className="mt-3 h-11 w-full rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="mt-3 h-11 w-full rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             title="Expand Sidebar"
             aria-label="Expand sidebar"
           >
@@ -274,9 +276,10 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
           <MobileNav />
           <Link
             href="/dashboard"
+            aria-label="StayMaint dashboard"
             className="flex min-h-10 min-w-0 items-center gap-1.5 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Package2 className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+            <StayMaintMark className="h-8 w-8" />
             <span className="hidden truncate text-sm font-bold text-foreground xs:inline">
               StayMaint
             </span>
@@ -355,12 +358,11 @@ function MobileNav() {
           <div className="border-b border-border bg-muted/[0.18] px-5 py-5">
             <Link
               href="/dashboard"
+              aria-label="StayMaint dashboard"
               className="flex min-h-11 items-center gap-3 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setOpen(false)}
             >
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-                <Package2 className="h-5 w-5" aria-hidden="true" />
-              </span>
+              <StayMaintMark className="h-11 w-11" />
               <span>
                 <span className="block text-lg font-bold leading-tight text-foreground">
                   StayMaint

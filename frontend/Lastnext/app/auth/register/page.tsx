@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import {
   ArrowLeft,
-  Building2,
   Check,
   ClipboardCheck,
   ShieldCheck,
@@ -11,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import RegisterForm from '@/app/components/profile/RegisterForm';
+import { Logo } from '@/app/components/branding/Logo';
 
 const benefits = [
   {
@@ -38,13 +38,7 @@ export default function RegisterPage() {
         <div className="absolute inset-0 opacity-[0.055] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:48px_48px]" />
 
         <Link href="/" className="relative flex w-fit items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-600 shadow-lg shadow-blue-950/30">
-            <Building2 className="h-5 w-5" />
-          </span>
-          <div>
-            <p className="text-base font-semibold tracking-tight">StayMaint</p>
-            <p className="text-xs text-slate-400">Engineering operations platform</p>
-          </div>
+          <Logo variant="full" tone="light" markClassName="size-11" />
         </Link>
 
         <div className="relative my-auto max-w-2xl py-16">
@@ -88,10 +82,7 @@ export default function RegisterPage() {
             className="flex items-center gap-2.5 lg:hidden"
             aria-label="StayMaint home"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white">
-              <Building2 className="h-4 w-4" />
-            </span>
-            <span className="font-semibold tracking-tight text-slate-900">StayMaint</span>
+            <Logo variant="horizontal" markClassName="size-9" />
           </Link>
           <Link
             href="/auth/login"

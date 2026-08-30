@@ -80,7 +80,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
               href={item.href}
               onClick={() => triggerHaptic("selection")}
               className={cn(
-                "min-w-0 flex-1 rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                "min-w-0 flex-1 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 item.name === "Create Job" && "order-none",
               )}
               aria-current={isActive ? "page" : undefined}
@@ -88,7 +88,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
             >
               <div
                 className={cn(
-                  "relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 transition-colors touch-manipulation sm:px-2",
+                  "relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 transition-colors touch-manipulation sm:px-2",
                   isActive
                     ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20"
                     : "text-muted-foreground hover:bg-muted/70 hover:text-foreground active:bg-muted",
@@ -135,7 +135,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
             <button
               type="button"
               className={cn(
-                "relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-muted-foreground transition-colors",
+                "relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-muted-foreground transition-colors",
                 "hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 hasActiveSecondaryItem &&
                   "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20",
@@ -158,7 +158,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
           </SheetTrigger>
           <SheetContent
             side="bottom"
-            className="max-h-[85dvh] rounded-t-2xl border-border bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-card"
+            className="max-h-[85dvh] rounded-t-xl border-border bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-card"
           >
             <SheetHeader className="border-b border-border pb-3 text-left">
               <SheetTitle className="text-lg font-semibold">More tools</SheetTitle>
@@ -178,11 +178,11 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                     onClick={() => setMoreOpen(false)}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "relative flex min-h-16 min-w-0 items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
+                      "relative flex min-h-16 min-w-0 items-center gap-3 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
                       "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       isActive
                         ? "border-primary/30 bg-primary/10 font-semibold text-primary ring-1 ring-inset ring-primary/20"
-                        : "border-border bg-card text-foreground hover:bg-muted/70",
+                        : "border-transparent bg-muted/45 text-foreground hover:bg-muted/75",
                     )}
                   >
                     <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />

@@ -1,6 +1,6 @@
 # Design system and app shell audit
 
-Audit date: 2026-07-24
+Audit updated: 2026-08-30
 
 ## Completion status
 
@@ -29,8 +29,8 @@ The application-wide migration is complete for the current route inventory:
 - Next.js 15.5 App Router with React 18.3 and strict TypeScript.
 - Routes live under `app/`; the authenticated product is nested below
   `app/dashboard/layout.tsx`.
-- Tailwind CSS 3.4 is paired with Radix-based, Shadcn-style primitives in
-  `app/components/ui`.
+- Tailwind CSS 4.3.3 uses CSS-first semantic mappings in `app/globals.css`,
+  paired with Radix-based, Shadcn-style primitives in `app/components/ui`.
 - Lucide is the primary icon library. Recharts, SWR, Zustand, Formik, Yup and
   PWA/offline helpers are present.
 - The root layout owns theme, locale, authentication, property access, store,

@@ -5,12 +5,12 @@ import {
   Check,
   ClipboardCheck,
   Clock3,
-  Hotel,
   ShieldCheck,
   Wrench,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent } from "@/app/components/ui/card";
+import { Logo } from "@/app/components/branding/Logo";
 import {
   MarketingPage,
   relatedMarketingLinks,
@@ -40,10 +40,7 @@ export function SeoLandingPage({ page }: { page: MarketingPage }) {
       <header className="sticky top-0 z-50 border-b border-border bg-card/95">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <Hotel className="h-5 w-5" aria-hidden />
-            </span>
-            StayMaint
+            <Logo variant="horizontal" markClassName="size-9" />
           </Link>
           <div className="flex items-center gap-2">
             <Button

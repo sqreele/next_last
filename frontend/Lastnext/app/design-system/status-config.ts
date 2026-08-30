@@ -55,7 +55,7 @@ export const statusConfig = {
     label: "In Progress",
     description: "Work is currently underway",
     icon: Wrench,
-    className: "border-warning/35 bg-warning/10 text-warning-foreground",
+    className: "border-warning/35 bg-warning/10 text-warning-emphasis",
     dotClassName: "bg-warning",
   },
   waiting_sparepart: {
@@ -76,8 +76,8 @@ export const statusConfig = {
     label: "Cancelled",
     description: "Work was cancelled",
     icon: Ban,
-    className: "border-border bg-muted text-muted-foreground",
-    dotClassName: "bg-muted-foreground",
+    className: "border-destructive/30 bg-destructive/10 text-destructive",
+    dotClassName: "bg-destructive",
   },
   overdue: {
     label: "Overdue",
@@ -97,14 +97,14 @@ export const statusConfig = {
     label: "Waiting Fix Defect",
     description: "A reported defect still needs attention",
     icon: Clock3,
-    className: "border-warning/35 bg-warning/10 text-warning-foreground",
+    className: "border-warning/35 bg-warning/10 text-warning-emphasis",
     dotClassName: "bg-warning",
   },
   waiting_vendor: {
     label: "Waiting for Vendor",
     description: "Work is paused for an external vendor",
     icon: Clock3,
-    className: "border-warning/35 bg-warning/10 text-warning-foreground",
+    className: "border-warning/35 bg-warning/10 text-warning-emphasis",
     dotClassName: "bg-warning",
   },
   preventive_maintenance: {

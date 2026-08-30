@@ -17,7 +17,7 @@ import Link from "next/link";
 import { ProfileImage } from "@/app/components/ui/UniversalImage";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 
-const User: React.FC = () => {
+const User: React.FC<{ darkSurface?: boolean }> = ({ darkSurface = false }) => {
   const { data: session } = useSession();
 
   if (!session?.user) {
@@ -37,14 +37,19 @@ const User: React.FC = () => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto min-h-12 w-full justify-between gap-2 rounded-xl px-2 py-2 text-left hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(
+            "h-auto min-h-12 w-full justify-between gap-2 rounded-lg px-2 py-2 text-left focus-visible:ring-2",
+            darkSurface
+              ? "text-sidebar-foreground hover:bg-sidebar-accent focus-visible:ring-sidebar-ring"
+              : "hover:bg-muted/70 focus-visible:ring-ring",
+          )}
         >
           <div className="flex min-w-0 items-center gap-3">
             <div
               className={cn(
                 "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg",
                 !session.user.profile_image &&
-                  "bg-primary",
+                  darkSurface ? "bg-sidebar-primary" : "bg-primary",
               )}
             >
               {session.user.profile_image &&
@@ -58,19 +63,19 @@ const User: React.FC = () => {
                   fill
                 />
               ) : (
-                <span className="font-semibold text-primary-foreground">{initials}</span>
+                <span className={cn("font-semibold", darkSurface ? "text-sidebar-primary-foreground" : "text-primary-foreground")}>{initials}</span>
               )}
             </div>
             <div className="flex min-w-0 flex-col text-left">
-              <span className="truncate text-sm font-semibold text-foreground">
+              <span className={cn("truncate text-sm font-semibold", darkSurface ? "text-sidebar-foreground" : "text-foreground")}>
                 {displayName}
               </span>
-              <span className="truncate text-xs text-muted-foreground">
+              <span className={cn("truncate text-xs", darkSurface ? "text-sidebar-foreground/65" : "text-muted-foreground")}>
                 {session.user.positions || "User"}
               </span>
             </div>
           </div>
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <ChevronDown className={cn("h-4 w-4 shrink-0", darkSurface ? "text-sidebar-foreground/60" : "text-muted-foreground")} aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

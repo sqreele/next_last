@@ -16,7 +16,7 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+    className="fixed inset-0 z-50 bg-slate-950/55 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none"
     {...props}
   />
 ));
@@ -42,15 +42,15 @@ const DialogContent = React.forwardRef<
         mobileFullscreen
           ? [
               "mobile:inset-x-0 mobile:bottom-0 mobile:top-auto mobile:left-0 mobile:right-0",
-              "mobile:max-h-[92vh] mobile:w-full mobile:max-w-full mobile:rounded-t-3xl mobile:rounded-b-none",
+              "mobile:max-h-[92dvh] mobile:w-full mobile:max-w-full mobile:rounded-t-xl mobile:rounded-b-none",
               "mobile:p-5 mobile:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
               "mobile:overflow-y-auto mobile:overscroll-contain",
               "mobile:data-[state=closed]:slide-out-to-bottom mobile:data-[state=open]:slide-in-from-bottom",
               "mobile:data-[state=open]:duration-300 mobile:data-[state=closed]:duration-200",
             ].join(" ")
           : "",
-        "tablet:left-[50%] tablet:top-[50%] tablet:w-full tablet:max-w-lg tablet:translate-x-[-50%] tablet:translate-y-[-50%] tablet:rounded-lg tablet:p-6",
-        "desktop:left-[50%] desktop:top-[50%] desktop:w-full desktop:max-w-lg desktop:translate-x-[-50%] desktop:translate-y-[-50%] desktop:rounded-lg desktop:p-6",
+        "tablet:left-[50%] tablet:top-[50%] tablet:w-full tablet:max-w-lg tablet:translate-x-[-50%] tablet:translate-y-[-50%] tablet:rounded-xl tablet:p-6",
+        "desktop:left-[50%] desktop:top-[50%] desktop:w-full desktop:max-w-lg desktop:translate-x-[-50%] desktop:translate-y-[-50%] desktop:rounded-xl desktop:p-6",
         "tablet:data-[state=closed]:zoom-out-95 tablet:data-[state=open]:zoom-in-95 tablet:data-[state=closed]:slide-out-to-left-1/2 tablet:data-[state=closed]:slide-out-to-top-[48%] tablet:data-[state=open]:slide-in-from-left-1/2 tablet:data-[state=open]:slide-in-from-top-[48%]",
         "desktop:data-[state=closed]:zoom-out-95 desktop:data-[state=open]:zoom-in-95 desktop:data-[state=closed]:slide-out-to-left-1/2 desktop:data-[state=closed]:slide-out-to-top-[48%] desktop:data-[state=open]:slide-in-from-left-1/2 desktop:data-[state=open]:slide-in-from-top-[48%]",
         className,
@@ -64,7 +64,7 @@ const DialogContent = React.forwardRef<
         />
       )}
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+      <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -123,7 +123,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className="text-lg font-semibold leading-none tracking-tight"
+    className="text-base font-semibold leading-6 tracking-tight"
     {...props}
   />
 ));

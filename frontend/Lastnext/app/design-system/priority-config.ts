@@ -16,7 +16,7 @@ export const priorityConfig = {
     className: "border-border bg-muted text-muted-foreground",
   },
   medium: {
-    label: "Normal",
+    label: "Medium",
     description: "Standard operational priority",
     icon: Circle,
     className: "border-info/30 bg-info/10 text-info",
@@ -25,10 +25,10 @@ export const priorityConfig = {
     label: "High",
     description: "Needs prompt attention",
     icon: ArrowUp,
-    className: "border-warning/35 bg-warning/10 text-warning-foreground",
+    className: "border-warning/35 bg-warning/10 text-warning-emphasis",
   },
   critical: {
-    label: "Urgent",
+    label: "Critical",
     description: "Immediate attention is required",
     icon: Siren,
     className: "border-destructive/30 bg-destructive/10 text-destructive",

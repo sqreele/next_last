@@ -86,7 +86,7 @@ const HeaderPropertyList = React.memo(() => {
       <Button
         variant="outline"
         disabled
-        className="h-11 w-full gap-2 rounded-lg border-border bg-card px-3 text-muted-foreground sm:w-auto"
+        className="h-11 w-full gap-2 rounded-md border-border bg-card px-3 text-muted-foreground sm:w-auto"
       >
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         Loading...
@@ -100,7 +100,7 @@ const HeaderPropertyList = React.memo(() => {
       <Button
         variant="outline"
         disabled
-        className="h-11 w-full gap-2 rounded-lg border-border bg-card px-3 text-muted-foreground sm:w-auto"
+        className="h-11 w-full gap-2 rounded-md border-border bg-card px-3 text-muted-foreground sm:w-auto"
       >
         <Building2 className="h-4 w-4" aria-hidden="true" />
         No Properties
@@ -120,7 +120,7 @@ const HeaderPropertyList = React.memo(() => {
                 ? "Property selector locked to your assigned property"
                 : "Select property"
             }
-            className="h-11 w-full min-w-0 justify-between gap-2 rounded-lg border-border bg-card px-3 shadow-none hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-100 sm:w-auto sm:max-w-56"
+            className="h-11 w-full min-w-0 justify-between gap-2 rounded-md border-border bg-card px-3 shadow-none hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-100 sm:w-auto sm:max-w-56"
           >
             <div className="flex min-w-0 items-center gap-2">
               <Building2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
@@ -134,15 +134,16 @@ const HeaderPropertyList = React.memo(() => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="mt-1 w-full min-w-[220px] max-w-[90vw] rounded-xl border-border bg-popover p-1.5 shadow-card"
+          className="mt-1 max-h-[min(60dvh,28rem)] w-full min-w-[220px] max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-lg border-border bg-popover p-1.5 shadow-soft"
           align="start"
         >
           {safeProperties.map((property: any, index: number) => (
             <DropdownMenuItem
               key={getPropertyId(property) || `property-${index}`}
               onClick={() => handlePropertySelect(property)}
+              aria-current={selectedProperty === getPropertyId(property) ? "true" : undefined}
               className={cn(
-                "min-h-11 cursor-pointer gap-2 rounded-lg px-3 py-2.5 text-sm focus:bg-muted focus:text-foreground",
+                "min-h-12 cursor-pointer gap-2 rounded-md px-3 py-2.5 text-sm focus:bg-muted focus:text-foreground",
                 selectedProperty === getPropertyId(property)
                   ? "bg-primary/10 font-semibold text-primary"
                   : "text-foreground hover:bg-muted",

@@ -231,7 +231,7 @@ function JobStatusSummary({
     {
       label: "In Progress",
       value: counts.in_progress,
-      tone: "text-warning",
+      tone: "text-warning-emphasis",
       icon: Wrench,
       status: "in_progress" as const,
     },

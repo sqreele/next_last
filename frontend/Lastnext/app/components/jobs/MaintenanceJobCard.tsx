@@ -172,7 +172,7 @@ export default function MaintenanceJobCard({
   return (
     <article
       className={cn(
-        "group overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-card motion-reduce:transform-none motion-reduce:transition-none",
+        "group overflow-hidden rounded-lg border border-border bg-card shadow-soft transition-colors duration-200 hover:border-foreground/20 hover:shadow-card motion-reduce:transition-none",
         viewMode === "list" && "sm:min-h-0",
       )}
     >
@@ -266,7 +266,7 @@ export default function MaintenanceJobCard({
             <span className="hidden truncate text-xs text-muted-foreground sm:block">
               Updated {formatDate(job.updated_at)}
             </span>
-            <span className="job-card-action mt-1 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2 text-[11px] font-bold uppercase text-blue-900 shadow-xs transition-colors group-hover:bg-blue-100 sm:min-h-11 sm:text-sm">
+            <span className="job-card-action mt-1 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-2 text-[11px] font-semibold text-primary shadow-xs transition-colors group-hover:bg-primary/15 sm:min-h-11 sm:text-sm">
               View details
               <ArrowRight
                 className="h-4 w-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"

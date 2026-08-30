@@ -18,8 +18,8 @@ const OFFLINE_URL = '/offline';
 const PRECACHE_URLS = [
   OFFLINE_URL,
   '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -132,8 +132,8 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || '',
     tag: data.tag || 'pcms-default',
-    icon: data.icon || '/icon-192x192.png',
-    badge: '/icon-192x192.png',
+    icon: data.icon || '/icon-192.png',
+    badge: '/icon-192.png',
     data: { url: data.url || '/dashboard' },
     renotify: !!data.renotify,
   };

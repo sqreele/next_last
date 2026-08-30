@@ -1,9 +1,56 @@
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 
-@theme {
+@theme inline {
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-warning-emphasis: hsl(var(--warning-emphasis));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-card: 0 4px 18px -8px rgb(15 23 42 / 0.16);
+  --shadow-card-hover: 0 8px 24px -10px rgb(15 23 42 / 0.2);
+  --shadow-ring: 0 0 0 4px hsl(var(--ring) / 0.18);
   --breakpoint-xs: 475px;
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
@@ -46,68 +93,85 @@
 
 :root {
   /* shadcn/ui design tokens (HSL component values for hsl(var(--token)) usage) */
-  --background: 0 0% 100%;
-  --foreground: 222.2 47.4% 11.2%;
+  --background: 168 33% 98%;
+  --foreground: 192 33% 15%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 47.4% 11.2%;
+  --card-foreground: 192 33% 15%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222.2 47.4% 11.2%;
-  --primary: 220 88% 51%;
-  --primary-hover: 220 88% 40%;
+  --popover-foreground: 192 33% 15%;
+  --primary: 175 84% 26%;
+  --primary-hover: 175 84% 22%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 96.1%;
-  --secondary-hover: 214 32% 91%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-hover: 0 74% 42%;
+  --secondary: 168 29% 96%;
+  --secondary-hover: 168 24% 92%;
+  --secondary-foreground: 180 34% 23%;
+  --muted: 168 17% 96%;
+  --muted-foreground: 192 12% 41%;
+  --accent: 43 96% 90%;
+  --accent-foreground: 30 80% 27%;
+  --destructive: 347 77% 50%;
+  --destructive-hover: 347 77% 42%;
   --destructive-foreground: 0 0% 100%;
-  --success: 142 71% 45%;
-  --success-hover: 142 72% 29%;
+  --success: 160 84% 26%;
+  --success-hover: 161 94% 22%;
   --success-foreground: 0 0% 100%;
-  --warning: 24.6 95% 53.1%;
-  --warning-hover: 21 90% 40%;
-  --warning-foreground: 0 0% 100%;
-  --info: 217 91% 60%;
+  --warning: 38 92% 50%;
+  --warning-hover: 32 95% 44%;
+  --warning-foreground: 30 80% 25%;
+  --warning-emphasis: 26 81% 31%;
+  --info: 199 89% 36%;
   --info-foreground: 0 0% 100%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 220 88% 51%;
+  --border: 170 18% 88%;
+  --input: 170 17% 84%;
+  --ring: 174 83% 31%;
+  --chart-1: 174 83% 31%;
+  --chart-2: 38 92% 50%;
+  --chart-3: 217 91% 60%;
+  --chart-4: 160 84% 39%;
+  --chart-5: 347 77% 50%;
+  --sidebar: 191 32% 24%;
+  --sidebar-foreground: 168 20% 96%;
+  --sidebar-primary: 42 92% 56%;
+  --sidebar-primary-foreground: 191 42% 13%;
+  --sidebar-accent: 191 29% 31%;
+  --sidebar-accent-foreground: 168 20% 98%;
+  --sidebar-border: 191 24% 34%;
+  --sidebar-ring: 42 92% 56%;
   --radius: 0.75rem;
 
-  --status-open-bg: #2563eb;
-  --status-open-text: #ffffff;
-  --status-open-border: #1d4ed8;
-  --status-assigned-bg: #2563eb;
-  --status-assigned-text: #ffffff;
-  --status-assigned-border: #1d4ed8;
-  --status-in-progress-bg: #6366f1;
-  --status-in-progress-text: #ffffff;
-  --status-in-progress-border: #4f46e5;
-  --status-waiting-fix-defect-bg: #f59e0b;
-  --status-waiting-fix-defect-text: #111827;
-  --status-waiting-fix-defect-border: #b45309;
-  --status-waiting-spare-part-bg: #f97316;
-  --status-waiting-spare-part-text: #111827;
-  --status-waiting-spare-part-border: #c2410c;
-  --status-waiting-vendor-bg: #f97316;
-  --status-waiting-vendor-text: #ffffff;
-  --status-waiting-vendor-border: #92400e;
-  --status-completed-bg: #16a34a;
-  --status-completed-text: #ffffff;
-  --status-completed-border: #15803d;
-  --status-verified-bg: #0d9488;
-  --status-verified-text: #ffffff;
-  --status-verified-border: #0f766e;
-  --status-cancelled-bg: #dc2626;
-  --status-cancelled-text: #ffffff;
-  --status-cancelled-border: #b91c1c;
-  --status-defect-bg: #7c3aed;
-  --status-defect-text: #ffffff;
-  --status-defect-border: #6d28d9;
+  --status-open-bg: #f1f5f9;
+  --status-open-text: #334155;
+  --status-open-border: #cbd5e1;
+  --status-pending-bg: #f1f5f9;
+  --status-pending-text: #334155;
+  --status-pending-border: #cbd5e1;
+  --status-assigned-bg: #e0f2fe;
+  --status-assigned-text: #0369a1;
+  --status-assigned-border: #bae6fd;
+  --status-in-progress-bg: #fef3c7;
+  --status-in-progress-text: #92400e;
+  --status-in-progress-border: #fde68a;
+  --status-waiting-fix-defect-bg: #fef3c7;
+  --status-waiting-fix-defect-text: #92400e;
+  --status-waiting-fix-defect-border: #fde68a;
+  --status-waiting-spare-part-bg: #f3e8ff;
+  --status-waiting-spare-part-text: #7e22ce;
+  --status-waiting-spare-part-border: #e9d5ff;
+  --status-waiting-vendor-bg: #ffedd5;
+  --status-waiting-vendor-text: #c2410c;
+  --status-waiting-vendor-border: #fed7aa;
+  --status-completed-bg: #d1fae5;
+  --status-completed-text: #047857;
+  --status-completed-border: #a7f3d0;
+  --status-verified-bg: #ccfbf1;
+  --status-verified-text: #0f766e;
+  --status-verified-border: #99f6e4;
+  --status-cancelled-bg: #ffe4e6;
+  --status-cancelled-text: #be123c;
+  --status-cancelled-border: #fecdd3;
+  --status-defect-bg: #ffe4e6;
+  --status-defect-text: #be123c;
+  --status-defect-border: #fecdd3;
 }
 
 body {
@@ -323,16 +387,23 @@ body {
 /* Canonical application surface layer.
    Kept last so legacy feature styles resolve to one predictable system. */
 :root {
-  --pcms-app-bg: hsl(210 20% 98%);
+  --pcms-app-bg: hsl(var(--background));
   --pcms-surface: hsl(var(--card));
   --pcms-surface-soft: hsl(var(--muted));
   --pcms-border: hsl(var(--border));
+  --pcms-border-strong: hsl(var(--input));
+  --pcms-primary: hsl(var(--primary));
+  --pcms-primary-hover: hsl(var(--primary-hover));
+  --pcms-primary-strong: hsl(175 84% 25%);
+  --pcms-primary-soft: hsl(var(--primary) / 0.1);
   --pcms-text: hsl(var(--foreground));
   --pcms-text-muted: hsl(var(--muted-foreground));
+  --pcms-text-soft: hsl(var(--muted-foreground) / 0.75);
   --pcms-radius: 0.75rem;
   --pcms-radius-lg: 0.75rem;
   --pcms-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
-  --pcms-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 30px rgba(15, 23, 42, 0.06);
+  --pcms-shadow-card: 0 4px 18px -8px rgba(15, 23, 42, 0.16);
+  --pcms-focus: 0 0 0 4px hsl(var(--ring) / 0.18);
 }
 
 body,
@@ -529,7 +600,7 @@ body,
 }
 
 .focus-visible-ring:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
@@ -561,51 +632,98 @@ body,
    matchMedia('(prefers-color-scheme: dark)') when the user has 'system' set. */
 .dark {
   /* shadcn/ui design tokens */
-  --background: 222 47% 7%;
-  --foreground: 210 40% 96%;
-  --card: 222 47% 10%;
-  --card-foreground: 210 40% 96%;
-  --popover: 222 47% 10%;
-  --popover-foreground: 210 40% 96%;
-  --primary: 217 91% 60%;
-  --primary-hover: 213 94% 68%;
-  --primary-foreground: 222 47% 11%;
-  --secondary: 217 33% 17%;
-  --secondary-hover: 215 25% 27%;
-  --secondary-foreground: 210 40% 96%;
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 217 33% 17%;
-  --accent-foreground: 210 40% 96%;
-  --destructive: 0 75% 55%;
-  --destructive-hover: 0 84% 65%;
-  --destructive-foreground: 210 40% 96%;
-  --success: 142 65% 50%;
-  --success-hover: 142 69% 58%;
-  --success-foreground: 222 47% 11%;
-  --warning: 24 95% 60%;
-  --warning-hover: 27 96% 68%;
-  --warning-foreground: 222 47% 11%;
-  --info: 217 91% 65%;
-  --info-foreground: 222 47% 11%;
-  --border: 217 33% 22%;
-  --input: 217 33% 22%;
-  --ring: 217 91% 60%;
+  --background: 194 32% 9%;
+  --foreground: 168 20% 95%;
+  --card: 193 30% 13%;
+  --card-foreground: 168 20% 95%;
+  --popover: 192 28% 15%;
+  --popover-foreground: 168 20% 95%;
+  --primary: 174 57% 57%;
+  --primary-hover: 174 62% 67%;
+  --primary-foreground: 194 35% 10%;
+  --secondary: 192 23% 18%;
+  --secondary-hover: 190 20% 24%;
+  --secondary-foreground: 168 20% 95%;
+  --muted: 192 20% 17%;
+  --muted-foreground: 185 11% 67%;
+  --accent: 35 35% 22%;
+  --accent-foreground: 44 90% 70%;
+  --destructive: 350 75% 62%;
+  --destructive-hover: 350 80% 70%;
+  --destructive-foreground: 194 35% 10%;
+  --success: 160 64% 50%;
+  --success-hover: 160 68% 59%;
+  --success-foreground: 194 35% 10%;
+  --warning: 42 90% 58%;
+  --warning-hover: 42 94% 67%;
+  --warning-foreground: 194 35% 10%;
+  --warning-emphasis: 48 96% 65%;
+  --info: 199 85% 64%;
+  --info-foreground: 194 35% 10%;
+  --border: 190 16% 24%;
+  --input: 190 16% 28%;
+  --ring: 174 57% 57%;
+  --chart-1: 174 57% 57%;
+  --chart-2: 42 90% 58%;
+  --chart-3: 217 91% 68%;
+  --chart-4: 160 64% 50%;
+  --chart-5: 350 75% 62%;
+  --sidebar: 193 34% 10%;
+  --sidebar-foreground: 168 20% 95%;
+  --sidebar-primary: 42 90% 62%;
+  --sidebar-primary-foreground: 194 35% 10%;
+  --sidebar-accent: 192 25% 19%;
+  --sidebar-accent-foreground: 168 20% 96%;
+  --sidebar-border: 190 16% 22%;
+  --sidebar-ring: 42 90% 62%;
+  --status-open-bg: rgb(30 41 59 / 0.8);
+  --status-open-text: #e2e8f0;
+  --status-open-border: #475569;
+  --status-pending-bg: rgb(30 41 59 / 0.8);
+  --status-pending-text: #e2e8f0;
+  --status-pending-border: #475569;
+  --status-assigned-bg: rgb(12 74 110 / 0.55);
+  --status-assigned-text: #7dd3fc;
+  --status-assigned-border: #075985;
+  --status-in-progress-bg: rgb(120 53 15 / 0.55);
+  --status-in-progress-text: #fcd34d;
+  --status-in-progress-border: #92400e;
+  --status-waiting-fix-defect-bg: rgb(120 53 15 / 0.55);
+  --status-waiting-fix-defect-text: #fcd34d;
+  --status-waiting-fix-defect-border: #92400e;
+  --status-waiting-spare-part-bg: rgb(76 29 149 / 0.55);
+  --status-waiting-spare-part-text: #d8b4fe;
+  --status-waiting-spare-part-border: #6b21a8;
+  --status-waiting-vendor-bg: rgb(124 45 18 / 0.55);
+  --status-waiting-vendor-text: #fdba74;
+  --status-waiting-vendor-border: #9a3412;
+  --status-completed-bg: rgb(6 78 59 / 0.55);
+  --status-completed-text: #6ee7b7;
+  --status-completed-border: #047857;
+  --status-verified-bg: rgb(19 78 74 / 0.6);
+  --status-verified-text: #5eead4;
+  --status-verified-border: #0f766e;
+  --status-cancelled-bg: rgb(136 19 55 / 0.55);
+  --status-cancelled-text: #fda4af;
+  --status-cancelled-border: #9f1239;
+  --status-defect-bg: rgb(136 19 55 / 0.55);
+  --status-defect-text: #fda4af;
+  --status-defect-border: #9f1239;
 
   /* HotelCare Pro app tokens (used by the Sneat-style components in the dashboard). */
-  --pcms-app-bg: #0b1220;
-  --pcms-surface: #111a2e;
-  --pcms-surface-soft: #0f1729;
-  --pcms-border: #1e293b;
-  --pcms-border-strong: #334155;
-  --pcms-primary: #3b82f6;
-  --pcms-primary-hover: #60a5fa;
-  --pcms-primary-strong: #2563eb;
-  --pcms-primary-soft: #1e3a8a;
-  --pcms-text: #e2e8f0;
-  --pcms-text-muted: #94a3b8;
-  --pcms-text-soft: #64748b;
-  --pcms-row-hover: #1f2a44;
+  --pcms-app-bg: hsl(var(--background));
+  --pcms-surface: hsl(var(--card));
+  --pcms-surface-soft: hsl(var(--muted));
+  --pcms-border: hsl(var(--border));
+  --pcms-border-strong: hsl(var(--input));
+  --pcms-primary: hsl(var(--primary));
+  --pcms-primary-hover: hsl(var(--primary-hover));
+  --pcms-primary-strong: hsl(var(--primary));
+  --pcms-primary-soft: hsl(var(--primary) / 0.12);
+  --pcms-text: hsl(var(--foreground));
+  --pcms-text-muted: hsl(var(--muted-foreground));
+  --pcms-text-soft: hsl(var(--muted-foreground) / 0.78);
+  --pcms-row-hover: hsl(var(--muted));
   --pcms-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
   --pcms-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
 }
@@ -642,7 +760,7 @@ body {
 
 /* Keyboard navigation improvements */
 .keyboard-nav:focus {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
@@ -3229,28 +3347,28 @@ body {
    Based on Sneat Figma node 870-37366 (main analytics dashboard)
    ========================================================================= */
 :root {
-  --sneat-primary: #7367f0;
-  --sneat-primary-soft: rgba(115, 103, 240, 0.16);
-  --sneat-success: #28c76f;
-  --sneat-success-soft: rgba(40, 199, 111, 0.16);
-  --sneat-warning: #ff9f43;
-  --sneat-warning-soft: rgba(255, 159, 67, 0.16);
-  --sneat-danger: #ea5455;
-  --sneat-danger-soft: rgba(234, 84, 85, 0.16);
-  --sneat-info: #00cfe8;
-  --sneat-info-soft: rgba(0, 207, 232, 0.16);
+  --sneat-primary: hsl(var(--primary));
+  --sneat-primary-soft: hsl(var(--primary) / 0.12);
+  --sneat-success: hsl(var(--success));
+  --sneat-success-soft: hsl(var(--success) / 0.12);
+  --sneat-warning: hsl(var(--warning));
+  --sneat-warning-soft: hsl(var(--warning) / 0.14);
+  --sneat-danger: hsl(var(--destructive));
+  --sneat-danger-soft: hsl(var(--destructive) / 0.12);
+  --sneat-info: hsl(var(--info));
+  --sneat-info-soft: hsl(var(--info) / 0.12);
   --sneat-secondary: #82868b;
   --sneat-secondary-soft: rgba(130, 134, 139, 0.16);
-  --sneat-body-bg: #f8f7fa;
-  --sneat-card-bg: #ffffff;
-  --sneat-text: #5d596c;
-  --sneat-text-strong: #4b465c;
-  --sneat-text-muted: #8a8d93;
-  --sneat-border: #dbdade;
-  --sneat-radius: 0.5rem;
-  --sneat-radius-lg: 0.625rem;
-  --sneat-shadow: 0 0.25rem 1.125rem rgba(75, 70, 92, 0.1);
-  --sneat-shadow-hover: 0 0.5rem 1.5rem rgba(75, 70, 92, 0.18);
+  --sneat-body-bg: hsl(var(--background));
+  --sneat-card-bg: hsl(var(--card));
+  --sneat-text: hsl(var(--foreground));
+  --sneat-text-strong: hsl(var(--foreground));
+  --sneat-text-muted: hsl(var(--muted-foreground));
+  --sneat-border: hsl(var(--border));
+  --sneat-radius: 0.625rem;
+  --sneat-radius-lg: 0.75rem;
+  --sneat-shadow: var(--pcms-shadow-sm);
+  --sneat-shadow-hover: var(--pcms-shadow-card);
 }
 
 .sneat-dashboard {
@@ -3330,18 +3448,18 @@ body {
 .sneat-btn--primary {
   background: var(--sneat-primary);
   color: #fff;
-  box-shadow: 0 0.125rem 0.25rem rgba(115, 103, 240, 0.4);
+  box-shadow: var(--pcms-shadow-sm);
 }
 
 .sneat-btn--primary:hover:not(:disabled) {
-  background: #685dd8;
-  box-shadow: 0 0.25rem 0.5rem rgba(115, 103, 240, 0.5);
+  background: hsl(var(--primary-hover));
+  box-shadow: var(--pcms-shadow-card);
 }
 
 .sneat-btn--ghost {
   background: transparent;
   color: var(--sneat-primary);
-  border-color: rgba(115, 103, 240, 0.5);
+  border-color: hsl(var(--primary) / 0.4);
 }
 
 .sneat-btn--ghost:hover:not(:disabled) {
@@ -3880,7 +3998,7 @@ body {
   height: 0.75rem;
   border-radius: 50%;
   background: var(--sneat-primary);
-  box-shadow: 0 0 0 4px rgba(115, 103, 240, 0.16);
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.16);
 }
 
 .sneat-timeline__item--success::before {
@@ -4215,16 +4333,16 @@ svg {
 .pcms-page-header {
   align-items: flex-start;
   border: 1px solid var(--pcms-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.94);
+  border-radius: 12px;
+  background: var(--pcms-surface);
   box-shadow: var(--pcms-shadow-sm);
   padding: clamp(1rem, 2vw, 1.35rem);
 }
 
 .pcms-page-header h1 {
-  font-size: clamp(1.45rem, 2.5vw, 2rem);
-  font-weight: 800;
-  line-height: 1.12;
+  font-size: clamp(1.125rem, 2vw, 1.25rem);
+  font-weight: 600;
+  line-height: 1.4;
   letter-spacing: 0;
 }
 
@@ -4245,26 +4363,27 @@ svg {
 
 .pcms-section-card {
   border: 1px solid var(--pcms-border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.94);
+  border-radius: 12px;
+  background: var(--pcms-surface);
   box-shadow: var(--pcms-shadow-sm);
 }
 
 .pcms-section-card__header h2 {
   letter-spacing: 0;
-  font-weight: 800;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .pcms-search-input {
-  border-radius: 999px;
+  border-radius: 10px;
   border-color: var(--pcms-border);
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--pcms-surface);
   box-shadow: var(--pcms-shadow-sm);
 }
 
 .pcms-search-input input {
-  min-height: 48px;
-  font-weight: 600;
+  min-height: 44px;
+  font-weight: 400;
 }
 
 .pcms-floating-action {
@@ -4284,7 +4403,7 @@ svg {
 .sneat-dashboard h2,
 .sneat-dashboard h3,
 .sneat-dashboard h4 {
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -4293,7 +4412,7 @@ svg {
 .sneat-stat-card,
 .sneat-chart-card {
   border: 1px solid var(--pcms-border);
-  border-radius: 18px;
+  border-radius: 12px;
   box-shadow: var(--pcms-shadow-sm);
 }
 
@@ -4309,12 +4428,12 @@ svg {
 }
 
 .sneat-tabs {
-  border-radius: 999px;
+  border-radius: 10px;
   background: var(--pcms-surface-soft);
 }
 
 .sneat-tabs button {
-  border-radius: 999px;
+  border-radius: 8px;
 }
 
 @media (max-width: 767px) {
@@ -4324,7 +4443,7 @@ svg {
 
   .pcms-page-header {
     margin-inline: 0.75rem;
-    border-radius: 16px;
+    border-radius: 12px;
     padding: 1rem;
   }
 
@@ -4337,10 +4456,28 @@ svg {
   }
 
   .pcms-section-card {
-    border-radius: 16px;
+    border-radius: 12px;
   }
 
   .pcms-floating-action {
     bottom: calc(5.75rem + env(safe-area-inset-bottom));
   }
+}
+
+/* StayMaint Tailwind 4 alignment for the active semantic surface layer. */
+.dark .pcms-page-header,
+.dark .pcms-section-card,
+.dark .sneat-card,
+.dark .sneat-welcome-card,
+.dark .sneat-stat-card,
+.dark .sneat-chart-card {
+  background: var(--pcms-surface);
+  border-color: var(--pcms-border);
+  color: var(--pcms-text);
+}
+
+.dark .sneat-dashboard,
+.dark .sneat-board {
+  background: transparent;
+  color: var(--pcms-text);
 }

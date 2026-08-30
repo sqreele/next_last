@@ -20,8 +20,8 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       label: "Open",
       value: stats.pending,
       icon: Clock,
-      iconClass: "bg-warning/10 text-warning-foreground",
-      valueClass: "text-warning-foreground",
+      iconClass: "bg-warning/10 text-warning-emphasis",
+      valueClass: "text-warning-emphasis",
     },
     {
       label: "Total",

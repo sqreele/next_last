@@ -105,7 +105,7 @@ interface InventoryItem {
 
 const STATUS_COLORS: Record<string, string> = {
   available: "border-success/30 bg-success/10 text-success",
-  low_stock: "border-warning/30 bg-warning/10 text-warning-foreground",
+  low_stock: "border-warning/30 bg-warning/10 text-warning-emphasis",
   out_of_stock: "border-destructive/30 bg-destructive/10 text-destructive",
   reserved: "border-info/30 bg-info/10 text-info",
   maintenance: "border-border bg-muted text-foreground",
@@ -753,7 +753,7 @@ export default function InventoryPage() {
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {totalCount} {t("inventory.itemsTotal")}
             {lowStockCount > 0 && (
-              <span className="ml-2 inline-flex items-center gap-1 font-semibold text-warning-foreground">
+              <span className="ml-2 inline-flex items-center gap-1 font-semibold text-warning-emphasis">
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
                 ({lowStockCount} {t("inventory.lowStockWarning")})
               </span>

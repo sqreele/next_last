@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Package2 } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import User from "@/app/dashboard/user";
 import { appSignOut } from "@/app/lib/logout";
 import { dashboardNavigationItems } from "@/app/lib/navigation";
 import { cn } from "@/app/lib/utils/cn";
 import { isNavigationItemActive } from "@/app/lib/navigation-active.mjs";
+import { Logo } from "@/app/components/branding/Logo";
 
 export default function AiChatDesktopNav() {
   const pathname = usePathname();
@@ -18,14 +19,10 @@ export default function AiChatDesktopNav() {
       <div className="flex h-16 items-center border-b border-[var(--pcms-border)] px-4">
         <Link
           href="/dashboard"
+          aria-label="StayMaint dashboard"
           className="flex items-center gap-2.5 group focus-visible:outline-hidden"
         >
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow-soft)]">
-            <Package2 className="h-5 w-5" />
-          </span>
-          <span className="text-lg font-bold text-[var(--pcms-text)] transition-colors group-hover:text-[var(--pcms-primary-strong)]">
-            StayMaint
-          </span>
+          <Logo variant="horizontal" markClassName="size-9" />
         </Link>
       </div>
 

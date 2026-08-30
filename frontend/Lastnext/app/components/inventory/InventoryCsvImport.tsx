@@ -240,7 +240,7 @@ export function InventoryCsvImport({
                   "flex items-start gap-2 rounded-xl border p-3 text-sm font-semibold",
                   result.error_count === 0
                     ? "border-success/30 bg-success/10 text-success"
-                    : "border-warning/30 bg-warning/10 text-warning-foreground",
+                    : "border-warning/30 bg-warning/10 text-warning-emphasis",
                 )}
               >
                 <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true" />

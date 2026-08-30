@@ -3,13 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BotMessageSquare, Menu, Package2 } from "lucide-react";
+import { BotMessageSquare, Menu } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { MobileNav as BottomNav } from "@/app/components/ui/mobile-nav";
 import { dashboardNavigationItems } from "@/app/lib/navigation";
 import { cn } from "@/app/lib/utils/cn";
 import { isNavigationItemActive } from "@/app/lib/navigation-active.mjs";
+import { StayMaintMark } from "@/app/components/branding/Logo";
 
 export default function AiChatMobileMenu() {
   const pathname = usePathname();
@@ -44,12 +45,11 @@ export default function AiChatMobileMenu() {
                   <div className="border-b border-border px-5 py-5">
                     <Link
                       href="/dashboard"
+                      aria-label="StayMaint dashboard"
                       className="flex items-center gap-3"
                       onClick={() => setOpen(false)}
                     >
-                      <span className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-700 text-white shadow-soft shadow-cyan-700/30">
-                        <Package2 className="h-5 w-5" />
-                      </span>
+                      <StayMaintMark className="h-11 w-11" />
                       <span>
                         <span className="block text-lg font-bold leading-tight text-foreground">
                           StayMaint

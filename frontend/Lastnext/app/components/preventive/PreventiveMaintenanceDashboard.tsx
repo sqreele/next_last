@@ -337,7 +337,7 @@ export default function PreventiveMaintenanceDashboard() {
         {/* Upcoming open work */}
         <div className="order-2 min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5">
           <div className="flex items-center">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-warning/10 text-warning-foreground sm:h-12 sm:w-12">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-warning/10 text-warning-emphasis sm:h-12 sm:w-12">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6"
@@ -357,7 +357,7 @@ export default function PreventiveMaintenanceDashboard() {
               <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Upcoming
               </p>
-              <p className="text-2xl font-bold tabular-nums text-warning-foreground sm:text-3xl">
+              <p className="text-2xl font-bold tabular-nums text-warning-emphasis sm:text-3xl">
                 {statistics.counts.pending}
               </p>
             </div>
@@ -950,9 +950,9 @@ export default function PreventiveMaintenanceDashboard() {
 
           <Link
             href="/dashboard/preventive-maintenance?status=pending"
-            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-warning/40 hover:bg-warning/10 hover:text-warning focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-warning/40 hover:bg-warning/10 hover:text-warning-emphasis focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <div className="mr-3 rounded-full bg-warning/10 p-2 text-warning">
+            <div className="mr-3 rounded-full bg-warning/10 p-2 text-warning-emphasis">
               <svg
                 aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"

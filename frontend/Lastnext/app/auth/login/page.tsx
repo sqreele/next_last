@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
-  Building2,
   Check,
   CheckCircle2,
   ClipboardCheck,
@@ -18,6 +17,7 @@ import {
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import { Button } from '@/app/components/ui/button';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
+import { Logo } from '@/app/components/branding/Logo';
 
 const capabilities = [
   {
@@ -122,15 +122,12 @@ function LoginContent() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(37,99,235,0.28),transparent_34%),radial-gradient(circle_at_82%_78%,rgba(14,165,233,0.15),transparent_30%)]" />
         <div className="absolute inset-0 opacity-[0.055] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:48px_48px]" />
 
-        <div className="relative flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-600 shadow-lg shadow-blue-950/30">
-            <Building2 className="h-5 w-5" />
-          </span>
-          <div>
-            <p className="text-base font-semibold tracking-tight">StayMaint</p>
-            <p className="text-xs text-slate-400">Engineering operations platform</p>
-          </div>
-        </div>
+        <Logo
+          variant="full"
+          tone="light"
+          markClassName="size-11"
+          className="relative"
+        />
 
         <div className="relative my-auto max-w-2xl py-16">
           <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-xs font-semibold text-blue-200">
@@ -173,10 +170,7 @@ function LoginContent() {
             className="flex items-center gap-2.5 lg:hidden"
             aria-label="StayMaint home"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white">
-              <Building2 className="h-4 w-4" />
-            </span>
-            <span className="font-semibold tracking-tight text-slate-900">StayMaint</span>
+            <Logo variant="horizontal" markClassName="size-9" />
           </Link>
           <div className="hidden items-center gap-2 text-xs font-medium text-slate-500 sm:flex">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />

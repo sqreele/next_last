@@ -220,7 +220,7 @@ export function TechnicianKpiBoard({
                   row.rate >= 75
                     ? "border-success/25 bg-success/10 text-success"
                     : row.rate >= 50
-                      ? "border-warning/30 bg-warning/10 text-warning-foreground"
+                      ? "border-warning/30 bg-warning/10 text-warning-emphasis"
                       : "border-destructive/25 bg-destructive/10 text-destructive",
                 )}
               >
@@ -229,7 +229,7 @@ export function TechnicianKpiBoard({
             </div>
             <div className="mt-3 grid grid-cols-1 gap-2 border-t border-border pt-3 text-xs font-medium text-muted-foreground sm:grid-cols-3">
               <span className="flex items-center gap-1">
-                <Hammer className="h-3.5 w-3.5 text-warning-foreground" aria-hidden="true" />
+                <Hammer className="h-3.5 w-3.5 text-warning-emphasis" aria-hidden="true" />
                 {row.inProgress} active
               </span>
               <span className="flex items-center gap-1">
@@ -324,7 +324,7 @@ export function TechnicianKpiBoard({
                         row.rate >= 75
                           ? "border-success/25 bg-success/10 text-success"
                           : row.rate >= 50
-                            ? "border-warning/30 bg-warning/10 text-warning-foreground"
+                            ? "border-warning/30 bg-warning/10 text-warning-emphasis"
                             : "border-destructive/25 bg-destructive/10 text-destructive",
                       )}
                     >

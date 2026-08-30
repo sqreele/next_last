@@ -40,7 +40,7 @@ export function FeedbackState({
   return (
     <section
       className={cn(
-        "flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center shadow-soft",
+        "flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card px-5 py-10 text-center shadow-soft",
         className,
       )}
       role={assertive ? "alert" : "status"}
@@ -49,7 +49,7 @@ export function FeedbackState({
       <span className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
         <Icon className="h-6 w-6" aria-hidden="true" />
       </span>
-      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
       {description ? (
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           {description}

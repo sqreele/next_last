@@ -231,17 +231,17 @@ const JOB_TYPES = [
 
 const STATUS_SELECT_CLASSES: Record<string, string> = {
   pending: "border-info/30 bg-info/10 text-info",
-  in_progress: "border-warning/35 bg-warning/10 text-warning-foreground",
-  waiting_sparepart: "border-warning/35 bg-warning/10 text-warning-foreground",
+  in_progress: "border-warning/35 bg-warning/10 text-warning-emphasis",
+  waiting_sparepart: "border-warning/35 bg-warning/10 text-warning-emphasis",
   completed: "border-success/30 bg-success/10 text-success",
   cancelled: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
 const STATUS_OPTION_CLASSES: Record<string, string> = {
   pending: "font-semibold text-info focus:bg-info/10",
-  in_progress: "font-semibold text-warning-foreground focus:bg-warning/10",
+  in_progress: "font-semibold text-warning-emphasis focus:bg-warning/10",
   waiting_sparepart:
-    "font-semibold text-warning-foreground focus:bg-warning/10",
+    "font-semibold text-warning-emphasis focus:bg-warning/10",
   completed: "font-semibold text-success focus:bg-success/10",
   cancelled: "font-semibold text-destructive focus:bg-destructive/10",
 };

@@ -1173,7 +1173,7 @@ export default function PreventiveMaintenanceClient({
             {maintenanceData.next_due_date && (
               <div className="min-w-0 rounded-xl border border-warning/30 bg-warning/5 p-4 shadow-soft">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-warning/10 text-warning-foreground">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-warning/10 text-warning-emphasis">
                     <Clock className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <div>

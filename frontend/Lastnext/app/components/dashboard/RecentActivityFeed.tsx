@@ -107,13 +107,13 @@ const KIND_META: Record<
     icon: Hammer,
     label: (job) => `Work started by ${getDisplayName(job.user, "technician")}`,
     toneRing: "ring-warning/20",
-    toneIcon: "bg-warning/10 text-warning-foreground",
+    toneIcon: "bg-warning/10 text-warning-emphasis",
   },
   blocked: {
     icon: Timer,
     label: () => "Blocked — waiting on parts or vendor",
     toneRing: "ring-warning/20",
-    toneIcon: "bg-warning/10 text-warning-foreground",
+    toneIcon: "bg-warning/10 text-warning-emphasis",
   },
   completed: {
     icon: CheckCircle2,

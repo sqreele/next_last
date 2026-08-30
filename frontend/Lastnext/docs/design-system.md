@@ -1,4 +1,4 @@
-# HotelCare Pro design system
+# StayMaint design system
 
 ## Principles
 
@@ -14,9 +14,9 @@ information density through progressive disclosure.
 
 ## Foundations
 
-- **Typography:** Display 36/40, page title 30/36, section title 20/28, card
-  title 16/24, body 16/24, body small 14/20, label 14/20 medium, caption 12/16.
-  LINE Seed Sans Thai is the application font.
+- **Typography:** Display 24/32, page title 20/28, section title 16/24, card
+  title 15/24, body 14/24, body small 14/20, label 14/20 medium, caption 12/16.
+  LINE Seed Sans Thai remains the bilingual application font.
 - **Spacing:** Base unit 4px. Page padding is 16px mobile, 24px tablet and 32px
   desktop. Sections use 24px gaps; cards use 16px mobile and 20px desktop.
 - **Width:** Operational content can grow to 1504px. Tables and dashboards are
@@ -24,7 +24,7 @@ information density through progressive disclosure.
 - **Dimensions:** Buttons and default inputs are 44px high; large controls are
   48px. Icon buttons are 44px square. Inline icons are 16px, navigation icons
   are 20–24px, and badges are 24–32px high.
-- **Radius:** 6px small, 8px controls, 12px cards, 16px dialogs. Badges are
+- **Radius:** 8px small, 10px controls, 12px cards, 16px dialogs. Badges are
   pills because their shape conveys compact metadata.
 - **Borders:** One semantic border tone separates surfaces. Hover may increase
   border contrast but should not add decorative color.
@@ -43,6 +43,19 @@ Status tones are centralized in `app/design-system/status-config.ts`.
 Authoritative API values are preserved. `overdue`, `verified`, and other
 presentation aliases are supported only as display values. Priority tones are
 centralized separately so priority and workflow state do not compete.
+
+## Tailwind 4 token architecture
+
+`app/globals.css` is the runtime source for the HSL component variables used by
+existing application CSS. Tailwind 4 `@theme inline` maps that single variable
+contract to semantic color, radius and shadow utilities. This avoids a second
+OKLCH runtime system while still using CSS-first Tailwind tokens. The legacy
+JavaScript config remains only for non-visual compatibility utilities and
+keyframes that have not yet moved to CSS.
+
+The brand uses deep teal/emerald for primary actions, warm amber as a restrained
+operational accent, calm teal-neutral surfaces, and teal/amber/blue/emerald/rose
+chart series. The desktop sidebar uses its own dark slate-teal semantic tokens.
 
 ## Layout
 

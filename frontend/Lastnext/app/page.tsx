@@ -24,6 +24,7 @@ import {
 } from "@/app/components/ui/card";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import { relatedMarketingLinks } from "@/app/lib/marketing-pages";
+import { Logo } from "@/app/components/branding/Logo";
 
 const features = [
   {
@@ -93,12 +94,7 @@ export default function LandingPage() {
             href="/"
             className="flex items-center gap-2 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow-sm)]">
-              <Building className="h-5 w-5" />
-            </span>
-            <span className="text-lg font-bold text-[var(--pcms-text)] sm:text-xl">
-              StayMaint
-            </span>
+            <Logo variant="horizontal" markClassName="size-9" />
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -357,10 +353,11 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="col-span-2 md:col-span-1">
               <div className="mb-4 flex items-center gap-2">
-                <Building className="h-6 w-6 text-blue-500" />
-                <span className="text-lg font-bold text-white">
-                  StayMaint
-                </span>
+                <Logo
+                  variant="horizontal"
+                  tone="light"
+                  markClassName="size-7"
+                />
               </div>
               <p className="text-sm leading-relaxed">
                 The complete hotel engineering and maintenance solution for

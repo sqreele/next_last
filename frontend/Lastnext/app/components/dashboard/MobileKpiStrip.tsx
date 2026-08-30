@@ -65,8 +65,8 @@ const TONE_STYLES: Record<
   },
   warning: {
     card: "border-warning/30 bg-warning/[0.04]",
-    icon: "bg-warning/10 text-warning-foreground",
-    value: "text-warning-foreground",
+    icon: "bg-warning/10 text-warning-emphasis",
+    value: "text-warning-emphasis",
   },
   success: {
     card: "border-success/25 bg-success/[0.03]",
@@ -122,7 +122,7 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
   const inner = (
     <div
       className={cn(
-        "flex h-full w-full min-w-[176px] flex-col gap-3 rounded-xl border p-4 shadow-soft transition-colors",
+        "flex h-full w-full min-w-[176px] flex-col gap-3 rounded-lg border p-4 shadow-soft transition-colors",
         styles.card,
         kpi.href ? "hover:border-primary/40 hover:bg-primary/[0.05]" : "",
       )}
@@ -144,7 +144,7 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
         </p>
         <p
           className={cn(
-            "text-2xl font-bold leading-none tabular-nums sm:text-3xl",
+            "text-[28px] font-bold leading-none tabular-nums",
             styles.value,
           )}
         >
@@ -164,7 +164,7 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
     </div>
   );
   return kpi.href ? (
-    <Link href={kpi.href} className="block snap-start rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+    <Link href={kpi.href} className="block snap-start rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       {inner}
     </Link>
   ) : (

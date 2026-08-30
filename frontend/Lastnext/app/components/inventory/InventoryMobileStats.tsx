@@ -104,8 +104,8 @@ export function InventoryMobileStats({
     },
     warning: {
       card: "border-warning/30 bg-warning/[0.06]",
-      icon: "bg-warning/10 text-warning-foreground",
-      value: "text-warning-foreground",
+      icon: "bg-warning/10 text-warning-emphasis",
+      value: "text-warning-emphasis",
     },
     danger: {
       card: "border-destructive/25 bg-destructive/[0.04]",

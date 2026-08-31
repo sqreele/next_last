@@ -39,6 +39,7 @@ import { NotificationBell } from "@/app/components/notifications/NotificationBel
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
 import { Logo, StayMaintMark } from "@/app/components/branding/Logo";
+import { SubscriptionWarningBanner } from "@/app/components/subscription/SubscriptionWarningBanner";
 
 export default function DashboardLayout({
   children,
@@ -75,6 +76,8 @@ export default function DashboardLayout({
 
         {/* Desktop Header - Hidden on mobile, shown on tablet+ */}
         <DesktopHeader />
+
+        <SubscriptionWarningBanner />
 
         {/* Main Content */}
         <main

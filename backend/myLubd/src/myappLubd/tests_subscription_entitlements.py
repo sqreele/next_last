@@ -337,7 +337,7 @@ class SubscriptionPermissionPrimitiveTests(TestCase):
     def test_observe_mode_logs_would_block_but_allows_write(self):
         request = self.factory.post('/api/v1/future-operational-write/', {})
         request.user = self.user
-        with self.assertLogs('myappLubd.subscription_permissions', level='WARNING') as logs:
+        with self.assertLogs('subscription.entitlement', level='WARNING') as logs:
             allowed = SubscriptionWritePermission().has_permission(request, self.view)
         self.assertTrue(allowed)
         record = logs.records[0]
@@ -349,6 +349,9 @@ class SubscriptionPermissionPrimitiveTests(TestCase):
         self.assertEqual(record.request_method, 'POST')
         self.assertEqual(record.request_path, '/api/v1/future-operational-write/')
         self.assertEqual(record.user_id, self.user.pk)
+        self.assertEqual(record.operation, 'write')
+        self.assertEqual(record.resource_type, 'unknown')
+        self.assertEqual(record.enforcement_mode, 'observe')
 
     @override_settings(SUBSCRIPTION_ENFORCEMENT_MODE='unexpected')
     def test_invalid_enforcement_mode_falls_back_to_off(self):
@@ -358,7 +361,7 @@ class SubscriptionPermissionPrimitiveTests(TestCase):
     def test_enforce_mode_primitive_rejects_write_in_isolation(self):
         request = self.factory.patch('/api/v1/future-operational-write/', {})
         request.user = self.user
-        with self.assertLogs('myappLubd.subscription_permissions', level='WARNING'):
+        with self.assertLogs('subscription.entitlement', level='WARNING'):
             allowed = SubscriptionWritePermission().has_permission(request, self.view)
         self.assertFalse(allowed)
 
@@ -369,7 +372,7 @@ class SubscriptionPermissionPrimitiveTests(TestCase):
         unresolved_view = SimpleNamespace(
             get_subscription_tenant=lambda request, obj=None: None,
         )
-        with self.assertLogs('myappLubd.subscription_permissions', level='WARNING'):
+        with self.assertLogs('subscription.entitlement', level='WARNING'):
             allowed = SubscriptionWritePermission().has_permission(request, unresolved_view)
         self.assertFalse(allowed)
 

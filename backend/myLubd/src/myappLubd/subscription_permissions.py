@@ -1,4 +1,4 @@
-"""Observe/enforce primitives for future operational endpoint wiring."""
+"""Observe/enforce primitives for operational endpoint wiring."""
 
 import logging
 
@@ -16,7 +16,7 @@ from .models import (
 )
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('subscription.entitlement')
 
 
 def get_subscription_enforcement_mode():
@@ -62,7 +62,13 @@ def resolve_tenant_from_validated_data(validated_data):
     return None
 
 
-def subscription_write_allowed(request, tenant):
+def subscription_write_allowed(
+    request,
+    tenant,
+    *,
+    operation='write',
+    resource_type='unknown',
+):
     """Evaluate and observe one already-authorized target Tenant write."""
     mode = get_subscription_enforcement_mode()
     if mode == 'off' or request.method in SAFE_METHODS:
@@ -70,29 +76,57 @@ def subscription_write_allowed(request, tenant):
 
     entitlement = get_tenant_entitlement(tenant)
     would_block = not entitlement.can_write
-    if would_block:
+    unresolved = tenant is None
+    invalid_or_unknown = entitlement.reason_code in {
+        'subscription_status_unknown',
+        'past_due_invalid_grace_period',
+        'cancelled_invalid_tenant_timezone',
+    }
+    if would_block or unresolved or invalid_or_unknown:
         try:
             subscription_status = tenant.subscription.status
         except (AttributeError, TenantSubscription.DoesNotExist):
             subscription_status = None
         logger.warning(
-            'subscription_write_would_block',
+            'subscription_entitlement_observed',
             extra={
                 'tenant_id': getattr(tenant, 'tenant_id', None),
                 'subscription_status': subscription_status,
                 'entitlement_level': entitlement.level.value,
-                'reason_code': entitlement.reason_code,
+                'reason_code': (
+                    'target_tenant_unresolved'
+                    if unresolved else entitlement.reason_code
+                ),
                 'request_method': request.method,
                 'request_path': request.path,
+                'operation': operation,
+                'resource_type': resource_type,
                 'user_id': getattr(getattr(request, 'user', None), 'pk', None),
-                'would_block': True,
+                'would_block': would_block,
+                'enforcement_mode': mode,
             },
         )
     return not (mode == 'enforce' and would_block)
 
 
+def require_subscription_write(request, tenant, *, operation, resource_type):
+    """Observe an authorized write and reject only in explicit enforce mode."""
+    if not subscription_write_allowed(
+        request,
+        tenant,
+        operation=operation,
+        resource_type=resource_type,
+    ):
+        from rest_framework.exceptions import PermissionDenied
+
+        raise PermissionDenied(
+            detail=SubscriptionWritePermission.message,
+            code=SubscriptionWritePermission.code,
+        )
+
+
 class SubscriptionWritePermission(BasePermission):
-    """Central future write gate; not yet attached to operational views."""
+    """Central write gate for views with an exact target-Tenant resolver."""
 
     message = 'Subscription payment required.'
     code = 'subscription_payment_required'

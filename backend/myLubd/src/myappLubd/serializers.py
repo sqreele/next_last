@@ -196,8 +196,7 @@ class TenantSubscriptionSerializer(serializers.ModelSerializer):
         model = TenantSubscription
         fields = [
             'id', 'tenant', 'plan', 'status', 'current_period_start',
-            'current_period_end', 'trial_ends_at', 'external_customer_id',
-            'external_subscription_id', 'grace_period_ends_at',
+            'current_period_end', 'trial_ends_at', 'grace_period_ends_at',
             'cancel_at_period_end', 'created_at', 'updated_at',
         ]
         # This API is a status projection, not billing authority. Provider and
@@ -205,7 +204,6 @@ class TenantSubscriptionSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'tenant', 'plan', 'status', 'current_period_start',
             'current_period_end', 'trial_ends_at', 'grace_period_ends_at',
-            'external_customer_id', 'external_subscription_id',
             'cancel_at_period_end', 'created_at', 'updated_at',
         ]
 

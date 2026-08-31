@@ -72,6 +72,7 @@ from .tenancy import (
     ensure_tenant_for_property,
     ensure_tenant_for_user,
     get_accessible_properties,
+    get_active_membership,
     get_operable_properties,
     get_property_summary_recipients,
     get_user_tenants,
@@ -81,6 +82,12 @@ from .tenancy import (
     user_can_manage_tenant,
 )
 from .timezones import object_timezone, property_timezone, timezone_options
+from .entitlements import get_tenant_entitlement
+from .subscription_permissions import (
+    get_subscription_enforcement_mode,
+    require_subscription_write,
+    resolve_tenant_from_target,
+)
 
 
 GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
@@ -2019,6 +2026,12 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Add the current user as the creator when creating a record, logging machine associations"""
         self._log_machine_id_state(action="create_start")
+        require_subscription_write(
+            self.request,
+            serializer._validated_property.tenant,
+            operation='create',
+            resource_type='preventive_maintenance',
+        )
         instance = serializer.save(created_by=self.request.user)
         self._log_machine_id_state(action="create_complete", instance=instance)
         return instance
@@ -2026,9 +2039,24 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """Add the current user as the updater when updating a record, logging machine associations"""
         self._log_machine_id_state(action="update_start")
+        require_subscription_write(
+            self.request,
+            serializer._validated_property.tenant,
+            operation='update',
+            resource_type='preventive_maintenance',
+        )
         instance = serializer.save(updated_by=self.request.user)
         self._log_machine_id_state(action="update_complete", instance=instance)
         return instance
+
+    def perform_destroy(self, instance):
+        require_subscription_write(
+            self.request,
+            resolve_tenant_from_target(instance),
+            operation='delete',
+            resource_type='preventive_maintenance',
+        )
+        instance.delete()
 
     def update(self, request, *args, **kwargs):
         """Lock the PM so legacy image updates share the global image cap safely."""
@@ -2151,6 +2179,20 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             raise ValidationError({'property_id': 'An active property is required.'})
         serializer = PMMasterPlanSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+        machine_ids = serializer.validated_data.get('machine_ids') or []
+        target_property = (
+            Machine.objects.select_related('property__tenant')
+            .filter(machine_id__in=machine_ids)
+            .values_list('property', flat=True)
+            .first()
+        )
+        target_property = Property.objects.select_related('tenant').filter(pk=target_property).first()
+        require_subscription_write(
+            request,
+            resolve_tenant_from_target(target_property),
+            operation='create',
+            resource_type='pm_master_plan',
+        )
         plan = serializer.save(created_by=request.user)
         return Response(PMMasterPlanSerializer(plan, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
@@ -2179,6 +2221,15 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("Your role cannot modify this PM master plan")
 
         if request.method.lower() == 'delete':
+            plan_machine = plan.machines.select_related('property__tenant').first()
+            require_subscription_write(
+                request,
+                resolve_tenant_from_target(
+                    plan_machine.property if plan_machine else None
+                ),
+                operation='delete',
+                resource_type='pm_master_plan',
+            )
             plan.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -2189,6 +2240,23 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             context={'request': request},
         )
         serializer.is_valid(raise_exception=True)
+        target_machine_ids = serializer.validated_data.get('machine_ids')
+        if target_machine_ids:
+            target_machine = (
+                Machine.objects.select_related('property__tenant')
+                .filter(machine_id__in=target_machine_ids)
+                .first()
+            )
+        else:
+            target_machine = plan.machines.select_related('property__tenant').first()
+        require_subscription_write(
+            request,
+            resolve_tenant_from_target(
+                target_machine.property if target_machine else None
+            ),
+            operation='update',
+            resource_type='pm_master_plan',
+        )
         updated_plan = serializer.save()
         return Response(PMMasterPlanSerializer(updated_plan, context={'request': request}).data)
 
@@ -2233,6 +2301,27 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 raise ValidationError({'property_id': 'An active property is required.'})
             if not get_operable_properties(request.user).filter(property_id=property_id).exists():
                 raise PermissionDenied("Your role cannot materialize preventive maintenance plans for this property")
+        if property_id:
+            target_tenants = Tenant.objects.filter(properties__property_id=property_id).distinct()
+        else:
+            target_tenants = Tenant.objects.filter(
+                properties__machines__pm_master_plans__active=True,
+            ).distinct()
+        if not target_tenants.exists():
+            require_subscription_write(
+                request,
+                None,
+                operation='materialize',
+                resource_type='pm_master_plan',
+            )
+        else:
+            for tenant in target_tenants:
+                require_subscription_write(
+                    request,
+                    tenant,
+                    operation='materialize',
+                    resource_type='pm_master_plan',
+                )
         dry_run = str(request.data.get('dry_run', '')).lower() in {'1', 'true', 'yes'}
         result = PreventiveMaintenanceService.materialize_master_plan_occurrences(
             cutoff=timezone.now(),
@@ -2507,6 +2596,12 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         Mark a preventive maintenance task as completed
         """
         scoped_instance = self.get_object()
+        require_subscription_write(
+            request,
+            resolve_tenant_from_target(scoped_instance),
+            operation='complete',
+            resource_type='preventive_maintenance',
+        )
 
         prepared_after_image = None
         if 'after_image' in request.FILES:
@@ -2738,6 +2833,13 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        require_subscription_write(
+            request,
+            resolve_tenant_from_target(instance),
+            operation='status_change',
+            resource_type='preventive_maintenance',
+        )
+
         parsed_completed_date = None
         if completed_date:
             from django.utils.dateparse import parse_datetime
@@ -2796,6 +2898,50 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        from io import StringIO
+
+        target_tenants = {}
+        unresolved_target = False
+        for row in csv.DictReader(StringIO(content)):
+            row_tenants = {}
+            pm_id = str(row.get('PM ID') or '').strip()
+            existing = (
+                PreventiveMaintenance.objects.filter(pm_id__iexact=pm_id).first()
+                if pm_id else None
+            )
+            existing_tenant = resolve_tenant_from_target(existing)
+            if existing_tenant is not None:
+                row_tenants[existing_tenant.pk] = existing_tenant
+
+            machine_ids = PreventiveMaintenanceService._parse_list_values(
+                row.get('Machines')
+            ) or []
+            for machine in Machine.objects.select_related('property__tenant').filter(
+                machine_id__in=machine_ids,
+            ):
+                tenant = resolve_tenant_from_target(machine.property)
+                if tenant is not None:
+                    row_tenants[tenant.pk] = tenant
+
+            if not row_tenants:
+                unresolved_target = True
+            target_tenants.update(row_tenants)
+
+        for tenant in target_tenants.values():
+            require_subscription_write(
+                request,
+                tenant,
+                operation='csv_import',
+                resource_type='preventive_maintenance',
+            )
+        if unresolved_target:
+            require_subscription_write(
+                request,
+                None,
+                operation='csv_import',
+                resource_type='preventive_maintenance',
+            )
+
         result = PreventiveMaintenanceService.import_from_csv_content(
             content,
             default_user=request.user,
@@ -2829,6 +2975,13 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 {'detail': 'Scheduled date must be provided.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        require_subscription_write(
+            request,
+            resolve_tenant_from_target(instance),
+            operation='reschedule',
+            resource_type='preventive_maintenance',
+        )
 
         from django.utils.dateparse import parse_datetime
 
@@ -4162,6 +4315,13 @@ class JobViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        require_subscription_write(
+            request,
+            job.property.tenant,
+            operation='status_change',
+            resource_type='job',
+        )
+
         if request.user.is_authenticated:
             job.updated_by = request.user
 
@@ -4397,6 +4557,12 @@ class JobViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             self._validate_operable_scope(serializer)
+            require_subscription_write(
+                self.request,
+                serializer.validated_data['_resolved_property'].tenant,
+                operation='create',
+                resource_type='job',
+            )
             serializer.save(user=self.request.user, updated_by=self.request.user)
         else:
             serializer.save()
@@ -4407,6 +4573,15 @@ class JobViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         if self.request.user.is_authenticated:
             self._validate_operable_scope(serializer)
+            require_subscription_write(
+                self.request,
+                serializer.instance.property.tenant,
+                operation=(
+                    'status_change'
+                    if 'status' in serializer.validated_data else 'update'
+                ),
+                resource_type='job',
+            )
             instance = serializer.instance
             data = serializer.validated_data
             if instance.status == 'completed' and 'status' in data and data['status'] != 'completed':
@@ -4422,6 +4597,12 @@ class JobViewSet(viewsets.ModelViewSet):
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
 
     def perform_destroy(self, instance):
+        require_subscription_write(
+            self.request,
+            instance.property.tenant,
+            operation='delete',
+            resource_type='job',
+        )
         super().perform_destroy(instance)
         # Invalidate cache after deleting job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
@@ -4452,6 +4633,12 @@ class JobViewSet(viewsets.ModelViewSet):
         # POST
         serializer = JobCommentSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+        require_subscription_write(
+            request,
+            job.property.tenant,
+            operation='comment_create',
+            resource_type='job_comment',
+        )
         comment = JobComment.objects.create(
             job=job,
             author=request.user if request.user.is_authenticated else None,
@@ -4592,6 +4779,13 @@ class JobViewSet(viewsets.ModelViewSet):
                 {'error': 'Target user is not eligible for this property.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        require_subscription_write(
+            request,
+            job.property.tenant,
+            operation='reassign',
+            resource_type='job',
+        )
 
         previous = job.user
         if previous and previous.pk == target.pk:
@@ -4825,6 +5019,64 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         if self.request.user.is_superuser:
             return qs
         return qs.filter(tenant__in=get_user_tenants(self.request.user))
+
+    @action(detail=False, methods=['get'], url_path='entitlement')
+    def entitlement(self, request):
+        """Return one authorized Tenant's normalized, provider-safe state."""
+        tenant_ref = str(request.query_params.get('tenant_id') or '').strip()
+        property_ref = str(request.query_params.get('property_id') or '').strip()
+        if bool(tenant_ref) == bool(property_ref):
+            raise ValidationError({
+                'detail': 'Provide exactly one of tenant_id or property_id.'
+            })
+
+        if property_ref:
+            properties = Property.objects.select_related('tenant').filter(
+                property_id=property_ref,
+            )
+            if not request.user.is_superuser:
+                properties = properties.filter(
+                    pk__in=get_accessible_properties(request.user).values('pk')
+                )
+            property_obj = get_object_or_404(properties)
+            tenant = property_obj.tenant
+        else:
+            tenants = get_user_tenants(request.user)
+            tenant = get_object_or_404(tenants, tenant_id=tenant_ref)
+
+        entitlement = get_tenant_entitlement(tenant)
+        try:
+            subscription = tenant.subscription
+        except TenantSubscription.DoesNotExist:
+            subscription = None
+
+        membership = None if request.user.is_superuser else get_active_membership(
+            request.user,
+            tenant,
+        )
+        can_manage_billing = bool(
+            request.user.is_superuser
+            or (membership and membership.role in {'owner', 'admin', 'billing'})
+        )
+
+        return Response({
+            'tenant_id': tenant.tenant_id,
+            'status': subscription.status if subscription else 'missing',
+            'entitlement_level': entitlement.level.value,
+            'can_read': entitlement.can_read,
+            'can_write': entitlement.can_write,
+            'can_manage_billing': can_manage_billing,
+            'reason_code': entitlement.reason_code,
+            'grace_ends_at': (
+                entitlement.grace_ends_at.isoformat()
+                if entitlement.grace_ends_at else None
+            ),
+            'current_period_end': (
+                subscription.current_period_end.isoformat()
+                if subscription and subscription.current_period_end else None
+            ),
+            'enforcement_mode': get_subscription_enforcement_mode(),
+        })
 
 class UsageMetricViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -5501,6 +5753,12 @@ class PreventiveMaintenanceImageUploadView(APIView):
         try:
             with transaction.atomic():
                 pm = self._lock_scoped_pm(request, pm_id, property_id)
+                require_subscription_write(
+                    request,
+                    resolve_tenant_from_target(pm),
+                    operation='image_upload',
+                    resource_type='preventive_maintenance_image',
+                )
                 existing_count = (
                     pm.images.count()
                     + int(bool(pm.before_image))
@@ -5557,6 +5815,12 @@ class PreventiveMaintenanceImageDeleteView(PreventiveMaintenanceImageUploadView)
 
         with transaction.atomic():
             pm = self._lock_scoped_pm(request, pm_id, property_id)
+            require_subscription_write(
+                request,
+                resolve_tenant_from_target(pm),
+                operation='image_delete',
+                resource_type='preventive_maintenance_image',
+            )
             if image_id in {'legacy-before', 'legacy-after'}:
                 image_type = image_id.removeprefix('legacy-')
                 field_name = f'{image_type}_image'
@@ -6723,6 +6987,12 @@ class InventoryViewSet(viewsets.ModelViewSet):
         _ensure_user_can_operate_property(
             self.request.user, serializer.validated_data.get('property')
         )
+        require_subscription_write(
+            self.request,
+            serializer.validated_data['property'].tenant,
+            operation='create',
+            resource_type='inventory',
+        )
         serializer.save(created_by=self.request.user)
 
     def perform_update(self, serializer):
@@ -6730,10 +7000,22 @@ class InventoryViewSet(viewsets.ModelViewSet):
         _ensure_user_can_operate_property(self.request.user, instance.property)
         target_property = serializer.validated_data.get('property', instance.property)
         _ensure_user_can_operate_property(self.request.user, target_property)
+        require_subscription_write(
+            self.request,
+            target_property.tenant,
+            operation='update',
+            resource_type='inventory',
+        )
         serializer.save()
 
     def perform_destroy(self, instance):
         _ensure_user_can_operate_property(self.request.user, instance.property)
+        require_subscription_write(
+            self.request,
+            instance.property.tenant,
+            operation='delete',
+            resource_type='inventory',
+        )
         instance.delete()
 
     @action(detail=True, methods=['post'])
@@ -6771,6 +7053,13 @@ class InventoryViewSet(viewsets.ModelViewSet):
             if inventory.property_id not in _pm_property_ids(pm):
                 return Response({'detail': 'The PM must belong to the inventory property.'}, status=status.HTTP_400_BAD_REQUEST)
             source = 'preventive_maintenance'
+
+        require_subscription_write(
+            request,
+            inventory.property.tenant,
+            operation='consume',
+            resource_type='inventory',
+        )
 
         try:
             usage_records = consume_inventory_items(
@@ -6827,6 +7116,13 @@ class InventoryViewSet(viewsets.ModelViewSet):
                     {'error': 'Quantity must be greater than 0'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+
+            require_subscription_write(
+                request,
+                inventory.property.tenant,
+                operation='restock',
+                resource_type='inventory',
+            )
             
             with transaction.atomic():
                 inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
@@ -6890,6 +7186,12 @@ class InventoryViewSet(viewsets.ModelViewSet):
                 )
                 if inventory.property_id not in _pm_property_ids(pm):
                     return Response({'error': 'PM must belong to the inventory property.'}, status=status.HTTP_400_BAD_REQUEST)
+            require_subscription_write(
+                request,
+                inventory.property.tenant,
+                operation='issue',
+                resource_type='inventory',
+            )
             try:
                 consume_inventory_items(
                     user=request.user,
@@ -7031,10 +7333,43 @@ class InventoryViewSet(viewsets.ModelViewSet):
         )
         default_prop = prop_lookup.get(str(default_prop_key)) if default_prop_key else None
 
+        raw_rows = list(reader)
+        target_tenants = {}
+        unresolved_target = False
+        for raw_row in raw_rows:
+            normalized_row = {
+                (key or '').strip().lower(): (value or '').strip()
+                for key, value in raw_row.items()
+                if key
+            }
+            target_prop = (
+                prop_lookup.get(normalized_row.get('property_id', ''))
+                if normalized_row.get('property_id') else default_prop
+            )
+            if target_prop is None or target_prop.tenant_id is None:
+                unresolved_target = True
+            else:
+                target_tenants[target_prop.tenant_id] = target_prop.tenant
+
+        for tenant in target_tenants.values():
+            require_subscription_write(
+                request,
+                tenant,
+                operation='csv_import',
+                resource_type='inventory',
+            )
+        if unresolved_target:
+            require_subscription_write(
+                request,
+                None,
+                operation='csv_import',
+                resource_type='inventory',
+            )
+
         created = []
         errors = []
 
-        for row_index, raw_row in enumerate(reader, start=2):  # row 1 is the header
+        for row_index, raw_row in enumerate(raw_rows, start=2):  # row 1 is the header
             row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
             name = row.get('name', '')
             if not name:
@@ -7427,6 +7762,13 @@ def public_job_request(request, property_id, room_id):
             {'error': 'Property has no staff to dispatch the request to.'},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+
+    require_subscription_write(
+        request,
+        property_obj.tenant,
+        operation='create',
+        resource_type='public_qr_job',
+    )
 
     stamp = timezone.now().strftime('%Y-%m-%d %H:%M')
     remark_lines = [f'[{stamp} · guest → reported via QR scan]']

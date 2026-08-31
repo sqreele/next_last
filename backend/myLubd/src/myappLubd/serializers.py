@@ -191,22 +191,23 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
 
 class TenantSubscriptionSerializer(serializers.ModelSerializer):
     plan = SubscriptionPlanSerializer(read_only=True)
-    plan_id = serializers.PrimaryKeyRelatedField(
-        queryset=SubscriptionPlan.objects.filter(is_active=True),
-        source='plan',
-        write_only=True,
-        required=False,
-    )
 
     class Meta:
         model = TenantSubscription
         fields = [
-            'id', 'tenant', 'plan', 'plan_id', 'status', 'current_period_start',
+            'id', 'tenant', 'plan', 'status', 'current_period_start',
             'current_period_end', 'trial_ends_at', 'external_customer_id',
-            'external_subscription_id', 'cancel_at_period_end', 'created_at',
-            'updated_at',
+            'external_subscription_id', 'grace_period_ends_at',
+            'cancel_at_period_end', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        # This API is a status projection, not billing authority. Provider and
+        # lifecycle fields are managed only through platform administration.
+        read_only_fields = [
+            'id', 'tenant', 'plan', 'status', 'current_period_start',
+            'current_period_end', 'trial_ends_at', 'grace_period_ends_at',
+            'external_customer_id', 'external_subscription_id',
+            'cancel_at_period_end', 'created_at', 'updated_at',
+        ]
 
 
 class TenantMembershipSerializer(serializers.ModelSerializer):

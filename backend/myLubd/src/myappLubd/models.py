@@ -176,6 +176,7 @@ class TenantSubscription(models.Model):
     current_period_start = models.DateField(null=True, blank=True)
     current_period_end = models.DateField(null=True, blank=True)
     trial_ends_at = models.DateTimeField(null=True, blank=True)
+    grace_period_ends_at = models.DateTimeField(null=True, blank=True)
     external_customer_id = models.CharField(max_length=255, blank=True, null=True)
     external_subscription_id = models.CharField(max_length=255, blank=True, null=True)
     cancel_at_period_end = models.BooleanField(default=False)
@@ -194,7 +195,11 @@ class TenantSubscription(models.Model):
 
     @property
     def is_entitled(self):
-        return self.status in {'trialing', 'active'}
+        # Preserve the compatibility property without maintaining a second,
+        # divergent billing decision implementation.
+        from .entitlements import get_tenant_entitlement
+
+        return get_tenant_entitlement(self.tenant).can_write
 
     def get_limit(self, key):
         return getattr(self.plan, key, None)

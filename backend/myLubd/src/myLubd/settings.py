@@ -89,6 +89,20 @@ else:
 import logging
 logger = logging.getLogger(__name__)
 logger.info(f"ALLOWED_HOSTS configured as: {ALLOWED_HOSTS}")
+
+# Subscription enforcement is deliberately observe-only by default while
+# billing authority and recovery are being established. Invalid values fail
+# open to ``off`` so a deployment typo cannot unexpectedly block customers.
+SUBSCRIPTION_ENFORCEMENT_MODE = os.getenv(
+    'SUBSCRIPTION_ENFORCEMENT_MODE',
+    'observe',
+).strip().lower()
+if SUBSCRIPTION_ENFORCEMENT_MODE not in {'off', 'observe', 'enforce'}:
+    logger.warning(
+        'Invalid SUBSCRIPTION_ENFORCEMENT_MODE=%r; falling back to off.',
+        SUBSCRIPTION_ENFORCEMENT_MODE,
+    )
+    SUBSCRIPTION_ENFORCEMENT_MODE = 'off'
 # Google OAuth Settings
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')

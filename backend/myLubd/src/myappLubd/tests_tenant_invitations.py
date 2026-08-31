@@ -19,7 +19,15 @@ from .invitations import (
     invitation_from_token,
     send_invitation,
 )
-from .models import AuthIdentity, Property, Tenant, TenantInvitation, TenantMembership
+from .models import (
+    AuthIdentity,
+    Property,
+    SubscriptionPlan,
+    Tenant,
+    TenantInvitation,
+    TenantMembership,
+    TenantSubscription,
+)
 from .tenancy import can_manage_membership_property_grants, get_accessible_properties
 from .throttles import InvitationPreviewThrottle
 
@@ -52,6 +60,21 @@ class TenantInvitationTests(APITestCase):
         )
         self.tenant = Tenant.objects.create(name='Invitation Tenant')
         self.other_tenant = Tenant.objects.create(name='Other Tenant')
+        self.plan = SubscriptionPlan.objects.create(
+            code='invitation-test',
+            name='Invitation Test',
+            max_users=20,
+        )
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            status='active',
+        )
+        TenantSubscription.objects.create(
+            tenant=self.other_tenant,
+            plan=self.plan,
+            status='active',
+        )
         self.property = Property.objects.create(name='Invitation Hotel', tenant=self.tenant)
         self.other_property = Property.objects.create(name='Other Hotel', tenant=self.other_tenant)
         for user, role in (

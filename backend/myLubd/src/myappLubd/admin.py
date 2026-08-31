@@ -5878,8 +5878,28 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
     list_display = ['tenant', 'plan', 'status', 'current_period_end', 'cancel_at_period_end']
     list_filter = ['status', 'plan', 'cancel_at_period_end']
     search_fields = ['tenant__name', 'tenant__tenant_id', 'external_customer_id', 'external_subscription_id']
+    platform_authority_fields = [
+        'tenant', 'plan', 'status', 'current_period_start',
+        'current_period_end', 'trial_ends_at', 'grace_period_ends_at',
+        'external_customer_id', 'external_subscription_id',
+        'cancel_at_period_end',
+    ]
     readonly_fields = ['created_at', 'updated_at']
     autocomplete_fields = ['tenant', 'plan']
+
+    def get_readonly_fields(self, request, obj=None):
+        if request.user.is_superuser:
+            return self.readonly_fields
+        return [*self.readonly_fields, *self.platform_authority_fields]
+
+    def has_add_permission(self, request):
+        return bool(request.user.is_superuser)
+
+    def has_change_permission(self, request, obj=None):
+        return bool(request.user.is_superuser)
+
+    def has_delete_permission(self, request, obj=None):
+        return bool(request.user.is_superuser)
 
 
 @admin.register(UsageMetric)

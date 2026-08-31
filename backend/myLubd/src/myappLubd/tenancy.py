@@ -286,13 +286,13 @@ def enforce_subscription_limit(tenant, limit_key, increment=1):
     try:
         subscription = tenant.subscription
     except TenantSubscription.DoesNotExist:
-        subscription = TenantSubscription.objects.create(
-            tenant=tenant,
-            plan=ensure_default_plan(),
-            status='trialing',
-        )
+        # Runtime authorization must never provision paid authority. Tenant
+        # bootstrap paths explicitly create their subscription instead.
+        raise PermissionDenied("This tenant does not have a subscription.")
 
-    if not subscription.is_entitled:
+    from .entitlements import get_tenant_entitlement
+
+    if not get_tenant_entitlement(tenant).can_write:
         raise PermissionDenied("This tenant's subscription is not active.")
 
     usage = tenant_usage_counts(tenant)

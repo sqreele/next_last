@@ -4811,7 +4811,12 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
         instance.save(update_fields=['is_active', 'updated_at'])
 
 
-class TenantSubscriptionViewSet(viewsets.ModelViewSet):
+class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only tenant billing status projection.
+
+    Subscription lifecycle changes and deletion are platform-authority
+    operations, not customer API operations.
+    """
     permission_classes = [IsAuthenticated]
     serializer_class = TenantSubscriptionSerializer
 
@@ -4820,19 +4825,6 @@ class TenantSubscriptionViewSet(viewsets.ModelViewSet):
         if self.request.user.is_superuser:
             return qs
         return qs.filter(tenant__in=get_user_tenants(self.request.user))
-
-    def perform_create(self, serializer):
-        tenant = serializer.validated_data.get('tenant')
-        if not user_can_manage_tenant(self.request.user, tenant):
-            raise PermissionDenied("You do not have permission to manage this subscription.")
-        serializer.save()
-
-    def perform_update(self, serializer):
-        instance = self.get_object()
-        if not user_can_manage_tenant(self.request.user, instance.tenant):
-            raise PermissionDenied("You do not have permission to manage this subscription.")
-        serializer.save()
-
 
 class UsageMetricViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]

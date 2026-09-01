@@ -185,6 +185,18 @@ class TenantSubscription(models.Model):
 
     class Meta:
         ordering = ['tenant__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['external_customer_id'],
+                condition=Q(external_customer_id__isnull=False),
+                name='unique_nonnull_stripe_customer',
+            ),
+            models.UniqueConstraint(
+                fields=['external_subscription_id'],
+                condition=Q(external_subscription_id__isnull=False),
+                name='unique_nonnull_stripe_subscription',
+            ),
+        ]
         indexes = [
             models.Index(fields=['status']),
             models.Index(fields=['current_period_end']),
@@ -210,6 +222,36 @@ class TenantSubscription(models.Model):
             return True, None
         allowed = current_value + increment <= limit
         return allowed, limit
+
+
+class BillingWebhookEvent(models.Model):
+    """Minimal durable receipt for idempotent provider webhook processing."""
+
+    STATUS_CHOICES = [
+        ('processing', 'Processing'),
+        ('processed', 'Processed'),
+        ('failed', 'Failed'),
+    ]
+
+    provider = models.CharField(max_length=32)
+    event_id = models.CharField(max_length=255)
+    event_type = models.CharField(max_length=255)
+    received_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')
+    error_code = models.CharField(max_length=64, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-received_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['provider', 'event_id'],
+                name='unique_billing_provider_event',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['provider', 'status'], name='billing_event_status_idx'),
+        ]
 
 
 class TenantMembership(models.Model):

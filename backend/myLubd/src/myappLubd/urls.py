@@ -16,6 +16,7 @@ from .invitations import (
     TenantInvitationPreviewView,
     TenantInvitationViewSet,
 )
+from .billing.views import StripeCheckoutView, StripePortalView, StripeWebhookView
 
 # Set the app name
 app_name = 'myappLubd'
@@ -53,6 +54,10 @@ router.register(r'tenant-invitations', TenantInvitationViewSet, basename='tenant
 urlpatterns = [
     # Static file serving (fallback when Django's built-in serving fails)
     path('static/<path:file_path>', views.serve_static_file, name='serve_static_file'),
+
+    path('api/v1/billing/checkout/', StripeCheckoutView.as_view(), name='stripe-checkout'),
+    path('api/v1/billing/portal/', StripePortalView.as_view(), name='stripe-portal'),
+    path('api/v1/billing/webhooks/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'),
     
     # Preventive maintenance endpoints (MUST come before router to avoid conflicts)
     path('api/v1/preventive-maintenance/jobs/', views.get_preventive_maintenance_jobs, name='preventive_maintenance_jobs'),

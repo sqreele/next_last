@@ -103,6 +103,31 @@ if SUBSCRIPTION_ENFORCEMENT_MODE not in {'off', 'observe', 'enforce'}:
         SUBSCRIPTION_ENFORCEMENT_MODE,
     )
     SUBSCRIPTION_ENFORCEMENT_MODE = 'off'
+
+# Stripe Billing v1 is configured for test mode. Secrets remain server-side;
+# an empty configuration keeps non-billing application paths operational.
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '').strip()
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '').strip()
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '').strip()
+STRIPE_PRICE_MAP = {
+    'starter': os.getenv('STRIPE_PRICE_STARTER', '').strip(),
+    'pro': os.getenv('STRIPE_PRICE_PRO', '').strip(),
+    'enterprise': os.getenv('STRIPE_PRICE_ENTERPRISE', '').strip(),
+}
+
+if STRIPE_SECRET_KEY and not STRIPE_SECRET_KEY.startswith('sk_test_'):
+    raise ValueError('Stripe Billing v1 requires a Stripe test-mode secret key.')
+if STRIPE_PUBLISHABLE_KEY and not STRIPE_PUBLISHABLE_KEY.startswith('pk_test_'):
+    raise ValueError('Stripe Billing v1 requires a Stripe test-mode publishable key.')
+if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith('whsec_'):
+    raise ValueError('STRIPE_WEBHOOK_SECRET must be a Stripe webhook signing secret.')
+_configured_stripe_prices = [
+    price_id for price_id in STRIPE_PRICE_MAP.values() if price_id
+]
+if any(not price_id.startswith('price_') for price_id in _configured_stripe_prices):
+    raise ValueError('Configured Stripe plan prices must be Stripe Price IDs.')
+if len(_configured_stripe_prices) != len(set(_configured_stripe_prices)):
+    raise ValueError('Each StayMaint plan must map to a distinct Stripe Price ID.')
 # Google OAuth Settings
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')

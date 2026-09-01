@@ -5061,11 +5061,21 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response({
             'tenant_id': tenant.tenant_id,
+            'plan': ({
+                'id': subscription.plan_id,
+                'code': subscription.plan.code,
+                'name': subscription.plan.name,
+            } if subscription else None),
             'status': subscription.status if subscription else 'missing',
             'entitlement_level': entitlement.level.value,
             'can_read': entitlement.can_read,
             'can_write': entitlement.can_write,
             'can_manage_billing': can_manage_billing,
+            'can_start_checkout': bool(
+                can_manage_billing
+                and subscription
+                and not subscription.external_subscription_id
+            ),
             'reason_code': entitlement.reason_code,
             'grace_ends_at': (
                 entitlement.grace_ends_at.isoformat()
@@ -5074,6 +5084,17 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
             'current_period_end': (
                 subscription.current_period_end.isoformat()
                 if subscription and subscription.current_period_end else None
+            ),
+            'trial_ends_at': (
+                subscription.trial_ends_at.isoformat()
+                if subscription and subscription.trial_ends_at else None
+            ),
+            'grace_period_ends_at': (
+                subscription.grace_period_ends_at.isoformat()
+                if subscription and subscription.grace_period_ends_at else None
+            ),
+            'cancel_at_period_end': bool(
+                subscription and subscription.cancel_at_period_end
             ),
             'enforcement_mode': get_subscription_enforcement_mode(),
         })

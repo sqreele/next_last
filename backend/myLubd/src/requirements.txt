@@ -38,6 +38,7 @@ requests-toolbelt==1.0.0
 rich==13.9.4
 rsa==4.9
 sqlparse==0.5.2
+stripe==12.5.1
 typing_extensions==4.12.2
 urllib3==2.2.3
 django-dbbackup==4.2.1

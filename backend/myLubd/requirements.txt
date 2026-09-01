@@ -15,6 +15,9 @@ psycopg2-binary>=2.9.9
 # HTTP and API
 requests>=2.25.0
 
+# Stripe-hosted Checkout, Billing Portal, and verified webhooks
+stripe>=12.5.1,<13.0
+
 # Google OAuth
 google-auth>=2.0.0
 google-auth-oauthlib>=1.0.0

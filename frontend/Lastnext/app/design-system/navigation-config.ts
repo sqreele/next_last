@@ -2,6 +2,7 @@ import {
   BotMessageSquare,
   Building2,
   CalendarDays,
+  CreditCard,
   ClipboardList,
   FileText,
   Home,
@@ -73,6 +74,7 @@ export const navigationGroups: readonly NavigationGroup[] = [
       { name: "AI Assistant", href: "/ai-chat", icon: BotMessageSquare },
       { name: "Reports", href: "/dashboard/jobs-report", icon: FileText },
       { name: "Settings", shortName: "More", href: "/dashboard/settings/users", icon: Settings },
+      { name: "Billing", href: "/dashboard/settings/billing", icon: CreditCard },
     ],
   },
 ];

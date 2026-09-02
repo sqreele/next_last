@@ -216,23 +216,89 @@ class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
     verbose_name_plural = 'Profile'
-    fields = ['positions', 'profile_image', 'property_name', 'property_id', 'google_id', 'email_verified', 'login_provider']
+    fields = [
+        'positions',
+        'profile_image',
+        'accessible_property_names',
+        'accessible_property_ids',
+        'auth_provider',
+        'auth_email_verified',
+    ]
+    readonly_fields = [
+        'accessible_property_names',
+        'accessible_property_ids',
+        'auth_provider',
+        'auth_email_verified',
+    ]
+
+    @admin.display(description='Property name')
+    def accessible_property_names(self, obj):
+        if obj is None:
+            return '—'
+        names = get_accessible_properties(obj.user).order_by('name').values_list('name', flat=True)
+        return ', '.join(names) or '—'
+
+    @admin.display(description='Property ID')
+    def accessible_property_ids(self, obj):
+        if obj is None:
+            return '—'
+        property_ids = (
+            get_accessible_properties(obj.user)
+            .order_by('property_id')
+            .values_list('property_id', flat=True)
+        )
+        return ', '.join(property_ids) or '—'
+
+    @admin.display(description='Login provider')
+    def auth_provider(self, obj):
+        if obj is None:
+            return '—'
+        identity = obj.user.auth_identities.order_by('-last_seen_at').first()
+        if identity is None:
+            return 'Local account'
+        provider = identity.subject.split('|', 1)[0].split('_', 1)[0]
+        return {
+            'google-oauth2': 'Google',
+            'auth0': 'Auth0',
+        }.get(provider.casefold(), provider or 'External identity')
+
+    @admin.display(description='Email verified', boolean=True)
+    def auth_email_verified(self, obj):
+        if obj is None:
+            return None
+        identity = obj.user.auth_identities.order_by('-last_seen_at').first()
+        if identity is None:
+            return None
+        # email_at_link is populated only after the backend accepts a verified
+        # email during the pre-provisioned account linking flow.
+        return bool(identity.email_at_link)
 
 class UserAdmin(BaseUserAdmin):
     list_per_page = 25
     inlines = (UserProfileInline,)
-    list_display = ['username', 'email', 'first_name', 'last_name', 'property_name', 'get_property_id_display', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
+    list_display = ['user_display', 'email', 'first_name', 'last_name', 'property_name', 'get_property_id_display', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
     list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined', DateJoinedMonthFilter, 'property_name']
     search_fields = ['username', 'first_name', 'last_name', 'email', 'property_name', 'property_id']
     actions = ['export_users_csv', 'export_users_pdf']
+    readonly_fields = ('accessible_property_names', 'accessible_property_ids')
     
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('Property Information', {'fields': ('property_name', 'property_id')}),
+        ('Property Information', {
+            'fields': ('accessible_property_names', 'accessible_property_ids'),
+        }),
+        ('Legacy Property Compatibility', {
+            'classes': ('collapse',),
+            'fields': ('property_name', 'property_id'),
+        }),
     )
     
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         ('Property Information', {'fields': ('property_name', 'property_id')}),
     )
+
+    @admin.display(description='User', ordering='first_name')
+    def user_display(self, obj):
+        return obj.get_human_display_name()
     
     def get_google_info(self, obj):
         try:
@@ -244,6 +310,24 @@ class UserAdmin(BaseUserAdmin):
             return "No Profile"
     get_google_info.short_description = 'Auth Type'
     get_google_info.admin_order_field = 'userprofile__google_id'
+
+    @admin.display(description='Property name')
+    def accessible_property_names(self, obj):
+        if obj is None:
+            return '—'
+        names = get_accessible_properties(obj).order_by('name').values_list('name', flat=True)
+        return ', '.join(names) or '—'
+
+    @admin.display(description='Property ID')
+    def accessible_property_ids(self, obj):
+        if obj is None:
+            return '—'
+        property_ids = (
+            get_accessible_properties(obj)
+            .order_by('property_id')
+            .values_list('property_id', flat=True)
+        )
+        return ', '.join(property_ids) or '—'
 
     def get_property_id_display(self, obj):
         """Display the property_id from the User model, or from related Property if available"""
@@ -2775,9 +2859,9 @@ class UserProfileAdmin(admin.ModelAdmin):
         }),
     )
 
+    @admin.display(description='User', ordering='user__first_name')
     def user_link(self, obj):
-        return obj.user.username
-    user_link.short_description = 'User'
+        return obj.user.get_human_display_name()
 
     def profile_image_preview(self, obj):
         if obj.profile_image and hasattr(obj.profile_image, 'url'):

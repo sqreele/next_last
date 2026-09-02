@@ -1490,7 +1490,7 @@ class UserProfile(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.username}'s Profile"
+        return f"{self.user.get_human_display_name()}'s Profile"
 
     def save(self, *args, **kwargs):
         if self.profile_image:

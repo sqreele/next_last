@@ -25,6 +25,7 @@ import {
   Trash2,
   ArrowLeft,
 } from "lucide-react";
+import { DetailPageSkeleton } from "@/app/components/ui/loading";
 import {
   fetchAllMaintenanceProcedures,
   type MaintenanceProcedureTemplate,
@@ -599,16 +600,7 @@ export default function EditPreventiveMaintenancePage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
-          <span className="text-sm sm:text-base text-muted-foreground">
-            Loading maintenance record...
-          </span>
-        </div>
-      </div>
-    );
+    return <DetailPageSkeleton className="px-3 py-4 sm:px-6 sm:py-6" />;
   }
 
   if (!maintenance) {

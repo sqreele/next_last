@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "echo \"No automated tests configured yet\"",
     "test:jobs-dashboard": "node --test tests/jobs-dashboard-request.test.mjs",
+    "test:loading": "node --test tests/loading-behavior.test.mjs",
     "test:pm-pdf": "node --test tests/pm-pdf-evidence.test.cjs",
     "test:runtime-origins": "node --test tests/runtime-origin-regression.test.mjs",
     "test:subscription-warning": "node --test tests/subscription-warning.test.mjs",

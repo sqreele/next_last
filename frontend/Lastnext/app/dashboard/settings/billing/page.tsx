@@ -8,6 +8,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
+import { SettingsPageSkeleton } from "@/app/components/ui/loading";
 import {
   billingStatusLabel,
   formatBillingDate,
@@ -44,6 +45,7 @@ export default function BillingSettingsPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [billing, setBilling] = useState<BillingState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [action, setAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +77,7 @@ export default function BillingSettingsPage() {
       setError(loadError instanceof Error ? loadError.message : "Unable to load billing.");
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
   }, [isAuthenticated]);
 
@@ -99,18 +102,18 @@ export default function BillingSettingsPage() {
     }
   }
 
-  if (sessionLoading || loading) {
-    return <div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">Loading billing…</div>;
+  if (sessionLoading || (loading && !hasLoaded)) {
+    return <SettingsPageSkeleton className="max-w-5xl" />;
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8" aria-busy={loading || action !== null}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Billing</h1>
           <p className="text-sm text-muted-foreground">Stripe securely manages card payments, invoices, and receipts.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
+        <Button variant="outline" size="sm" disabled={loading} onClick={() => void load()}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{loading ? "Refreshing…" : "Refresh"}</Button>
       </div>
 
       {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
@@ -128,7 +131,7 @@ export default function BillingSettingsPage() {
           {billing?.can_manage_billing && (
             <div className="sm:col-span-2 lg:col-span-4">
               <Button onClick={() => void hostedAction("portal")} disabled={action !== null}>
-                <CreditCard className="mr-2 h-4 w-4" />Manage billing<ExternalLink className="ml-2 h-4 w-4" />
+                <CreditCard className="mr-2 h-4 w-4" />{action === "portal" ? "Opening…" : "Manage billing"}<ExternalLink className="ml-2 h-4 w-4" />
               </Button>
             </div>
           )}
@@ -143,7 +146,7 @@ export default function BillingSettingsPage() {
               <CardContent className="space-y-4">
                 <p className="text-xl font-semibold">{plan.monthly_price} <span className="text-sm font-normal text-muted-foreground">/{plan.billing_interval}</span></p>
                 <Button className="w-full" variant={billing.plan?.id === plan.id ? "outline" : "default"} disabled={action !== null} onClick={() => void hostedAction(billing.can_start_checkout ? "checkout" : "portal", billing.can_start_checkout ? plan : undefined)}>
-                  {billing.plan?.id === plan.id ? "Change plan" : "Select plan"}
+                  {action === `plan-${plan.id}` ? "Opening…" : billing.plan?.id === plan.id ? "Change plan" : "Select plan"}
                 </Button>
               </CardContent>
             </Card>

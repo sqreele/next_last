@@ -1,41 +1,47 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { createMinLoaderController } from './min-loader-controller.mjs';
 
 export const MIN_LOADER_MS = 400;
 
 /**
  * Returns helpers to enforce a minimum loader display time (avoids flash on fast requests).
- * Call recordLoaderShown() when setting loading to true, and clearLoadingAfterMinTime()
- * in finally/cleanup instead of setLoading(false).
+ * Save the token returned by recordLoaderShown() when setting loading to true,
+ * then pass it to clearLoadingAfterMinTime() in finally/cleanup. Tokens prevent
+ * an older request from clearing a newer request's loading state.
  */
 export function useMinLoaderTime(
   setLoading: (value: boolean) => void
 ): {
-  recordLoaderShown: () => void;
-  clearLoadingAfterMinTime: () => void;
+  recordLoaderShown: () => number;
+  clearLoadingAfterMinTime: (generation: number) => void;
 } {
-  const loaderShownAtRef = useRef<number | null>(null);
+  const setLoadingRef = useRef(setLoading);
+  setLoadingRef.current = setLoading;
+  const controllerRef = useRef<ReturnType<typeof createMinLoaderController> | null>(null);
+  if (controllerRef.current === null) {
+    controllerRef.current = createMinLoaderController({
+      hide: () => setLoadingRef.current(false),
+      minDuration: MIN_LOADER_MS,
+    });
+  }
 
-  const recordLoaderShown = useCallback(() => {
-    loaderShownAtRef.current = Date.now();
+  const recordLoaderShown = useCallback(
+    () => controllerRef.current!.start(),
+    [],
+  );
+
+  const clearLoadingAfterMinTime = useCallback(
+    (generation: number) => controllerRef.current!.finish(generation),
+    [],
+  );
+
+  useEffect(() => {
+    const controller = controllerRef.current!;
+    controller.mount();
+    return () => controller.dispose();
   }, []);
-
-  const clearLoadingAfterMinTime = useCallback(() => {
-    const shownAt = loaderShownAtRef.current;
-    loaderShownAtRef.current = null;
-    if (shownAt == null) {
-      setLoading(false);
-      return;
-    }
-    const elapsed = Date.now() - shownAt;
-    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
-    if (remaining === 0) {
-      setLoading(false);
-    } else {
-      setTimeout(() => setLoading(false), remaining);
-    }
-  }, [setLoading]);
 
   return { recordLoaderShown, clearLoadingAfterMinTime };
 }

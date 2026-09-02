@@ -217,7 +217,7 @@ const PropertyJobsDashboard = ({
       return;
     }
 
-    recordLoaderShown();
+    const loaderGeneration = recordLoaderShown();
     setIsLoading(true);
     setError(null);
 
@@ -242,7 +242,7 @@ const PropertyJobsDashboard = ({
       setError(errorMessage);
       setAllJobs([]);
     } finally {
-      clearLoadingAfterMinTime();
+      clearLoadingAfterMinTime(loaderGeneration);
     }
   };
 

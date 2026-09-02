@@ -35,6 +35,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
+import { SkeletonList } from "@/app/components/ui/loading";
 import {
   getJobPropertyName,
   getRoomPropertyName,
@@ -49,6 +50,10 @@ export default function SearchContent() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadedContext, setLoadedContext] = useState<{
+    query: string;
+    propertyId: string | null;
+  } | null>(null);
   const searchRequestIdRef = React.useRef(0);
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setIsLoading);
@@ -66,12 +71,13 @@ export default function SearchContent() {
         setJobs([]);
         setProperties([]);
         setRooms([]);
+        setLoadedContext(null);
         setError(null);
         setIsLoading(false);
         return;
       }
 
-      recordLoaderShown();
+      const loaderGeneration = recordLoaderShown();
       setIsLoading(true);
       setError(null);
 
@@ -159,6 +165,7 @@ export default function SearchContent() {
         setJobs(jobsData);
         setProperties(propertiesData);
         setRooms(roomsData);
+        setLoadedContext({ query, propertyId: selectedProperty });
       } catch (error) {
         if (requestId !== searchRequestIdRef.current) return;
         console.error("Error fetching search results:", error);
@@ -167,7 +174,7 @@ export default function SearchContent() {
         );
       } finally {
         if (requestId === searchRequestIdRef.current) {
-          clearLoadingAfterMinTime();
+          clearLoadingAfterMinTime(loaderGeneration);
         }
       }
     };
@@ -186,11 +193,22 @@ export default function SearchContent() {
     clearLoadingAfterMinTime,
   ]);
 
-  // Create filtered lists with proper null checks
-  const filteredJobs = Array.isArray(jobs)
-    ? jobs.filter((job) => {
+  const hasCurrentPropertyResults =
+    loadedContext?.propertyId === selectedProperty;
+  const resultsPending =
+    isLoading || Boolean(query && !error && loadedContext?.query !== query);
+  const displayQuery =
+    resultsPending && hasCurrentPropertyResults ? loadedContext.query : query;
+  const visibleJobs = hasCurrentPropertyResults ? jobs : [];
+  const visibleProperties = hasCurrentPropertyResults ? properties : [];
+  const visibleRooms = hasCurrentPropertyResults ? rooms : [];
+
+  // Keep the last settled result set mounted during same-property searches.
+  // A Property change fails this scope check immediately, before effects run.
+  const filteredJobs = Array.isArray(visibleJobs)
+    ? visibleJobs.filter((job) => {
         if (!job) return false;
-        const q = query.toLowerCase();
+        const q = displayQuery.toLowerCase();
         return [
           job.description,
           job.title,
@@ -209,33 +227,33 @@ export default function SearchContent() {
       })
     : [];
 
-  const filteredProperties = Array.isArray(properties)
-    ? properties.filter(
+  const filteredProperties = Array.isArray(visibleProperties)
+    ? visibleProperties.filter(
         (property) =>
           property &&
-          ((property.name?.toLowerCase() || "").includes(query.toLowerCase()) ||
+          ((property.name?.toLowerCase() || "").includes(displayQuery.toLowerCase()) ||
             (property.description?.toLowerCase() || "").includes(
-              query.toLowerCase(),
+              displayQuery.toLowerCase(),
             ) ||
             String(property.property_id || "")
               .toLowerCase()
-              .includes(query.toLowerCase())),
+              .includes(displayQuery.toLowerCase())),
       )
     : [];
 
-  const filteredRooms = Array.isArray(rooms)
-    ? rooms.filter(
+  const filteredRooms = Array.isArray(visibleRooms)
+    ? visibleRooms.filter(
         (room) =>
           room &&
-          ((room.name?.toLowerCase() || "").includes(query.toLowerCase()) ||
+          ((room.name?.toLowerCase() || "").includes(displayQuery.toLowerCase()) ||
             (room.room_type?.toLowerCase() || "").includes(
-              query.toLowerCase(),
+              displayQuery.toLowerCase(),
             ) ||
             (room.room_id != null
               ? String(room.room_id).toLowerCase()
               : ""
-            ).includes(query.toLowerCase()) ||
-            String(getRoomPropertyId(room) || "").toLowerCase().includes(query.toLowerCase())),
+            ).includes(displayQuery.toLowerCase()) ||
+            String(getRoomPropertyId(room) || "").toLowerCase().includes(displayQuery.toLowerCase())),
       )
     : [];
 
@@ -262,18 +280,21 @@ export default function SearchContent() {
     }
   };
 
-  if (isLoading) {
+  if (resultsPending && !hasCurrentPropertyResults) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-blue-600"></div>
-          <p className="text-muted-foreground">Searching...</p>
-        </div>
+      <div
+        className="space-y-4"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label="Searching"
+      >
+        <SkeletonList rows={5} />
       </div>
     );
   }
 
-  if (error) {
+  if (error && !hasCurrentPropertyResults) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12">
         <div className="rounded-full bg-red-100 p-4">
@@ -318,7 +339,7 @@ export default function SearchContent() {
           No results found
         </h2>
         <p className="text-center text-muted-foreground max-w-md">
-          We couldn't find anything matching "{query}". Try using different
+          We couldn't find anything matching "{displayQuery}". Try using different
           keywords or filters.
         </p>
         <Button
@@ -333,13 +354,30 @@ export default function SearchContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={resultsPending}>
+      {resultsPending ? (
+        <p
+          className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          Updating search results…
+        </p>
+      ) : null}
+      {error ? (
+        <p
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Search Results</h1>
           <p className="text-muted-foreground">
             Found {totalResults} {totalResults === 1 ? "result" : "results"} for
-            "{query}"
+            "{displayQuery}"
           </p>
         </div>
       </div>
@@ -367,9 +405,9 @@ export default function SearchContent() {
                   <JobCard
                     key={job.job_id}
                     job={job}
-                    query={query}
+                    query={displayQuery}
                     highlightMatch={highlightMatch}
-                    properties={properties}
+                    properties={visibleProperties}
                   />
                 ))}
               </div>
@@ -390,7 +428,7 @@ export default function SearchContent() {
                   <PropertyCard
                     key={property.property_id}
                     property={property}
-                    query={query}
+                    query={displayQuery}
                     highlightMatch={highlightMatch}
                   />
                 ))}
@@ -423,15 +461,15 @@ export default function SearchContent() {
                     <RoomOnlyJobCard
                       key={String(room.room_id)}
                       job={relatedJob}
-                      properties={properties}
+                      properties={visibleProperties}
                     />
                   ) : (
                     <RoomCard
                       key={String(room.room_id)}
                       room={room}
-                      query={query}
+                      query={displayQuery}
                       highlightMatch={highlightMatch}
-                      properties={properties}
+                      properties={visibleProperties}
                     />
                   );
                 })}
@@ -451,9 +489,9 @@ export default function SearchContent() {
               <JobCard
                 key={job.job_id}
                 job={job}
-                query={query}
+                query={displayQuery}
                 highlightMatch={highlightMatch}
-                properties={properties}
+                properties={visibleProperties}
               />
             ))}
           </div>
@@ -465,7 +503,7 @@ export default function SearchContent() {
               <PropertyCard
                 key={property.property_id}
                 property={property}
-                query={query}
+                query={displayQuery}
                 highlightMatch={highlightMatch}
               />
             ))}
@@ -485,15 +523,15 @@ export default function SearchContent() {
                 <RoomOnlyJobCard
                   key={String(room.room_id)}
                   job={relatedJob}
-                  properties={properties}
+                  properties={visibleProperties}
                 />
               ) : (
                 <RoomCard
                   key={String(room.room_id)}
                   room={room}
-                  query={query}
+                  query={displayQuery}
                   highlightMatch={highlightMatch}
-                  properties={properties}
+                  properties={visibleProperties}
                 />
               );
             })}

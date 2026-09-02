@@ -41,6 +41,7 @@ import {
 import { useToast } from "@/app/components/ui/use-toast";
 import { useProperties, useUser } from "@/app/lib/stores/mainStore";
 import type { Area } from "@/app/lib/types";
+import { SkeletonTable } from "@/app/components/ui/loading";
 
 type AreaFormState = {
   id?: number;
@@ -88,7 +89,9 @@ const AreasClient: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<AreaFormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Area | null>(null);
+  const [loadedPropertyId, setLoadedPropertyId] = useState<string | null>(null);
   const requestIdRef = useRef(0);
   const selectedPropertyRef = useRef(selectedPropertyId);
   selectedPropertyRef.current = selectedPropertyId;
@@ -105,6 +108,7 @@ const AreasClient: React.FC = () => {
     async (signal?: AbortSignal, requestId = requestIdRef.current) => {
       if (!selectedPropertyId) {
         setAreas([]);
+        setLoadedPropertyId(null);
         setError(null);
         setLoading(false);
         return;
@@ -126,7 +130,10 @@ const AreasClient: React.FC = () => {
         });
         const data = res.data;
         const list: Area[] = Array.isArray(data) ? data : data?.results || [];
-        if (requestId === requestIdRef.current) setAreas(list);
+        if (requestId === requestIdRef.current) {
+          setAreas(list);
+          setLoadedPropertyId(selectedPropertyId);
+        }
       } catch (err) {
         if (axios.isCancel(err)) return;
         if (requestId === requestIdRef.current) {
@@ -145,12 +152,15 @@ const AreasClient: React.FC = () => {
     return () => window.clearTimeout(timeout);
   }, [search]);
   useEffect(() => {
-    const controller = new AbortController();
-    const requestId = ++requestIdRef.current;
     setAreas([]);
+    setLoadedPropertyId(null);
     setDialogOpen(false);
     setDeleteTarget(null);
     setForm(emptyForm);
+  }, [selectedPropertyId]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
     void fetchAreas(controller.signal, requestId);
     return () => controller.abort();
   }, [fetchAreas]);
@@ -228,8 +238,9 @@ const AreasClient: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleting) return;
     const mutationProperty = selectedPropertyId;
+    setDeleting(true);
     try {
       await axios.delete(`/api/areas/${deleteTarget.id}/`, {
         withCredentials: true,
@@ -245,8 +256,14 @@ const AreasClient: React.FC = () => {
         description: getErrorMessage(err, "Failed to delete area"),
         variant: "destructive",
       });
+    } finally {
+      setDeleting(false);
     }
   };
+
+  const scopedAreas =
+    loadedPropertyId === selectedPropertyId ? areas : [];
+  const initialLoading = loading && scopedAreas.length === 0;
 
   if (!selectedPropertyId) {
     return (
@@ -260,7 +277,7 @@ const AreasClient: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={loading}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Areas</h1>
@@ -331,16 +348,14 @@ const AreasClient: React.FC = () => {
 
       {!loading && !error && (
         <p className="text-xs font-medium text-muted-foreground">
-          {areas.length} area{areas.length === 1 ? "" : "s"} found
+          {scopedAreas.length} area{scopedAreas.length === 1 ? "" : "s"} found
         </p>
       )}
 
       <div className="overflow-hidden rounded-xl border bg-card">
-        {loading ? (
-          <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-            <Loader className="mr-2 h-4 w-4 animate-spin" /> Loading areas…
-          </div>
-        ) : areas.length === 0 ? (
+        {initialLoading ? (
+          <SkeletonTable rows={5} columns={5} className="border-0 shadow-none" />
+        ) : scopedAreas.length === 0 ? (
           <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
             <MapPin className="h-8 w-8 text-gray-300" />
             <p>No areas found</p>
@@ -351,7 +366,7 @@ const AreasClient: React.FC = () => {
         ) : (
           <>
             <div className="grid gap-3 p-3 md:hidden">
-              {areas.map((area) => (
+              {scopedAreas.map((area) => (
                 <article
                   key={area.id}
                   className="rounded-xl border border-border bg-card p-4 shadow-soft"
@@ -425,7 +440,7 @@ const AreasClient: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {areas.map((area) => (
+                {scopedAreas.map((area) => (
                   <tr key={area.id} className="hover:bg-muted">
                     <td className="px-4 py-3">
                       <div className="font-medium text-foreground">
@@ -484,6 +499,12 @@ const AreasClient: React.FC = () => {
         )}
       </div>
 
+      {loading && !initialLoading ? (
+        <p className="text-sm font-medium text-muted-foreground" role="status" aria-live="polite">
+          Updating areas…
+        </p>
+      ) : null}
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -540,7 +561,7 @@ const AreasClient: React.FC = () => {
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {form.id ? "Save" : "Create"}
+              {saving ? "Saving…" : form.id ? "Save" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -564,9 +585,11 @@ const AreasClient: React.FC = () => {
             </Button>
             <Button
               onClick={handleDelete}
+              disabled={deleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              <Trash2 className="mr-1 h-4 w-4" /> Deactivate
+              {deleting ? <Loader className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="mr-1 h-4 w-4" />}
+              {deleting ? "Deactivating…" : "Deactivate"}
             </Button>
           </DialogFooter>
         </DialogContent>

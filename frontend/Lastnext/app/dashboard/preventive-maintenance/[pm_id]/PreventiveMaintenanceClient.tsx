@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/app/lib/session.client";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import { PageLoader } from "@/app/components/ui/loading";
 import {
   PreventiveMaintenance,
   determinePMStatus,
@@ -154,7 +155,7 @@ export default function PreventiveMaintenanceClient({
       return;
     }
 
-    recordLoaderShown();
+    const loaderGeneration = recordLoaderShown();
     setIsLoading(true);
     setError(null);
 
@@ -176,7 +177,7 @@ export default function PreventiveMaintenanceClient({
       console.error("Error deleting maintenance:", err);
       setError(err.message || "An error occurred while deleting");
     } finally {
-      clearLoadingAfterMinTime();
+      clearLoadingAfterMinTime(loaderGeneration);
     }
   };
 
@@ -942,6 +943,18 @@ export default function PreventiveMaintenanceClient({
   //   // Handle case where topics are numbers (IDs)
   //   return (topics as unknown as number[]).join(', ');
   // };
+
+  if (
+    selectedPropertyId &&
+    maintenanceData.property_id !== selectedPropertyId
+  ) {
+    return (
+      <PageLoader
+        label="Checking preventive maintenance scope"
+        description="Hiding the previous property while the active scope changes."
+      />
+    );
+  }
 
   return (
     <>

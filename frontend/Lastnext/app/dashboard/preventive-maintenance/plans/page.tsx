@@ -11,6 +11,7 @@ import {
 } from "@/app/lib/PreventiveMaintenanceService";
 import { useSession } from "@/app/lib/session.client";
 import { useMainStore } from "@/app/lib/stores/mainStore";
+import { SkeletonList } from "@/app/components/ui/loading";
 
 const readableFrequency = (frequency: string, customDays?: number | null) =>
   frequency === "custom"
@@ -31,6 +32,7 @@ export default function PMMasterPlansPage() {
   const accessToken = session?.user?.accessToken || null;
   const requestRef = useRef(0);
   const actionRequestRef = useRef(0);
+  const requestedPropertyRef = useRef<string | null>(null);
   const [plans, setPlans] = useState<PMMasterPlan[]>([]);
   const [projection, setProjection] = useState<PMMasterPlanProjection | null>(null);
   const [canOperate, setCanOperate] = useState(false);
@@ -42,13 +44,19 @@ export default function PMMasterPlansPage() {
   const [materializing, setMaterializing] = useState(false);
   const [materializationPreview, setMaterializationPreview] = useState<PMMasterPlanMaterializationResult | null>(null);
   const [materializationResult, setMaterializationResult] = useState<string | null>(null);
+  const [loadedPropertyId, setLoadedPropertyId] = useState<string | null>(null);
 
   useEffect(() => {
     const requestId = ++requestRef.current;
+    const propertyChanged = requestedPropertyRef.current !== selectedPropertyId;
+    requestedPropertyRef.current = selectedPropertyId;
     actionRequestRef.current += 1;
-    setPlans([]);
-    setProjection(null);
-    setCanOperate(false);
+    if (propertyChanged) {
+      setPlans([]);
+      setProjection(null);
+      setCanOperate(false);
+      setLoadedPropertyId(null);
+    }
     setDeletePlan(null);
     setDeleting(false);
     setMaterializing(false);
@@ -72,6 +80,7 @@ export default function PMMasterPlansPage() {
         setPlans(plansResponse.success && Array.isArray(plansResponse.data) ? plansResponse.data : []);
         setProjection(projectionResponse.data || null);
         setCanOperate(statsResponse?.data?.can_operate === true);
+        setLoadedPropertyId(selectedPropertyId);
       })
       .catch((requestError: unknown) => {
         if (requestId === requestRef.current) {
@@ -93,11 +102,16 @@ export default function PMMasterPlansPage() {
 
   const nextProjectionByPlan = useMemo(() => {
     const values = new Map<string, PMMasterPlanProjection["items"][number]>();
-    projection?.items.forEach((item) => {
+    const scopedProjection = loadedPropertyId === selectedPropertyId ? projection : null;
+    scopedProjection?.items.forEach((item) => {
       if (!values.has(item.plan_id)) values.set(item.plan_id, item);
     });
     return values;
-  }, [projection]);
+  }, [loadedPropertyId, projection, selectedPropertyId]);
+
+  const hasCurrentPropertyData = loadedPropertyId === selectedPropertyId;
+  const scopedPlans = hasCurrentPropertyData ? plans : [];
+  const scopedProjection = hasCurrentPropertyData ? projection : null;
 
   const reviewMaterialization = async () => {
     if (!accessToken || !selectedPropertyId) return;
@@ -174,7 +188,7 @@ export default function PMMasterPlansPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted px-3 py-4 sm:px-6 sm:py-6">
+    <main className="min-h-screen bg-muted px-3 py-4 sm:px-6 sm:py-6" aria-busy={loading || materializing || deleting}>
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -195,7 +209,7 @@ export default function PMMasterPlansPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 id="projection-heading" className="font-bold">Next 30 days</h2>
-              <p className="text-sm text-muted-foreground">{projection ? `${projection.total} projected or generated occurrences` : "Projection unavailable"}</p>
+              <p className="text-sm text-muted-foreground">{scopedProjection ? `${scopedProjection.total} projected or generated occurrences` : loading ? "Loading projection…" : "Projection unavailable"}</p>
             </div>
             {canOperate && <button type="button" onClick={() => void reviewMaterialization()} disabled={materializing} className="inline-flex min-h-11 items-center justify-center rounded-md border border-purple-300 px-4 py-2 font-semibold text-purple-800 disabled:opacity-60"><RefreshCw className={`mr-2 h-4 w-4 ${materializing ? "animate-spin" : ""}`} aria-hidden />Review generation</button>}
           </div>
@@ -211,9 +225,9 @@ export default function PMMasterPlansPage() {
           )}
         </section>
 
-        {error ? null : loading || status === "loading" ? (
-          <div className="rounded-xl border border-border bg-card p-10 text-center" role="status">Loading PM master plans…</div>
-        ) : plans.length === 0 ? (
+        {error && !hasCurrentPropertyData ? null : (loading || status === "loading") && !hasCurrentPropertyData ? (
+          <SkeletonList rows={4} />
+        ) : scopedPlans.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-10 text-center">
             <h2 className="text-lg font-bold">No PM master plans configured</h2>
             <p className="mt-2 text-muted-foreground">Create a recurring rule for one or more machines at this property.</p>
@@ -221,7 +235,7 @@ export default function PMMasterPlansPage() {
           </div>
         ) : (
           <section aria-label="PM master plans" className="grid gap-4 lg:grid-cols-2">
-            {plans.map((plan) => {
+            {scopedPlans.map((plan) => {
               const nextProjection = nextProjectionByPlan.get(plan.plan_id);
               return (
                 <article key={plan.plan_id} className="rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
@@ -246,6 +260,10 @@ export default function PMMasterPlansPage() {
             })}
           </section>
         )}
+
+        {loading && hasCurrentPropertyData ? (
+          <p className="mt-4 text-sm font-medium text-muted-foreground" role="status" aria-live="polite">Updating PM master plans…</p>
+        ) : null}
 
         {deletePlan && (
           <div className="fixed inset-0 z-50 flex items-end bg-black/50 p-3 sm:items-center sm:justify-center" role="presentation">

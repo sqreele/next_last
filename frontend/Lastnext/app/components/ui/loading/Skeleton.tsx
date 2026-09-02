@@ -190,7 +190,13 @@ export function DashboardKpiSkeleton({ className }: { className?: string }) {
 
 export function DetailPageSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("mx-auto max-w-4xl space-y-5", className)}>
+    <div
+      className={cn("mx-auto max-w-4xl space-y-5", className)}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Loading details"
+    >
       <div className="pcms-page-header">
         <div className="w-full space-y-3">
           <Skeleton className="h-3 w-28" />
@@ -210,6 +216,27 @@ export function DetailPageSkeleton({ className }: { className?: string }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+export function SettingsPageSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("mx-auto w-full max-w-7xl space-y-5 px-3 py-4 sm:px-6 sm:py-6", className)}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Loading settings"
+    >
+      <div className="pcms-page-header">
+        <div className="w-full space-y-3">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-8 w-56 max-w-full" />
+          <Skeleton className="h-4 w-full max-w-xl" />
+        </div>
+      </div>
+      <SkeletonTable rows={5} columns={5} />
     </div>
   );
 }

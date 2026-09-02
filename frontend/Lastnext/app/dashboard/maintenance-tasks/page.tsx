@@ -4,6 +4,12 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "@/app/lib/session.client";
 import { useRouter } from "next/navigation";
 import apiClient from "@/app/lib/api-client";
+import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import { PageContainer } from "@/app/components/layout/PageContainer";
+import {
+  DashboardKpiSkeleton,
+  SkeletonList,
+} from "@/app/components/ui/loading";
 import {
   Card,
   CardContent,
@@ -28,7 +34,6 @@ import {
   Users,
   FileText,
   AlertTriangle,
-  Loader,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -76,28 +81,9 @@ const difficultyColors: Record<string, string> = {
   expert: "bg-red-100 text-red-800",
 };
 
-const MIN_LOADER_MS = 400;
-
 export default function MaintenanceTasksPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const loaderShownAtRef = useRef<number | null>(null);
-
-  const clearLoadingAfterMinTime = useCallback(() => {
-    const shownAt = loaderShownAtRef.current;
-    loaderShownAtRef.current = null;
-    if (shownAt == null) {
-      setLoading(false);
-      return;
-    }
-    const elapsed = Date.now() - shownAt;
-    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
-    if (remaining === 0) {
-      setLoading(false);
-    } else {
-      setTimeout(() => setLoading(false), remaining);
-    }
-  }, []);
 
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<MaintenanceTask[]>([]);
@@ -111,6 +97,10 @@ export default function MaintenanceTasksPage() {
   const [frequencyFilter, setFrequencyFilter] = useState<string>("all");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
   const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
+  const requestIdRef = useRef(0);
+  const hasLoadedTasksRef = useRef(false);
+  const { recordLoaderShown, clearLoadingAfterMinTime } =
+    useMinLoaderTime(setLoading);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -120,7 +110,8 @@ export default function MaintenanceTasksPage() {
 
   const fetchTasks = useCallback(
     async (pageToLoad: number = page, pageSizeToUse: number = pageSize) => {
-      loaderShownAtRef.current = Date.now();
+      const requestId = ++requestIdRef.current;
+      const loaderGeneration = recordLoaderShown();
       setLoading(true);
       setError(null);
       try {
@@ -174,6 +165,7 @@ export default function MaintenanceTasksPage() {
         ) {
           totalPagesValue = Math.max(1, Math.ceil(total / responsePageSize));
         }
+        if (requestId !== requestIdRef.current) return;
         setTasks(taskData);
         setFilteredTasks(taskData);
         setTotalCount(total);
@@ -190,21 +182,27 @@ export default function MaintenanceTasksPage() {
         if (responsePageSize > 0 && responsePageSize !== pageSize) {
           setPageSize(responsePageSize);
         }
+        hasLoadedTasksRef.current = true;
       } catch (err: any) {
+        if (requestId !== requestIdRef.current) return;
         console.error("Error fetching maintenance tasks:", err);
         if (err?.status === 404 && pageToLoad > 1) {
           setPage(1);
         }
         setError(err?.message || "Failed to load maintenance tasks");
-        setTasks([]);
-        setFilteredTasks([]);
-        setTotalCount(0);
-        setTotalPages(1);
+        if (!hasLoadedTasksRef.current) {
+          setTasks([]);
+          setFilteredTasks([]);
+          setTotalCount(0);
+          setTotalPages(1);
+        }
       } finally {
-        clearLoadingAfterMinTime();
+        if (requestId === requestIdRef.current) {
+          clearLoadingAfterMinTime(loaderGeneration);
+        }
       }
     },
-    [page, pageSize, clearLoadingAfterMinTime],
+    [page, pageSize, recordLoaderShown, clearLoadingAfterMinTime],
   );
 
   useEffect(() => {
@@ -289,26 +287,20 @@ export default function MaintenanceTasksPage() {
     return labels[freq] || freq;
   };
 
-  if (status === "loading" || loading) {
+  if (status === "loading" || (loading && !hasLoadedTasksRef.current)) {
     return (
-      <div
-        className="flex min-h-[60vh] flex-col items-center justify-center gap-5"
-        aria-live="polite"
-        aria-busy="true"
-        role="status"
-      >
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-          <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
-        </div>
-        <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
-          Loading maintenance tasks…
-        </p>
-      </div>
+      <PageContainer aria-busy="true" aria-label="Loading maintenance tasks">
+        <DashboardKpiSkeleton />
+        <SkeletonList rows={6} />
+      </PageContainer>
     );
   }
 
   return (
-    <div className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
+    <div
+      className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]"
+      aria-busy={loading}
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -549,6 +541,12 @@ export default function MaintenanceTasksPage() {
           </CardContent>
         </Card>
       )}
+
+      {loading ? (
+        <p className="text-sm font-medium text-muted-foreground" role="status" aria-live="polite">
+          Updating maintenance tasks…
+        </p>
+      ) : null}
 
       {/* Tasks List */}
       <div className="space-y-4">

@@ -41,6 +41,7 @@ import { useUser } from "@/app/lib/stores/mainStore";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import dynamic from "next/dynamic";
+import { DetailPageSkeleton } from "@/app/components/ui/loading";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCode = dynamic(
@@ -189,7 +190,7 @@ export default function MachineDetailPage({
     signal: AbortSignal,
     requestId: number,
   ) => {
-    recordLoaderShown();
+    const loaderGeneration = recordLoaderShown();
     setLoading(true);
     setLoadingHistory(true);
     setError(null);
@@ -228,7 +229,9 @@ export default function MachineDetailPage({
         setLoadingHistory(false);
       }
     } finally {
-      if (requestId === requestIdRef.current) clearLoadingAfterMinTime();
+      if (requestId === requestIdRef.current) {
+        clearLoadingAfterMinTime(loaderGeneration);
+      }
     }
   };
 
@@ -410,15 +413,14 @@ export default function MachineDetailPage({
     }, 250);
   };
 
-  if (status === "loading" || loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading machine details...</p>
-        </div>
-      </div>
-    );
+  const machineOutsideActiveProperty = Boolean(
+    machine &&
+      selectedProperty &&
+      machine.property?.property_id !== selectedProperty,
+  );
+
+  if (status === "loading" || loading || machineOutsideActiveProperty) {
+    return <DetailPageSkeleton className="px-3 py-4 sm:px-6 sm:py-6" />;
   }
 
   if (!selectedProperty) {

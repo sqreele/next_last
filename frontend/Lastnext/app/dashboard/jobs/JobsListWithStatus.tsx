@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus, RefreshCcw, Search } from "lucide-react";
 import MaintenanceJobCard from "@/app/components/jobs/MaintenanceJobCard";
-import { JobListSkeleton } from "@/app/components/ui/loading";
+import { JobListSkeleton, LoadingOverlay } from "@/app/components/ui/loading";
 import { useSession } from "@/app/lib/session.client";
 import { useProperties, useUser } from "@/app/lib/stores/mainStore";
 import type { Job, JobPriority, TabValue } from "@/app/lib/types";
@@ -125,7 +125,9 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
         requestId, currentRequestId: requestIdRef.current,
         requestPropertyId, currentPropertyId: propertyRef.current,
       })) return;
-      setResponse(null);
+      setResponse((current) =>
+        current?.property_id === requestPropertyId ? current : null,
+      );
       setError(requestError instanceof Error ? requestError.message : "Unable to load jobs.");
       setLoading(false);
     });
@@ -342,7 +344,16 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
             })}
           </div>
 
-          {loading ? <JobListSkeleton count={6} /> : error ? (
+          {error && scopedResponse ? (
+            <div
+              className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              role="alert"
+            >
+              {error}
+            </div>
+          ) : null}
+
+          {loading && !scopedResponse ? <JobListSkeleton count={6} /> : !scopedResponse && error ? (
             <FeedbackState
               variant="error"
               title="Jobs could not be loaded"
@@ -356,14 +367,15 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
               description={hasActiveFilters ? "Try clearing the search, status, priority, or date filter." : "New maintenance jobs for this property will appear here."}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {jobs.map((job) => <MaintenanceJobCard key={job.job_id} job={job} />)}
+            <div className="relative" aria-busy={loading}>
+              <LoadingOverlay show={loading} label="Updating jobs…" />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                {jobs.map((job) => <MaintenanceJobCard key={job.job_id} job={job} />)}
+              </div>
             </div>
           )}
 
-          {!loading &&
-            !error &&
-            scopedResponse &&
+          {scopedResponse &&
             scopedResponse.count > PAGE_SIZE && (
               <nav
                 aria-label="Jobs pagination"
@@ -380,7 +392,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={!scopedResponse.previous}
+                    disabled={loading || !scopedResponse.previous}
                     onClick={() => setPage((value) => Math.max(1, value - 1))}
                     className="w-full px-3 sm:w-auto"
                     aria-label="Go to previous jobs page"
@@ -391,7 +403,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={!scopedResponse.next}
+                    disabled={loading || !scopedResponse.next}
                     onClick={() => setPage((value) => value + 1)}
                     className="w-full px-3 sm:w-auto"
                     aria-label="Go to next jobs page"

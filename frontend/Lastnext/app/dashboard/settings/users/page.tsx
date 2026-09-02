@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, MailPlus, RefreshCw, RotateCw, UserRoundX } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/app/components/ui/table";
 import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
+import { SettingsPageSkeleton, SkeletonTable } from "@/app/components/ui/loading";
 
 type Tenant = { id: number; tenant_id: string; name: string };
 type Property = { id: number; property_id: string; name: string; tenant: number };
@@ -98,6 +99,11 @@ export default function TenantUsersSettingsPage() {
   const [propertyIds, setPropertyIds] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
+  const [invitationLoading, setInvitationLoading] = useState(false);
+  const [loadedTenantId, setLoadedTenantId] = useState<string | null>(null);
+  const invitationRequestRef = useRef(0);
+  const tenantIdRef = useRef(tenantId);
+  tenantIdRef.current = tenantId;
 
   const selectedTenant = useMemo(
     () => tenants.find((tenant) => String(tenant.id) === tenantId),
@@ -132,22 +138,51 @@ export default function TenantUsersSettingsPage() {
     }
   }, [isAuthenticated]);
 
-  const loadInvitations = useCallback(async () => {
+  const loadInvitations = useCallback(async (signal?: AbortSignal) => {
     if (!tenantId) {
+      invitationRequestRef.current += 1;
       setInvitations([]);
+      setLoadedTenantId(null);
+      setInvitationLoading(false);
       return;
     }
+    const requestTenantId = tenantId;
+    if (tenantIdRef.current !== requestTenantId) return;
+    const requestId = ++invitationRequestRef.current;
+    setInvitationLoading(true);
     setError(null);
-    const response = await fetch(`/api/invitations/manage?tenant=${encodeURIComponent(tenantId)}`, {
-      cache: "no-store",
-    });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      setInvitations([]);
-      setError(apiMessage(payload, "You do not have permission to manage invitations for this tenant."));
-      return;
+    try {
+      const response = await fetch(`/api/invitations/manage?tenant=${encodeURIComponent(tenantId)}`, {
+        cache: "no-store",
+        signal,
+      });
+      const payload = await response.json().catch(() => null);
+      if (
+        requestId !== invitationRequestRef.current ||
+        tenantIdRef.current !== requestTenantId
+      ) return;
+      if (!response.ok) {
+        setError(apiMessage(payload, "You do not have permission to manage invitations for this tenant."));
+        return;
+      }
+      setInvitations(rows<Invitation>(payload));
+      setLoadedTenantId(requestTenantId);
+    } catch (loadError) {
+      if (loadError instanceof Error && loadError.name === "AbortError") throw loadError;
+      if (
+        requestId === invitationRequestRef.current &&
+        tenantIdRef.current === requestTenantId
+      ) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load invitations.");
+      }
+    } finally {
+      if (
+        requestId === invitationRequestRef.current &&
+        tenantIdRef.current === requestTenantId
+      ) {
+        setInvitationLoading(false);
+      }
     }
-    setInvitations(rows<Invitation>(payload));
   }, [tenantId]);
 
   useEffect(() => {
@@ -155,7 +190,15 @@ export default function TenantUsersSettingsPage() {
   }, [isAuthenticated, loadWorkspace]);
 
   useEffect(() => {
-    if (isAuthenticated && tenantId) void loadInvitations();
+    const controller = new AbortController();
+    if (isAuthenticated && tenantId) {
+      void loadInvitations(controller.signal).catch((loadError: unknown) => {
+        if (loadError instanceof Error && loadError.name === "AbortError") return;
+        setInvitationLoading(false);
+        setError(loadError instanceof Error ? loadError.message : "Unable to load invitations.");
+      });
+    }
+    return () => controller.abort();
   }, [isAuthenticated, loadInvitations, tenantId]);
 
   useEffect(() => {
@@ -214,13 +257,21 @@ export default function TenantUsersSettingsPage() {
     }
   }
 
-  if (sessionLoading || loading) {
-    return <div className="grid min-h-[50vh] place-items-center text-sm text-muted-foreground">Loading user settings…</div>;
+  const scopedInvitations =
+    loadedTenantId === tenantId ? invitations : [];
+  const initialInvitationLoading =
+    invitationLoading && loadedTenantId !== tenantId;
+
+  if (sessionLoading || (loading && tenants.length === 0)) {
+    return <SettingsPageSkeleton />;
   }
   if (!isAuthenticated) return null;
 
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-5 px-3 py-4 sm:px-6 sm:py-6">
+    <main
+      className="mx-auto w-full max-w-7xl space-y-5 px-3 py-4 sm:px-6 sm:py-6"
+      aria-busy={loading || invitationLoading}
+    >
       <div className="pcms-page-header">
         <div>
           <p className="pcms-eyebrow">Settings</p>
@@ -304,16 +355,18 @@ export default function TenantUsersSettingsPage() {
               <SelectTrigger className="min-w-56"><SelectValue placeholder="Select tenant" /></SelectTrigger>
               <SelectContent>{tenants.map((tenant) => <SelectItem key={tenant.id} value={String(tenant.id)}>{tenant.name}</SelectItem>)}</SelectContent>
             </Select>
-            <Button variant="outline" size="icon" onClick={() => void loadInvitations()} aria-label="Refresh invitations">
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="outline" size="icon" disabled={invitationLoading} onClick={() => void loadInvitations()} aria-label="Refresh invitations">
+              <RefreshCw className={`h-4 w-4 ${invitationLoading ? "animate-spin motion-reduce:animate-none" : ""}`} />
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {invitations.length ? (
+          {initialInvitationLoading ? (
+            <SkeletonTable rows={5} columns={6} className="border-0 shadow-none" />
+          ) : scopedInvitations.length ? (
             <Table mobileCards>
               <TableHeader><TableRow><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead>Properties</TableHead><TableHead>Status</TableHead><TableHead>Expires</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-              <TableBody>{invitations.map((invitation) => (
+              <TableBody>{scopedInvitations.map((invitation) => (
                 <TableRow key={invitation.id}>
                   <TableCell mobileLabel="Email" className="font-medium">{invitation.email}</TableCell>
                   <TableCell mobileLabel="Role">{roleLabel(invitation.role)}</TableCell>
@@ -323,8 +376,8 @@ export default function TenantUsersSettingsPage() {
                   <TableCell mobileLabel="Actions" className="text-right">
                     {invitation.status === "pending" || invitation.status === "expired" ? (
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" disabled={actionId === invitation.id} onClick={() => void invitationAction(invitation, "resend")}><RotateCw className="mr-1 h-3.5 w-3.5" /> Resend</Button>
-                        <Button variant="outline" size="sm" disabled={actionId === invitation.id} onClick={() => void invitationAction(invitation, "revoke")}><UserRoundX className="mr-1 h-3.5 w-3.5" /> Revoke</Button>
+                        <Button variant="outline" size="sm" disabled={actionId === invitation.id} onClick={() => void invitationAction(invitation, "resend")}><RotateCw className={`mr-1 h-3.5 w-3.5 ${actionId === invitation.id ? "animate-spin motion-reduce:animate-none" : ""}`} /> {actionId === invitation.id ? "Working…" : "Resend"}</Button>
+                        <Button variant="outline" size="sm" disabled={actionId === invitation.id} onClick={() => void invitationAction(invitation, "revoke")}><UserRoundX className="mr-1 h-3.5 w-3.5" /> {actionId === invitation.id ? "Working…" : "Revoke"}</Button>
                       </div>
                     ) : <span className="text-sm text-muted-foreground">No actions</span>}
                   </TableCell>
@@ -334,6 +387,9 @@ export default function TenantUsersSettingsPage() {
           ) : (
             <div className="rounded-xl border border-dashed px-4 py-12 text-center text-sm text-muted-foreground">No invitations for this tenant.</div>
           )}
+          {invitationLoading && !initialInvitationLoading ? (
+            <p className="mt-3 text-sm font-medium text-muted-foreground" role="status" aria-live="polite">Updating invitations…</p>
+          ) : null}
         </CardContent>
       </Card>
     </main>

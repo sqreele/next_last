@@ -15,15 +15,16 @@ export function LoadingOverlay({
   return (
     <div
       className={cn(
-        "absolute inset-0 z-20 grid place-items-center rounded-inherit bg-card/70 p-4 backdrop-blur-xs",
+        "pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-inherit bg-card/70 p-4 backdrop-blur-xs",
         className,
       )}
       role="status"
       aria-live="polite"
       aria-busy="true"
+      aria-atomic="true"
     >
       <div className="flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground shadow-card">
-        <Spinner size="sm" className="text-cyan-600" />
+        <Spinner size="sm" className="text-cyan-600" aria-hidden="true" role="presentation" />
         {label}
       </div>
     </div>

@@ -482,7 +482,7 @@ export default function InventoryPage() {
     requestId = requestIdRef.current,
   ) => {
     if (!selectedProperty) return;
-    recordLoaderShown();
+    const loaderGeneration = recordLoaderShown();
     setLoading(true);
     setError(null);
     try {
@@ -531,12 +531,16 @@ export default function InventoryPage() {
       console.error("Error fetching inventory:", err);
       if (requestId === requestIdRef.current) {
         setError(err.message || "Failed to load inventory");
-        setInventory([]);
-        setTotalCount(0);
-        setTotalPages(1);
+        if (!hasLoadedInventory) {
+          setInventory([]);
+          setTotalCount(0);
+          setTotalPages(1);
+        }
       }
     } finally {
-      if (requestId === requestIdRef.current) clearLoadingAfterMinTime();
+      if (requestId === requestIdRef.current) {
+        clearLoadingAfterMinTime(loaderGeneration);
+      }
     }
   };
 
@@ -691,7 +695,7 @@ export default function InventoryPage() {
     );
   }
 
-  if (error) {
+  if (error && !hasLoadedInventory) {
     return (
       <PageContainer>
         <FeedbackState
@@ -738,7 +742,10 @@ export default function InventoryPage() {
     (selectedItem ? parsedUseQuantity > selectedItem.quantity : true);
 
   return (
-    <PageContainer className="max-w-7xl space-y-5 desktop:max-w-[94rem]">
+    <PageContainer
+      className="max-w-7xl space-y-5 desktop:max-w-[94rem]"
+      aria-busy={loading}
+    >
       {/* Header */}
       <header className="flex min-w-0 flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex-1">
@@ -1176,6 +1183,25 @@ export default function InventoryPage() {
           </div>
         </CardContent>
       </Card>
+
+      {loading ? (
+        <div
+          className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          Updating inventory…
+        </div>
+      ) : null}
+
+      {error ? (
+        <div
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </div>
+      ) : null}
 
       {/* Inventory Grid/List */}
       {filteredInventory.length === 0 ? (
@@ -1912,7 +1938,7 @@ export default function InventoryPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setPage(page - 1)}
-                  disabled={page <= 1}
+                  disabled={loading || page <= 1}
                 >
                   <ChevronLeft className="h-4 w-4 sm:mr-1" aria-hidden="true" />
                   <span className="hidden sm:inline">Previous</span>
@@ -1941,6 +1967,7 @@ export default function InventoryPage() {
                         variant={page === pageNum ? "default" : "outline"}
                         size="sm"
                         onClick={() => setPage(pageNum)}
+                        disabled={loading}
                         className="min-w-[2.5rem]"
                       >
                         {pageNum}
@@ -1953,7 +1980,7 @@ export default function InventoryPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setPage(page + 1)}
-                  disabled={page >= totalPages}
+                  disabled={loading || page >= totalPages}
                 >
                   <span className="hidden sm:inline">Next</span>
                   <ChevronRight className="h-4 w-4 sm:ml-1" aria-hidden="true" />
@@ -1971,6 +1998,7 @@ export default function InventoryPage() {
                     setPageSize(Number(e.target.value));
                     setPage(1);
                   }}
+                  disabled={loading}
                   className="min-h-10 rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <option value={12}>12</option>

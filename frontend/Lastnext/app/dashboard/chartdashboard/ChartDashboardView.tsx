@@ -25,6 +25,7 @@ import type {
   TopUserPoint,
   TrendPoint,
 } from "./types";
+import { DashboardKpiSkeleton, SkeletonTable } from "@/app/components/ui/loading";
 
 const months: MonthLabel[] = [
   "Jan",
@@ -68,6 +69,7 @@ export default function ChartDashboardView() {
     const controller = new AbortController();
 
     async function loadSummary() {
+      let loaderGeneration: number | null = null;
       try {
         if (!selectedProperty) {
           setData(null);
@@ -75,7 +77,7 @@ export default function ChartDashboardView() {
           setError(null);
           return;
         }
-        recordLoaderShown();
+        loaderGeneration = recordLoaderShown();
         setLoading(true);
         setError(null);
         const params = new URLSearchParams();
@@ -98,7 +100,9 @@ export default function ChartDashboardView() {
         }
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
-        clearLoadingAfterMinTime();
+        if (loaderGeneration !== null) {
+          clearLoadingAfterMinTime(loaderGeneration);
+        }
       }
     }
 
@@ -290,11 +294,9 @@ export default function ChartDashboardView() {
       </div>
 
       {loading && (
-        <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-border border-t-slate-600" />
-          <p className="text-sm text-muted-foreground">
-            Loading dashboard data...
-          </p>
+        <div className="space-y-4" role="status" aria-busy="true" aria-label="Loading dashboard data">
+          <DashboardKpiSkeleton />
+          <SkeletonTable rows={5} columns={4} />
         </div>
       )}
 

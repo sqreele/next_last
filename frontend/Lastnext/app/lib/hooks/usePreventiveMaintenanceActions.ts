@@ -13,16 +13,15 @@ import MachineService from '@/app/lib/MachineService';
 import type { SearchParams } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { logger } from '@/app/lib/utils/logger';
-
-const MIN_LOADER_MS = 400;
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 
 export function usePreventiveMaintenanceActions() {
   const { data: session } = useSession();
   const selectedProperty = useMainStore(state => state.selectedPropertyId);
   const accessToken = session?.user?.accessToken || null;
-  const loaderShownAtRef = useRef<number | null>(null);
   const maintenanceRequestRef = useRef(0);
   const statisticsRequestRef = useRef(0);
+  const machineRequestRef = useRef(0);
   const renderedPropertyRef = useRef(selectedProperty);
 
   const {
@@ -46,6 +45,8 @@ export function usePreventiveMaintenanceActions() {
     setFilterParams,
     clearError: clearStoreError,
   } = usePreventiveMaintenanceStore();
+  const { recordLoaderShown, clearLoadingAfterMinTime } =
+    useMinLoaderTime(setLoading);
 
   const propertyChangedDuringRender = renderedPropertyRef.current !== selectedProperty;
   if (propertyChangedDuringRender) {
@@ -57,6 +58,7 @@ export function usePreventiveMaintenanceActions() {
   useEffect(() => {
     maintenanceRequestRef.current += 1;
     statisticsRequestRef.current += 1;
+    machineRequestRef.current += 1;
     setMaintenanceItems([]);
     setMachines([]);
     setStatistics(null);
@@ -64,22 +66,6 @@ export function usePreventiveMaintenanceActions() {
     setError(null);
     setLoading(false);
   }, [selectedProperty, setError, setLoading, setMachines, setMaintenanceItems, setStatistics, setTotalCount]);
-
-  const clearLoadingAfterMinTime = useCallback(() => {
-    const shownAt = loaderShownAtRef.current;
-    loaderShownAtRef.current = null;
-    if (shownAt == null) {
-      setLoading(false);
-      return;
-    }
-    const elapsed = Date.now() - shownAt;
-    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
-    if (remaining === 0) {
-      setLoading(false);
-    } else {
-      setTimeout(() => setLoading(false), remaining);
-    }
-  }, [setLoading]);
 
   // Fetch topics
   const fetchTopicsAction = useCallback(async () => {
@@ -119,18 +105,29 @@ export function usePreventiveMaintenanceActions() {
 
     const targetPropertyId = propertyId || selectedProperty;
     if (!targetPropertyId) {
+      machineRequestRef.current += 1;
       setMachines([]);
       return;
     }
 
+    const requestId = ++machineRequestRef.current;
     try {
       const machineService = new MachineService();
       const response = await machineService.getMachines(targetPropertyId, accessToken);
       
-      if (response.success && response.data) {
+      if (
+        requestId === machineRequestRef.current &&
+        useMainStore.getState().selectedPropertyId === targetPropertyId &&
+        response.success &&
+        response.data
+      ) {
         setMachines(Array.isArray(response.data) ? response.data : []);
       }
     } catch (error) {
+      if (
+        requestId !== machineRequestRef.current ||
+        useMainStore.getState().selectedPropertyId !== targetPropertyId
+      ) return;
       logger.error('Error fetching machines', error);
       setError('Failed to fetch machines');
     }
@@ -156,15 +153,11 @@ export function usePreventiveMaintenanceActions() {
     // user navigates quickly.
     const requestId = ++maintenanceRequestRef.current;
 
-    // Get current items count to determine if we should show loading state
-    // Only show full loading state if we don't have existing data (initial load)
-    // This prevents data from disappearing during refresh
+    // The page chooses a full skeleton or an in-place overlay based on whether
+    // settled items already exist. Both states share one request-safe timer.
     const currentState = usePreventiveMaintenanceStore.getState();
-    const hasExistingData = currentState.maintenanceItems.length > 0;
-    if (!hasExistingData) {
-      loaderShownAtRef.current = Date.now();
-      setLoading(true);
-    }
+    const loaderGeneration = recordLoaderShown();
+    setLoading(true);
     clearStoreError();
 
     try {
@@ -268,13 +261,9 @@ export function usePreventiveMaintenanceActions() {
       }
     } finally {
       if (requestId !== maintenanceRequestRef.current) return;
-      if (loaderShownAtRef.current != null) {
-        clearLoadingAfterMinTime();
-      } else {
-        setLoading(false);
-      }
+      clearLoadingAfterMinTime(loaderGeneration);
     }
-  }, [selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, setFilterParams, clearLoadingAfterMinTime]);
+  }, [selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, setFilterParams, recordLoaderShown, clearLoadingAfterMinTime]);
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {
@@ -311,7 +300,6 @@ export function usePreventiveMaintenanceActions() {
     }
 
     try {
-      setLoading(true);
       const service = createPreventiveMaintenanceService(accessToken);
       const response = await service.deletePreventiveMaintenance(pmId);
       
@@ -328,10 +316,8 @@ export function usePreventiveMaintenanceActions() {
       logger.error('Error deleting maintenance', error);
       setError('Failed to delete maintenance item');
       return false;
-    } finally {
-      setLoading(false);
     }
-  }, [accessToken, maintenanceItems, totalCount, setLoading, setMaintenanceItems, setTotalCount, setError]);
+  }, [accessToken, maintenanceItems, totalCount, setMaintenanceItems, setTotalCount, setError]);
 
   // Fetch maintenance by ID
   const fetchMaintenanceById = useCallback(async (pmId: string): Promise<any | null> => {

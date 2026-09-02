@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, use } from "react";
+import React, { useState, useEffect, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import { useAuthStore } from "@/app/lib/stores/useAuthStore";
@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getDisplayName } from "@/app/lib/utils/display-name";
+import { DetailPageSkeleton, SkeletonList } from "@/app/components/ui/loading";
 
 interface MaintenanceTask {
   id: number;
@@ -111,6 +112,9 @@ export default function MaintenanceTaskDetailPage({
     MaintenanceHistory[]
   >([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadedHistoryProperty, setLoadedHistoryProperty] = useState<string | null>(null);
+  const taskRequestRef = useRef(0);
+  const historyRequestRef = useRef(0);
 
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setLoading);
@@ -132,6 +136,8 @@ export default function MaintenanceTaskDetailPage({
   // Memoize fetchMaintenanceHistory to prevent infinite loops
   const fetchMaintenanceHistory = useCallback(
     async (taskTemplateId: number) => {
+      const requestId = ++historyRequestRef.current;
+      const requestProperty = selectedProperty ? String(selectedProperty) : null;
       setLoadingHistory(true);
       try {
         // Build API params
@@ -170,8 +176,11 @@ export default function MaintenanceTaskDetailPage({
         if (filtered.length > 0) {
         }
 
+        if (requestId !== historyRequestRef.current) return;
         setMaintenanceHistory(filtered);
+        setLoadedHistoryProperty(requestProperty);
       } catch (err: any) {
+        if (requestId !== historyRequestRef.current) return;
         console.error("[Maintenance History] Error:", err);
         console.error(
           "[Maintenance History] Error details:",
@@ -179,31 +188,38 @@ export default function MaintenanceTaskDetailPage({
         );
         // Don't set error, just leave history empty
         setMaintenanceHistory([]);
+        setLoadedHistoryProperty(requestProperty);
       } finally {
-        setLoadingHistory(false);
+        if (requestId === historyRequestRef.current) setLoadingHistory(false);
       }
     },
     [selectedProperty],
   ); // Add selectedProperty to dependencies
 
   // Memoize fetchTask to prevent infinite loops
-  const fetchTask = useCallback(async () => {
-    recordLoaderShown();
+  const fetchTask = useCallback(async (signal: AbortSignal, requestId: number) => {
+    const loaderGeneration = recordLoaderShown();
     setLoading(true);
     setError(null);
     try {
       const response = await apiClient.get<MaintenanceTask>(
         `/api/v1/maintenance-procedures/${unwrappedParams.id}/`,
+        { signal },
       );
+      if (requestId !== taskRequestRef.current) return;
       setTask(response.data);
 
       // Fetch maintenance history for this task template
       fetchMaintenanceHistory(response.data.id);
     } catch (err: any) {
+      if (err?.name === "AbortError" || err?.code === "ERR_CANCELED") return;
+      if (requestId !== taskRequestRef.current) return;
       console.error("Error fetching task:", err);
       setError(err.message || "Failed to load task details");
     } finally {
-      clearLoadingAfterMinTime();
+      if (requestId === taskRequestRef.current) {
+        clearLoadingAfterMinTime(loaderGeneration);
+      }
     }
   }, [
     unwrappedParams.id,
@@ -214,27 +230,16 @@ export default function MaintenanceTaskDetailPage({
   ]); // Add selectedProperty
 
   useEffect(() => {
+    const controller = new AbortController();
+    const requestId = ++taskRequestRef.current;
     if (status === "authenticated" && unwrappedParams.id) {
-      fetchTask();
+      void fetchTask(controller.signal, requestId);
     }
+    return () => controller.abort();
   }, [status, unwrappedParams.id, selectedProperty, fetchTask]); // Add selectedProperty to trigger refetch
 
   if (status === "loading" || loading) {
-    return (
-      <div
-        className="flex min-h-[60vh] flex-col items-center justify-center gap-5"
-        aria-live="polite"
-        aria-busy="true"
-        role="status"
-      >
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
-        <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
-          Loading task details…
-        </p>
-      </div>
-    );
+    return <DetailPageSkeleton className="px-3 py-4 sm:px-6 sm:py-6" />;
   }
 
   if (error || !task) {
@@ -254,6 +259,11 @@ export default function MaintenanceTaskDetailPage({
       </div>
     );
   }
+
+  const scopedMaintenanceHistory =
+    loadedHistoryProperty === (selectedProperty ? String(selectedProperty) : null)
+      ? maintenanceHistory
+      : [];
 
   const frequencyColors: Record<string, string> = {
     daily: "bg-red-100 text-red-800",
@@ -427,7 +437,7 @@ export default function MaintenanceTaskDetailPage({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Maintenance History ({maintenanceHistory.length})
+            Maintenance History ({scopedMaintenanceHistory.length})
           </CardTitle>
           <CardDescription>
             Past maintenance records using this task template
@@ -435,13 +445,8 @@ export default function MaintenanceTaskDetailPage({
         </CardHeader>
         <CardContent>
           {loadingHistory ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="ml-3 text-muted-foreground">
-                Loading maintenance history...
-              </p>
-            </div>
-          ) : maintenanceHistory.length === 0 ? (
+            <SkeletonList rows={3} />
+          ) : scopedMaintenanceHistory.length === 0 ? (
             <div className="text-center py-8">
               <History className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground font-medium">
@@ -454,7 +459,7 @@ export default function MaintenanceTaskDetailPage({
             </div>
           ) : (
             <div className="space-y-4">
-              {maintenanceHistory
+              {scopedMaintenanceHistory
                 .sort(
                   (a, b) =>
                     new Date(b.scheduled_date).getTime() -

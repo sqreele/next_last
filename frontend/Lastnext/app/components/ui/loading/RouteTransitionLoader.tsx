@@ -47,7 +47,7 @@ export function RouteTransitionLoader() {
       className="pointer-events-none fixed inset-x-0 top-0 z-[1000] h-1 bg-transparent"
     >
       <div
-        className={`h-full origin-left bg-[var(--pcms-accent-gradient)] shadow-[0_0_18px_rgba(6,182,212,0.45)] transition-all duration-300 ${
+        className={`h-full origin-left bg-[var(--pcms-accent-gradient)] shadow-[0_0_18px_rgba(6,182,212,0.45)] transition-all duration-300 motion-reduce:transition-none ${
           loading ? 'w-full opacity-100' : 'w-0 opacity-0'
         }`}
       />

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Loader } from "lucide-react";
 import { Job } from "@/app/lib/types";
 import FileUpload from "@/app/components/jobs/FileUpload";
 import Image from "next/image";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import { DetailPageSkeleton } from "@/app/components/ui/loading";
 
 export default function EditJobPage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function EditJobPage() {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const requestIdRef = useRef(0);
 
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setIsLoading);
@@ -25,14 +27,18 @@ export default function EditJobPage() {
   // Simple job loading without complex hooks
   useEffect(() => {
     if (!jobId) return;
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
 
     const loadJob = async () => {
-      recordLoaderShown();
+      const loaderGeneration = recordLoaderShown();
       setIsLoading(true);
       setError(null);
 
       try {
-        const res = await fetch(`/api/jobs/${jobId}`);
+        const res = await fetch(`/api/jobs/${jobId}`, {
+          signal: controller.signal,
+        });
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -40,15 +46,20 @@ export default function EditJobPage() {
         }
 
         const data: Job = await res.json();
+        if (requestId !== requestIdRef.current) return;
         setJob(data);
       } catch (e: any) {
+        if (e?.name === "AbortError" || requestId !== requestIdRef.current) return;
         setError(e?.message || "Failed to load job");
       } finally {
-        clearLoadingAfterMinTime();
+        if (requestId === requestIdRef.current) {
+          clearLoadingAfterMinTime(loaderGeneration);
+        }
       }
     };
 
-    loadJob();
+    void loadJob();
+    return () => controller.abort();
   }, [jobId, recordLoaderShown, clearLoadingAfterMinTime]);
 
   const handleClose = () => {
@@ -123,21 +134,7 @@ export default function EditJobPage() {
   };
 
   if (isLoading) {
-    return (
-      <div
-        className="flex min-h-[60vh] flex-col items-center justify-center gap-5"
-        aria-live="polite"
-        aria-busy="true"
-        role="status"
-      >
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-          <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
-        </div>
-        <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
-          Loading form, please wait…
-        </p>
-      </div>
-    );
+    return <DetailPageSkeleton className="px-3 py-4 sm:px-6 sm:py-6" />;
   }
 
   if (error) {

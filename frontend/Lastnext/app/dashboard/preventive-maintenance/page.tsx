@@ -24,6 +24,7 @@ import EmptyState from '@/app/components/preventive/list/EmptyState';
 import ErrorDisplay from '@/app/components/preventive/list/ErrorDisplay';
 import { PageContainer } from '@/app/components/layout/PageContainer';
 import { FeedbackState } from '@/app/components/feedback/FeedbackState';
+import { LoadingOverlay } from '@/app/components/ui/loading';
 import Link from 'next/link';
 import { Filter, Plus } from 'lucide-react';
 
@@ -81,6 +82,7 @@ function PreventiveMaintenanceListPageContent() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [mutationPending, setMutationPending] = useState(false);
 
   // Dashboard quick actions use shareable status query parameters. Hydrate
   // that value into the existing filter store instead of creating a second
@@ -314,6 +316,8 @@ function PreventiveMaintenanceListPageContent() {
 
   // Delete handlers
   const handleDelete = useCallback(async (pmId: string) => {
+    if (mutationPending) return;
+    setMutationPending(true);
     try {
       const success = await deleteMaintenance(pmId);
       if (success) {
@@ -322,19 +326,27 @@ function PreventiveMaintenanceListPageContent() {
       }
     } catch (error) {
       console.error('Delete failed:', error);
+    } finally {
+      setMutationPending(false);
     }
-  }, [deleteMaintenance]);
+  }, [deleteMaintenance, mutationPending]);
 
   const handleBulkDelete = useCallback(async () => {
+    if (mutationPending) return;
     if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) {
       return;
     }
 
-    for (const pmId of selectedItems) {
-      await deleteMaintenance(pmId);
+    setMutationPending(true);
+    try {
+      for (const pmId of selectedItems) {
+        await deleteMaintenance(pmId);
+      }
+      setSelectedItems([]);
+    } finally {
+      setMutationPending(false);
     }
-    setSelectedItems([]);
-  }, [selectedItems, deleteMaintenance]);
+  }, [selectedItems, deleteMaintenance, mutationPending]);
 
   // Refresh handler - preserves current page and filters
   const handleRefresh = useCallback(async () => {
@@ -412,7 +424,7 @@ function PreventiveMaintenanceListPageContent() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer aria-busy={isLoading}>
       {/* Mobile Header */}
       <MobileHeader
         totalCount={totalCount}
@@ -471,6 +483,7 @@ function PreventiveMaintenanceListPageContent() {
             selectedCount={selectedItems.length}
             onBulkDelete={handleBulkDelete}
             onClear={() => setSelectedItems([])}
+            isPending={mutationPending}
           />
         )}
 
@@ -487,14 +500,10 @@ function PreventiveMaintenanceListPageContent() {
         ) : (
           <div className="relative">
             {/* Show loading overlay when refreshing existing data */}
-            {isLoading && maintenanceItems.length > 0 && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/70 backdrop-blur-xs">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"></div>
-                  <span className="text-sm font-medium text-muted-foreground">Refreshing...</span>
-                </div>
-              </div>
-            )}
+            <LoadingOverlay
+              show={isLoading && maintenanceItems.length > 0}
+              label="Updating preventive maintenance…"
+            />
             <MaintenanceList
               items={sortedItems}
               selectedItems={selectedItems}
@@ -584,6 +593,7 @@ function PreventiveMaintenanceListPageContent() {
         <DeleteModal
           onConfirm={() => handleDelete(deleteConfirm)}
           onCancel={() => setDeleteConfirm(null)}
+          isPending={mutationPending}
         />
       )}
     </PageContainer>

@@ -19,6 +19,7 @@ import {
   metricOptions,
   sortRows,
 } from "./utils/data";
+import { DashboardKpiSkeleton, SkeletonTable } from "@/app/components/ui/loading";
 
 const metricLabelMap = metricOptions.reduce<Record<MetricKey, string>>(
   (acc, option) => {
@@ -51,6 +52,7 @@ export default function UtilityConsumptionView() {
     setError(null);
 
     async function loadData() {
+      let loaderGeneration: number | null = null;
       try {
         if (!selectedProperty) {
           setRows([]);
@@ -58,7 +60,7 @@ export default function UtilityConsumptionView() {
           setLoading(false);
           return;
         }
-        recordLoaderShown();
+        loaderGeneration = recordLoaderShown();
         setLoading(true);
         setError(null);
         const params = new URLSearchParams();
@@ -82,7 +84,12 @@ export default function UtilityConsumptionView() {
           setError(err instanceof Error ? err.message : "Unknown error");
         }
       } finally {
-        if (requestId === requestIdRef.current) clearLoadingAfterMinTime();
+        if (
+          loaderGeneration !== null &&
+          requestId === requestIdRef.current
+        ) {
+          clearLoadingAfterMinTime(loaderGeneration);
+        }
       }
     }
 
@@ -215,11 +222,9 @@ export default function UtilityConsumptionView() {
       ) : null}
 
       {loading && (
-        <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-border border-t-slate-600" />
-          <p className="text-sm text-muted-foreground">
-            Loading utility consumption...
-          </p>
+        <div className="space-y-4" role="status" aria-busy="true" aria-label="Loading utility consumption">
+          <DashboardKpiSkeleton />
+          <SkeletonTable rows={5} columns={4} />
         </div>
       )}
 

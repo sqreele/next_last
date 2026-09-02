@@ -130,7 +130,7 @@ export default function MachinesListPage() {
     signal: AbortSignal,
     requestId: number,
   ) => {
-    recordLoaderShown();
+    const loaderGeneration = recordLoaderShown();
     setLoading(true);
     setError(null);
     try {
@@ -228,7 +228,9 @@ export default function MachinesListPage() {
         setAllMachines([]);
       }
     } finally {
-      if (requestId === requestIdRef.current) clearLoadingAfterMinTime();
+      if (requestId === requestIdRef.current) {
+        clearLoadingAfterMinTime(loaderGeneration);
+      }
     }
   };
 

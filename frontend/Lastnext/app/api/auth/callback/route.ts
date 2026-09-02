@@ -1,47 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backendFetch } from '@/app/lib/backend-fetch';
 import {
+  getAuth0Claim,
   localAppUrl,
   OAUTH_TRANSACTION_COOKIES,
+  pickAuth0HumanUsername,
+  pickAuth0StringClaim,
   resolvePostLoginDestination,
   verifyAuth0IdToken,
 } from '@/app/lib/auth0/auth-security.mjs';
 import { setSessionCookie } from '@/app/lib/auth0/session-cookie';
-
-const RAW_AUTH_ID_PATTERN = /^(google-oauth2_|auth0_)/i;
-const RAW_AUTH_PIPE_PATTERN = /^(google-oauth2|auth0)\|/i;
-const DEFAULT_AUTH0_CLAIM_NAMESPACE = 'https://staymaint.com';
-
-function getAuth0Claim(claims: Record<string, unknown>, claim: string): unknown {
-  const namespace = (
-    process.env.AUTH0_CLAIM_NAMESPACE || DEFAULT_AUTH0_CLAIM_NAMESPACE
-  ).replace(/\/$/, '');
-  return claims[`${namespace}/${claim}`] ?? claims[claim];
-}
-
-function pickString(claims: Record<string, unknown>, claim: string): string | undefined {
-  const value = getAuth0Claim(claims, claim);
-  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
-}
-
-function pickHumanUsername(userInfo: Record<string, unknown>): string {
-  const email = pickString(userInfo, 'email');
-  const candidates = [
-    pickString(userInfo, 'given_name'),
-    pickString(userInfo, 'name'),
-    pickString(userInfo, 'nickname'),
-    email?.split('@')[0],
-    email,
-  ];
-  for (const candidate of candidates) {
-    if (
-      candidate &&
-      !RAW_AUTH_ID_PATTERN.test(candidate) &&
-      !RAW_AUTH_PIPE_PATTERN.test(candidate)
-    ) return candidate;
-  }
-  return 'User';
-}
 
 function clearTransaction(response: NextResponse): NextResponse {
   for (const cookieName of OAUTH_TRANSACTION_COOKIES) response.cookies.delete(cookieName);
@@ -119,8 +87,8 @@ export async function GET(request: NextRequest) {
       return callbackFailure(baseUrl, 'id_token_invalid');
     }
 
-    const subject = pickString(verifiedClaims, 'sub');
-    const email = pickString(verifiedClaims, 'email');
+    const subject = pickAuth0StringClaim(verifiedClaims, 'sub');
+    const email = pickAuth0StringClaim(verifiedClaims, 'email');
     if (!subject || !email || getAuth0Claim(verifiedClaims, 'email_verified') !== true) {
       return callbackFailure(baseUrl, 'identity_unverified');
     }
@@ -134,7 +102,7 @@ export async function GET(request: NextRequest) {
       });
       if (userResponse.ok) {
         const userInfo = await userResponse.json() as Record<string, unknown>;
-        if (pickString(userInfo, 'sub') === subject) {
+        if (pickAuth0StringClaim(userInfo, 'sub') === subject) {
           profileClaims = { ...userInfo, ...verifiedClaims };
         } else {
           console.warn('auth0_userinfo_ignored', { reason: 'subject_mismatch' });
@@ -150,10 +118,10 @@ export async function GET(request: NextRequest) {
     const sessionData = {
       user: {
         id: subject.replace(/\|/g, '_'),
-        username: pickHumanUsername(profileClaims),
+        username: pickAuth0HumanUsername(profileClaims),
         email,
-        profile_image: pickString(profileClaims, 'picture') || null,
-        positions: pickString(profileClaims, 'positions') || 'User',
+        profile_image: pickAuth0StringClaim(profileClaims, 'picture') || null,
+        positions: pickAuth0StringClaim(profileClaims, 'positions') || 'User',
         properties: [],
         accessToken,
         ...(refreshToken ? { refreshToken } : {}),
@@ -163,13 +131,13 @@ export async function GET(request: NextRequest) {
           sub: subject,
           email,
           email_verified: true,
-          name: pickString(profileClaims, 'name'),
-          given_name: pickString(profileClaims, 'given_name'),
-          family_name: pickString(profileClaims, 'family_name'),
-          nickname: pickString(profileClaims, 'nickname'),
-          picture: pickString(profileClaims, 'picture'),
-          locale: pickString(profileClaims, 'locale'),
-          updated_at: pickString(profileClaims, 'updated_at'),
+          name: pickAuth0StringClaim(profileClaims, 'name'),
+          given_name: pickAuth0StringClaim(profileClaims, 'given_name'),
+          family_name: pickAuth0StringClaim(profileClaims, 'family_name'),
+          nickname: pickAuth0StringClaim(profileClaims, 'nickname'),
+          picture: pickAuth0StringClaim(profileClaims, 'picture'),
+          locale: pickAuth0StringClaim(profileClaims, 'locale'),
+          updated_at: pickAuth0StringClaim(profileClaims, 'updated_at'),
         },
       },
       expires: accessTokenExpires,

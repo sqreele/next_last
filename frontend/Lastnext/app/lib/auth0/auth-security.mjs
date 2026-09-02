@@ -1,6 +1,41 @@
 import { createHash, createPublicKey, randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 
+const RAW_AUTH_ID_PATTERN = /^(google-oauth2_|auth0_)/i;
+const RAW_AUTH_PIPE_PATTERN = /^[a-z][a-z0-9.-]*\|[^\s|]+$/i;
+const DEFAULT_AUTH0_CLAIM_NAMESPACE = 'https://staymaint.com';
+
+export function getAuth0Claim(claims, claim) {
+  const namespace = (
+    process.env.AUTH0_CLAIM_NAMESPACE || DEFAULT_AUTH0_CLAIM_NAMESPACE
+  ).replace(/\/$/, '');
+  return claims[`${namespace}/${claim}`] ?? claims[claim];
+}
+
+export function pickAuth0StringClaim(claims, claim) {
+  const value = getAuth0Claim(claims, claim);
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+export function pickAuth0HumanUsername(claims) {
+  const email = pickAuth0StringClaim(claims, 'email');
+  const candidates = [
+    pickAuth0StringClaim(claims, 'preferred_username'),
+    pickAuth0StringClaim(claims, 'name'),
+    pickAuth0StringClaim(claims, 'nickname'),
+    pickAuth0StringClaim(claims, 'given_name'),
+    email?.split('@')[0],
+  ];
+  for (const candidate of candidates) {
+    if (
+      candidate &&
+      !RAW_AUTH_ID_PATTERN.test(candidate) &&
+      !RAW_AUTH_PIPE_PATTERN.test(candidate)
+    ) return candidate;
+  }
+  return 'User';
+}
+
 export const OAUTH_TRANSACTION_COOKIES = Object.freeze([
   'auth0_login_state',
   'auth0_login_nonce',

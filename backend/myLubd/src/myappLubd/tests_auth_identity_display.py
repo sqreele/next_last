@@ -23,10 +23,25 @@ class AuthIdentityDisplayTests(TestCase):
 
         self.assertEqual(str(identity), 'person@example.com')
 
+    def test_str_and_admin_prefer_linked_user_full_name(self):
+        identity = self.make_identity()
+        identity.user.first_name = 'Person'
+        identity.user.last_name = 'Example'
+        identity.user.save(update_fields=['first_name', 'last_name'])
+        model_admin = AuthIdentityAdmin(AuthIdentity, AdminSite())
+
+        self.assertEqual(str(identity.user), 'Person Example')
+        self.assertEqual(str(identity), 'Person Example')
+        self.assertEqual(model_admin.user_display(identity), 'Person Example')
+
     def test_str_falls_back_to_username(self):
         identity = self.make_identity(email='', username='staff-username')
 
         self.assertEqual(str(identity), 'staff-username')
+        self.assertEqual(
+            AuthIdentityAdmin(AuthIdentity, AdminSite()).user_display(identity),
+            'staff-username',
+        )
 
     def test_str_falls_back_to_subject_without_user_label(self):
         user = User.objects.create_user(username='temporary-subject-fallback', email='')
@@ -39,6 +54,10 @@ class AuthIdentityDisplayTests(TestCase):
         )
 
         self.assertEqual(str(identity), self.subject)
+        self.assertEqual(
+            AuthIdentityAdmin(AuthIdentity, AdminSite()).user_display(identity),
+            self.subject,
+        )
 
     def test_admin_uses_human_labels_and_keeps_identity_fields_readonly(self):
         identity = self.make_identity()

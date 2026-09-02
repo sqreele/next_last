@@ -1,4 +1,5 @@
 import logging
+import re
 import requests
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -15,6 +16,101 @@ from jose import jwt, JWTError
 from jose.jwt import get_unverified_headers
 
 logger = logging.getLogger(__name__)
+
+
+RAW_AUTH_IDENTIFIER_PREFIXES = (
+    'auth0_',
+    'google-oauth2_',
+)
+PROVIDER_SUBJECT_PATTERN = re.compile(
+    r'^[a-z][a-z0-9.-]*\|[^\s|]+$',
+    re.IGNORECASE,
+)
+
+
+def _nonempty_string(value):
+    return value.strip() if isinstance(value, str) else ''
+
+
+def _profile_claim(claims, name):
+    """Read a profile claim from the configured namespace or OIDC claims."""
+    namespace = getattr(
+        settings,
+        'AUTH0_CLAIM_NAMESPACE',
+        'https://hotelcarepro.com',
+    ).rstrip('/')
+    namespaced_name = f'{namespace}/{name}'
+    if namespaced_name in claims:
+        return claims[namespaced_name]
+    return claims.get(name)
+
+
+def _clean_human_name_claim(value, *, subject='', max_length=None):
+    """Return a compact human label, excluding provider identity values."""
+    if not isinstance(value, str):
+        return ''
+    cleaned = ' '.join(value.split())
+    if not cleaned:
+        return ''
+    lowered = cleaned.casefold()
+    if (
+        cleaned == subject
+        or lowered.startswith(RAW_AUTH_IDENTIFIER_PREFIXES)
+        or PROVIDER_SUBJECT_PATTERN.fullmatch(cleaned)
+    ):
+        return ''
+    if max_length is not None:
+        cleaned = cleaned[:max_length].rstrip()
+    return cleaned
+
+
+def auth0_display_name_from_verified_claims(claims):
+    """Choose a presentation-only Auth0 label; never fall back to ``sub``."""
+    subject = _nonempty_string(claims.get('sub'))
+    for name in ('preferred_username', 'name', 'nickname', 'given_name'):
+        candidate = _clean_human_name_claim(
+            _profile_claim(claims, name),
+            subject=subject,
+        )
+        if candidate:
+            return candidate
+
+    email = _profile_claim(claims, 'email')
+    if isinstance(email, str) and '@' in email:
+        return _clean_human_name_claim(
+            email.split('@', 1)[0],
+            subject=subject,
+        )
+    return ''
+
+
+def sync_user_display_profile_from_verified_claims(user, claims):
+    """Fill blank structured Django name fields from verified Auth0 claims.
+
+    Existing names are administrator/user-owned and are never overwritten.
+    Unstructured display-name fallbacks are intentionally not split or stored.
+    """
+    subject = _nonempty_string(claims.get('sub'))
+    changed_fields = []
+    for field_name, claim_name in (
+        ('first_name', 'given_name'),
+        ('last_name', 'family_name'),
+    ):
+        if str(getattr(user, field_name, '') or '').strip():
+            continue
+        max_length = user._meta.get_field(field_name).max_length
+        value = _clean_human_name_claim(
+            _profile_claim(claims, claim_name),
+            subject=subject,
+            max_length=max_length,
+        )
+        if value:
+            setattr(user, field_name, value)
+            changed_fields.append(field_name)
+
+    if changed_fields:
+        user.save(update_fields=changed_fields)
+    return changed_fields
 
 
 
@@ -193,18 +289,23 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
 
         identity = self._load_identity(issuer, subject)
         if identity is not None:
-            return self._resolve_bound_identity(identity, email)
+            user = self._resolve_bound_identity(identity, email)
+        else:
+            user = self._link_preprovisioned_user(
+                issuer=issuer,
+                subject=subject,
+                email=email,
+                email_verified=email_verified,
+            )
 
-        return self._link_preprovisioned_user(
-            issuer=issuer,
-            subject=subject,
-            email=email,
-            email_verified=email_verified,
-        )
+        # ``claims`` came from _validate_auth0_token. This updates presentation
+        # fields only and cannot influence identity binding or authorization.
+        sync_user_display_profile_from_verified_claims(user, claims)
+        return user
 
     @staticmethod
     def _nonempty_string(value):
-        return value.strip() if isinstance(value, str) else ''
+        return _nonempty_string(value)
 
     @staticmethod
     def _normalize_email(value):

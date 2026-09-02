@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import {
   createPkcePair,
   localAppUrl,
+  pickAuth0HumanUsername,
   resolvePostLoginDestination,
   sanitizeLocalPath,
   sanitizeLogoutPath,
@@ -14,6 +15,53 @@ import {
 } from '../app/lib/auth0/auth-security.mjs';
 
 const root = new URL('../', import.meta.url);
+
+test('Auth0 human username follows presentation claim priority and never uses sub', () => {
+  const claims = {
+    sub: 'google-oauth2_110208545241072621955',
+    preferred_username: 'preferred',
+    name: 'Full Name',
+    nickname: 'nickname',
+    given_name: 'Given',
+    email: 'person@example.com',
+  };
+
+  assert.equal(pickAuth0HumanUsername(claims), 'preferred');
+  assert.equal(pickAuth0HumanUsername({ ...claims, preferred_username: '' }), 'Full Name');
+  assert.equal(
+    pickAuth0HumanUsername({ ...claims, preferred_username: '', name: '' }),
+    'nickname',
+  );
+  assert.equal(
+    pickAuth0HumanUsername({ ...claims, preferred_username: '', name: '', nickname: '' }),
+    'Given',
+  );
+  assert.equal(
+    pickAuth0HumanUsername({
+      ...claims,
+      preferred_username: '',
+      name: '',
+      nickname: '',
+      given_name: '',
+    }),
+    'person',
+  );
+  assert.equal(pickAuth0HumanUsername({ sub: claims.sub, email: '' }), 'User');
+  assert.equal(pickAuth0HumanUsername({ preferred_username: claims.sub }), 'User');
+  assert.equal(pickAuth0HumanUsername({ preferred_username: 'auth0|abc123' }), 'User');
+  assert.equal(pickAuth0HumanUsername({ preferred_username: 'github|12345' }), 'User');
+  assert.equal(pickAuth0HumanUsername({ preferred_username: 'Anne-Marie 2' }), 'Anne-Marie 2');
+  assert.equal(
+    pickAuth0HumanUsername({
+      preferred_username: '   ',
+      name: '\t',
+      nickname: '',
+      given_name: '  Given  ',
+      email: 'person@example.com',
+    }),
+    'Given',
+  );
+});
 
 test('redirect sanitizer accepts local paths and rejects external variants', () => {
   assert.equal(sanitizeLocalPath('/dashboard/jobs?tab=open', '/'), '/dashboard/jobs?tab=open');

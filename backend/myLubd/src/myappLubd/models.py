@@ -28,6 +28,17 @@ logger = logging.getLogger(__name__)
 class User(AbstractUser):
     property_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the property this user belongs to")
     property_id = models.CharField(max_length=50, blank=True, null=True, help_text="ID of the property this user belongs to")
+
+    def get_human_display_name(self):
+        """Return a presentation label without treating it as identity."""
+        return (
+            self.get_full_name().strip()
+            or (self.email or '').strip()
+            or (self.get_username() or '').strip()
+        )
+
+    def __str__(self):
+        return self.get_human_display_name()
     
     class Meta:
         pass
@@ -62,8 +73,7 @@ class AuthIdentity(models.Model):
         verbose_name_plural = 'Auth identities'
 
     def __str__(self):
-        user_label = (self.user.email or self.user.get_username() or '').strip()
-        return user_label or self.subject
+        return self.user.get_human_display_name() or self.subject
 
 
 class Tenant(models.Model):

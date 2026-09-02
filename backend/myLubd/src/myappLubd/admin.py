@@ -5859,7 +5859,7 @@ class AuthIdentityAdmin(admin.ModelAdmin):
 
     @admin.display(description='User', ordering='user__email')
     def user_display(self, obj):
-        return obj.user.email or obj.user.get_username() or obj.subject
+        return obj.user.get_human_display_name() or obj.subject
 
     @admin.display(description='Email', ordering='user__email')
     def email_display(self, obj):

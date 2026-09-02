@@ -59,6 +59,10 @@ import { Textarea } from "@/app/components/ui/textarea";
 import { InventoryMobileStats } from "@/app/components/inventory/InventoryMobileStats";
 import { InventoryCsvImport } from "@/app/components/inventory/InventoryCsvImport";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
+import {
+  buildInventoryListParams,
+  scheduleInventorySearch,
+} from "@/app/lib/inventory-search.mjs";
 
 interface InventoryItem {
   id: number;
@@ -130,6 +134,8 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [hasLoadedInventory, setHasLoadedInventory] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [totalCount, setTotalCount] = useState(0);
@@ -221,13 +227,23 @@ export default function InventoryPage() {
     setSelectedJobFilter("all");
     setSelectedPmFilter("all");
     setSearchTerm("");
+    setDebouncedSearchTerm("");
+    setHasLoadedInventory(false);
   }, [selectedProperty]);
+
+  useEffect(
+    () =>
+      scheduleInventorySearch(searchTerm, (nextSearchTerm: string) => {
+        setDebouncedSearchTerm(nextSearchTerm);
+        setPage(1);
+      }),
+    [searchTerm],
+  );
 
   useEffect(() => {
     if (status !== "authenticated") return;
     const controller = new AbortController();
     const requestId = ++requestIdRef.current;
-    setInventory([]);
     if (!selectedProperty) {
       setLoading(false);
       return () => controller.abort();
@@ -245,7 +261,7 @@ export default function InventoryPage() {
     lowStockOnly,
     selectedJobFilter,
     selectedPmFilter,
-    searchTerm,
+    debouncedSearchTerm,
   ]);
 
   // Fetch filter options (categories, statuses) from backend
@@ -381,7 +397,6 @@ export default function InventoryPage() {
     lowStockOnly,
     selectedJobFilter,
     selectedPmFilter,
-    searchTerm,
   ]);
 
   // Fetch user's jobs and PMs when use dialog opens
@@ -471,33 +486,18 @@ export default function InventoryPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: any = {
-        page: page,
-        page_size: pageSize,
-      };
-      params.property_id = selectedProperty;
-      if (selectedCategory !== "all") {
-        params.category = selectedCategory;
-      }
-      if (selectedStatus !== "all") {
-        params.status = selectedStatus;
-      }
-      if (selectedRoom !== "all") {
-        params.room_id = selectedRoom;
-      }
-      if (lowStockOnly) {
-        params.low_stock = "true";
-      }
-      if (selectedJobFilter !== "all") {
-        params.job_id = selectedJobFilter;
-      }
-      if (selectedPmFilter !== "all") {
-        params.pm_id = selectedPmFilter;
-      }
-      // Send search term to backend for proper pagination
-      if (searchTerm) {
-        params.search = searchTerm;
-      }
+      const params = buildInventoryListParams({
+        propertyId: selectedProperty,
+        page,
+        pageSize,
+        category: selectedCategory,
+        status: selectedStatus,
+        room: selectedRoom,
+        lowStockOnly,
+        job: selectedJobFilter,
+        preventiveMaintenance: selectedPmFilter,
+        search: debouncedSearchTerm,
+      });
 
       const response = await apiClient.get("/api/v1/inventory/", {
         params,
@@ -524,6 +524,7 @@ export default function InventoryPage() {
         setTotalCount(total);
         setTotalPages(pages);
         setInventory(inventoryData);
+        setHasLoadedInventory(true);
       }
     } catch (err: any) {
       if (err?.code === "ERR_CANCELED") return;
@@ -681,7 +682,7 @@ export default function InventoryPage() {
     );
   };
 
-  if (status === "loading" || loading) {
+  if (status === "loading" || (loading && !hasLoadedInventory)) {
     return (
       <PageContainer aria-busy="true" aria-label="Loading inventory">
         <DashboardKpiSkeleton />
@@ -962,7 +963,7 @@ export default function InventoryPage() {
             {/* First Row: Search and View Toggle */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               {/* Search */}
-              <div className="relative flex-1">
+              <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   type="text"
@@ -970,7 +971,7 @@ export default function InventoryPage() {
                   placeholder="Search by name, ID, location, supplier..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-11 rounded-lg pl-10"
+                  className="h-11 min-w-0 rounded-lg pl-10"
                 />
               </div>
 

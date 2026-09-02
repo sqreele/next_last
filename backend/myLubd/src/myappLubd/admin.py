@@ -5848,11 +5848,22 @@ class TenantAdmin(admin.ModelAdmin):
 @admin.register(AuthIdentity)
 class AuthIdentityAdmin(admin.ModelAdmin):
     list_per_page = 25
-    list_display = ['user', 'issuer', 'subject', 'email_at_link', 'created_at', 'last_seen_at']
+    list_display = ['user_display', 'email_display', 'issuer', 'created_at', 'last_seen_at']
     list_filter = ['issuer', 'created_at', 'last_seen_at']
     search_fields = ['user__username', 'user__email', 'email_at_link', 'issuer', 'subject']
     readonly_fields = ['user', 'issuer', 'subject', 'email_at_link', 'created_at', 'last_seen_at']
     ordering = ['-last_seen_at']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user')
+
+    @admin.display(description='User', ordering='user__email')
+    def user_display(self, obj):
+        return obj.user.email or obj.user.get_username() or obj.subject
+
+    @admin.display(description='Email', ordering='user__email')
+    def email_display(self, obj):
+        return obj.user.email or '—'
 
     def has_add_permission(self, request):
         return False

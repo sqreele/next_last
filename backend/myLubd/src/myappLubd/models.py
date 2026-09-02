@@ -62,7 +62,8 @@ class AuthIdentity(models.Model):
         verbose_name_plural = 'Auth identities'
 
     def __str__(self):
-        return f'{self.issuer} / {self.subject} -> {self.user}'
+        user_label = (self.user.email or self.user.get_username() or '').strip()
+        return user_label or self.subject
 
 
 class Tenant(models.Model):

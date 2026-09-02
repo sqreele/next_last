@@ -22,8 +22,9 @@ from .invitation_audit import audit_invitation_event
 from .models import AuthIdentity, Property, Tenant, TenantInvitation, TenantMembership
 from .tenancy import (
     TENANT_WIDE_PROPERTY_ROLES,
+    SubscriptionUserLimitReached,
     can_manage_membership_property_grants,
-    enforce_subscription_limit,
+    enforce_tenant_user_limit,
 )
 from .throttles import (
     InvitationAcceptThrottle,
@@ -312,7 +313,7 @@ def accept_invitation(*, token, user, identity_claims):
                     'Your existing membership role or property grants conflict with this invitation.',
                 )
         else:
-            enforce_subscription_limit(tenant, 'max_users')
+            enforce_tenant_user_limit(tenant)
             membership = TenantMembership.objects.create(
                 tenant=tenant,
                 user=canonical_user,
@@ -527,7 +528,13 @@ class TenantInvitationAcceptView(APIView):
                 user=request.user,
                 identity_claims=request.auth,
             )
-        except (InvitationConflict, InvitationGone, NotFound, PermissionDenied) as exc:
+        except (
+            InvitationConflict,
+            InvitationGone,
+            NotFound,
+            PermissionDenied,
+            SubscriptionUserLimitReached,
+        ) as exc:
             audit_invitation_event(
                 'invitation.accept_denied', 'denied', request=request,
                 reason_code=getattr(exc, 'default_code', 'accept_denied'),

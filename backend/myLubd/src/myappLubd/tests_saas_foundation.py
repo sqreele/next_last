@@ -167,5 +167,6 @@ class SaaSFoundationTests(APITestCase):
             format='json',
         )
 
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
-        self.assertIn('billing_limit', resp.data)
+        self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT, resp.content)
+        self.assertEqual(resp.data['code'], 'subscription_user_limit_reached')
+        self.assertEqual(resp.data['limit'], 1)

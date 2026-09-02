@@ -94,13 +94,16 @@ function AcceptInvitationContent() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        if ([404, 409, 410].includes(response.status)) {
+        const capacityReached = payload?.code === "subscription_user_limit_reached";
+        if ([404, 410].includes(response.status) || (response.status === 409 && !capacityReached)) {
           discardToken();
           setTerminalFailure(true);
         }
         const detail = payload?.code === "invitation_email_mismatch"
           ? "Email does not match this invitation. Please sign in with the email address that received the invitation."
-          : typeof payload?.detail === "string" ? payload.detail : "Unable to accept this invitation.";
+          : payload?.code === "subscription_user_limit_reached" && typeof payload?.limit === "number"
+            ? `Your plan allows up to ${payload.limit} users. Remove a user or upgrade your plan to add another.`
+            : typeof payload?.detail === "string" ? payload.detail : "Unable to accept this invitation.";
         throw new Error(detail);
       }
       discardToken();

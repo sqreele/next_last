@@ -1,10 +1,13 @@
 """Tenant and billing helpers for SaaS-scoped access control."""
 
+from dataclasses import dataclass
+
 from django.core.exceptions import PermissionDenied
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
+from rest_framework import status
+from rest_framework.exceptions import APIException, ValidationError
 
 from .models import (
     Job,
@@ -25,6 +28,40 @@ TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'
 # views.
 TENANT_WIDE_PROPERTY_ROLES = {'owner', 'admin', 'manager'}
 TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES = {'owner', 'admin'}
+
+
+@dataclass(frozen=True)
+class TenantUserCapacity:
+    """Current user-seat capacity for one exact Tenant."""
+
+    current_count: int
+    limit: int | None
+    remaining: int | None
+    can_add: bool
+    plan_id: int
+    plan_code: str
+
+    @property
+    def max_users(self):
+        """Compatibility alias for callers using the model field name."""
+        return self.limit
+
+
+class SubscriptionUserLimitReached(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_code = 'subscription_user_limit_reached'
+
+    def __init__(self, capacity):
+        message = f'Your current plan allows up to {capacity.limit} users.'
+        # APIException normally coerces every leaf to ErrorDetail (a string).
+        # Keep the public numeric contract numeric after initializing the base
+        # exception and before DRF's exception handler reads ``detail``.
+        super().__init__(detail=message, code=self.default_code)
+        self.detail = {
+            'code': self.default_code,
+            'detail': message,
+            'limit': int(capacity.limit),
+        }
 
 
 def get_user_tenant_memberships(user):
@@ -215,7 +252,7 @@ def ensure_default_plan():
             'name': 'Starter',
             'description': 'Starter plan for a single property maintenance team.',
             'max_properties': 1,
-            'max_users': 10,
+            'max_users': 3,
             'max_monthly_work_orders': 500,
             'max_assets': 250,
             'max_storage_mb': 10240,
@@ -251,16 +288,31 @@ def ensure_tenant_for_property(property_obj, user=None):
     else:
         tenant = Tenant.objects.create(name=f"{property_obj.name} Account", status='trialing')
         TenantSubscription.objects.create(tenant=tenant, plan=ensure_default_plan(), status='trialing')
-    property_obj.tenant = tenant
-    property_obj.save(update_fields=['tenant'])
-    if user and getattr(user, 'is_authenticated', False):
-        membership, _ = TenantMembership.objects.get_or_create(
-            tenant=tenant,
-            user=user,
-            defaults={'role': 'owner'},
-        )
-        membership.properties.add(property_obj)
-    return tenant
+    with transaction.atomic():
+        locked_tenant = Tenant.objects.select_for_update().get(pk=tenant.pk)
+        locked_property = Property.objects.select_for_update().get(pk=property_obj.pk)
+        if locked_property.tenant_id:
+            return locked_property.tenant
+        membership = None
+        if user and getattr(user, 'is_authenticated', False):
+            membership = TenantMembership.objects.select_for_update().filter(
+                tenant=locked_tenant,
+                user=user,
+            ).first()
+            if membership is None:
+                enforce_tenant_user_limit(locked_tenant)
+        locked_property.tenant = locked_tenant
+        locked_property.save(update_fields=['tenant'])
+        property_obj.tenant = locked_tenant
+        if user and getattr(user, 'is_authenticated', False):
+            if membership is None:
+                membership = TenantMembership.objects.create(
+                    tenant=locked_tenant,
+                    user=user,
+                    role='owner',
+                )
+            membership.properties.add(locked_property)
+    return locked_tenant
 
 
 def tenant_usage_counts(tenant):
@@ -280,9 +332,71 @@ def tenant_usage_counts(tenant):
     }
 
 
+def get_tenant_user_capacity(tenant, increment=1):
+    """Return active-member capacity for exactly ``tenant``.
+
+    Callers that can create or reactivate a membership must lock the Tenant
+    before evaluating this helper. Pending invitations, global users, Auth0
+    identities, and property grants are deliberately not counted.
+    """
+    if tenant is None or tenant.pk is None:
+        raise PermissionDenied("This tenant does not have a subscription.")
+    try:
+        subscription = TenantSubscription.objects.select_related('plan').get(
+            tenant_id=tenant.pk,
+        )
+    except TenantSubscription.DoesNotExist as exc:
+        raise PermissionDenied("This tenant does not have a subscription.") from exc
+
+    current_count = TenantMembership.objects.filter(
+        tenant_id=tenant.pk,
+        is_active=True,
+    ).count()
+    limit = subscription.plan.max_users
+    can_add = limit is None or current_count + increment <= limit
+    return TenantUserCapacity(
+        current_count=current_count,
+        limit=limit,
+        remaining=None if limit is None else max(limit - current_count, 0),
+        can_add=can_add,
+        plan_id=subscription.plan_id,
+        plan_code=subscription.plan.code,
+    )
+
+
+def enforce_tenant_user_limit(tenant, increment=1):
+    capacity = get_tenant_user_capacity(tenant, increment=increment)
+    if not capacity.can_add:
+        raise SubscriptionUserLimitReached(capacity)
+    return capacity
+
+
+def lock_tenants_for_membership_change(*tenants):
+    """Lock exact source/destination Tenants in deterministic primary-key order.
+
+    This helper must be called inside ``transaction.atomic()``. Locking the
+    Tenant serializes both the count and an otherwise-absent membership insert.
+    """
+    tenant_ids = sorted({
+        tenant.pk if isinstance(tenant, Tenant) else int(tenant)
+        for tenant in tenants
+        if tenant is not None
+    })
+    locked = list(
+        Tenant.objects.select_for_update()
+        .filter(pk__in=tenant_ids)
+        .order_by('pk')
+    )
+    if len(locked) != len(tenant_ids):
+        raise PermissionDenied("One or more tenants are unavailable.")
+    return {tenant.pk: tenant for tenant in locked}
+
+
 def enforce_subscription_limit(tenant, limit_key, increment=1):
     if tenant is None:
         return
+    if limit_key == 'max_users':
+        return enforce_tenant_user_limit(tenant, increment=increment)
     try:
         subscription = tenant.subscription
     except TenantSubscription.DoesNotExist:

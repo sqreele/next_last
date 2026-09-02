@@ -2,12 +2,18 @@
 
 from collections import defaultdict
 
+from django.core.exceptions import PermissionDenied
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from myappLubd.management.commands.audit_tenantless_property_migration import Command as AuditCommand
 from myappLubd.models import Property, Tenant, TenantMembership, UserProfile
-from myappLubd.tenancy import TENANT_WIDE_PROPERTY_ROLES, get_accessible_properties
+from myappLubd.tenancy import (
+    TENANT_WIDE_PROPERTY_ROLES,
+    SubscriptionUserLimitReached,
+    enforce_tenant_user_limit,
+    get_accessible_properties,
+)
 
 
 class Command(BaseCommand):
@@ -34,7 +40,9 @@ class Command(BaseCommand):
         with transaction.atomic():
             locked_tenants = {
                 tenant.tenant_id: tenant
-                for tenant in Tenant.objects.select_for_update().filter(pk__in=[t.pk for t in targets.values()])
+                for tenant in Tenant.objects.select_for_update()
+                .filter(pk__in=[t.pk for t in targets.values()])
+                .order_by('pk')
             }
             properties = {
                 prop.property_id: prop
@@ -56,6 +64,7 @@ class Command(BaseCommand):
             list(TenantMembership.objects.select_for_update().filter(user_id__in=all_users, tenant__in=targets.values()))
             list(UserProfile.objects.select_for_update().filter(user_id__in=all_users))
 
+            self._enforce_membership_capacity(mapping, targets)
             before = self._membership_snapshot(all_users, targets.values())
             self._apply_memberships(mapping, properties, targets)
             self._verify_memberships(mapping, properties, targets)
@@ -135,6 +144,34 @@ class Command(BaseCommand):
             membership.is_active = True
             membership.save(update_fields=['role', 'is_active', 'updated_at'])
             membership.properties.set([properties[property_id] for property_id in row['property_ids']])
+
+    @staticmethod
+    def _enforce_membership_capacity(mapping, targets):
+        """Fail the explicit repair command before creating/reactivating seats."""
+        target_tenant = next(iter(targets.values()))
+        approved_user_ids = [
+            user_id
+            for user_id, row in mapping.items()
+            if row['approval_status'] == 'APPROVED'
+        ]
+        active_user_ids = set(TenantMembership.objects.filter(
+            tenant=target_tenant,
+            user_id__in=approved_user_ids,
+            is_active=True,
+        ).values_list('user_id', flat=True))
+        increment = len(set(approved_user_ids) - active_user_ids)
+        if increment == 0:
+            return
+        try:
+            enforce_tenant_user_limit(target_tenant, increment=increment)
+        except SubscriptionUserLimitReached as exc:
+            raise CommandError(
+                f'{exc.default_code}: {exc.detail["detail"]}'
+            ) from exc
+        except PermissionDenied as exc:
+            raise CommandError(
+                f'subscription_user_capacity_unavailable: {exc}'
+            ) from exc
 
     def _verify_memberships(self, mapping, properties, targets):
         target_tenant = next(iter(targets.values()))

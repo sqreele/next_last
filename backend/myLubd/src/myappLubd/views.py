@@ -67,11 +67,14 @@ from django.views.decorators.http import require_http_methods
 from .cache import cache_result, CacheManager
 from .services import NotificationService, PreventiveMaintenanceService
 from .tenancy import (
+    SubscriptionUserLimitReached,
     accessible_property_ids,
     enforce_subscription_limit,
+    enforce_tenant_user_limit,
     ensure_tenant_for_property,
     ensure_tenant_for_user,
     get_accessible_properties,
+    lock_tenants_for_membership_change,
     get_active_membership,
     get_operable_properties,
     get_property_summary_recipients,
@@ -4968,7 +4971,10 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
         return tenant
 
     def _validate_membership_properties(self, tenant, serializer):
-        properties = serializer.validated_data.get('properties') or []
+        properties = serializer.validated_data.get('properties')
+        if properties is None and serializer.instance is not None:
+            properties = serializer.instance.properties.all()
+        properties = properties or []
         invalid = [prop.name for prop in properties if prop.tenant_id and prop.tenant_id != tenant.id]
         if invalid:
             raise ValidationError({
@@ -4979,24 +4985,57 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
         tenant = self._get_tenant_from_request(serializer)
         if not user_can_manage_tenant(self.request.user, tenant):
             raise PermissionDenied("You do not have permission to manage this tenant.")
-        enforce_subscription_limit(tenant, 'max_users')
         self._validate_membership_properties(tenant, serializer)
-        membership = serializer.save(invited_by=self.request.user)
-        for prop in membership.properties.all():
-            if prop.tenant_id is None:
-                prop.tenant = membership.tenant
-                prop.save(update_fields=['tenant'])
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+            if serializer.validated_data.get('is_active', True):
+                enforce_tenant_user_limit(locked_tenant)
+            membership = serializer.save(
+                tenant=locked_tenant,
+                invited_by=self.request.user,
+            )
+            for prop in membership.properties.all():
+                if prop.tenant_id is None:
+                    prop.tenant = membership.tenant
+                    prop.save(update_fields=['tenant'])
 
     def perform_update(self, serializer):
         instance = self.get_object()
         if not user_can_manage_tenant(self.request.user, instance.tenant):
             raise PermissionDenied("You do not have permission to manage this tenant.")
-        self._validate_membership_properties(instance.tenant, serializer)
-        membership = serializer.save()
-        for prop in membership.properties.all():
-            if prop.tenant_id is None:
-                prop.tenant = membership.tenant
-                prop.save(update_fields=['tenant'])
+        target_tenant = serializer.validated_data.get('tenant', instance.tenant)
+        if not user_can_manage_tenant(self.request.user, target_tenant):
+            raise PermissionDenied("You do not have permission to manage this tenant.")
+        self._validate_membership_properties(target_tenant, serializer)
+        source_tenant_id = instance.tenant_id
+        with transaction.atomic():
+            locked_tenants = lock_tenants_for_membership_change(
+                source_tenant_id,
+                target_tenant.pk,
+            )
+            locked_tenant = locked_tenants[target_tenant.pk]
+            locked_membership = TenantMembership.objects.select_for_update().get(pk=instance.pk)
+            if locked_membership.tenant_id != source_tenant_id:
+                raise ValidationError({
+                    'detail': 'Membership tenant changed concurrently; retry the request.'
+                })
+            if not user_can_manage_tenant(self.request.user, locked_membership.tenant):
+                raise PermissionDenied("You do not have permission to manage this tenant.")
+            desired_active = serializer.validated_data.get(
+                'is_active', locked_membership.is_active,
+            )
+            increases_active_count = desired_active and (
+                not locked_membership.is_active
+                or locked_membership.tenant_id != locked_tenant.pk
+            )
+            if increases_active_count:
+                enforce_tenant_user_limit(locked_tenant)
+            serializer.instance = locked_membership
+            membership = serializer.save(tenant=locked_tenant)
+            for prop in membership.properties.all():
+                if prop.tenant_id is None:
+                    prop.tenant = membership.tenant
+                    prop.save(update_fields=['tenant'])
 
     def perform_destroy(self, instance):
         if not user_can_manage_tenant(self.request.user, instance.tenant):
@@ -5295,14 +5334,23 @@ class PropertyViewSet(viewsets.ModelViewSet):
             tenant = ensure_tenant_for_user(self.request.user)
         if not user_can_manage_tenant(self.request.user, tenant):
             raise PermissionDenied("You do not have permission to add properties to this tenant.")
-        enforce_subscription_limit(tenant, 'max_properties')
-        prop = serializer.save(tenant=tenant)
-        membership, _ = TenantMembership.objects.get_or_create(
-            tenant=tenant,
-            user=self.request.user,
-            defaults={'role': 'owner'},
-        )
-        membership.properties.add(prop)
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+            enforce_subscription_limit(locked_tenant, 'max_properties')
+            membership = TenantMembership.objects.select_for_update().filter(
+                tenant=locked_tenant,
+                user=self.request.user,
+            ).first()
+            if membership is None:
+                enforce_tenant_user_limit(locked_tenant)
+            prop = serializer.save(tenant=locked_tenant)
+            if membership is None:
+                membership = TenantMembership.objects.create(
+                    tenant=locked_tenant,
+                    user=self.request.user,
+                    role='owner',
+                )
+            membership.properties.add(prop)
 
     def get_object(self):
         property_id = self.kwargs.get('property_id')
@@ -5634,28 +5682,35 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     })
                     continue
 
-                try:
-                    enforce_subscription_limit(tenant, 'max_properties')
-                except Exception as exc:
-                    errors.append({'row': row_index, 'error': str(exc)})
-                    continue
+                with transaction.atomic():
+                    locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+                    enforce_subscription_limit(locked_tenant, 'max_properties')
+                    membership = TenantMembership.objects.select_for_update().filter(
+                        tenant=locked_tenant,
+                        user=request.user,
+                    ).first()
+                    if membership is None:
+                        enforce_tenant_user_limit(locked_tenant)
 
-                prop = Property(name=name[:200], description=description)
-                if explicit_id:
-                    prop.property_id = explicit_id[:50]
-                prop.tenant = tenant
-                prop.save()
-                membership, _ = TenantMembership.objects.get_or_create(
-                    tenant=tenant,
-                    user=request.user,
-                    defaults={'role': 'owner'},
-                )
-                membership.properties.add(prop)
+                    prop = Property(name=name[:200], description=description)
+                    if explicit_id:
+                        prop.property_id = explicit_id[:50]
+                    prop.tenant = locked_tenant
+                    prop.save()
+                    if membership is None:
+                        membership = TenantMembership.objects.create(
+                            tenant=locked_tenant,
+                            user=request.user,
+                            role='owner',
+                        )
+                    membership.properties.add(prop)
                 created.append({
                     'row': row_index,
                     'property_id': prop.property_id,
                     'name': prop.name,
                 })
+            except SubscriptionUserLimitReached:
+                raise
             except Exception as exc:  # pragma: no cover - defensive
                 errors.append({'row': row_index, 'error': str(exc)})
 

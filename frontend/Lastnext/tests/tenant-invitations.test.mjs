@@ -136,3 +136,12 @@ test('invitation user-facing content is StayMaint branded', async () => {
   assert.match(acceptance, /StayMaint tenant invitation/);
   assert.doesNotMatch(acceptance, /HotelCare Pro|hotelcarepro\.com/i);
 });
+
+
+test('invitation acceptance explains subscription user capacity errors', async () => {
+  const acceptance = await readFile(new URL('app/invitations/accept/page.tsx', root), 'utf8');
+  assert.match(acceptance, /subscription_user_limit_reached/);
+  assert.match(acceptance, /Your plan allows up to \$\{payload\.limit\} users/);
+  assert.match(acceptance, /Remove a user or upgrade your plan to add another/);
+  assert.match(acceptance, /response\.status === 409 && !capacityReached/);
+});

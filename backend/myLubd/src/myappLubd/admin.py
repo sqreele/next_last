@@ -40,7 +40,7 @@ from django.db.models import Count, Q
 from collections import Counter
 
 from .timezones import timezone_choices
-from django.db import models
+from django.db import models, transaction
 from datetime import timedelta, datetime
 from django.http import HttpResponse
 from django.urls import reverse, path
@@ -78,7 +78,14 @@ from .models import (
     UsageMetric,
     InventoryUsage,
 )
-from .tenancy import get_accessible_properties, get_property_summary_recipients
+from .tenancy import (
+    SubscriptionUserLimitReached,
+    enforce_tenant_user_limit,
+    get_accessible_properties,
+    get_property_summary_recipients,
+    get_tenant_user_capacity,
+    lock_tenants_for_membership_change,
+)
 
 
 
@@ -5854,14 +5861,89 @@ class AuthIdentityAdmin(admin.ModelAdmin):
         return False
 
 
+class TenantMembershipAdminForm(forms.ModelForm):
+    class Meta:
+        model = TenantMembership
+        fields = '__all__'
+
+    def clean(self):
+        cleaned = super().clean()
+        tenant = cleaned.get('tenant')
+        is_active = cleaned.get('is_active')
+        properties = cleaned.get('properties') or []
+        if tenant is not None and any(
+            prop.tenant_id != tenant.pk for prop in properties
+        ):
+            self.add_error(
+                'properties',
+                'Every property grant must belong to the membership tenant.',
+            )
+        if tenant is None or not is_active:
+            return cleaned
+        existing = None
+        if self.instance.pk:
+            existing = TenantMembership.objects.filter(pk=self.instance.pk).values(
+                'tenant_id', 'is_active',
+            ).first()
+        increases_active_count = existing is None or (
+            not existing['is_active'] or existing['tenant_id'] != tenant.pk
+        )
+        if increases_active_count:
+            capacity = get_tenant_user_capacity(tenant)
+            if not capacity.can_add:
+                self.add_error(
+                    'is_active',
+                    f'Your current plan allows up to {capacity.limit} users.',
+                )
+        return cleaned
+
+
 @admin.register(TenantMembership)
 class TenantMembershipAdmin(admin.ModelAdmin):
+    form = TenantMembershipAdminForm
     list_per_page = 25
     list_display = ['tenant', 'user', 'role', 'is_active', 'created_at']
     list_filter = ['role', 'is_active', 'tenant']
     search_fields = ['tenant__name', 'user__username', 'user__email']
     readonly_fields = ['created_at', 'updated_at']
     autocomplete_fields = ['tenant', 'user', 'properties', 'invited_by']
+
+    def save_model(self, request, obj, form, change):
+        existing_snapshot = None
+        if change:
+            existing_snapshot = TenantMembership.objects.filter(pk=obj.pk).values(
+                'tenant_id', 'is_active',
+            ).first()
+        with transaction.atomic():
+            source_tenant_id = (
+                existing_snapshot['tenant_id'] if existing_snapshot is not None else None
+            )
+            locked_tenants = lock_tenants_for_membership_change(
+                source_tenant_id,
+                obj.tenant_id,
+            )
+            locked_tenant = locked_tenants[obj.tenant_id]
+            existing = None
+            if change:
+                existing = TenantMembership.objects.select_for_update().filter(
+                    pk=obj.pk,
+                ).values('tenant_id', 'is_active').first()
+                if existing is None or existing['tenant_id'] != source_tenant_id:
+                    raise ValidationError(
+                        'Membership tenant changed concurrently; retry the change.'
+                    )
+            increases_active_count = obj.is_active and (
+                existing is None
+                or not existing['is_active']
+                or existing['tenant_id'] != locked_tenant.pk
+            )
+            if increases_active_count:
+                try:
+                    enforce_tenant_user_limit(locked_tenant)
+                except SubscriptionUserLimitReached as exc:
+                    raise ValidationError(str(exc.detail['detail'])) from exc
+            obj.tenant = locked_tenant
+            super().save_model(request, obj, form, change)
 
 
 @admin.register(SubscriptionPlan)

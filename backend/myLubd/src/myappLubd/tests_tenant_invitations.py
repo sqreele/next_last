@@ -331,6 +331,49 @@ class TenantInvitationTests(APITestCase):
         self.assertEqual(invitation.accepted_by, self.invitee)
         self.assertIsNotNone(invitation.accepted_at)
 
+    def test_accept_below_user_limit_succeeds(self):
+        self.plan.max_users = 6
+        self.plan.save(update_fields=['max_users'])
+        _, token = self.make_invitation()
+
+        self.authenticate_auth0(self.invitee)
+        response = self.client.post(
+            reverse('myappLubd:tenant-invitation-accept'),
+            {'token': token},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertTrue(TenantMembership.objects.filter(
+            tenant=self.tenant, user=self.invitee, is_active=True,
+        ).exists())
+
+    def test_accept_at_user_limit_returns_numeric_409_without_consuming_invitation(self):
+        self.plan.max_users = 5
+        self.plan.save(update_fields=['max_users'])
+        invitation, token = self.make_invitation()
+
+        self.authenticate_auth0(self.invitee)
+        response = self.client.post(
+            reverse('myappLubd:tenant-invitation-accept'),
+            {'token': token},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+        self.assertEqual(response.data, {
+            'code': 'subscription_user_limit_reached',
+            'detail': 'Your current plan allows up to 5 users.',
+            'limit': 5,
+        })
+        self.assertIsInstance(response.data['limit'], int)
+        invitation.refresh_from_db()
+        self.assertIsNone(invitation.accepted_at)
+        self.assertIsNone(invitation.accepted_by_id)
+        self.assertFalse(TenantMembership.objects.filter(
+            tenant=self.tenant, user=self.invitee,
+        ).exists())
+
     def test_cross_tenant_tampering_rolls_back_acceptance(self):
         invitation, token = self.make_invitation()
         invitation.properties.add(self.other_property)

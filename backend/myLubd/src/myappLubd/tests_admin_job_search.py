@@ -16,7 +16,10 @@ class JobAdminSearchTests(TestCase):
         self.user = User.objects.create_user(username='engineer', password='pw12345!')
         self.property = Property.objects.create(name='Admin Search Hotel')
         self.room = Room.objects.create(
-            name='LUBD-1205', room_type='Deluxe', property=self.property,
+            room_id=987654,
+            name='LUBD-1205',
+            room_type='Deluxe',
+            property=self.property,
         )
         self.job = Job.objects.create(
             user=self.user,
@@ -26,7 +29,18 @@ class JobAdminSearchTests(TestCase):
             status='pending',
             priority='medium',
         )
+        self.job.job_id = 'jADMINSEARCH'
+        self.job.save(update_fields=['job_id'])
         self.job.rooms.add(self.room)
+
+    def test_search_matches_job_id(self):
+        queryset, _ = self.admin.get_search_results(
+            self.request,
+            Job.objects.all(),
+            'ADMINSEARCH',
+        )
+
+        self.assertIn(self.job, queryset)
 
     def test_search_matches_room_name(self):
         queryset, _ = self.admin.get_search_results(self.request, Job.objects.all(), '1205')

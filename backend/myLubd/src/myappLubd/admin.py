@@ -36,7 +36,7 @@ admin.site.register(User, CustomUserAdmin)
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from collections import Counter
 
 from .timezones import timezone_choices
@@ -75,6 +75,8 @@ from .models import (
     TenantMembership,
     SubscriptionPlan,
     TenantSubscription,
+    TenantInvitation,
+    BillingWebhookEvent,
     UsageMetric,
     InventoryUsage,
 )
@@ -276,7 +278,7 @@ class UserProfileInline(admin.StackedInline):
 class UserAdmin(BaseUserAdmin):
     list_per_page = 25
     inlines = (UserProfileInline,)
-    list_display = ['user_display', 'email', 'first_name', 'last_name', 'property_name', 'get_property_id_display', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
+    list_display = ['user_display', 'email', 'first_name', 'last_name', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
     list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined', DateJoinedMonthFilter, 'property_name']
     search_fields = ['username', 'first_name', 'last_name', 'email', 'property_name', 'property_id']
     actions = ['export_users_csv', 'export_users_pdf']
@@ -348,7 +350,7 @@ class UserAdmin(BaseUserAdmin):
         start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         # Add enough days to guarantee moving to next month, then reset to day 1
         start_of_next_month = (start_of_month + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        return queryset.annotate(
+        return queryset.select_related('userprofile').annotate(
             jobs_this_month_count=Count(
                 'maintenance_jobs',
                 filter=Q(
@@ -1275,8 +1277,20 @@ class JobAdmin(admin.ModelAdmin):
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_topics_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_location_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
     list_filter = ['status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, AreaFilter, FloorFilter, RoomFilter, TopicFilter]
-    search_fields = ['description', 'topics__title', 'rooms__name', 'area__name', 'area__property__name']
-    search_help_text = 'Search by description, topic title, room name, area name, or area property.'
+    search_fields = [
+        'job_id',
+        'description',
+        'topics__title',
+        'rooms__name',
+        'area__name',
+        'property__name',
+        'property__property_id',
+        'user__username',
+        'user__email',
+        'user__first_name',
+        'user__last_name',
+    ]
+    search_help_text = 'Search by job ID, description, topic, room, area, property, or assigned user.'
     readonly_fields = ['job_id', 'updated_by', 'property', 'inventory_items_display', 'preventive_maintenance_images']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]
@@ -1581,7 +1595,7 @@ class JobAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         self._request = request
-        return super().get_queryset(request).select_related('user', 'updated_by', 'property', 'area', 'area__property').prefetch_related('rooms__property', 'topics', 'preventivemaintenance_set')
+        return super().get_queryset(request).select_related('user', 'updated_by', 'property', 'area', 'area__property').prefetch_related('rooms__property', 'topics', 'inventory_items', 'preventivemaintenance_set')
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
@@ -2635,10 +2649,11 @@ class JobImageAdmin(admin.ModelAdmin):
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
     list_per_page = 25
-    list_display = ['property_id', 'name', 'created_at', 'get_users_count', 'is_preventivemaintenance']
-    search_fields = ['property_id', 'name', 'description']
-    list_filter = ['created_at', CreatedAtMonthFilter, 'is_preventivemaintenance']
+    list_display = ['name', 'tenant', 'is_preventivemaintenance', 'created_at']
+    search_fields = ['property_id', 'name', 'description', 'tenant__name', 'tenant__tenant_id']
+    list_filter = ['tenant', 'created_at', CreatedAtMonthFilter, 'is_preventivemaintenance']
     readonly_fields = ['property_id', 'created_at']
+    list_select_related = ['tenant']
     
     fieldsets = (
         ('Property Information', {
@@ -2729,12 +2744,13 @@ class RoomAdminForm(forms.ModelForm):
 class RoomAdmin(admin.ModelAdmin):
     form = RoomAdminForm
     list_per_page = 25
-    list_display = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'get_properties_display']
+    list_display = ['name', 'property', 'room_type', 'is_active', 'created_at']
     list_filter = ['room_type', 'property', 'is_active', 'created_at', CreatedAtMonthFilter, HasPreventiveMaintenanceFilter]
     search_fields = ['name', 'room_type', 'property__name']
     # Legacy M2M remains only as a synchronized compatibility representation.
     filter_horizontal = []
     readonly_fields = ['room_id', 'created_at']
+    list_select_related = ['property']
     actions = ['activate_rooms', 'deactivate_rooms', 'export_rooms_csv']
 
     def get_readonly_fields(self, request, obj=None):
@@ -3063,7 +3079,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('created_by', 'assigned_to', 'procedure_template', 'job__property').prefetch_related(
-            'topics', 'machines__property'
+            'topics', 'machines__property', 'inventory_items'
         )
 
     def save_model(self, request, obj, form, change):
@@ -4070,34 +4086,45 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
     export_utility_consumption_csv.short_description = "Export selected/filtered utility consumption to CSV"
 
 
+class LowStockFilter(admin.SimpleListFilter):
+    title = 'stock level'
+    parameter_name = 'stock_level'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('low', 'Low stock'),
+            ('out', 'Out of stock'),
+            ('at_or_above', 'At or above minimum'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'low':
+            return queryset.filter(quantity__gt=0, quantity__lt=F('min_quantity'))
+        if self.value() == 'out':
+            return queryset.filter(quantity=0)
+        if self.value() == 'at_or_above':
+            return queryset.filter(quantity__gte=F('min_quantity'), quantity__gt=0)
+        return queryset
+
+
 @admin.register(Inventory)
 class InventoryAdmin(admin.ModelAdmin):
     list_per_page = 27
     list_display = [
         'image_preview',
-        'item_id',
         'name',
         'category',
-        'quantity',
-        'unit',
-        'min_quantity',
-        'status',
+        'stock_level',
+        'status_display',
         'property_link',
         'room_link',
-        'last_job_by_user',
-        'last_pm_by_user',
-        'job_links',
-        'pm_links',
         'location',
-        'unit_price',
-        'last_restocked',
         'expiry_date',
-        'created_by',
-        'created_at',
-        'updated_at'
+        'updated_at',
     ]
     list_filter = [
         'status',
+        LowStockFilter,
         'category',
         'property',
         'room',
@@ -4169,6 +4196,10 @@ class InventoryAdmin(admin.ModelAdmin):
             'fields': ('created_by', 'created_at', 'updated_at')
         }),
     )
+
+    @admin.display(description='Stock', ordering='quantity')
+    def stock_level(self, obj):
+        return f'{obj.quantity} {obj.unit} / min {obj.min_quantity}'
     
     def property_link(self, obj):
         if obj.property:
@@ -4391,18 +4422,7 @@ class InventoryAdmin(admin.ModelAdmin):
     status_display.short_description = 'Status'
     
     def get_queryset(self, request):
-        # Store request user for use in list_display methods
-        self._request_user = request.user
-        return (
-            super()
-            .get_queryset(request)
-            .select_related('property', 'room', 'created_by')
-            .prefetch_related(
-                'jobs__user',
-                'preventive_maintenances__assigned_to',
-                'preventive_maintenances__created_by'
-            )
-        )
+        return super().get_queryset(request).select_related('property', 'room', 'created_by')
     
     def get_inventory_url(self, obj):
         """Generate the frontend URL for this inventory item"""
@@ -5922,11 +5942,12 @@ class TenantAdmin(admin.ModelAdmin):
 
     form = TenantAdminForm
     list_per_page = 25
-    list_display = ['tenant_id', 'name', 'status', 'timezone', 'owner', 'billing_email', 'created_at']
+    list_display = ['name', 'status', 'timezone', 'owner', 'billing_email', 'created_at']
     list_filter = ['status', 'timezone', 'created_at']
     search_fields = ['tenant_id', 'name', 'slug', 'billing_email', 'owner__username', 'owner__email']
     readonly_fields = ['tenant_id', 'created_at', 'updated_at']
     autocomplete_fields = ['owner']
+    list_select_related = ['owner']
 
 
 @admin.register(AuthIdentity)
@@ -5937,6 +5958,15 @@ class AuthIdentityAdmin(admin.ModelAdmin):
     search_fields = ['user__username', 'user__email', 'email_at_link', 'issuer', 'subject']
     readonly_fields = ['user', 'issuer', 'subject', 'email_at_link', 'created_at', 'last_seen_at']
     ordering = ['-last_seen_at']
+    list_select_related = ['user']
+    fieldsets = (
+        ('Linked user', {'fields': ('user', 'email_at_link')}),
+        ('Provider identity', {
+            'classes': ('collapse',),
+            'fields': ('issuer', 'subject'),
+        }),
+        ('Activity', {'fields': ('created_at', 'last_seen_at')}),
+    )
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user')
@@ -5997,11 +6027,36 @@ class TenantMembershipAdminForm(forms.ModelForm):
 class TenantMembershipAdmin(admin.ModelAdmin):
     form = TenantMembershipAdminForm
     list_per_page = 25
-    list_display = ['tenant', 'user', 'role', 'is_active', 'created_at']
-    list_filter = ['role', 'is_active', 'tenant']
+    list_display = ['user', 'email_display', 'tenant', 'role', 'properties_display', 'is_active', 'created_at', 'updated_at']
+    list_filter = ['tenant', 'role', 'is_active', ('properties', admin.RelatedOnlyFieldListFilter)]
     search_fields = ['tenant__name', 'user__username', 'user__email']
     readonly_fields = ['created_at', 'updated_at']
     autocomplete_fields = ['tenant', 'user', 'properties', 'invited_by']
+    list_select_related = ['user', 'tenant']
+    fieldsets = (
+        ('Membership', {'fields': ('user', 'tenant', 'role', 'is_active')}),
+        ('Property access', {
+            'fields': ('properties',),
+            'description': 'Optional property-level grants within this tenant.',
+        }),
+        ('Invitation', {'fields': ('invited_by',)}),
+        ('Timestamps', {
+            'classes': ('collapse',),
+            'fields': ('created_at', 'updated_at'),
+        }),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'tenant').prefetch_related('properties')
+
+    @admin.display(description='Email', ordering='user__email')
+    def email_display(self, obj):
+        return obj.user.email or '—'
+
+    @admin.display(description='Properties')
+    def properties_display(self, obj):
+        names = [property_obj.name for property_obj in obj.properties.all()]
+        return ', '.join(names) or 'No property grants'
 
     def save_model(self, request, obj, form, change):
         existing_snapshot = None
@@ -6052,7 +6107,10 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
 @admin.register(TenantSubscription)
 class TenantSubscriptionAdmin(admin.ModelAdmin):
     list_per_page = 25
-    list_display = ['tenant', 'plan', 'status', 'current_period_end', 'cancel_at_period_end']
+    list_display = [
+        'tenant', 'plan', 'status', 'user_usage', 'property_usage',
+        'trial_ends_at', 'grace_period_ends_at', 'cancel_at_period_end',
+    ]
     list_filter = ['status', 'plan', 'cancel_at_period_end']
     search_fields = ['tenant__name', 'tenant__tenant_id', 'external_customer_id', 'external_subscription_id']
     platform_authority_fields = [
@@ -6063,6 +6121,39 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ['created_at', 'updated_at']
     autocomplete_fields = ['tenant', 'plan']
+    list_select_related = ['tenant', 'plan']
+    fieldsets = (
+        ('Subscription', {'fields': ('tenant', 'plan', 'status', 'cancel_at_period_end')}),
+        ('Billing period', {
+            'fields': ('current_period_start', 'current_period_end', 'trial_ends_at', 'grace_period_ends_at'),
+        }),
+        ('Provider references', {
+            'classes': ('collapse',),
+            'fields': ('external_customer_id', 'external_subscription_id'),
+        }),
+        ('Timestamps', {
+            'classes': ('collapse',),
+            'fields': ('created_at', 'updated_at'),
+        }),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('tenant', 'plan').annotate(
+            active_user_count=Count(
+                'tenant__memberships',
+                filter=Q(tenant__memberships__is_active=True),
+                distinct=True,
+            ),
+            tenant_property_count=Count('tenant__properties', distinct=True),
+        )
+
+    @admin.display(description='User usage', ordering='active_user_count')
+    def user_usage(self, obj):
+        return f'{obj.active_user_count} / {obj.plan.max_users} users'
+
+    @admin.display(description='Property usage', ordering='tenant_property_count')
+    def property_usage(self, obj):
+        return f'{obj.tenant_property_count} / {obj.plan.max_properties} properties'
 
     def get_readonly_fields(self, request, obj=None):
         if request.user.is_superuser:
@@ -6077,6 +6168,107 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return bool(request.user.is_superuser)
+
+
+class InvitationStatusFilter(admin.SimpleListFilter):
+    title = 'status'
+    parameter_name = 'invitation_status'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('pending', 'Pending'),
+            ('accepted', 'Accepted'),
+            ('revoked', 'Revoked'),
+            ('expired', 'Expired'),
+        )
+
+    def queryset(self, request, queryset):
+        unresolved = Q(accepted_at__isnull=True, revoked_at__isnull=True)
+        if self.value() == 'pending':
+            return queryset.filter(unresolved, expires_at__gt=timezone.now())
+        if self.value() == 'accepted':
+            return queryset.filter(accepted_at__isnull=False)
+        if self.value() == 'revoked':
+            return queryset.filter(revoked_at__isnull=False)
+        if self.value() == 'expired':
+            return queryset.filter(unresolved, expires_at__lte=timezone.now())
+        return queryset
+
+
+@admin.register(TenantInvitation)
+class TenantInvitationAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    empty_value_display = '—'
+    list_display = [
+        'email', 'tenant', 'role', 'property_count', 'status_display',
+        'expires_at', 'invited_by',
+    ]
+    list_filter = ['tenant', 'role', InvitationStatusFilter, 'created_at']
+    search_fields = ['email', 'tenant__name', 'invited_by__email', 'invited_by__username']
+    ordering = ['-created_at']
+    readonly_fields = [
+        'tenant', 'email', 'role', 'invited_by', 'accepted_by', 'properties',
+        'expires_at', 'accepted_at', 'revoked_at', 'created_at', 'updated_at',
+    ]
+    exclude = ['token_hash']
+    list_select_related = ['tenant', 'invited_by']
+    fieldsets = (
+        ('Invitation', {'fields': ('email', 'tenant', 'role', 'properties')}),
+        ('Status', {'fields': ('expires_at', 'accepted_at', 'accepted_by', 'revoked_at')}),
+        ('Audit', {
+            'classes': ('collapse',),
+            'fields': ('invited_by', 'created_at', 'updated_at'),
+        }),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'tenant', 'invited_by', 'accepted_by',
+        ).prefetch_related('properties').annotate(admin_property_count=Count('properties'))
+
+    @admin.display(description='Properties', ordering='admin_property_count')
+    def property_count(self, obj):
+        return obj.admin_property_count
+
+    @admin.display(description='Status')
+    def status_display(self, obj):
+        return obj.status.title()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(BillingWebhookEvent)
+class BillingWebhookEventAdmin(admin.ModelAdmin):
+    list_per_page = 50
+    empty_value_display = '—'
+    list_display = ['provider', 'event_type', 'status', 'received_at', 'processed_at', 'error_code']
+    list_filter = ['provider', 'status', 'event_type', 'received_at']
+    search_fields = ['event_id', 'event_type', 'error_code']
+    ordering = ['-received_at']
+    readonly_fields = [
+        'provider', 'event_id', 'event_type', 'status', 'error_code',
+        'received_at', 'processed_at',
+    ]
+    fieldsets = (
+        ('Event', {'fields': ('provider', 'event_type', 'event_id')}),
+        ('Processing', {'fields': ('status', 'error_code', 'received_at', 'processed_at')}),
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(UsageMetric)

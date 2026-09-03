@@ -4142,6 +4142,7 @@ class InventoryAdmin(admin.ModelAdmin):
     search_fields = [
         'item_id',
         'name',
+        'category',
         'description',
         'location',
         'supplier',
@@ -4165,18 +4166,21 @@ class InventoryAdmin(admin.ModelAdmin):
     filter_horizontal = ['jobs', 'preventive_maintenances']
     
     fieldsets = (
-        ('Item Information', {
-            'fields': ('item_id', 'name', 'description', 'category', 'status', 'status_display')
+        ('Inventory Information', {
+            'fields': (
+                'item_id', 'name', 'category', 'property', 'room', 'unit',
+                'description', 'status', 'status_display',
+            )
         }),
         ('Item Image', {
             'fields': ('image', 'image_preview_large'),
             'description': 'Upload an image of the inventory item'
         }),
-        ('Quantity & Pricing', {
-            'fields': ('quantity', 'min_quantity', 'max_quantity', 'unit', 'unit_price')
+        ('Stock', {
+            'fields': ('quantity', 'min_quantity', 'max_quantity', 'unit_price')
         }),
-        ('Location & Storage', {
-            'fields': ('property', 'room', 'location', 'expiry_date')
+        ('Storage', {
+            'fields': ('location', 'expiry_date')
         }),
         ('Related Jobs & Maintenance', {
             'fields': ('jobs', 'preventive_maintenances'),
@@ -4192,7 +4196,7 @@ class InventoryAdmin(admin.ModelAdmin):
             'fields': ('qr_code_preview',),
             'description': 'QR code for quick access to this inventory item\'s details page'
         }),
-        ('Metadata', {
+        ('System', {
             'fields': ('created_by', 'created_at', 'updated_at')
         }),
     )

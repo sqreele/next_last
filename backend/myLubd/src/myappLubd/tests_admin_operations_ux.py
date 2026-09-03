@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import Permission
 from django.db import connection
+from django.forms import Select
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -101,10 +102,49 @@ class AdminOperationsConfigurationTests(SimpleTestCase):
         self.assertIn('user__email', job_admin.search_fields)
         self.assertIn('property__name', job_admin.search_fields)
         self.assertIn('supplier', inventory_admin.search_fields)
+        self.assertIn('category', inventory_admin.search_fields)
         self.assertIn(LowStockFilter, inventory_admin.list_filter)
+        self.assertIn('category', inventory_admin.list_filter)
+        self.assertIn('category', inventory_admin.list_display)
+        self.assertNotIn('category', inventory_admin.raw_id_fields)
         self.assertNotIn('item_id', inventory_admin.list_display)
         self.assertNotIn('last_job_by_user', inventory_admin.list_display)
         self.assertNotIn('last_pm_by_user', inventory_admin.list_display)
+
+    def test_inventory_form_prioritizes_category_and_location_context(self):
+        inventory_admin = InventoryAdmin(Inventory, AdminSite())
+        fieldsets = dict(inventory_admin.fieldsets)
+
+        self.assertEqual(
+            [title for title, _options in inventory_admin.fieldsets],
+            [
+                'Inventory Information',
+                'Item Image',
+                'Stock',
+                'Storage',
+                'Related Jobs & Maintenance',
+                'Supplier Information',
+                'Additional Notes',
+                'QR Code',
+                'System',
+            ],
+        )
+        self.assertEqual(
+            fieldsets['Inventory Information']['fields'],
+            (
+                'item_id', 'name', 'category', 'property', 'room', 'unit',
+                'description', 'status', 'status_display',
+            ),
+        )
+        self.assertEqual(
+            fieldsets['Stock']['fields'],
+            ('quantity', 'min_quantity', 'max_quantity', 'unit_price'),
+        )
+        self.assertEqual(
+            fieldsets['System']['fields'],
+            ('created_by', 'created_at', 'updated_at'),
+        )
+        self.assertNotIn('category', inventory_admin.readonly_fields)
 
     def test_primary_lists_hide_legacy_and_raw_ids(self):
         user_admin = UserAdmin(User, AdminSite())
@@ -277,6 +317,73 @@ class AdminOperationsDisplayTests(TestCase):
                 )
                 result = stock_filter.queryset(request, Inventory.objects.all())
                 self.assertSetEqual(set(result.values_list('name', flat=True)), names)
+
+    def test_inventory_add_form_has_editable_category_choices(self):
+        response = self.client.get(
+            reverse('admin:myappLubd_inventory_add'),
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context['adminform'].form
+        self.assertIn('category', form.fields)
+        category_field = form.fields['category']
+        self.assertFalse(category_field.disabled)
+        self.assertIsInstance(category_field.widget, Select)
+        self.assertEqual(
+            Inventory.CATEGORY_CHOICES,
+            [
+                ('tools', 'Tools'),
+                ('parts', 'Parts'),
+                ('supplies', 'Supplies'),
+                ('equipment', 'Equipment'),
+                ('consumables', 'Consumables'),
+                ('safety', 'Safety Equipment'),
+                ('other', 'Other'),
+            ],
+        )
+        self.assertEqual(
+            list(category_field.choices),
+            list(Inventory._meta.get_field('category').formfield().choices),
+        )
+        self.assertContains(response, 'name="category"')
+        for value, label in Inventory.CATEGORY_CHOICES:
+            self.assertContains(response, f'value="{value}"')
+            self.assertContains(response, str(label))
+
+    def test_inventory_category_filter_limits_changelist(self):
+        Inventory.objects.create(name='Tools item', category='tools')
+        Inventory.objects.create(name='Parts item', category='parts')
+
+        response = self.client.get(
+            reverse('admin:myappLubd_inventory_changelist'),
+            {'category': 'tools'},
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertQuerySetEqual(
+            response.context['cl'].queryset,
+            ['Tools item'],
+            transform=lambda item: item.name,
+        )
+
+    def test_inventory_category_search_uses_choice_value_contains_lookup(self):
+        Inventory.objects.create(name='Wrench', category='tools')
+        Inventory.objects.create(name='Replacement belt', category='parts')
+
+        response = self.client.get(
+            reverse('admin:myappLubd_inventory_changelist'),
+            {'q': 'tool'},
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertQuerySetEqual(
+            response.context['cl'].queryset,
+            ['Wrench'],
+            transform=lambda item: item.name,
+        )
 
     def test_invitation_status_filter_matches_model_status_rules(self):
         now = timezone.now()

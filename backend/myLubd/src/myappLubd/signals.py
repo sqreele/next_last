@@ -15,7 +15,15 @@ from django.core.cache import cache
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from .models import Inventory, Job, JobComment
+from .models import Inventory, InventoryCategory, Job, JobComment, Tenant
+
+
+@receiver(post_save, sender=Tenant)
+def _create_default_inventory_categories(sender, instance, created, **kwargs):
+    if created:
+        InventoryCategory.ensure_defaults(instance)
+
+
 from .push import send_push_to_user
 from .tenancy import get_property_summary_recipients
 

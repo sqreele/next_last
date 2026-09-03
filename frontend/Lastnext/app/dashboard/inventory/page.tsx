@@ -122,6 +122,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   equipment: "🛠️",
   consumables: "🧴",
   safety: "🦺",
+  safety_equipment: "🦺",
   other: "📋",
 };
 
@@ -229,6 +230,8 @@ export default function InventoryPage() {
     setSearchTerm("");
     setDebouncedSearchTerm("");
     setHasLoadedInventory(false);
+    setCategoryOptions([]);
+    setNewItem((item) => ({ ...item, category: "other" }));
   }, [selectedProperty]);
 
   useEffect(
@@ -266,29 +269,44 @@ export default function InventoryPage() {
 
   // Fetch filter options (categories, statuses) from backend
   useEffect(() => {
+    const controller = new AbortController();
+    const requestedProperty = selectedProperty;
     const fetchInventoryFilterOptions = async () => {
-      if (status !== "authenticated") return;
+      if (status !== "authenticated" || !requestedProperty) {
+        setCategoryOptions([]);
+        setNewItem((item) => ({ ...item, category: "" }));
+        return;
+      }
 
       try {
         const response = await apiClient.get(
           "/api/v1/inventory/filter_options/",
+          {
+            params: requestedProperty ? { property_id: requestedProperty } : {},
+            signal: controller.signal,
+          },
         );
+        if (requestedProperty !== selectedPropertyRef.current) return;
         if (response.data) {
-          setCategoryOptions(response.data.categories || []);
+          const categories = response.data.categories || [];
+          setCategoryOptions(categories);
+          setNewItem((item) => ({
+            ...item,
+            category: categories.some(
+              (category: { value: string }) => category.value === "other",
+            )
+              ? "other"
+              : categories[0]?.value || "",
+          }));
           setStatusOptions(response.data.statuses || []);
         }
       } catch (err: any) {
+        if (err?.code === "ERR_CANCELED") return;
+        if (requestedProperty !== selectedPropertyRef.current) return;
         console.error("Error fetching inventory filter options:", err);
-        // Fallback to default options if API fails
-        setCategoryOptions([
-          { value: "tools", label: "Tools" },
-          { value: "parts", label: "Parts" },
-          { value: "supplies", label: "Supplies" },
-          { value: "equipment", label: "Equipment" },
-          { value: "consumables", label: "Consumables" },
-          { value: "safety", label: "Safety Equipment" },
-          { value: "other", label: "Other" },
-        ]);
+        // Fail closed: stale or assumed categories must never become selectable.
+        setCategoryOptions([]);
+        setNewItem((item) => ({ ...item, category: "" }));
         setStatusOptions([
           { value: "available", label: "Available" },
           { value: "low_stock", label: "Low Stock" },
@@ -299,8 +317,9 @@ export default function InventoryPage() {
       }
     };
 
-    fetchInventoryFilterOptions();
-  }, [status]);
+    void fetchInventoryFilterOptions();
+    return () => controller.abort();
+  }, [status, selectedProperty]);
 
   // Fetch rooms, jobs, and PMs for filters when property changes or on load
   useEffect(() => {

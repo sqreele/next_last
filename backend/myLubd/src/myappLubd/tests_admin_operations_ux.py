@@ -5,7 +5,6 @@ from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import Permission
 from django.db import connection
-from django.forms import Select
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -29,6 +28,7 @@ from .models import (
     AuthIdentity,
     BillingWebhookEvent,
     Inventory,
+    InventoryCategory,
     Job,
     Property,
     Room,
@@ -102,7 +102,7 @@ class AdminOperationsConfigurationTests(SimpleTestCase):
         self.assertIn('user__email', job_admin.search_fields)
         self.assertIn('property__name', job_admin.search_fields)
         self.assertIn('supplier', inventory_admin.search_fields)
-        self.assertIn('category', inventory_admin.search_fields)
+        self.assertIn('category__code', inventory_admin.search_fields)
         self.assertIn(LowStockFilter, inventory_admin.list_filter)
         self.assertIn('category', inventory_admin.list_filter)
         self.assertIn('category', inventory_admin.list_display)
@@ -329,35 +329,18 @@ class AdminOperationsDisplayTests(TestCase):
         self.assertIn('category', form.fields)
         category_field = form.fields['category']
         self.assertFalse(category_field.disabled)
-        self.assertIsInstance(category_field.widget, Select)
-        self.assertEqual(
-            Inventory.CATEGORY_CHOICES,
-            [
-                ('tools', 'Tools'),
-                ('parts', 'Parts'),
-                ('supplies', 'Supplies'),
-                ('equipment', 'Equipment'),
-                ('consumables', 'Consumables'),
-                ('safety', 'Safety Equipment'),
-                ('other', 'Other'),
-            ],
-        )
-        self.assertEqual(
-            list(category_field.choices),
-            list(Inventory._meta.get_field('category').formfield().choices),
-        )
         self.assertContains(response, 'name="category"')
-        for value, label in Inventory.CATEGORY_CHOICES:
-            self.assertContains(response, f'value="{value}"')
-            self.assertContains(response, str(label))
 
     def test_inventory_category_filter_limits_changelist(self):
-        Inventory.objects.create(name='Tools item', category='tools')
-        Inventory.objects.create(name='Parts item', category='parts')
+        property_obj = Property.objects.create(tenant=self.tenant, name='Category Filter Property')
+        tools = InventoryCategory.objects.get(tenant=self.tenant, code='tools')
+        parts = InventoryCategory.objects.get(tenant=self.tenant, code='parts')
+        Inventory.objects.create(name='Tools item', category=tools, property=property_obj)
+        Inventory.objects.create(name='Parts item', category=parts, property=property_obj)
 
         response = self.client.get(
             reverse('admin:myappLubd_inventory_changelist'),
-            {'category': 'tools'},
+            {'category__id__exact': tools.pk},
             secure=True,
         )
 
@@ -369,8 +352,11 @@ class AdminOperationsDisplayTests(TestCase):
         )
 
     def test_inventory_category_search_uses_choice_value_contains_lookup(self):
-        Inventory.objects.create(name='Wrench', category='tools')
-        Inventory.objects.create(name='Replacement belt', category='parts')
+        property_obj = Property.objects.create(tenant=self.tenant, name='Category Search Property')
+        tools = InventoryCategory.objects.get(tenant=self.tenant, code='tools')
+        parts = InventoryCategory.objects.get(tenant=self.tenant, code='parts')
+        Inventory.objects.create(name='Wrench', category=tools, property=property_obj)
+        Inventory.objects.create(name='Replacement belt', category=parts, property=property_obj)
 
         response = self.client.get(
             reverse('admin:myappLubd_inventory_changelist'),

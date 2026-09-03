@@ -68,6 +68,7 @@ from .models import (
     MaintenanceSchedule,
     UtilityConsumption,
     Inventory,
+    InventoryCategory,
     WorkspaceReport,
     Area,
     JobComment,
@@ -4107,8 +4108,100 @@ class LowStockFilter(admin.SimpleListFilter):
         return queryset
 
 
+class InventoryCategoryAdminForm(forms.ModelForm):
+    class Meta:
+        model = InventoryCategory
+        fields = '__all__'
+
+    def clean_tenant(self):
+        tenant = self.cleaned_data.get('tenant')
+        if tenant is None:
+            raise ValidationError('Only migrated legacy categories may be unscoped.')
+        return tenant
+
+
+class InventoryAdminForm(forms.ModelForm):
+    class Meta:
+        model = Inventory
+        fields = '__all__'
+
+    def clean_category(self):
+        category = self.cleaned_data.get('category')
+        if category is None and self.instance.pk:
+            return type(self.instance).objects.select_related('category').get(
+                pk=self.instance.pk
+            ).category
+        return category
+
+    def clean(self):
+        cleaned = super().clean()
+        property_obj = cleaned.get('property')
+        category = cleaned.get('category')
+        if not self.instance.pk and property_obj is None:
+            self.add_error('property', 'Property is required for new inventory items.')
+        if not self.instance.pk and property_obj and category is None:
+            category = InventoryCategory.objects.filter(
+                tenant_id=property_obj.tenant_id,
+                code='other',
+                is_active=True,
+            ).first()
+            if category is None:
+                self.add_error('category', 'An active inventory category is required.')
+            else:
+                cleaned['category'] = category
+        if property_obj and category and property_obj.tenant_id != category.tenant_id:
+            self.add_error('category', 'Category must belong to the property tenant.')
+        if category and not category.is_active:
+            previously_selected = self.instance.pk and self.instance.category_id == category.pk
+            if not previously_selected:
+                self.add_error('category', 'Inactive categories cannot be newly assigned.')
+        return cleaned
+
+
+@admin.register(InventoryCategory)
+class InventoryCategoryAdmin(admin.ModelAdmin):
+    form = InventoryCategoryAdminForm
+    list_display = ['name', 'code', 'tenant', 'is_active', 'sort_order', 'updated_at']
+    list_filter = ['is_active', ('tenant', admin.RelatedOnlyFieldListFilter)]
+    search_fields = ['name', 'code', 'tenant__name', 'tenant__tenant_id']
+    ordering = ['tenant__name', 'sort_order', 'name']
+    list_editable = ['is_active', 'sort_order']
+    readonly_fields = ['created_at', 'updated_at']
+    list_select_related = ['tenant']
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(self.readonly_fields)
+        if obj is not None:
+            fields.extend(['tenant', 'code'])
+        return fields
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request).select_related('tenant')
+        if request.user.is_superuser:
+            return queryset
+        tenant_ids = TenantMembership.objects.filter(
+            user=request.user,
+            is_active=True,
+        ).values_list('tenant_id', flat=True)
+        return queryset.filter(tenant_id__in=tenant_ids)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'tenant' and not request.user.is_superuser:
+            kwargs['queryset'] = Tenant.objects.filter(
+                memberships__user=request.user,
+                memberships__is_active=True,
+            ).distinct()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        if not change and obj.tenant_id is None:
+            raise ValidationError('Only migrated legacy categories may be unscoped.')
+        super().save_model(request, obj, form, change)
+
+
 @admin.register(Inventory)
 class InventoryAdmin(admin.ModelAdmin):
+    form = InventoryAdminForm
     list_per_page = 27
     list_display = [
         'image_preview',
@@ -4142,7 +4235,8 @@ class InventoryAdmin(admin.ModelAdmin):
     search_fields = [
         'item_id',
         'name',
-        'category',
+        'category__code',
+        'category__name',
         'description',
         'location',
         'supplier',
@@ -4426,7 +4520,58 @@ class InventoryAdmin(admin.ModelAdmin):
     status_display.short_description = 'Status'
     
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('property', 'room', 'created_by')
+        queryset = super().get_queryset(request).select_related(
+            'property', 'room', 'created_by', 'category'
+        )
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(property__in=get_accessible_properties(request.user))
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'category':
+            queryset = InventoryCategory.objects.none()
+            object_id = getattr(getattr(request, 'resolver_match', None), 'kwargs', {}).get('object_id')
+            property_id = request.POST.get('property')
+            if property_id:
+                properties = get_accessible_properties(request.user)
+                tenant_id = properties.filter(pk=property_id).values_list(
+                    'tenant_id', flat=True
+                ).first()
+                if tenant_id is not None:
+                    queryset = InventoryCategory.objects.filter(
+                        tenant_id=tenant_id,
+                        is_active=True,
+                    )
+            elif object_id:
+                current = self.get_queryset(request).filter(pk=object_id).values(
+                    'property__tenant_id', 'category_id'
+                ).first()
+                if current:
+                    queryset = InventoryCategory.objects.filter(
+                        Q(tenant_id=current['property__tenant_id'], is_active=True)
+                        | Q(pk=current['category_id'])
+                    )
+            kwargs['queryset'] = queryset.order_by('tenant__name', 'sort_order', 'name')
+            formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
+            formfield.required = False
+            formfield.help_text = (
+                'On Add, leave blank to use the selected property tenant\'s active "other" '
+                'category. Save first to choose another tenant-scoped category.'
+            )
+            return formfield
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        if not request.user.is_superuser and not get_accessible_properties(
+            request.user
+        ).filter(pk=obj.property_id).exists():
+            raise ValidationError('You do not have access to the selected property.')
+        if obj.property_id and obj.category_id:
+            if obj.property.tenant_id != obj.category.tenant_id:
+                raise ValidationError('Inventory category must belong to the property tenant.')
+            if not obj.category.is_active and (not change or 'category' in form.changed_data):
+                raise ValidationError('Inactive categories cannot be newly assigned.')
+        super().save_model(request, obj, form, change)
     
     def get_inventory_url(self, obj):
         """Generate the frontend URL for this inventory item"""
@@ -4555,7 +4700,7 @@ class InventoryAdmin(admin.ModelAdmin):
         from xml.sax.saxutils import escape as xml_escape
 
         # Prefetch related data to avoid N+1 queries
-        qs = queryset.select_related('property', 'room', 'created_by').prefetch_related(
+        qs = queryset.select_related('property', 'room', 'created_by', 'category').prefetch_related(
             'jobs__user',
             'jobs__updated_by',
             'preventive_maintenances__assigned_to',
@@ -4837,7 +4982,7 @@ class InventoryAdmin(admin.ModelAdmin):
             # Info column
             item_name = item.name or 'Unnamed'
             item_desc = (item.description[:80] + '...') if item.description and len(item.description) > 80 else (item.description or '')
-            category = item.get_category_display() if hasattr(item, 'get_category_display') else item.category or ''
+            category = item.category.name if item.category_id else ''
             property_name = item.property.name if item.property else 'N/A'
             room_name = item.room.name if item.room else 'N/A'
             location = item.location or 'N/A'
@@ -4965,7 +5110,9 @@ class InventoryAdmin(admin.ModelAdmin):
     
     def export_inventory_csv(self, request, queryset):
         """Export selected/filtered inventory items to CSV"""
-        qs = queryset.select_related('property', 'room', 'created_by').prefetch_related('jobs', 'preventive_maintenances').order_by('item_id')
+        qs = queryset.select_related(
+            'property', 'room', 'created_by', 'category'
+        ).prefetch_related('jobs', 'preventive_maintenances').order_by('item_id')
         
         filename = f"inventory_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
         response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -5007,7 +5154,7 @@ class InventoryAdmin(admin.ModelAdmin):
                 item.item_id or '',
                 item.name or '',
                 item.description or '',
-                item.get_category_display() if hasattr(item, 'get_category_display') else item.category or '',
+                item.category.name if item.category_id else '',
                 item.quantity or 0,
                 item.min_quantity or 0,
                 item.max_quantity or 0,

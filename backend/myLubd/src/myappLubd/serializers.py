@@ -3,7 +3,7 @@ from .models import (
     Room, Topic, JobImage, Job, Property, UserProfile, Session,
     PreventiveMaintenance, PMMasterPlan, Machine, MaintenanceProcedure,
     MaintenanceTaskImage,
-    UtilityConsumption, Inventory, Area, JobComment, Tenant,
+    UtilityConsumption, Inventory, InventoryCategory, Area, JobComment, Tenant,
     TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
     InventoryUsage,
 )
@@ -64,6 +64,42 @@ def _validate_request_property_access(serializer, property_obj, field='property'
 def _validate_room_belongs_to_property(room, property_obj):
     if room is not None and property_obj is not None and room.property_id != property_obj.pk:
         raise serializers.ValidationError({'room': 'The room must belong to the selected property.'})
+
+
+class InventoryCategoryCodeField(serializers.Field):
+    """Keep the public Inventory.category contract as a category code string."""
+
+    default_error_messages = {'invalid': 'Category must be a code string.'}
+
+    def to_representation(self, value):
+        return value.code if value is not None else None
+
+    def to_internal_value(self, data):
+        if not isinstance(data, str) or not data.strip():
+            self.fail('invalid')
+        return data
+
+
+def _resolve_inventory_category(code, property_obj, *, allow_inactive=False):
+    tenant_id = getattr(property_obj, 'tenant_id', None)
+    if tenant_id is None:
+        raise serializers.ValidationError({
+            'category': 'The selected property must belong to a tenant before a category can be assigned.'
+        })
+    # ``safety`` was the deployed CharField value; retain it as an input alias.
+    canonical_code = 'safety_equipment' if code.lower() == 'safety' else code
+    queryset = InventoryCategory.objects.filter(
+        tenant_id=tenant_id,
+        code=canonical_code,
+    )
+    if not allow_inactive:
+        queryset = queryset.filter(is_active=True)
+    category = queryset.first()
+    if category is None:
+        raise serializers.ValidationError({
+            'category': 'Unknown or inactive category for this property tenant.'
+        })
+    return category
 
 
 def _validate_machine_ids_in_request_scope(serializer, machine_ids):
@@ -3174,7 +3210,8 @@ class InventorySerializer(serializers.ModelSerializer):
     created_by_username = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    category = InventoryCategoryCodeField(required=False)
+    category_display = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     image_url = serializers.SerializerMethodField()
     job_ids = serializers.SerializerMethodField()
     pm_ids = serializers.SerializerMethodField()
@@ -3287,6 +3324,15 @@ class InventorySerializer(serializers.ModelSerializer):
         room = data.get('room') if 'room' in data else getattr(self.instance, 'room', None)
         _validate_request_property_access(self, property_obj)
         _validate_room_belongs_to_property(room, property_obj)
+        submitted_category = data.get('category')
+        if submitted_category is not None:
+            data['category'] = _resolve_inventory_category(submitted_category, property_obj)
+        elif self.instance is None:
+            data['category'] = _resolve_inventory_category('other', property_obj)
+        elif self.instance.category_id and self.instance.category.tenant_id != property_obj.tenant_id:
+            raise serializers.ValidationError({
+                'category': 'Choose a category owned by the new property tenant.'
+            })
         quantity = data.get('quantity', self.instance.quantity if self.instance else 0)
         min_quantity = data.get('min_quantity', self.instance.min_quantity if self.instance else 0)
         
@@ -3314,7 +3360,8 @@ class InventoryListSerializer(serializers.ModelSerializer):
     property_id = serializers.CharField(source='property.property_id', read_only=True)
     room_name = serializers.CharField(source='room.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    category = InventoryCategoryCodeField(read_only=True)
+    category_display = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     job_id = serializers.SerializerMethodField()
     job_description = serializers.SerializerMethodField()
     pm_id = serializers.SerializerMethodField()

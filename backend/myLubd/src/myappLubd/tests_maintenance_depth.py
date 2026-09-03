@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 
 from .models import (
     Inventory,
+    InventoryCategory,
     InventoryUsage,
     Job,
     Machine,
@@ -43,7 +44,7 @@ class MaintenanceDepthTests(TestCase):
         self.job.rooms.set([self.room])
         self.inventory = Inventory.objects.create(
             name='LED driver',
-            category='parts',
+            category=InventoryCategory.objects.get(tenant=tenant, code='parts'),
             quantity=5,
             min_quantity=1,
             unit='pcs',

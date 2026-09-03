@@ -21,7 +21,7 @@ from django.db import models, transaction
 from .models import (
     UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance,
     PreventiveMaintenanceImage, PMMasterPlan, JobImage, Machine,
-    MaintenanceProcedure, UtilityConsumption, Inventory,
+    MaintenanceProcedure, UtilityConsumption, Inventory, InventoryCategory,
     Area, JobComment, PushSubscription, Tenant,
     TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
     InventoryUsage, MaintenanceChecklist, MaintenanceHistory,
@@ -6955,6 +6955,20 @@ class UtilityConsumptionViewSet(viewsets.ModelViewSet):
         instance.delete()
 
 
+class InventoryOrderingFilter(filters.OrderingFilter):
+    """Retain code-based ordering for the legacy ``?ordering=category`` API."""
+
+    def get_ordering(self, request, queryset, view):
+        ordering = super().get_ordering(request, queryset, view)
+        if not ordering:
+            return ordering
+        return [
+            f"{'-' if field.startswith('-') else ''}category__code"
+            if field.lstrip('-') == 'category' else field
+            for field in ordering
+        ]
+
+
 class InventoryViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing inventory items for maintenance engineers.
@@ -6963,8 +6977,8 @@ class InventoryViewSet(viewsets.ModelViewSet):
     queryset = Inventory.objects.all()
     permission_classes = [IsAuthenticated]
     pagination_class = MaintenancePagination
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['property', 'room', 'category', 'status', 'jobs', 'preventive_maintenances']
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, InventoryOrderingFilter]
+    filterset_fields = ['property', 'room', 'status', 'jobs', 'preventive_maintenances']
     search_fields = ['name', 'item_id', 'description', 'location', 'supplier']
     ordering_fields = ['name', 'quantity', 'created_at', 'updated_at', 'category', 'status']
     ordering = ['-created_at']
@@ -6976,7 +6990,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         queryset = (
-            Inventory.objects.select_related('property', 'room', 'created_by')
+            Inventory.objects.select_related('property', 'property__tenant', 'room', 'created_by', 'category')
             .prefetch_related(
                 'jobs__user',
                 'preventive_maintenances__assigned_to',
@@ -6999,7 +7013,8 @@ class InventoryViewSet(viewsets.ModelViewSet):
         # Filter by category if provided
         category = self.request.query_params.get('category')
         if category:
-            queryset = queryset.filter(category=category)
+            canonical_code = 'safety_equipment' if category.lower() == 'safety' else category
+            queryset = queryset.filter(category__code=canonical_code)
         
         # Filter by status if provided
         status = self.request.query_params.get('status')
@@ -7482,10 +7497,24 @@ class InventoryViewSet(viewsets.ModelViewSet):
                 continue
 
             try:
+                category_code = row.get('category') or 'other'
+                if category_code.lower() == 'safety':
+                    category_code = 'safety_equipment'
+                category = InventoryCategory.objects.filter(
+                    tenant_id=target_prop.tenant_id,
+                    code=category_code,
+                    is_active=True,
+                ).first()
+                if category is None:
+                    errors.append({
+                        'row': row_index,
+                        'error': 'category is unknown or inactive for the property tenant.',
+                    })
+                    continue
                 item = Inventory.objects.create(
                     name=name[:200],
                     description=row.get('description', '')[:500] or None,
-                    category=(row.get('category') or 'other')[:50],
+                    category=category,
                     quantity=quantity,
                     min_quantity=min_quantity,
                     unit=(row.get('unit') or 'pcs')[:20],
@@ -7514,12 +7543,30 @@ class InventoryViewSet(viewsets.ModelViewSet):
     def filter_options(self, request):
         """
         Get available filter options for inventory items.
-        Returns categories and statuses from the model choices.
+        Returns active tenant categories and inventory status choices.
         """
-        categories = [
-            {'value': choice[0], 'label': choice[1]}
-            for choice in Inventory.CATEGORY_CHOICES
-        ]
+        accessible_properties = get_accessible_properties(request.user)
+        property_id = request.query_params.get('property_id')
+        if property_id:
+            property_obj = get_object_or_404(
+                accessible_properties.only('tenant_id'),
+                property_id=property_id,
+            )
+            tenant_ids = [property_obj.tenant_id] if property_obj.tenant_id else []
+        else:
+            tenant_ids = accessible_properties.exclude(
+                tenant_id__isnull=True
+            ).values_list('tenant_id', flat=True)
+        categories = []
+        seen_codes = set()
+        for category in InventoryCategory.objects.filter(
+            tenant_id__in=tenant_ids,
+            is_active=True,
+        ).order_by('sort_order', 'name', 'code', 'tenant_id', 'id'):
+            if category.code in seen_codes:
+                continue
+            seen_codes.add(category.code)
+            categories.append({'value': category.code, 'label': category.name})
         statuses = [
             {'value': choice[0], 'label': choice[1]}
             for choice in Inventory.STATUS_CHOICES

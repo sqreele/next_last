@@ -2378,6 +2378,70 @@ class UtilityConsumption(models.Model):
         return f"{property_name} - {self.get_month_display()} {self.year}"
 
 
+class InventoryCategory(models.Model):
+    """Tenant-owned, administrator-managed inventory classification."""
+
+    DEFAULTS = (
+        ('tools', 'Tools', 10),
+        ('parts', 'Parts', 20),
+        ('supplies', 'Supplies', 30),
+        ('equipment', 'Equipment', 40),
+        ('consumables', 'Consumables', 50),
+        ('safety_equipment', 'Safety Equipment', 60),
+        ('other', 'Other', 70),
+    )
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='inventory_categories',
+        null=True,
+        blank=True,
+        help_text='Owning tenant. Blank is reserved for migrated unscoped inventory.',
+    )
+    name = models.CharField(max_length=100)
+    code = models.SlugField(max_length=50)
+    is_active = models.BooleanField(default=True, db_index=True)
+    sort_order = models.PositiveIntegerField(default=0, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'name', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'code'],
+                condition=models.Q(tenant__isnull=False),
+                name='unique_inventory_category_code_per_tenant',
+            ),
+            models.UniqueConstraint(
+                fields=['code'],
+                condition=models.Q(tenant__isnull=True),
+                name='unique_unscoped_inventory_category_code',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['tenant', 'is_active', 'sort_order']),
+        ]
+        verbose_name = 'Inventory Category'
+        verbose_name_plural = 'Inventory Categories'
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def ensure_defaults(cls, tenant):
+        if tenant is None:
+            return
+        with transaction.atomic():
+            for code, name, sort_order in cls.DEFAULTS:
+                cls.objects.get_or_create(
+                    tenant=tenant,
+                    code=code,
+                    defaults={'name': name, 'sort_order': sort_order},
+                )
+
+
 class Inventory(models.Model):
     """
     Model for tracking inventory items for maintenance engineers
@@ -2388,16 +2452,6 @@ class Inventory(models.Model):
         ('out_of_stock', 'Out of Stock'),
         ('reserved', 'Reserved'),
         ('maintenance', 'Under Maintenance'),
-    ]
-    
-    CATEGORY_CHOICES = [
-        ('tools', 'Tools'),
-        ('parts', 'Parts'),
-        ('supplies', 'Supplies'),
-        ('equipment', 'Equipment'),
-        ('consumables', 'Consumables'),
-        ('safety', 'Safety Equipment'),
-        ('other', 'Other'),
     ]
     
     id = models.AutoField(primary_key=True)
@@ -2417,10 +2471,10 @@ class Inventory(models.Model):
         null=True,
         help_text="Description of the item"
     )
-    category = models.CharField(
-        max_length=50,
-        choices=CATEGORY_CHOICES,
-        default='other',
+    category = models.ForeignKey(
+        InventoryCategory,
+        on_delete=models.PROTECT,
+        related_name='inventory_items',
         help_text="Category of the inventory item"
     )
     quantity = models.PositiveIntegerField(
@@ -2547,6 +2601,35 @@ class Inventory(models.Model):
     
     def save(self, *args, **kwargs):
         """Auto-generate item_id if not provided"""
+        if self.category_id is None and self.property_id:
+            tenant_id = self.property.tenant_id
+            if tenant_id:
+                category = InventoryCategory.objects.filter(
+                    tenant_id=tenant_id,
+                    code='other',
+                    is_active=True,
+                ).first()
+                if category is None:
+                    raise ValidationError({
+                        'category': 'An active inventory category is required.'
+                    })
+                self.category = category
+        property_tenant_id = self.property.tenant_id if self.property_id else None
+        category_tenant_id = self.category.tenant_id if self.category_id else None
+        if property_tenant_id != category_tenant_id:
+            raise ValidationError({
+                'category': 'Inventory category must belong to the property tenant.'
+            })
+        if self.category_id and not self.category.is_active:
+            previous_category_id = None
+            if not self._state.adding:
+                previous_category_id = type(self).objects.filter(pk=self.pk).values_list(
+                    'category_id', flat=True
+                ).first()
+            if previous_category_id != self.category_id:
+                raise ValidationError({
+                    'category': 'Inactive categories cannot be newly assigned.'
+                })
         if not self.item_id:
             # Generate item_id: INV-YYYYMMDD-XXXX format
             date_str = timezone.now().strftime('%Y%m%d')
@@ -2577,7 +2660,6 @@ class Inventory(models.Model):
     
     def __str__(self):
         return f"{self.item_id} - {self.name} ({self.quantity} {self.unit})"
-
 
 class InventoryUsage(models.Model):
     """Immutable stock movement ledger for parts consumed by jobs or PM work."""

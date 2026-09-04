@@ -10,11 +10,8 @@ export function resolveInvitationBackendPath(segments, method) {
   if (parts.length === 1 && parts[0] === 'accept' && normalizedMethod === 'POST') {
     return { path: 'invitations/accept', requiresAuth: true };
   }
-  if (parts.length === 2 && parts[0] === 'workspace' && parts[1] === 'tenants' && normalizedMethod === 'GET') {
-    return { path: 'tenants', requiresAuth: true };
-  }
-  if (parts.length === 2 && parts[0] === 'workspace' && parts[1] === 'properties' && normalizedMethod === 'GET') {
-    return { path: 'properties', requiresAuth: true };
+  if (parts.length === 1 && parts[0] === 'workspace' && normalizedMethod === 'GET') {
+    return { path: 'tenant-invitations/workspace', requiresAuth: true };
   }
   if (parts.length === 1 && parts[0] === 'manage' && ['GET', 'POST'].includes(normalizedMethod)) {
     return { path: 'tenant-invitations', requiresAuth: true };

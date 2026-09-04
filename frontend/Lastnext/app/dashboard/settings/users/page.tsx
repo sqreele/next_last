@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, MailPlus, RefreshCw, RotateCw, UserRoundX } from "lucide-react";
+import { AlertCircle, CheckCircle2, MailPlus, RefreshCw, RotateCw, UserRoundX } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { Badge } from "@/app/components/ui/badge";
@@ -53,6 +53,12 @@ type Invitation = {
   created_at: string;
   email_sent?: boolean;
 };
+type InvitationWorkspace = { tenants?: Tenant[]; properties?: Property[] };
+type Feedback = {
+  title: string;
+  role?: string;
+  properties?: string[];
+};
 
 const roles = ["owner", "admin", "manager", "supervisor", "technician", "viewer", "billing"] as const;
 const tenantWideRoles = new Set(["owner", "admin", "manager"]);
@@ -67,6 +73,12 @@ function roleLabel(role: string) {
   return role.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function invitationPropertyNames(invitation: Pick<Invitation, "role" | "properties">) {
+  if (invitation.properties.length) return invitation.properties.map((property) => property.name);
+  if (tenantWideRoles.has(invitation.role)) return ["All properties (tenant-wide access)"];
+  return ["No properties selected"];
+}
+
 function apiMessage(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== "object") return fallback;
   const details = payload as Record<string, unknown>;
@@ -76,6 +88,14 @@ function apiMessage(payload: unknown, fallback: string) {
     if (Array.isArray(value) && typeof value[0] === "string") return value[0];
   }
   return fallback;
+}
+
+function createInvitationMessage(payload: unknown) {
+  const message = apiMessage(payload, "Unable to send invitation.");
+  if (/active invitation already exists/i.test(message)) {
+    return "A pending invitation already exists for this email. Use Resend in the invitation list below.";
+  }
+  return message;
 }
 
 function statusVariant(status: InvitationStatus): "default" | "secondary" | "destructive" | "outline" {
@@ -93,6 +113,7 @@ export default function TenantUsersSettingsPage() {
   const [tenantId, setTenantId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<string>("technician");
@@ -102,6 +123,8 @@ export default function TenantUsersSettingsPage() {
   const [invitationLoading, setInvitationLoading] = useState(false);
   const [loadedTenantId, setLoadedTenantId] = useState<string | null>(null);
   const invitationRequestRef = useRef(0);
+  const submissionRef = useRef(false);
+  const actionRequestRef = useRef(false);
   const tenantIdRef = useRef(tenantId);
   tenantIdRef.current = tenantId;
 
@@ -119,17 +142,12 @@ export default function TenantUsersSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [tenantResponse, propertyResponse] = await Promise.all([
-        fetch("/api/invitations/workspace/tenants", { cache: "no-store" }),
-        fetch("/api/invitations/workspace/properties", { cache: "no-store" }),
-      ]);
-      const tenantPayload = await tenantResponse.json().catch(() => null);
-      const propertyPayload = await propertyResponse.json().catch(() => null);
-      if (!tenantResponse.ok) throw new Error(apiMessage(tenantPayload, "Unable to load tenants."));
-      if (!propertyResponse.ok) throw new Error(apiMessage(propertyPayload, "Unable to load properties."));
-      const tenantRows = rows<Tenant>(tenantPayload);
+      const response = await fetch("/api/invitations/workspace", { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as InvitationWorkspace | null;
+      if (!response.ok) throw new Error(apiMessage(payload, "Unable to load invitation access."));
+      const tenantRows = payload?.tenants || [];
       setTenants(tenantRows);
-      setProperties(rows<Property>(propertyPayload));
+      setProperties(payload?.properties || []);
       setTenantId((current) => current || (tenantRows[0] ? String(tenantRows[0].id) : ""));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load user settings.");
@@ -205,10 +223,16 @@ export default function TenantUsersSettingsPage() {
     if (tenantWideRoles.has(role)) setPropertyIds([]);
   }, [role]);
 
+  useEffect(() => {
+    setPropertyIds([]);
+  }, [tenantId]);
+
   async function createInvitation() {
-    if (!tenantId) return;
+    if (!tenantId || submissionRef.current) return;
+    submissionRef.current = true;
     setSubmitting(true);
     setError(null);
+    setFeedback(null);
     try {
       const response = await fetch("/api/invitations/manage", {
         method: "POST",
@@ -221,25 +245,36 @@ export default function TenantUsersSettingsPage() {
         }),
       });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(apiMessage(payload, "Unable to create invitation."));
+      if (!response.ok) throw new Error(createInvitationMessage(payload));
+      const invitation = payload as Invitation;
       setDialogOpen(false);
       setEmail("");
       setRole("technician");
       setPropertyIds([]);
       await loadInvitations();
-      if (payload?.email_sent === false) {
+      if (invitation.email_sent === false) {
         setError("The invitation was created, but email delivery failed. Use Resend after checking email configuration.");
+      } else {
+        setFeedback({
+          title: `Invitation sent to ${invitation.email}`,
+          role: roleLabel(invitation.role),
+          properties: invitationPropertyNames(invitation),
+        });
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Unable to create invitation.");
     } finally {
+      submissionRef.current = false;
       setSubmitting(false);
     }
   }
 
   async function invitationAction(invitation: Invitation, action: "resend" | "revoke") {
+    if (actionRequestRef.current) return;
+    actionRequestRef.current = true;
     setActionId(invitation.id);
     setError(null);
+    setFeedback(null);
     try {
       const response = await fetch(`/api/invitations/manage/${invitation.id}/${action}`, {
         method: "POST",
@@ -249,10 +284,19 @@ export default function TenantUsersSettingsPage() {
       await loadInvitations();
       if (action === "resend" && payload?.email_sent === false) {
         setError("The token was rotated, but email delivery failed. The previous invitation link is no longer valid.");
+      } else {
+        setFeedback({
+          title: action === "resend"
+            ? `Invitation resent to ${invitation.email}`
+            : `Invitation revoked for ${invitation.email}`,
+          role: roleLabel(invitation.role),
+          properties: invitationPropertyNames(invitation),
+        });
       }
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : `Unable to ${action} invitation.`);
     } finally {
+      actionRequestRef.current = false;
       setActionId(null);
     }
   }
@@ -276,9 +320,16 @@ export default function TenantUsersSettingsPage() {
         <div>
           <p className="pcms-eyebrow">Settings</p>
           <h1>Users and invitations</h1>
-          <p className="pcms-page-description">Invite pre-provisioned users and assign their tenant role and property scope.</p>
+          <p className="pcms-page-description">Invite users by email and assign their tenant role and property scope.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          if (submitting) return;
+          setDialogOpen(open);
+          if (open) {
+            setError(null);
+            setFeedback(null);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button disabled={!selectedTenant} className="min-h-11 w-full sm:w-auto">
               <MailPlus className="mr-2 h-4 w-4" /> Invite user
@@ -342,6 +393,22 @@ export default function TenantUsersSettingsPage() {
         </Dialog>
       </div>
 
+      {feedback ? (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription className="space-y-1">
+            <p className="font-medium">{feedback.title}</p>
+            {feedback.role ? <p>Role: {feedback.role}</p> : null}
+            {feedback.properties ? (
+              <p>
+                {feedback.properties.length === 1 ? "Property" : "Properties"}: {feedback.properties.length
+                  ? feedback.properties.join(", ")
+                  : "Tenant-wide / none"}
+              </p>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {error ? <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert> : null}
 
       <Card>
@@ -370,14 +437,14 @@ export default function TenantUsersSettingsPage() {
                 <TableRow key={invitation.id}>
                   <TableCell mobileLabel="Email" className="font-medium">{invitation.email}</TableCell>
                   <TableCell mobileLabel="Role">{roleLabel(invitation.role)}</TableCell>
-                  <TableCell mobileLabel="Properties">{invitation.properties.length ? invitation.properties.map((property) => property.name).join(", ") : "Tenant-wide / none"}</TableCell>
+                  <TableCell mobileLabel="Properties">{invitationPropertyNames(invitation).join(", ")}</TableCell>
                   <TableCell mobileLabel="Status"><Badge variant={statusVariant(invitation.status)}>{roleLabel(invitation.status)}</Badge></TableCell>
                   <TableCell mobileLabel="Expires">{new Date(invitation.expires_at).toLocaleString()}</TableCell>
                   <TableCell mobileLabel="Actions" className="text-right">
                     {invitation.status === "pending" || invitation.status === "expired" ? (
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" disabled={actionId === invitation.id} onClick={() => void invitationAction(invitation, "resend")}><RotateCw className={`mr-1 h-3.5 w-3.5 ${actionId === invitation.id ? "animate-spin motion-reduce:animate-none" : ""}`} /> {actionId === invitation.id ? "Working…" : "Resend"}</Button>
-                        <Button variant="outline" size="sm" disabled={actionId === invitation.id} onClick={() => void invitationAction(invitation, "revoke")}><UserRoundX className="mr-1 h-3.5 w-3.5" /> {actionId === invitation.id ? "Working…" : "Revoke"}</Button>
+                        <Button variant="outline" size="sm" disabled={actionId !== null} onClick={() => void invitationAction(invitation, "resend")}><RotateCw className={`mr-1 h-3.5 w-3.5 ${actionId === invitation.id ? "animate-spin motion-reduce:animate-none" : ""}`} /> {actionId === invitation.id ? "Working…" : "Resend"}</Button>
+                        <Button variant="outline" size="sm" disabled={actionId !== null} onClick={() => void invitationAction(invitation, "revoke")}><UserRoundX className="mr-1 h-3.5 w-3.5" /> {actionId === invitation.id ? "Working…" : "Revoke"}</Button>
                       </div>
                     ) : <span className="text-sm text-muted-foreground">No actions</span>}
                   </TableCell>

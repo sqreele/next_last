@@ -13,6 +13,7 @@ import {
   sanitizeLogoutPath,
   verifyAuth0IdToken,
 } from '../app/lib/auth0/auth-security.mjs';
+import { createSessionDiagnostic } from '../app/lib/auth0/session-diagnostics.mjs';
 
 const root = new URL('../', import.meta.url);
 
@@ -191,6 +192,75 @@ test('sessions are sealed and logout clears the session cookie', async () => {
   assert.match(session, /ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION/);
   assert.match(middleware, /Plain JSON is rejected in production/);
   assert.match(logout, /clearSessionCookie\(response\)/);
+});
+
+test('OAuth login actions use top-level navigation without Next router or prefetch', async () => {
+  const loginPage = await readFile(new URL('app/auth/login/page.tsx', root), 'utf8');
+  const legacyLoginPage = await readFile(new URL('app/login/page.tsx', root), 'utf8');
+  const accessPendingPage = await readFile(new URL('app/auth/access-pending/page.tsx', root), 'utf8');
+  const registerForm = await readFile(new URL('app/components/profile/RegisterForm.tsx', root), 'utf8');
+  const interactiveSources = [loginPage, legacyLoginPage, accessPendingPage, registerForm];
+
+  assert.match(loginPage, /window\.location\.assign\(loginUrl\)/);
+  assert.match(loginPage, /encodeURIComponent\(redirect\)/);
+  assert.match(legacyLoginPage, /window\.location\.assign\('\/api\/auth\/login'\)/);
+  assert.match(legacyLoginPage, /loginStarted\.current/);
+
+  for (const source of interactiveSources) {
+    assert.doesNotMatch(source, /router\.(?:push|replace)\([^)]*\/api\/auth\/login/);
+    assert.doesNotMatch(source, /<Link[^>]+href=["']\/api\/auth\/login/);
+    assert.doesNotMatch(source, /prefetch[^\n]*\/api\/auth\/login/);
+  }
+});
+
+test('session diagnostics distinguish absent, open-failed, invalid, expired, and valid sessions', () => {
+  const now = 2_000;
+  assert.deepEqual(createSessionDiagnostic(undefined, null, now), {
+    auth0_session_cookie_present: 'no',
+    auth0_session_cookie_bytes: 0,
+    session_open_succeeded: 'no',
+    required_user_id_present: 'no',
+    access_token_present: 'no',
+    access_token_expired: 'no',
+  });
+
+  const openFailed = createSessionDiagnostic('sealed-cookie', null, now);
+  assert.equal(openFailed.auth0_session_cookie_present, 'yes');
+  assert.equal(openFailed.auth0_session_cookie_bytes, 13);
+  assert.equal(openFailed.session_open_succeeded, 'no');
+
+  const invalid = createSessionDiagnostic('sealed-cookie', { user: {} }, now);
+  assert.equal(invalid.session_open_succeeded, 'yes');
+  assert.equal(invalid.required_user_id_present, 'no');
+  assert.equal(invalid.access_token_present, 'no');
+
+  const expired = createSessionDiagnostic('sealed-cookie', {
+    user: { id: 'present', accessToken: 'present', accessTokenExpires: now - 1 },
+  }, now);
+  assert.equal(expired.required_user_id_present, 'yes');
+  assert.equal(expired.access_token_present, 'yes');
+  assert.equal(expired.access_token_expired, 'yes');
+
+  const valid = createSessionDiagnostic('sealed-cookie', {
+    user: { id: 'present', accessToken: 'present', accessTokenExpires: now + 1 },
+  }, now);
+  assert.equal(valid.session_open_succeeded, 'yes');
+  assert.equal(valid.required_user_id_present, 'yes');
+  assert.equal(valid.access_token_present, 'yes');
+  assert.equal(valid.access_token_expired, 'no');
+});
+
+test('callback and session readers emit metadata-only auth diagnostics', async () => {
+  const callback = await readFile(new URL('app/api/auth/callback/route.ts', root), 'utf8');
+  const serverSession = await readFile(new URL('app/lib/auth0/server-session.ts', root), 'utf8');
+  const middleware = await readFile(new URL('middleware.ts', root), 'utf8');
+
+  assert.match(callback, /auth_callback_success/);
+  assert.match(callback, /session_cookie_bytes/);
+  assert.match(callback, /set_cookie/);
+  assert.doesNotMatch(callback, /console\.(?:info|log)\([^\n]*(?:accessToken|refreshToken|sealedSession)/);
+  assert.match(serverSession, /logSessionDiagnostic\(cookieValue, parsed\)/);
+  assert.match(middleware, /logSessionDiagnostic\(auth0SessionCookie, sessionData\)/);
 });
 
 test('legacy token proxy is retired and refresh uses only the sealed Auth0 session', async () => {

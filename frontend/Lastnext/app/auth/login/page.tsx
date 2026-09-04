@@ -93,11 +93,10 @@ function LoginContent() {
   const handleSecureLogin = () => {
     setIsRedirecting(true);
     const redirect = searchParams.get('redirect');
-    router.push(
-      redirect
-        ? `/api/auth/login?redirect=${encodeURIComponent(redirect)}`
-        : '/api/auth/login',
-    );
+    const loginUrl = redirect
+      ? `/api/auth/login?redirect=${encodeURIComponent(redirect)}`
+      : '/api/auth/login';
+    window.location.assign(loginUrl);
   };
 
   if (sessionLoading) {

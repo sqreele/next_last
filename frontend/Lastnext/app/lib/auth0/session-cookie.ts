@@ -81,14 +81,16 @@ export async function setSessionCookie(
   response: NextResponse,
   session: CompatSession,
   maxAge: number,
-): Promise<void> {
-  response.cookies.set(COOKIE_NAME, await sealSession(session), {
+): Promise<number> {
+  const sealedSession = await sealSession(session);
+  response.cookies.set(COOKIE_NAME, sealedSession, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     maxAge,
   });
+  return Buffer.byteLength(sealedSession, 'utf8');
 }
 
 export function clearSessionCookie(response: NextResponse): void {

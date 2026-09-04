@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 import { Building, Loader2, ShieldCheck } from 'lucide-react';
 import {
   Card,
@@ -12,11 +11,13 @@ import {
 } from '@/app/components/ui/card';
 
 export default function LoginPage() {
-  const router = useRouter();
+  const loginStarted = useRef(false);
 
   useEffect(() => {
-    router.push('/api/auth/login');
-  }, [router]);
+    if (loginStarted.current) return;
+    loginStarted.current = true;
+    window.location.assign('/api/auth/login');
+  }, []);
 
   return (
     <main

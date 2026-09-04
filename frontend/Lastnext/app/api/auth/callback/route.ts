@@ -163,11 +163,16 @@ export async function GET(request: NextRequest) {
 
     const destination = resolvePostLoginDestination(requestedRedirect, hasPropertyAccess);
     const response = NextResponse.redirect(localAppUrl(baseUrl, destination));
-    await setSessionCookie(
+    const sessionCookieBytes = await setSessionCookie(
       response,
       sessionData,
       refreshToken ? 60 * 24 * 60 * 60 : Math.max(expiresIn, 24 * 60 * 60),
     );
+    // Temporary metadata-only diagnostic for the production cookie handoff.
+    console.info('auth_callback_success', {
+      session_cookie_bytes: sessionCookieBytes,
+      set_cookie: response.cookies.has('auth0_session') ? 'yes' : 'no',
+    });
     return clearTransaction(response);
   } catch {
     return callbackFailure(baseUrl, 'callback_error');

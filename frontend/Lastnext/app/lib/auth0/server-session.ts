@@ -2,21 +2,26 @@
 import type { CompatUser, CompatSession } from './session-compat';
 import { cookies } from 'next/headers';
 import { openSessionCookie } from './session-cookie';
+import { logSessionDiagnostic } from './session-diagnostics.mjs';
 
 export async function getCompatServerSession(): Promise<CompatSession | null> {
+  let cookieValue: string | undefined;
   try {
     // Production mode: Always use real session data
     
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('auth0_session');
-    if (!sessionCookie?.value) {
+    cookieValue = sessionCookie?.value;
+    if (!cookieValue) {
+      logSessionDiagnostic(cookieValue, null);
       // Only log in development - this happens frequently for unauthenticated requests
       if (process.env.NODE_ENV === 'development') {
       }
       return null;
     }
 
-    const parsed = await openSessionCookie(sessionCookie.value);
+    const parsed = await openSessionCookie(cookieValue);
+    logSessionDiagnostic(cookieValue, parsed);
     if (!parsed?.user || !parsed.user.accessToken) {
       return null;
     }
@@ -28,6 +33,7 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
     return parsed;
     
   } catch (error) {
+    logSessionDiagnostic(cookieValue, null);
     console.error('❌ Error in getCompatServerSession:', error);
     return { user: undefined, error: 'session_error' };
   }

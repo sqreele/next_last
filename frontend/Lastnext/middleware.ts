@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { logSessionDiagnostic } from "@/app/lib/auth0/session-diagnostics.mjs";
 
 type MiddlewareSession = {
   user?: {
@@ -206,6 +207,10 @@ export async function middleware(request: NextRequest) {
   const auth0SessionCookie = request.cookies.get(AUTH0_SESSION_COOKIE)?.value;
   const sessionData = await readSessionCookie(auth0SessionCookie);
   const isAuthenticated = hasValidSession(sessionData);
+
+  if (isProtectedRoute || isProtectedApiRoute) {
+    logSessionDiagnostic(auth0SessionCookie, sessionData);
+  }
 
   // Handle protected routes
   if (isProtectedRoute || isProtectedApiRoute) {

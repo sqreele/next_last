@@ -4,6 +4,7 @@ import { usePropertyStore } from "@/app/lib/stores/usePropertyStore";
 import { useAuthStore } from "@/app/lib/stores/useAuthStore";
 import { usePreventiveMaintenanceStore } from "@/app/lib/stores/usePreventiveMaintenanceStore";
 import { useFilterStore } from "@/app/lib/stores/useFilterStore";
+import { clearQueue } from "@/app/lib/offline-queue";
 
 // Lightweight runtime-safe accessors to avoid SSR usage
 function safeClearLocalStorageKeys(keys: string[]) {
@@ -33,6 +34,16 @@ export async function appSignOut(options?: { callbackUrl?: string; redirect?: bo
   const callbackUrl = options?.callbackUrl || ROUTES.signIn || "/auth/login";
   const redirect = options?.redirect ?? true;
 
+  // Clear authenticated mutations before changing identity. If durable queue
+  // clearing fails, remain in the current session rather than risking User A
+  // writes replaying under User B after a logout/login transition.
+  try {
+    await clearQueue();
+  } catch {
+    console.error("offline_queue_clear_failed_before_logout");
+    throw new Error("Unable to safely clear pending offline changes. Please retry logout.");
+  }
+
   // Clear any custom tokens and persisted UI state
   safeClearLocalStorageKeys([
     "accessToken",
@@ -47,7 +58,7 @@ export async function appSignOut(options?: { callbackUrl?: string; redirect?: bo
 
   try {
     // Redirect to Auth0 logout which clears its cookies
-    const url = callbackUrl ? `/auth/logout?returnTo=${encodeURIComponent(callbackUrl)}` : '/auth/logout';
+    const url = callbackUrl ? `/api/auth/logout?returnTo=${encodeURIComponent(callbackUrl)}` : '/api/auth/logout';
     if (redirect !== false) {
       window.location.assign(url);
       return;
@@ -66,4 +77,3 @@ export async function appSignOut(options?: { callbackUrl?: string; redirect?: bo
     }
   }
 }
-

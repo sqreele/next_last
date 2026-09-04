@@ -1,6 +1,7 @@
 'use client'
 
 export { useCompatSession as useSession } from '@/app/lib/auth-client';
+import { appSignOut } from '@/app/lib/logout';
 
 export async function signIn() {
   if (typeof window !== 'undefined') {
@@ -9,8 +10,5 @@ export async function signIn() {
 }
 
 export async function signOut() {
-  if (typeof window !== 'undefined') {
-    window.location.assign('/auth/logout');
-  }
+  await appSignOut();
 }
-

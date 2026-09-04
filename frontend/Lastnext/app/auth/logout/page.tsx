@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { appSignOut } from '@/app/lib/logout';
 
 function LogoutContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -14,22 +14,16 @@ function LogoutContent() {
         // Get the returnTo parameter from the URL
         const returnTo = searchParams.get('returnTo') || '/';
         
-        // Instead of calling the API from the page, redirect directly to the logout API
-        // This ensures the API handles the logout properly
-        const logoutUrl = `/api/auth/logout?returnTo=${encodeURIComponent(returnTo)}`;
-        
-        // Redirect to the logout API - this will handle the Auth0 logout and redirect
-        window.location.href = logoutUrl;
+        await appSignOut({ callbackUrl: returnTo });
         
       } catch (error) {
         console.error('❌ Logout error:', error);
-        // Fallback: redirect to home
-        router.push('/');
+        // Queue clearing failure deliberately leaves this identity in place.
       }
     };
 
     performLogout();
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

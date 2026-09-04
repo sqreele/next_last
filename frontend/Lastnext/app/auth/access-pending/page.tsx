@@ -2,6 +2,7 @@
 
 import { Building2, Clock3, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
+import { appSignOut } from "@/app/lib/logout";
 
 export default function AccessPendingPage() {
   return (
@@ -50,11 +51,7 @@ export default function AccessPendingPage() {
           <Button
             type="button"
             className="min-h-11 w-full"
-            onClick={() =>
-              window.location.assign(
-                "/api/auth/logout?returnTo=/auth/login",
-              )
-            }
+            onClick={() => void appSignOut({ callbackUrl: "/auth/login" })}
           >
             <LogOut className="mr-2 h-4 w-4" />
             Sign out

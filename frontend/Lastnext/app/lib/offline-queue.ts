@@ -28,6 +28,38 @@ export interface QueuedRequest {
   retries: number;
 }
 
+const isSafeQueueEndpoint = (endpoint: unknown): endpoint is string =>
+  typeof endpoint === 'string' && endpoint.startsWith('/api/v1/') && !endpoint.startsWith('//');
+
+/**
+ * Drops legacy credentials and malformed records before they can reach replay.
+ * Queue records intentionally have no headers: content type is fixed by the
+ * two supported JSON mutation kinds.
+ */
+function sanitizeQueueItem(value: unknown): QueuedRequest | null {
+  if (!value || typeof value !== 'object') return null;
+  const item = value as Partial<QueuedRequest>;
+  if (
+    typeof item.id !== 'string' ||
+    (item.kind !== 'job-status-update' && item.kind !== 'job-comment-create') ||
+    !isSafeQueueEndpoint(item.endpoint) ||
+    (item.method !== 'PATCH' && item.method !== 'POST' && item.method !== 'PUT') ||
+    !item.body || typeof item.body !== 'object' ||
+    typeof item.createdAt !== 'number' ||
+    typeof item.retries !== 'number'
+  ) return null;
+  return {
+    id: item.id,
+    kind: item.kind,
+    label: typeof item.label === 'string' ? item.label : '',
+    endpoint: item.endpoint,
+    method: item.method,
+    body: item.body,
+    createdAt: item.createdAt,
+    retries: item.retries,
+  };
+}
+
 type Listener = (snapshot: QueuedRequest[]) => void;
 
 const listeners = new Set<Listener>();
@@ -40,9 +72,9 @@ function loadLocal(): QueuedRequest[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as QueuedRequest[];
+    const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed;
+    return parsed.map(sanitizeQueueItem).filter((item): item is QueuedRequest => item !== null);
   } catch {
     return [];
   }
@@ -93,7 +125,9 @@ async function readIndexedDb(): Promise<QueuedRequest[]> {
     const store = tx.objectStore(STORE_NAME);
     const request = store.getAll();
     request.onsuccess = () => {
-      const rows = (request.result || []) as QueuedRequest[];
+      const rows = (request.result || [])
+        .map(sanitizeQueueItem)
+        .filter((item: QueuedRequest | null): item is QueuedRequest => item !== null);
       resolve(rows.sort((a, b) => a.createdAt - b.createdAt));
     };
     request.onerror = () => reject(request.error || new Error('IndexedDB read failed'));
@@ -166,6 +200,9 @@ export function getQueue(): QueuedRequest[] {
 }
 
 export function enqueueRequest(input: Omit<QueuedRequest, 'id' | 'createdAt' | 'retries'>): QueuedRequest {
+  if (!isSafeQueueEndpoint(input.endpoint)) {
+    throw new Error('Offline queue accepts only same-origin /api/v1/ paths.');
+  }
   const queue = getQueue();
   const item: QueuedRequest = {
     ...input,
@@ -181,8 +218,22 @@ export function removeFromQueue(id: string) {
   persist(getQueue().filter((item) => item.id !== id));
 }
 
-export function clearQueue() {
-  persist([]);
+async function clearIndexedDb(): Promise<void> {
+  if (!supportsIndexedDb()) return;
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).clear();
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error || new Error('IndexedDB queue clear failed')); };
+  });
+}
+
+/** Clear authenticated mutations before logout; reject if durable clearing fails. */
+export async function clearQueue(): Promise<void> {
+  notify([]);
+  await writeChain.catch(() => undefined);
+  await clearIndexedDb();
 }
 
 export function subscribe(listener: Listener): () => void {
@@ -220,6 +271,13 @@ export async function replayQueue(
         delivered += 1;
         onDrop?.(item, 'success');
         continue;
+      }
+      // A cookie/session expiry must never fall back to a stored credential.
+      // Keep the action pending and stop this drain; a later authenticated
+      // session can decide whether to retry it, while logout clears it.
+      if (response.status === 401) {
+        bumpRetry(item.id);
+        break;
       }
       const transient =
         response.status === 408 ||

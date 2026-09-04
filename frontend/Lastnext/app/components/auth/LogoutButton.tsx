@@ -1,24 +1,13 @@
 'use client';
 
+import { appSignOut } from '@/app/lib/logout';
+
 export default function LogoutButton({ className = '' }: { className?: string }) {
   const handleLogout = async () => {
     try {
-      // Call the logout API endpoint
-      const response = await fetch('/api/auth/logout');
-      
-      if (response.ok) {
-        // Clear any local state if needed
-        
-        // The API will redirect to Auth0 logout, so we don't need to redirect here
-      } else {
-        console.error('❌ Logout failed:', response.status);
-        // Fallback: redirect to logout page
-        window.location.href = '/auth/logout';
-      }
+      await appSignOut({ callbackUrl: '/auth/login' });
     } catch (error) {
       console.error('❌ Logout error:', error);
-      // Fallback: redirect to logout page
-      window.location.href = '/auth/logout';
     }
   };
 
@@ -31,4 +20,3 @@ export default function LogoutButton({ className = '' }: { className?: string })
     </button>
   );
 }
-

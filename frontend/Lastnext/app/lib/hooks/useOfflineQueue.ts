@@ -1,17 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useSession } from '@/app/lib/session.client';
 import {
   type QueuedRequest,
   getQueue,
   replayQueue,
   subscribe,
 } from '@/app/lib/offline-queue';
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://staymaint.com');
 
 interface UseOfflineQueueResult {
   queue: QueuedRequest[];
@@ -27,35 +22,33 @@ interface UseOfflineQueueResult {
  * manual `drain()` for buttons that say "Retry now".
  */
 export function useOfflineQueue(): UseOfflineQueueResult {
-  const { data: session } = useSession();
   const [queue, setQueue] = useState<QueuedRequest[]>(() => getQueue());
   const [isDraining, setDraining] = useState(false);
-  const accessToken = session?.user?.accessToken;
 
   useEffect(() => {
     return subscribe(setQueue);
   }, []);
 
   const drain = useCallback(async () => {
-    if (!accessToken || typeof navigator === 'undefined' || !navigator.onLine) {
+    if (typeof navigator === 'undefined' || !navigator.onLine) {
       return { delivered: 0, remaining: queue.length };
     }
     setDraining(true);
     try {
       return await replayQueue(async (item) => {
-        return fetch(`${API_BASE_URL}${item.endpoint}`, {
+        return fetch(item.endpoint, {
           method: item.method,
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify(item.body),
         });
       });
     } finally {
       setDraining(false);
     }
-  }, [accessToken, queue.length]);
+  }, [queue.length]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

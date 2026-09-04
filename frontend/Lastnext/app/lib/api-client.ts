@@ -75,6 +75,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // --- Token Refresh Logic ---
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
+let terminalLogoutPromise: Promise<void> | null = null;
 const pendingRequests: Array<(refreshed: boolean) => void> = [];
 
 // Function to process queued requests after token refresh attempt
@@ -82,6 +83,15 @@ const processPendingRequests = (refreshed: boolean): void => {
   pendingRequests.forEach(callback => callback(refreshed));
   pendingRequests.length = 0; // Clear the queue
 };
+
+function terminateSessionSafely(): Promise<void> {
+  if (!terminalLogoutPromise) {
+    terminalLogoutPromise = appSignOut({ callbackUrl: '/auth/login' })
+      .catch((error) => console.error('[Auth] Safe logout failed:', error))
+      .finally(() => { terminalLogoutPromise = null; });
+  }
+  return terminalLogoutPromise;
+}
 
 // Function to attempt token refresh
 async function refreshToken(): Promise<boolean> {
@@ -98,7 +108,7 @@ async function refreshToken(): Promise<boolean> {
        // If refresh fails (e.g., 401 Unauthorized), log out user
        if (response.status === 401) {
             console.error("[Auth] Refresh token failed or expired. Logging out.");
-            await appSignOut({ redirect: false });
+            await terminateSessionSafely();
        }
        throw new ApiError(`Token refresh failed with status: ${response.status}`, response.status);
     }
@@ -227,7 +237,7 @@ apiClient.interceptors.response.use(
       }
 
       if (typeof window !== 'undefined' && originalRequest._retry >= MAX_RETRIES) {
-        window.location.href = '/auth/logout?returnTo=' + encodeURIComponent(window.location.pathname);
+        await terminateSessionSafely();
       }
       return Promise.reject(new ApiError("Authentication failed. Please log in again.", 401));
     }

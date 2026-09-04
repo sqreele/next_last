@@ -76,6 +76,7 @@ class TenantInvitationTests(APITestCase):
             status='active',
         )
         self.property = Property.objects.create(name='Invitation Hotel', tenant=self.tenant)
+        self.second_property = Property.objects.create(name='Invitation Annex', tenant=self.tenant)
         self.other_property = Property.objects.create(name='Other Hotel', tenant=self.other_tenant)
         for user, role in (
             (self.owner, 'owner'),
@@ -138,9 +139,13 @@ class TenantInvitationTests(APITestCase):
         self.assertEqual(invitation_from_token(token).pk, invitation.pk)
 
     @patch('myappLubd.invitations.send_invitation', return_value=True)
-    def test_owner_and_admin_can_create(self, _send):
+    def test_owner_admin_and_manager_can_create_and_list(self, _send):
         endpoint = reverse('myappLubd:tenant-invitation-list')
-        for actor, email in ((self.owner, 'owner.invite@example.com'), (self.admin, 'admin.invite@example.com')):
+        for actor, email in (
+            (self.owner, 'owner.invite@example.com'),
+            (self.admin, 'admin.invite@example.com'),
+            (self.manager, 'manager.invite@example.com'),
+        ):
             with self.subTest(role=actor.username):
                 self.client.force_authenticate(actor)
                 response = self.client.post(endpoint, {
@@ -152,6 +157,47 @@ class TenantInvitationTests(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
                 self.assertNotIn('token', response.data)
                 self.assertNotIn('token_hash', response.data)
+                invited_user = User.objects.get(email=email)
+                self.assertFalse(TenantMembership.objects.filter(
+                    tenant=self.tenant, user=invited_user,
+                ).exists())
+                listed = self.client.get(endpoint, {'tenant': self.tenant.pk})
+                self.assertEqual(listed.status_code, status.HTTP_200_OK)
+                self.assertIn(email, [invitation['email'] for invitation in listed.data])
+
+    @patch('myappLubd.invitations.send_invitation', return_value=True)
+    def test_technician_requires_property_and_supports_multiple_properties(self, send):
+        endpoint = reverse('myappLubd:tenant-invitation-list')
+        self.client.force_authenticate(self.owner)
+
+        missing_property = self.client.post(endpoint, {
+            'tenant': self.tenant.pk,
+            'email': 'missing.property@example.com',
+            'role': 'technician',
+            'properties': [],
+        }, format='json')
+        self.assertEqual(missing_property.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(TenantInvitation.objects.filter(
+            email='missing.property@example.com',
+        ).exists())
+
+        multiple_properties = self.client.post(endpoint, {
+            'tenant': self.tenant.pk,
+            'email': 'multi.property@example.com',
+            'role': 'technician',
+            'properties': [self.property.pk, self.second_property.pk],
+        }, format='json')
+        self.assertEqual(multiple_properties.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(multiple_properties.data['role'], 'technician')
+        self.assertEqual(
+            {prop['id'] for prop in multiple_properties.data['properties']},
+            {self.property.pk, self.second_property.pk},
+        )
+        self.assertFalse(TenantMembership.objects.filter(
+            tenant=self.tenant,
+            user__email='multi.property@example.com',
+        ).exists())
+        send.assert_called_once()
 
     @patch('myappLubd.invitations.send_invitation', return_value=False)
     def test_email_failure_preserves_invitation_without_exposing_token(self, _send):
@@ -168,9 +214,32 @@ class TenantInvitationTests(APITestCase):
         self.assertTrue(TenantInvitation.objects.filter(email='delivery.failure@example.com').exists())
 
     @patch('myappLubd.invitations.send_invitation', return_value=True)
+    def test_create_validates_subscription_user_capacity(self, _send):
+        self.plan.max_users = 5
+        self.plan.save(update_fields=['max_users'])
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.post(reverse('myappLubd:tenant-invitation-list'), {
+            'tenant': self.tenant.pk,
+            'email': 'over-capacity@example.com',
+            'role': 'technician',
+            'properties': [self.property.pk],
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+        self.assertEqual(response.data['code'], 'subscription_user_limit_reached')
+        self.assertFalse(TenantInvitation.objects.filter(email='over-capacity@example.com').exists())
+        self.assertFalse(User.objects.filter(email='over-capacity@example.com').exists())
+        _send.assert_not_called()
+
+    @patch('myappLubd.invitations.send_invitation', return_value=True)
     def test_unauthorized_roles_cannot_create_or_list(self, _send):
         endpoint = reverse('myappLubd:tenant-invitation-list')
-        for actor in (self.manager, self.supervisor, self.billing):
+        technician = self.make_user('technician-actor', 'technician.actor@example.com')
+        viewer = self.make_user('viewer-actor', 'viewer.actor@example.com')
+        TenantMembership.objects.create(tenant=self.tenant, user=technician, role='technician')
+        TenantMembership.objects.create(tenant=self.tenant, user=viewer, role='viewer')
+        for actor in (self.supervisor, technician, viewer, self.billing):
             with self.subTest(role=actor.username):
                 self.client.force_authenticate(actor)
                 response = self.client.post(endpoint, {
@@ -185,7 +254,10 @@ class TenantInvitationTests(APITestCase):
                 self.assertEqual(listed.data, [])
         self.assertTrue(can_manage_membership_property_grants(self.owner, self.tenant))
         self.assertTrue(can_manage_membership_property_grants(self.admin, self.tenant))
-        self.assertFalse(can_manage_membership_property_grants(self.manager, self.tenant))
+        self.assertTrue(can_manage_membership_property_grants(self.manager, self.tenant))
+        self.assertFalse(can_manage_membership_property_grants(self.supervisor, self.tenant))
+        self.assertFalse(can_manage_membership_property_grants(technician, self.tenant))
+        self.assertFalse(can_manage_membership_property_grants(viewer, self.tenant))
         self.assertFalse(can_manage_membership_property_grants(self.billing, self.tenant))
 
     @patch('myappLubd.invitations.send_invitation', return_value=True)
@@ -200,11 +272,29 @@ class TenantInvitationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(TenantInvitation.objects.filter(email='foreign.property@example.com').exists())
 
-    def test_role_property_rules_are_enforced(self):
+    def test_tenant_wide_and_billing_property_rules_are_enforced(self):
+        tenant_wide, _ = self.make_invitation(
+            email='tenant.wide@example.com', role='manager', properties=[],
+        )
+        self.assertFalse(tenant_wide.properties.exists())
+
         with self.assertRaises(Exception):
-            self.make_invitation(role='manager', properties=[self.property])
+            self.make_invitation(
+                email='invalid.tenant.wide@example.com',
+                role='manager',
+                properties=[self.property],
+            )
         with self.assertRaises(Exception):
-            self.make_invitation(role='viewer', properties=[])
+            self.make_invitation(
+                email='invalid.technician@example.com',
+                role='technician',
+                properties=[],
+            )
+
+        billing, _ = self.make_invitation(
+            email='billing.invite@example.com', role='billing', properties=[self.property],
+        )
+        self.assertEqual(list(billing.properties.all()), [self.property])
 
     def test_global_unresolved_email_uniqueness_is_documented_mvp_limit(self):
         self.make_invitation(email='Person@Example.com')
@@ -265,15 +355,133 @@ class TenantInvitationTests(APITestCase):
 
     @patch('myappLubd.invitations.send_email', return_value=True)
     def test_email_uses_fragment_and_staymaint_branding(self, send):
-        invitation, token = self.make_invitation()
+        invitation, token = self.make_invitation(
+            properties=[self.property, self.second_property],
+        )
         self.assertTrue(send_invitation(invitation, token))
         args, kwargs = send.call_args
         combined = '\n'.join((args[1], args[2], kwargs['html_body']))
+        expected_expiry = timezone.localtime(invitation.expires_at).strftime('%Y-%m-%d %H:%M %Z')
+        self.assertEqual(args[1], "You're invited to join Invitation Tenant on StayMaint")
         self.assertIn('StayMaint', combined)
+        self.assertIn('person@example.com', combined)
+        self.assertIn('Technician', combined)
+        self.assertIn('Invitation Hotel', combined)
+        self.assertIn('Invitation Annex', combined)
+        self.assertIn('Invitation expires:', combined)
+        self.assertIn(expected_expiry, combined)
+        self.assertIn('Accept Invitation', combined)
         self.assertIn(f'https://staymaint.com/invitations/accept#token={token}', combined)
         self.assertNotIn(f'?token={token}', combined)
+        self.assertNotIn('role=', combined)
+        self.assertNotIn('tenant=', combined)
+        self.assertNotIn('properties=', combined)
         self.assertNotIn('HotelCare Pro', combined)
         self.assertNotIn('hotelcarepro.com', combined)
+
+    def test_workspace_only_returns_manageable_tenants_and_properties(self):
+        endpoint = reverse('myappLubd:tenant-invitation-workspace')
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(endpoint)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual([tenant['id'] for tenant in response.data['tenants']], [self.tenant.pk])
+        self.assertEqual(
+            {prop['id'] for prop in response.data['properties']},
+            {self.property.pk, self.second_property.pk},
+        )
+        self.assertNotIn(self.other_property.pk, [prop['id'] for prop in response.data['properties']])
+
+        restricted_membership = TenantMembership.objects.create(
+            tenant=self.other_tenant,
+            user=self.manager,
+            role='supervisor',
+        )
+        restricted_membership.properties.add(self.other_property)
+        self.client.force_authenticate(self.manager)
+        manager_scope = self.client.get(endpoint)
+        self.assertEqual(manager_scope.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [tenant['id'] for tenant in manager_scope.data['tenants']],
+            [self.tenant.pk],
+        )
+        self.assertEqual(
+            {prop['id'] for prop in manager_scope.data['properties']},
+            {self.property.pk, self.second_property.pk},
+        )
+        self.assertNotIn(
+            self.other_property.pk,
+            [prop['id'] for prop in manager_scope.data['properties']],
+        )
+
+    @patch('myappLubd.invitations.send_invitation', return_value=True)
+    def test_manager_cannot_invite_cross_tenant_or_outside_manager_scope(self, _send):
+        endpoint = reverse('myappLubd:tenant-invitation-list')
+        restricted_membership = TenantMembership.objects.create(
+            tenant=self.other_tenant,
+            user=self.manager,
+            role='supervisor',
+        )
+        restricted_membership.properties.add(self.other_property)
+        self.client.force_authenticate(self.manager)
+
+        cross_tenant_property = self.client.post(endpoint, {
+            'tenant': self.tenant.pk,
+            'email': 'manager.cross-tenant@example.com',
+            'role': 'technician',
+            'properties': [self.other_property.pk],
+        }, format='json')
+        self.assertEqual(cross_tenant_property.status_code, status.HTTP_400_BAD_REQUEST)
+
+        non_manager_tenant = self.client.post(endpoint, {
+            'tenant': self.other_tenant.pk,
+            'email': 'manager.outside-scope@example.com',
+            'role': 'technician',
+            'properties': [self.other_property.pk],
+        }, format='json')
+        self.assertEqual(non_manager_tenant.status_code, status.HTTP_403_FORBIDDEN)
+
+        foreign_invitation, _ = create_invitation(
+            tenant=self.other_tenant,
+            email='foreign.pending@example.com',
+            role='technician',
+            properties=[self.other_property],
+            invited_by=self.owner,
+        )
+        listed = self.client.get(endpoint)
+        self.assertNotIn(foreign_invitation.pk, [invitation['id'] for invitation in listed.data])
+        for action in ('resend', 'revoke'):
+            denied = self.client.post(reverse(
+                f'myappLubd:tenant-invitation-{action}',
+                kwargs={'pk': foreign_invitation.pk},
+            ))
+            self.assertEqual(denied.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(TenantInvitation.objects.filter(
+            email__in={
+                'manager.cross-tenant@example.com',
+                'manager.outside-scope@example.com',
+            },
+        ).exists())
+        _send.assert_not_called()
+
+    @patch('myappLubd.invitations.send_invitation', return_value=True)
+    def test_inactive_manager_cannot_manage_invitations(self, _send):
+        membership = TenantMembership.objects.get(tenant=self.tenant, user=self.manager)
+        membership.is_active = False
+        membership.save(update_fields=['is_active', 'updated_at'])
+        self.client.force_authenticate(self.manager)
+
+        workspace = self.client.get(reverse('myappLubd:tenant-invitation-workspace'))
+        self.assertEqual(workspace.status_code, status.HTTP_200_OK)
+        self.assertEqual(workspace.data, {'tenants': [], 'properties': []})
+        create = self.client.post(reverse('myappLubd:tenant-invitation-list'), {
+            'tenant': self.tenant.pk,
+            'email': 'inactive.manager@example.com',
+            'role': 'technician',
+            'properties': [self.property.pk],
+        }, format='json')
+        self.assertEqual(create.status_code, status.HTTP_403_FORBIDDEN)
+        _send.assert_not_called()
 
     def test_accept_requires_auth0_identity_verified_email_and_active_user(self):
         _, token = self.make_invitation()
@@ -312,6 +520,11 @@ class TenantInvitationTests(APITestCase):
         self.authenticate_auth0(wrong)
         response = self.client.post(reverse('myappLubd:tenant-invitation-accept'), {'token': token}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'invitation_email_mismatch')
+        self.assertNotIn(self.invitee.email, str(response.data))
+        self.assertFalse(TenantMembership.objects.filter(
+            tenant=self.tenant, user=wrong,
+        ).exists())
 
         self.authenticate_auth0(self.invitee, sub='auth0|not-the-bound-subject')
         response = self.client.post(reverse('myappLubd:tenant-invitation-accept'), {'token': token}, format='json')
@@ -349,9 +562,9 @@ class TenantInvitationTests(APITestCase):
         ).exists())
 
     def test_accept_at_user_limit_returns_numeric_409_without_consuming_invitation(self):
+        invitation, token = self.make_invitation()
         self.plan.max_users = 5
         self.plan.save(update_fields=['max_users'])
-        invitation, token = self.make_invitation()
 
         self.authenticate_auth0(self.invitee)
         response = self.client.post(
@@ -408,7 +621,7 @@ class TenantInvitationTests(APITestCase):
         self.assertIsNone(invitation.accepted_at)
         self.assertEqual(membership.role, 'viewer')
 
-    def test_resend_revoke_and_cross_tenant_idor(self):
+    def test_manager_can_resend_and_revoke_while_cross_tenant_idor_is_denied(self):
         invitation, old_token = self.make_invitation()
         captured = {}
 
@@ -416,13 +629,19 @@ class TenantInvitationTests(APITestCase):
             captured['token'] = token
             return True
 
-        self.client.force_authenticate(self.admin)
+        self.client.force_authenticate(self.manager)
         with patch('myappLubd.invitations.send_invitation', side_effect=capture):
             resend = self.client.post(reverse('myappLubd:tenant-invitation-resend', kwargs={'pk': invitation.pk}))
         self.assertEqual(resend.status_code, status.HTTP_200_OK)
         invitation.refresh_from_db()
         self.assertFalse(invitation.matches_token(old_token))
         self.assertTrue(invitation.matches_token(captured['token']))
+        old_link = self.client.post(
+            reverse('myappLubd:tenant-invitation-preview'),
+            {'token': old_token},
+            format='json',
+        )
+        self.assertEqual(old_link.status_code, status.HTTP_404_NOT_FOUND)
 
         outsider = self.make_user('outsider-owner', 'outsider@example.com')
         TenantMembership.objects.create(tenant=self.other_tenant, user=outsider, role='owner')
@@ -431,7 +650,7 @@ class TenantInvitationTests(APITestCase):
             response = self.client.post(reverse(f'myappLubd:tenant-invitation-{action}', kwargs={'pk': invitation.pk}))
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        self.client.force_authenticate(self.owner)
+        self.client.force_authenticate(self.manager)
         revoked = self.client.post(reverse('myappLubd:tenant-invitation-revoke', kwargs={'pk': invitation.pk}))
         self.assertEqual(revoked.status_code, status.HTTP_200_OK)
         invitation.refresh_from_db()

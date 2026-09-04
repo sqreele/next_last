@@ -76,6 +76,9 @@ test('BFF exposes only the invitation allow-list with correct auth policy', () =
   assert.deepEqual(resolveInvitationBackendPath(['manage'], 'GET'), {
     path: 'tenant-invitations', requiresAuth: true,
   });
+  assert.deepEqual(resolveInvitationBackendPath(['workspace'], 'GET'), {
+    path: 'tenant-invitations/workspace', requiresAuth: true,
+  });
   assert.deepEqual(resolveInvitationBackendPath(['manage', '42', 'resend'], 'POST'), {
     path: 'tenant-invitations/42/resend', requiresAuth: true,
   });
@@ -117,17 +120,51 @@ test('browser invitation flows use body-only same-origin BFF transport', async (
   assert.match(acceptance, /captureInvitationToken\(window\.location, window\.history, window\.sessionStorage\)/);
   assert.match(acceptance, /clearInvitationToken\(window\.sessionStorage\)/);
   assert.match(acceptance, /\/auth\/login\?redirect=%2Finvitations%2Faccept/);
+  assert.match(acceptance, /payload\?\.code === "invitation_email_mismatch"/);
+  assert.match(acceptance, /Email does not match this invitation\. Please sign in with the email address that received the invitation\./);
   assert.doesNotMatch(acceptance, /useSearchParams|searchParams\.get\(["']token/);
   assert.doesNotMatch(acceptance, /[?&]token=/);
   assert.doesNotMatch(acceptance, /Authorization|accessToken|Bearer/);
 
   assert.match(settings, /\/api\/invitations\/manage/);
-  assert.match(settings, /\/api\/invitations\/workspace\/tenants/);
+  assert.match(settings, /\/api\/invitations\/workspace/);
   assert.match(settings, /action: "resend" \| "revoke"/);
+  assert.match(settings, /Invitation sent to \$\{invitation\.email\}/);
+  assert.match(settings, /submissionRef\.current/);
+  assert.match(settings, /active invitation already exists/i);
   assert.doesNotMatch(settings, /Authorization|accessToken|Bearer|token_hash/);
 
-  assert.match(callback, /requestedRedirect === '\/invitations\/accept'/);
-  assert.match(callback, /hasPropertyAccess \|\| invitationReturn/);
+  assert.match(callback, /resolvePostLoginDestination\(requestedRedirect, hasPropertyAccess\)/);
+});
+
+
+test('settings invitation form covers role, property, and submission states', async () => {
+  const settings = await readFile(new URL('app/dashboard/settings/users/page.tsx', root), 'utf8');
+
+  assert.match(settings, /const roles = \["owner", "admin", "manager", "supervisor", "technician", "viewer", "billing"\]/);
+  assert.match(settings, /const tenantWideRoles = new Set\(\["owner", "admin", "manager"\]\)/);
+  assert.match(settings, /const propertyRequiredRoles = new Set\(\["supervisor", "technician", "viewer"\]\)/);
+  assert.match(settings, /properties\.filter\(\(property\) => String\(property\.tenant\) === tenantId\)/);
+  assert.match(settings, /properties: propertyIds/);
+  assert.match(settings, /onCheckedChange=\{\(next\) => setPropertyIds/);
+  assert.match(settings, /propertyRequiredRoles\.has\(role\) && propertyIds\.length === 0/);
+
+  assert.match(settings, /setSubmitting\(true\)/);
+  assert.match(settings, /setSubmitting\(false\)/);
+  assert.match(settings, /submitting \? "Sending…" : "Send invitation"/);
+  assert.match(settings, /Invitation sent to \$\{invitation\.email\}/);
+  assert.match(settings, /invitation\.email_sent === false/);
+  assert.match(settings, /invitation was created, but email delivery failed/i);
+  assert.match(settings, /active invitation already exists/i);
+  assert.match(settings, /pending invitation already exists/i);
+
+  assert.match(settings, /invitationAction\(invitation, "resend"\)/);
+  assert.match(settings, /invitationAction\(invitation, "revoke"\)/);
+  assert.match(settings, /actionRequestRef\.current/);
+  assert.match(settings, /disabled=\{actionId !== null\}/);
+  assert.match(settings, /if \(!tenantId \|\| submissionRef\.current\) return/);
+  assert.match(settings, /submissionRef\.current = true/);
+  assert.match(settings, /submissionRef\.current = false/);
 });
 
 

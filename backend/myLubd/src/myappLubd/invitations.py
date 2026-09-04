@@ -21,10 +21,12 @@ from .email_utils import send_email
 from .invitation_audit import audit_invitation_event
 from .models import AuthIdentity, Property, Tenant, TenantInvitation, TenantMembership
 from .tenancy import (
+    TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES,
     TENANT_WIDE_PROPERTY_ROLES,
     SubscriptionUserLimitReached,
     can_manage_membership_property_grants,
     enforce_tenant_user_limit,
+    get_accessible_properties,
 )
 from .throttles import (
     InvitationAcceptThrottle,
@@ -147,6 +149,11 @@ def create_invitation(*, tenant, email, role, properties, invited_by):
                     })
                 unresolved.revoked_at = now
                 unresolved.save(update_fields=['revoked_at', 'updated_at'])
+
+            # This is an admission check, not a seat reservation. Acceptance
+            # repeats the check under the same Tenant lock so multiple pending
+            # invitations can never overrun the plan when they are redeemed.
+            enforce_tenant_user_limit(tenant)
 
             matching_users = list(
                 User.objects.select_for_update()
@@ -334,31 +341,52 @@ def send_invitation(invitation, token):
     base_url = str(getattr(settings, 'FRONTEND_BASE_URL', 'https://staymaint.com') or '').rstrip('/')
     invite_url = f'{base_url}/invitations/accept#{urlencode({"token": token})}'
     tenant_name = invitation.tenant.name.replace('\r', ' ').replace('\n', ' ')
-    inviter_name = (
-        invitation.invited_by.get_full_name().strip()
-        or invitation.invited_by.get_username()
-        if invitation.invited_by is not None
-        else 'A tenant administrator'
-    )
     expiry = timezone.localtime(invitation.expires_at).strftime('%Y-%m-%d %H:%M %Z')
+    property_names = list(invitation.properties.order_by('name').values_list('name', flat=True))
+    if invitation.role in TENANT_WIDE_PROPERTY_ROLES:
+        property_names = ['All properties (tenant-wide access)']
+    elif not property_names:
+        property_names = ['No properties selected']
+    plain_properties = '\n'.join(property_names)
+    html_properties = ''.join(f'<li>{escape(name)}</li>' for name in property_names)
     body = (
-        f'{inviter_name} invited you to join {tenant_name} in StayMaint '
-        f'as {invitation.get_role_display()}.\n\n'
-        f'Accept this invitation before {expiry}:\n{invite_url}\n\n'
+        'Hello,\n\n'
+        f'You have been invited to join {tenant_name} on StayMaint.\n\n'
+        f'Invited email:\n{invitation.email}\n\n'
+        f'Role:\n{invitation.get_role_display()}\n\n'
+        f'Properties:\n{plain_properties}\n\n'
+        f'Invitation expires:\n{expiry}\n\n'
+        f'Accept Invitation:\n{invite_url}\n\n'
         'If you were not expecting this invitation, you can ignore this email.'
     )
     html_body = (
-        f'<p>{escape(inviter_name)} invited you to join <strong>{escape(tenant_name)}</strong> '
-        f'in StayMaint as {escape(invitation.get_role_display())}.</p>'
-        f'<p><a href="{escape(invite_url)}">Accept invitation</a></p>'
-        f'<p>This invitation expires at {escape(expiry)}.</p>'
+        '<p>Hello,</p>'
+        f'<p>You have been invited to join <strong>{escape(tenant_name)}</strong> on StayMaint.</p>'
+        f'<p><strong>Invited email:</strong><br>{escape(invitation.email)}</p>'
+        f'<p><strong>Role:</strong><br>{escape(invitation.get_role_display())}</p>'
+        f'<p><strong>Properties:</strong></p><ul>{html_properties}</ul>'
+        f'<p><strong>Invitation expires:</strong><br>{escape(expiry)}</p>'
+        f'<p><a href="{escape(invite_url)}" '
+        'style="display:inline-block;padding:12px 20px;background:#111827;color:#fff;'
+        'text-decoration:none;border-radius:6px">Accept Invitation</a></p>'
+        '<p>If you were not expecting this invitation, you can ignore this email.</p>'
     )
     return send_email(
         invitation.email,
-        f'Invitation to join {tenant_name} on StayMaint',
+        f"You're invited to join {tenant_name} on StayMaint",
         body,
         html_body=html_body,
     )
+
+
+def manageable_invitation_tenants(user):
+    if user.is_superuser:
+        return Tenant.objects.all()
+    return Tenant.objects.filter(
+        memberships__user=user,
+        memberships__is_active=True,
+        memberships__role__in=TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES,
+    ).distinct()
 
 
 class InvitationPropertySerializer(serializers.ModelSerializer):
@@ -429,24 +457,14 @@ class TenantInvitationViewSet(
             'tenant', 'invited_by', 'accepted_by',
         ).prefetch_related('properties')
         if not self.request.user.is_superuser:
-            queryset = queryset.filter(
-                tenant__memberships__user=self.request.user,
-                tenant__memberships__is_active=True,
-                tenant__memberships__role__in={'owner', 'admin'},
-            )
+            queryset = queryset.filter(tenant__in=manageable_invitation_tenants(self.request.user))
         tenant_id = self.request.query_params.get('tenant')
         if tenant_id:
             queryset = queryset.filter(tenant_id=tenant_id)
         return queryset.distinct()
 
     def create(self, request, *args, **kwargs):
-        manageable_tenants = Tenant.objects.all()
-        if not request.user.is_superuser:
-            manageable_tenants = manageable_tenants.filter(
-                memberships__user=request.user,
-                memberships__is_active=True,
-                memberships__role__in={'owner', 'admin'},
-            )
+        manageable_tenants = manageable_invitation_tenants(request.user)
         try:
             tenant = manageable_tenants.filter(pk=request.data.get('tenant')).first()
         except (TypeError, ValueError):
@@ -460,7 +478,9 @@ class TenantInvitationViewSet(
 
         serializer = self.get_serializer(data=request.data)
         serializer.fields['tenant'].queryset = manageable_tenants
-        serializer.fields['properties'].child_relation.queryset = Property.objects.filter(tenant=tenant)
+        serializer.fields['properties'].child_relation.queryset = get_accessible_properties(
+            request.user, tenant=tenant,
+        )
         serializer.is_valid(raise_exception=True)
         if not can_manage_membership_property_grants(request.user, tenant):
             audit_invitation_event(
@@ -477,6 +497,30 @@ class TenantInvitationViewSet(
         payload = TenantInvitationSerializer(invitation).data
         payload['email_sent'] = email_sent
         return Response(payload, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'])
+    def workspace(self, request):
+        """Return only tenants/properties for which this actor may invite."""
+        tenants = manageable_invitation_tenants(request.user).order_by('name', 'pk')
+        tenant_ids = list(tenants.values_list('pk', flat=True))
+        properties = get_accessible_properties(request.user).filter(
+            tenant_id__in=tenant_ids,
+        ).select_related('tenant').order_by('tenant_id', 'name', 'pk')
+        return Response({
+            'tenants': [
+                {'id': tenant.pk, 'tenant_id': tenant.tenant_id, 'name': tenant.name}
+                for tenant in tenants
+            ],
+            'properties': [
+                {
+                    'id': prop.pk,
+                    'property_id': prop.property_id,
+                    'name': prop.name,
+                    'tenant': prop.tenant_id,
+                }
+                for prop in properties
+            ],
+        })
 
     @action(detail=True, methods=['post'])
     def resend(self, request, pk=None):

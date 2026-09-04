@@ -21,6 +21,7 @@ from .email_utils import send_email
 from .invitation_audit import audit_invitation_event
 from .models import AuthIdentity, Property, Tenant, TenantInvitation, TenantMembership
 from .tenancy import (
+    TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES,
     TENANT_WIDE_PROPERTY_ROLES,
     SubscriptionUserLimitReached,
     can_manage_membership_property_grants,
@@ -384,7 +385,7 @@ def manageable_invitation_tenants(user):
     return Tenant.objects.filter(
         memberships__user=user,
         memberships__is_active=True,
-        memberships__role__in={'owner', 'admin'},
+        memberships__role__in=TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES,
     ).distinct()
 
 
@@ -477,7 +478,9 @@ class TenantInvitationViewSet(
 
         serializer = self.get_serializer(data=request.data)
         serializer.fields['tenant'].queryset = manageable_tenants
-        serializer.fields['properties'].child_relation.queryset = Property.objects.filter(tenant=tenant)
+        serializer.fields['properties'].child_relation.queryset = get_accessible_properties(
+            request.user, tenant=tenant,
+        )
         serializer.is_valid(raise_exception=True)
         if not can_manage_membership_property_grants(request.user, tenant):
             audit_invitation_event(

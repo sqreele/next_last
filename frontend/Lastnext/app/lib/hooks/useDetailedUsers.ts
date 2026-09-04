@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSession } from '@/app/lib/session.client';
 import { logger } from '@/app/lib/utils/logger';
 import {
   isDetailedUsersAbortError,
@@ -30,12 +29,10 @@ export function useDetailedUsers({
   const [error, setError] = useState<string | null>(null);
   const [availability, setAvailability] = useState<DetailedUsersAvailability>('idle');
   const requestIdRef = useRef(0);
-  const { data: session } = useSession();
-  const accessToken = session?.user?.accessToken;
 
   const fetchUsers = useCallback(async (signal?: AbortSignal) => {
     const requestId = ++requestIdRef.current;
-    if (!enabled || !accessToken) {
+    if (!enabled) {
       setUsers([]);
       setError(null);
       setLoading(false);
@@ -49,11 +46,10 @@ export function useDetailedUsers({
 
     try {
       logger.debug('Fetching detailed users from /api/users/detailed/', {
-        hasToken: true,
+        transport: 'bff',
       });
 
       const result = await requestDetailedUsers({
-        accessToken,
         optional,
         signal,
       });
@@ -85,7 +81,7 @@ export function useDetailedUsers({
         setLoading(false);
       }
     }
-  }, [accessToken, enabled, optional]);
+  }, [enabled, optional]);
 
   useEffect(() => {
     const controller = new AbortController();

@@ -2,7 +2,6 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { fetchRoom, fetchProperties, fetchJobsForRoom } from '@/app/lib/data.server';
-import { getServerSession } from '@/app/lib/session.server';
 import RoomDetailContent from './RoomDetailContent';
 
 type Props = {
@@ -13,16 +12,13 @@ type Props = {
 // Server Component
 export default async function RoomDetailPage({ params }: Props) {
   const { room_id } = await params;
-  const session = await getServerSession();
-  const accessToken = session?.user?.accessToken;
-
-  const room = await fetchRoom(room_id, accessToken);
+  const room = await fetchRoom(room_id);
   if (!room) {
     notFound();
   }
 
-  const properties = await fetchProperties(accessToken);
-  const jobs = await fetchJobsForRoom(room_id, accessToken);
+  const properties = await fetchProperties();
+  const jobs = await fetchJobsForRoom(room_id);
 
   return (
     <Suspense fallback={<LoadingSkeleton />}>

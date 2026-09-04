@@ -8,7 +8,8 @@ export interface CompatUser {
   profile_image: string | null;
   positions: string;
   properties: any[];
-  /** Server-only fields; sanitizeSessionForClient removes them from wire output. */
+  /** Redis/server-session fields. sanitizeSessionForClient removes these
+   * before this object crosses the session-compat HTTP boundary. */
   accessToken?: string;
   refreshToken?: string;
   accessTokenExpires?: number;

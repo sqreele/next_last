@@ -14,7 +14,6 @@ interface UseSessionGuardReturn {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: any;
-  accessToken: string | null;
   redirectToLogin: () => void;
 }
 
@@ -31,10 +30,9 @@ export function useSessionGuard(options: UseSessionGuardOptions = {}): UseSessio
   const { toast } = useToast();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  const isAuthenticated = !!session?.user?.accessToken;
+  const isAuthenticated = status === 'authenticated' && !!session?.user;
   const isLoading = status === 'loading' || isRedirecting;
   const user = session?.user;
-  const accessToken = session?.user?.accessToken || null;
 
   const redirectToLogin = () => {
     if (isRedirecting) return;
@@ -88,7 +86,6 @@ export function useSessionGuard(options: UseSessionGuardOptions = {}): UseSessio
     isAuthenticated,
     isLoading,
     user,
-    accessToken,
     redirectToLogin,
   };
 }

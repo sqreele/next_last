@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { getServerSession } from "@/app/lib/session.server";
 import { fetchAllRooms } from "@/app/lib/data.server";
 import { Skeleton } from "@/app/components/ui/loading";
 import { RoomsToolbar } from "./RoomsToolbar";
@@ -14,9 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RoomsIndexPage() {
-  const session = await getServerSession();
-  const accessToken = session?.user?.accessToken;
-  const rooms = (await fetchAllRooms(accessToken).catch(() => [])) || [];
+  const rooms = (await fetchAllRooms().catch(() => [])) || [];
 
   return (
     <div className="w-full max-w-none space-y-5 px-3 py-3 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl">

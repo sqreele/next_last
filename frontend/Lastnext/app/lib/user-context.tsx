@@ -44,7 +44,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [lastFetched, setLastFetched] = useState(0);
 
   const fetchUserProfile = useCallback(async () => {
-    if (!session?.user?.accessToken) return null;
+    if (!session?.user) return null;
     if (Date.now() - lastFetched < CACHE_DURATION && userProfile) {
       return userProfile;
     }

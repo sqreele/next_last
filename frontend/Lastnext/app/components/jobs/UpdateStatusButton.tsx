@@ -21,7 +21,7 @@ import {
 } from "@/app/components/ui/select";
 import { Label } from "@/app/components/ui/label";
 import { Job, JobStatus } from "@/app/lib/types";
-import { updateJob as apiUpdateJob } from "@/app/lib/data.server";
+import { requestWithSession } from "@/app/lib/api-client";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useSession } from "@/app/lib/session.client";
 import { cn } from "@/app/lib/utils/cn";
@@ -158,16 +158,10 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         is_preventivemaintenance: job.is_preventivemaintenance || false,
       };
 
-      // Call API with access token
-      const accessToken = session?.user?.accessToken;
-      if (!accessToken) {
-        throw new Error("No access token available. Please log in again.");
-      }
-
-      const updatedJob = await apiUpdateJob(
-        String(job.job_id),
+      const updatedJob = await requestWithSession<Job>(
+        `/api/v1/jobs/${encodeURIComponent(String(job.job_id))}/`,
+        "PATCH",
         updateData,
-        accessToken,
       );
 
       // Update local state

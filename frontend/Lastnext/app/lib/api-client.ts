@@ -368,6 +368,41 @@ export async function fetchData<T>(url: string, config?: AxiosRequestConfig): Pr
   }
 }
 
+/** Same-origin browser request helper. Authentication is supplied by the
+ * httpOnly session cookie and the BFF; callers never receive a bearer token. */
+export async function requestWithSession<T>(
+  url: string,
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
+  data?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  try {
+    const response = await apiClient.request<T>({ url, method, data, ...config });
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}
+
+/** Browser-only equivalent of the legacy server data helper. It keeps report
+ * pagination behind the BFF without importing any server-only modules. */
+export async function fetchAllJobsForPropertyWithSession<T>(
+  propertyId: string,
+  signal?: AbortSignal,
+): Promise<T[]> {
+  const query = `property_id=${encodeURIComponent(propertyId)}`;
+  const requestConfig = { signal };
+  const all = await requestWithSession<T[] | { results?: T[] }>(
+    `/api/v1/jobs/all/?${query}`,
+    'GET',
+    undefined,
+    requestConfig,
+  );
+  if (Array.isArray(all)) return all;
+  if (Array.isArray(all?.results)) return all.results;
+  return [];
+}
+
 /**
  * Generic POST function
  */

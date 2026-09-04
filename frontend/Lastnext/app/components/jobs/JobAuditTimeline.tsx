@@ -13,17 +13,10 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
-import { useSession } from "@/app/lib/session.client";
-import { fetchWithToken } from "@/app/lib/data.server";
+import { requestWithSession } from "@/app/lib/api-client";
 import { Button } from "@/app/components/ui/button";
 import { StatusBadge } from "@/app/components/pcms-ui";
 import { cn } from "@/app/lib/utils/cn";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://staymaint.com");
 
 type AuditEventKind =
   "created" | "completed" | "photo_uploaded" | "comment" | "status_change";
@@ -111,7 +104,6 @@ function formatTime(at: string | null): string {
 }
 
 export function JobAuditTimeline({ jobId, className }: JobAuditTimelineProps) {
-  const { data: session } = useSession();
   const [data, setData] = useState<AuditLogResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,18 +111,9 @@ export function JobAuditTimeline({ jobId, className }: JobAuditTimelineProps) {
 
   useEffect(() => {
     let cancelled = false;
-    const token = session?.user?.accessToken;
-    if (!token) {
-      setLoading(false);
-      setError("Sign in to view the audit log.");
-      return;
-    }
     setLoading(true);
     setError(null);
-    fetchWithToken<AuditLogResponse>(
-      `${API_BASE_URL}/api/v1/jobs/${jobId}/audit-log/`,
-      token,
-    )
+    requestWithSession<AuditLogResponse>(`/api/v1/jobs/${jobId}/audit-log/`)
       .then((res) => {
         if (cancelled) return;
         setData(res);
@@ -145,7 +128,7 @@ export function JobAuditTimeline({ jobId, className }: JobAuditTimelineProps) {
     return () => {
       cancelled = true;
     };
-  }, [jobId, session?.user?.accessToken, tick]);
+  }, [jobId, tick]);
 
   return (
     <section

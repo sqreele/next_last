@@ -1,13 +1,11 @@
 export async function requestDetailedUsers({
-  accessToken,
   optional,
   signal,
   fetchImpl = fetch,
 }) {
-  const response = await fetchImpl('/api/users/detailed/', {
+  const response = await fetchImpl('/api/v1/users/detailed/', {
     signal,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
   });

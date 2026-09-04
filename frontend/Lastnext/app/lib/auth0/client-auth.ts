@@ -4,17 +4,14 @@ import { useEffect, useState } from 'react';
 
 // Try to import Auth0 hooks, but fall back gracefully if they fail
 let useUser: any = null;
-let getAccessToken: any = null;
 
 try {
   const auth0 = require('@auth0/nextjs-auth0');
   useUser = auth0.useUser;
-  getAccessToken = auth0.getAccessToken;
 } catch (error) {
 }
 
 export function useClientAuth0() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
@@ -24,36 +21,19 @@ export function useClientAuth0() {
 
   useEffect(() => {
     // If Auth0 hooks are available, try to use them
-    if (useUser && getAccessToken && auth0User) {
+    if (useUser && auth0User) {
       try {
         if (auth0User.user && !auth0User.isLoading) {
-          // Get the access token from Auth0
-          const getToken = async () => {
-            try {
-              const token = await getAccessToken();
-              setAccessToken(token);
-              setUser({
+          setUser({
                 id: auth0User.user.sub || auth0User.user.email || 'user',
                 username: auth0User.user.nickname || auth0User.user.name || auth0User.user.email || 'user',
                 email: auth0User.user.email,
                 profile_image: auth0User.user.picture,
                 positions: 'User',
                 properties: [],
-                accessToken: token || '',
-                refreshToken: '',
-                accessTokenExpires: undefined,
                 created_at: new Date().toISOString(),
-              });
-              setIsLoading(false);
-            } catch (err) {
-              console.error('Failed to get Auth0 access token:', err);
-              setError(err);
-              setIsLoading(false);
-            }
-          };
-          
-          setIsLoading(true);
-          getToken();
+          });
+          setIsLoading(false);
         } else if (auth0User.isLoading) {
           setIsLoading(true);
         } else {
@@ -82,7 +62,6 @@ export function useClientAuth0() {
   };
 
   return {
-    accessToken,
     isLoading,
     error,
     user,

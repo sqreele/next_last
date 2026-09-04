@@ -14,19 +14,12 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Textarea } from "@/app/components/ui/textarea";
-import { useSession } from "@/app/lib/session.client";
-import { fetchWithToken } from "@/app/lib/data.server";
+import { requestWithSession } from "@/app/lib/api-client";
 import { Job } from "@/app/lib/types";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import { cn } from "@/app/lib/utils/cn";
 import { logger } from "@/app/lib/utils/logger";
 import { useMainStore } from "@/app/lib/stores/mainStore";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://staymaint.com");
 
 interface ReassignJobButtonProps {
   job: Job;
@@ -51,7 +44,6 @@ export function ReassignJobButton({
   onComplete,
   className,
 }: ReassignJobButtonProps) {
-  const { data: session } = useSession();
   const router = useRouter();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const [open, setOpen] = useState(false);
@@ -84,7 +76,7 @@ export function ReassignJobButton({
     setCandidateStatus("loading");
     setError(null);
     const url =
-      `/api/jobs/${encodeURIComponent(job.job_id)}/assignment-candidates/` +
+      `/api/v1/jobs/${encodeURIComponent(job.job_id)}/assignment-candidates/` +
       `?property_id=${encodeURIComponent(selectedPropertyId)}`;
 
     void fetch(url, { signal: controller.signal, cache: "no-store" })
@@ -165,11 +157,6 @@ export function ReassignJobButton({
       setError("Pick a teammate to assign this job to.");
       return;
     }
-    const token = session?.user?.accessToken;
-    if (!token) {
-      setError("Session expired — please sign in again.");
-      return;
-    }
     if (
       !selectedPropertyId ||
       selectedPropertyId !== jobPropertyId ||
@@ -180,9 +167,8 @@ export function ReassignJobButton({
     }
     setSubmitting(true);
     try {
-      await fetchWithToken(
-        `${API_BASE_URL}/api/v1/jobs/${job.job_id}/reassign/`,
-        token,
+      await requestWithSession(
+        `/api/v1/jobs/${job.job_id}/reassign/`,
         "POST",
         {
           user_id: selected.id,

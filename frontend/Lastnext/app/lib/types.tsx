@@ -13,10 +13,6 @@ export interface User {
   profile_image: string | null;
   positions: string;
   properties: Property[];
-  accessToken: string;
-  refreshToken: string;
-  accessTokenExpires?: number;
-  sessionToken?: string;
   users?: number[];
   created_at: string;
 }

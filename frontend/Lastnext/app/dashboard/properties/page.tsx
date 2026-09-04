@@ -7,7 +7,6 @@ import {
   Users as UsersIcon,
   DoorOpen,
 } from "lucide-react";
-import { getServerSession } from "@/app/lib/session.server";
 import { fetchProperties } from "@/app/lib/data.server";
 import { Skeleton } from "@/app/components/ui/loading";
 import { PropertiesToolbar } from "./PropertiesToolbar";
@@ -20,9 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PropertiesIndexPage() {
-  const session = await getServerSession();
-  const accessToken = session?.user?.accessToken;
-  const properties = (await fetchProperties(accessToken).catch(() => [])) || [];
+  const properties = (await fetchProperties().catch(() => [])) || [];
 
   return (
     <div className="w-full max-w-none space-y-5 px-3 py-3 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl">

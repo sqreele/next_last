@@ -98,7 +98,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     isAuthenticated,
     isLoading,
     user,
-    accessToken,
     redirectToLogin,
   } = useSessionGuard({
     redirectTo,

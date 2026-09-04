@@ -14,7 +14,6 @@ export interface DetailedUser {
 }
 
 interface DetailedUsersRequestOptions {
-  accessToken: string;
   optional: boolean;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;

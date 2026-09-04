@@ -13,12 +13,10 @@ export const dynamic = "force-dynamic";
 
 export default async function JobsByTopicPage() {
   const session = await getServerSession();
-  const accessToken = session?.user?.accessToken;
-
   const [jobs, topics, properties] = await Promise.all([
-    fetchAllJobsForDashboard(accessToken),
-    fetchAllTopics(accessToken),
-    accessToken ? jobsApi.getProperties(accessToken) : Promise.resolve([]),
+    fetchAllJobsForDashboard(),
+    fetchAllTopics(),
+    session?.user ? jobsApi.getProperties() : Promise.resolve([]),
   ]);
 
   return (

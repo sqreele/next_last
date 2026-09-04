@@ -92,9 +92,7 @@ async function safeLoad<T>(
 
 export default async function RoomsByTopicPage() {
   const session = await getServerSession();
-  const accessToken = session?.user?.accessToken;
-
-  if (!accessToken) {
+  if (!session?.user) {
     return (
       <div className="w-full">
         <RoomsByTopicClient
@@ -110,10 +108,10 @@ export default async function RoomsByTopicPage() {
   }
 
   const [roomsResult, topicsResult, propertiesResult, jobsResult] = await Promise.all([
-    safeLoad<Room[]>('rooms', () => fetchAllRooms(accessToken), emptyArray<Room>()),
-    safeLoad<Topic[]>('topics', () => fetchAllTopics(accessToken), emptyArray<Topic>()),
-    safeLoad<Property[]>('properties', () => jobsApi.getProperties(accessToken), emptyArray<Property>()),
-    safeLoad<Job[]>('jobs', () => fetchAllJobsForDashboard(accessToken), emptyArray<Job>()),
+    safeLoad<Room[]>('rooms', () => fetchAllRooms(), emptyArray<Room>()),
+    safeLoad<Topic[]>('topics', () => fetchAllTopics(), emptyArray<Topic>()),
+    safeLoad<Property[]>('properties', () => jobsApi.getProperties(), emptyArray<Property>()),
+    safeLoad<Job[]>('jobs', () => fetchAllJobsForDashboard(), emptyArray<Job>()),
   ]);
 
   const loadErrors = [roomsResult.error, topicsResult.error, propertiesResult.error, jobsResult.error].filter(

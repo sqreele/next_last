@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import { fetchJob, fetchProperties } from '@/app/lib/data.server';
-import { getServerSession } from '@/app/lib/session.server';
 import type { Metadata } from 'next';
 import { PrintableWorkOrder } from './PrintableWorkOrder';
 
@@ -17,12 +16,9 @@ export const metadata: Metadata = {
 
 export default async function PrintWorkOrderPage({ params }: Props) {
   const { jobId } = await params;
-  const session = await getServerSession();
-  const accessToken = session?.user?.accessToken;
-
-  const job = await fetchJob(jobId, accessToken);
+  const job = await fetchJob(jobId);
   if (!job) notFound();
-  const properties = await fetchProperties(accessToken);
+  const properties = await fetchProperties();
 
   return <PrintableWorkOrder job={job} properties={properties} />;
 }

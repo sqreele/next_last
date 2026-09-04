@@ -260,10 +260,7 @@ export class JobsApiService {
   }
 
   // Get job statistics without loading all jobs
-  async getJobStats(filtersOrLegacyToken?: any, legacyFilters?: any): Promise<any> {
-    // Transitional call compatibility for deferred, non-Phase-1 callers. The
-    // first string argument is ignored; no browser credential is transmitted.
-    const filters = typeof filtersOrLegacyToken === 'string' ? legacyFilters : filtersOrLegacyToken;
+  async getJobStats(filters?: Record<string, unknown>): Promise<any> {
     const params = new URLSearchParams();
     
     if (filters) {

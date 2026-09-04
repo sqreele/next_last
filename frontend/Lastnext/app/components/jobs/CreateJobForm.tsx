@@ -827,7 +827,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const fetchRooms = useCallback(
     async (areaId?: number | null, floor?: string | null) => {
       const requestId = ++roomRequestIdRef.current;
-      if (!session?.user?.accessToken || !activePropertyId) {
+      if (!session?.user || !activePropertyId) {
         setRooms([]);
         setIsRoomLoading(false);
         return;
@@ -866,7 +866,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       }
     },
     [
-      session?.user?.accessToken,
+      session?.user,
       activePropertyId,
       normalizeRoomsResponse,
       roomBelongsToActiveProperty,
@@ -878,7 +878,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const fetchFloorsForArea = useCallback(
     async (areaId: number | null) => {
       const requestId = ++floorRequestIdRef.current;
-      if (!session?.user?.accessToken || !activePropertyId) {
+      if (!session?.user || !activePropertyId) {
         setFloors([]);
         setIsFloorLoading(false);
         return;
@@ -915,7 +915,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       }
     },
     [
-      session?.user?.accessToken,
+      session?.user,
       activePropertyId,
       normalizeFloorsResponse,
       deriveFloorsFromRooms,
@@ -931,7 +931,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     // still be in flight for the previous active Property.
     roomRequestIdRef.current += 1;
     floorRequestIdRef.current += 1;
-    if (!session?.user?.accessToken || !activePropertyId) {
+    if (!session?.user || !activePropertyId) {
       setRooms([]);
       setAreas([]);
       setTopics([]);
@@ -991,7 +991,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       }
     }
   }, [
-    session?.user?.accessToken,
+    session?.user,
     activePropertyId,
     clearLoadingAfterMinTime,
     normalizeRoomsResponse,

@@ -1,7 +1,6 @@
 // @ts-nocheck
 import React, { Suspense } from "react";
 import { Metadata } from "next";
-import { getServerSession } from "@/app/lib/session.server";
 import {
   fetchAllRooms,
   fetchAllTopics,
@@ -15,13 +14,10 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = generatePageMetadata("roomsByTopic");
 
 export default async function RoomsTopicMismatchPage() {
-  const session = await getServerSession();
-  const accessToken = session?.user?.accessToken;
-
   const [rooms, topics, jobs] = await Promise.all([
-    fetchAllRooms(accessToken),
-    fetchAllTopics(accessToken),
-    fetchAllJobsForDashboard(accessToken),
+    fetchAllRooms(),
+    fetchAllTopics(),
+    fetchAllJobsForDashboard(),
   ]);
 
   return (

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, ReactNode, MouseEvent } from "react";
-import { useSession } from "@/app/lib/session.client";
 import { Job, JobStatus } from "@/app/lib/types";
-import { fetchWithToken } from "@/app/lib/data.server";
+import { requestWithSession } from "@/app/lib/api-client";
 import { enqueueRequest } from "@/app/lib/offline-queue";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import {
@@ -19,12 +18,6 @@ import { StatusBadge } from "@/app/components/pcms-ui";
 import { Textarea } from "@/app/components/ui/textarea";
 import { Loader2, ArrowRight, AlertCircle } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://staymaint.com");
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -67,7 +60,6 @@ export function UpdateStatusModal({
   onComplete,
   children,
 }: UpdateStatusModalProps) {
-  const { data: session } = useSession();
   const t = useT();
   const [selectedStatus, setSelectedStatus] = useState<JobStatus>(job.status);
   const [note, setNote] = useState("");
@@ -91,16 +83,13 @@ export function UpdateStatusModal({
     setError(null);
 
     try {
-      const accessToken = session?.user?.accessToken;
-      if (!accessToken) throw new Error(t("error.noToken"));
-
       await delay(400);
 
       const payload: Record<string, unknown> = { status: selectedStatus };
       if (note.trim()) {
         const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
         const author =
-          session?.user?.username || session?.user?.first_name || "staff";
+          "staff";
         const append = `[${stamp} · ${author} → ${selectedStatus}] ${note.trim()}`;
         payload.remarks = job.remarks ? `${job.remarks}\n${append}` : append;
       }
@@ -125,9 +114,8 @@ export function UpdateStatusModal({
       }
 
       try {
-        await fetchWithToken<Job>(
-          `${API_BASE_URL}/api/v1/jobs/${job.job_id}/`,
-          accessToken,
+        await requestWithSession<Job>(
+          `/api/v1/jobs/${job.job_id}/`,
           "PATCH",
           payload,
         );

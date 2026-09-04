@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { Job, Property, JobStatus, Room, User, Topic } from "./types";
 import { API_CONFIG } from "./config";
 import { getCsrfHeaders } from "./csrf";
@@ -53,9 +55,10 @@ function isRetryableError(error: any, status?: number): boolean {
   return false;
 }
 
-export async function fetchWithToken<T>(
+/** Server-rendering data access. Browser callers use api-client.ts and the
+ * same-origin BFF; this module always reads the bearer from server session. */
+export async function fetchWithSession<T>(
   url: string,
-  token?: string,
   method: string = "GET",
   body?: any,
   retries: number = MAX_RETRIES,
@@ -68,11 +71,10 @@ export async function fetchWithToken<T>(
     "Content-Type": "application/json",
   };
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  } else {
-    logger.warn('No access token provided for request', { url });
-  }
+  const { requireServerAccessToken } = await import('./auth0/server-session');
+  const serverToken = await requireServerAccessToken();
+  if (!serverToken) throw new ServerApiError('Authentication required', 401);
+  headers["Authorization"] = `Bearer ${serverToken}`;
 
   const options: RequestInit = {
     method,
@@ -96,12 +98,8 @@ export async function fetchWithToken<T>(
     (options as Record<string, unknown>).credentials = 'include';
   }
 
-  // Handle relative URLs by making them absolute for server-side requests
-  let absoluteUrl = url;
-  if (url.startsWith('/')) {
-    // For server-side requests, we need to use the Django backend directly
-    absoluteUrl = `${API_CONFIG.baseUrl}${url}`;
-  }
+  // This server-only module talks to Django directly.
+  const absoluteUrl = url.startsWith('/') ? `${API_CONFIG.baseUrl}${url}` : url;
 
   logger.api(method, absoluteUrl, undefined, {
     hasAuth: !!headers["Authorization"],
@@ -119,15 +117,10 @@ export async function fetchWithToken<T>(
   }, timeoutMs);
 
   try {
-    const response = typeof window === 'undefined'
-      ? await backendFetch(absoluteUrl, {
-          ...options,
-          signal: controller.signal,
-        })
-      : await fetch(absoluteUrl, {
-          ...options,
-          signal: controller.signal,
-        });
+    const response = await backendFetch(absoluteUrl, {
+      ...options,
+      signal: controller.signal,
+    });
     
     clearTimeout(timeoutId);
     signal?.removeEventListener('abort', abortFromCaller);
@@ -155,11 +148,7 @@ export async function fetchWithToken<T>(
       
       // Handle authentication errors specifically (not retryable)
       if (response.status === 401) {
-        if (!token) {
-          errorMessage = "Authentication required - no access token provided";
-        } else {
-          errorMessage = "Authentication failed - invalid or expired token";
-        }
+        errorMessage = "Authentication required";
         throw new ServerApiError(errorMessage, response.status, errorData);
       }
       
@@ -167,7 +156,7 @@ export async function fetchWithToken<T>(
       if (isRetryableError(null, response.status) && retries > 0) {
         logger.warn(`Retrying request due to ${response.status} error (${retries} attempts left)`);
         await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-        return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs, signal);
+        return fetchWithSession<T>(url, method, body, retries - 1, timeoutMs, signal);
       }
       
       throw new ServerApiError(errorMessage, response.status, errorData);
@@ -200,7 +189,7 @@ export async function fetchWithToken<T>(
       if (retries > 0) {
         logger.warn(`Request timeout, retrying (${retries} attempts left)`);
         await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-        return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs, signal);
+        return fetchWithSession<T>(url, method, body, retries - 1, timeoutMs, signal);
       }
       throw new ServerApiError("Request timeout", 408);
     }
@@ -209,7 +198,7 @@ export async function fetchWithToken<T>(
     if (isRetryableError(error) && retries > 0) {
       logger.warn(`Network error, retrying (${retries} attempts left):`, error instanceof Error ? error.message : String(error));
       await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-      return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs, signal);
+      return fetchWithSession<T>(url, method, body, retries - 1, timeoutMs, signal);
     }
     
     logger.error(`Error during ${method} request to ${absoluteUrl}`, error);
@@ -218,6 +207,22 @@ export async function fetchWithToken<T>(
     }
     throw new ServerApiError((error as Error).message || "Network error", 0);
   }
+}
+
+// Internal migration adapter for server-rendered helper implementations that
+// have not yet had their argument order simplified. It deliberately ignores
+// the legacy value: authorization is always obtained above from the server
+// session, never from a caller.
+async function fetchWithToken<T>(
+  url: string,
+  _ignoredLegacyValue?: string,
+  method: string = "GET",
+  body?: any,
+  retries?: number,
+  timeoutMs?: number,
+  signal?: AbortSignal,
+): Promise<T> {
+  return fetchWithSession<T>(url, method, body, retries, timeoutMs, signal);
 }
 
 export async function fetchProperties(accessToken?: string): Promise<Property[]> {
@@ -714,41 +719,10 @@ export async function fetchJobsForRoom(roomId: string, accessToken?: string): Pr
   return fetchAllJobs(accessToken, `room_id=${encodeURIComponent(roomId)}`);
 }
 
-export async function updateUserProfile(auth0Profile: any, accessToken?: string): Promise<boolean> {
+export async function updateUserProfile(auth0Profile: any): Promise<boolean> {
   try {
-    let token = accessToken;
-    
-    // If no token provided, try to get it from the session
-    if (!token) {
-      try {
-        // For server-side calls, we need to use the full URL
-        const baseUrl = process.env.AUTH0_BASE_URL || 'https://staymaint.com';
-        const sessionResponse = await fetch(`${baseUrl}/api/auth/session-compat`, {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        
-        if (!sessionResponse.ok) {
-          console.error('❌ Failed to get session for profile update');
-          return false;
-        }
-        
-        const session = await sessionResponse.json();
-        token = session?.user?.accessToken;
-      } catch (sessionError) {
-        console.error('❌ Error getting session for profile update:', sessionError);
-        return false;
-      }
-    }
-    
-    if (!token) {
-      console.error('❌ No access token available for profile update');
-      return false;
-    }
-    
-    const response = await fetchWithToken<{message: string, updated_fields: string[], user: any}>(
+    await fetchWithSession<{message: string, updated_fields: string[], user: any}>(
       '/api/v1/auth/profile/update/',
-      token,
       'POST',
       {
         auth0_profile: auth0Profile
@@ -832,8 +806,6 @@ export async function fetchUsersByProperty(propertyId: string, accessToken?: str
       positions: profile.positions || '',
       profile_image: profile.profile_image,
       properties: profile.properties || [],
-      accessToken: '', // Not needed for this context
-      refreshToken: '', // Not needed for this context
       created_at: profile.created_at
     }));
     return users;

@@ -34,9 +34,6 @@ export function useAuth() {
   // Get user data safely
   const user = isAuthenticated ? session.user : null;
 
-  // Check if access token is available
-  const hasValidToken = isAuthenticated && user?.accessToken;
-
   return {
     session,
     status,
@@ -44,7 +41,6 @@ export function useAuth() {
     isAuthenticated,
     isLoading,
     isUnauthenticated,
-    hasValidToken,
     error: session?.error,
   };
 }
@@ -75,4 +71,4 @@ export function useRedirectIfAuthenticated() {
   }, [auth.isAuthenticated, router]);
 
   return auth;
-} 
+}

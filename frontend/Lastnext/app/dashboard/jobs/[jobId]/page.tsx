@@ -141,9 +141,8 @@ export async function generateMetadata(
   try {
     const { jobId } = await params;
     const session = await getServerSession();
-    const accessToken = session?.user?.accessToken;
     const requestedPropertyId = getRequestedPropertyId(await searchParams);
-    const job = await fetchJob(jobId, accessToken, requestedPropertyId);
+    const job = await fetchJob(jobId, undefined, requestedPropertyId);
 
     if (!job) {
       return {
@@ -173,12 +172,11 @@ export default async function JobPage({ params, searchParams }: Props) {
   try {
     const { jobId } = await params;
     const session = await getServerSession();
-    const accessToken = session?.user?.accessToken;
     const requestedPropertyId = getRequestedPropertyId(await searchParams);
 
     // Fetch job and properties
-    const job = await fetchJob(jobId, accessToken, requestedPropertyId);
-    const properties = await fetchProperties(accessToken);
+    const job = await fetchJob(jobId, undefined, requestedPropertyId);
+    const properties = await fetchProperties();
 
     if (!job) {
       notFound();

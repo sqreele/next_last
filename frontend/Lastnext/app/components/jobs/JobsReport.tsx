@@ -57,7 +57,7 @@ import {
   JobPriority,
   STATUS_COLORS,
 } from "@/app/lib/types";
-import { fetchAllJobsForProperty } from "@/app/lib/data.server";
+import { fetchAllJobsForPropertyWithSession } from "@/app/lib/api-client";
 import { format } from "date-fns";
 import { exportJobsToExcel } from "@/app/lib/utils/excel-export";
 import { exportJobsReportToPdf } from "@/app/lib/utils/pdf-export";
@@ -1206,9 +1206,8 @@ export default function JobsReport({
 
   // Load the complete authorized Property projection once for analytics.
   useEffect(() => {
-    const accessToken = session?.user?.accessToken;
     if (!selectedProperty || sessionStatus === "loading") return;
-    if (!accessToken) {
+    if (!session?.user) {
       setLoading(false);
       setReportError("Authentication is required to load this report.");
       return;
@@ -1229,10 +1228,8 @@ export default function JobsReport({
         const propertyJobs =
           stableProvidedJobs.length > 0
             ? stableProvidedJobs
-            : await fetchAllJobsForProperty(
+            : await fetchAllJobsForPropertyWithSession<Job>(
                 requestPropertyId,
-                accessToken,
-                undefined,
                 controller.signal,
               );
         const scopedJobs = assertJobsReportPropertyBoundary(
@@ -1271,7 +1268,7 @@ export default function JobsReport({
     selectedProperty,
     sessionStatus,
     stableProvidedJobs,
-    session?.user?.accessToken,
+    session?.user,
   ]);
 
   // Shared filename + filter-description helpers used by all exports.
@@ -1478,7 +1475,7 @@ export default function JobsReport({
   }
 
   // Check if user is authenticated
-  if (sessionStatus === "unauthenticated" || !session?.user?.accessToken) {
+  if (sessionStatus === "unauthenticated" || !session?.user) {
     return (
       <Card className="w-full">
         <CardHeader>

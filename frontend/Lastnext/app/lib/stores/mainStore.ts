@@ -13,8 +13,6 @@ interface UserState {
   userProfile: UserProfile | null;
   selectedPropertyId: string | null;
   isAuthenticated: boolean;
-  accessToken: string | null;
-  refreshToken: string | null;
 }
 
 // Property State
@@ -61,7 +59,6 @@ interface MainStore extends
   // User Actions
   setUserProfile: (profile: UserProfile | null) => void;
   setSelectedPropertyId: (propertyId: string | null) => void;
-  setAuthTokens: (access: string, refresh: string) => void;
   logout: () => void;
   
   // Property Actions
@@ -112,8 +109,6 @@ const initialState: MainStoreState = {
   userProfile: null,
   selectedPropertyId: null,
   isAuthenticated: false,
-  accessToken: null,
-  refreshToken: null,
   
   // Properties
   properties: [],
@@ -202,12 +197,9 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
     // Mirror to useAuthStore so consumers reading selectedProperty (e.g. preventive-maintenance) re-fetch
     try { useAuthStore.getState().setSelectedProperty(propertyId); } catch {}
   },
-  setAuthTokens: (access: string, refresh: string) => set({ accessToken: access, refreshToken: refresh }),
   logout: () => set({ 
     userProfile: null, 
     isAuthenticated: false, 
-    accessToken: null, 
-    refreshToken: null,
     selectedPropertyId: null 
   }),
   
@@ -324,7 +316,6 @@ const userSelector = (state: MainStore) => ({
   isAuthenticated: state.isAuthenticated,
   setUserProfile: state.setUserProfile,
   setSelectedPropertyId: state.setSelectedPropertyId,
-  setAuthTokens: state.setAuthTokens,
   logout: state.logout,
 });
 
@@ -389,7 +380,6 @@ export const useUser = () => {
   const isAuthenticated = useMainStore(state => state.isAuthenticated);
   const setUserProfile = useMainStore(state => state.setUserProfile);
   const setSelectedPropertyId = useMainStore(state => state.setSelectedPropertyId);
-  const setAuthTokens = useMainStore(state => state.setAuthTokens);
   const logout = useMainStore(state => state.logout);
   
   return {
@@ -398,7 +388,6 @@ export const useUser = () => {
     isAuthenticated,
     setUserProfile,
     setSelectedPropertyId,
-    setAuthTokens,
     logout,
   };
 };

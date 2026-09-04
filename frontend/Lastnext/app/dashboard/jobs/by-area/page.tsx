@@ -14,8 +14,7 @@ export const metadata: Metadata = {
 
 export default async function JobsByAreaPage() {
   const session = await getServerSession();
-  const accessToken = session?.user?.accessToken;
-  const jobs = await fetchAllJobsForDashboard(accessToken).catch(() => []);
+  const jobs = await fetchAllJobsForDashboard().catch(() => []);
 
   return (
     <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-6 sm:py-5 lg:mx-auto lg:max-w-7xl">

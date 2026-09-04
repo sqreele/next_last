@@ -40,9 +40,6 @@ interface Session {
     profile_image: string | null;
     positions: string;
     properties: Property[];
-    accessToken: string;
-    refreshToken: string;
-    accessTokenExpires?: number;
     first_name?: string | null;
     last_name?: string | null;
     created_at: string;
@@ -257,8 +254,7 @@ const PropertyJobsDashboard = ({
 
   // Fetch backend job stats to ensure totals are not limited by pagination
   useEffect(() => {
-    const token = session?.user?.accessToken;
-    if (!token) {
+    if (!session?.user) {
       setBackendStats(null);
       return;
     }
@@ -267,7 +263,6 @@ const PropertyJobsDashboard = ({
       try {
         setIsStatsLoading(true);
         const stats = await jobsApi.getJobStats(
-          token,
           effectiveProperty ? { property_id: effectiveProperty } : undefined,
         );
         setBackendStats(stats);
@@ -280,7 +275,7 @@ const PropertyJobsDashboard = ({
     };
 
     fetchStats();
-  }, [session?.user?.accessToken, effectiveProperty, jobCreationCount]);
+  }, [session?.user, effectiveProperty, jobCreationCount]);
 
   // Function to capture chart as image
   const captureChartAsImage = async (

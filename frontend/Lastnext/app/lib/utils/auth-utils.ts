@@ -92,21 +92,6 @@ export function sanitizeUserData(user: any) {
 }
 
 /**
- * Create secure headers for API requests
- */
-export function createSecureHeaders(accessToken?: string): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-  
-  return headers;
-}
-
-/**
  * Handle authentication errors consistently
  */
 export function handleAuthError(error: any): string {
@@ -135,4 +120,4 @@ export function handleAuthError(error: any): string {
   }
   
   return 'An unexpected error occurred. Please try again.';
-} 
+}

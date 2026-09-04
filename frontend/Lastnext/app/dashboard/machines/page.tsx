@@ -137,7 +137,6 @@ export default function MachinesListPage() {
       const machineService = new MachineService();
       const machineResponse = await machineService.getMachines(
         propertyId,
-        undefined,
         signal,
       );
 

@@ -9,7 +9,6 @@ import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 import { PageLoader } from '@/app/components/ui/loading';
 import { useSession } from '@/app/lib/session.client';
 import {
-  setPreventiveMaintenanceServiceToken,
   createPreventiveMaintenanceService,
   type PMMasterPlan,
 } from '@/app/lib/PreventiveMaintenanceService';
@@ -24,7 +23,7 @@ type DetailLoaderProps = {
 export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoaderProps) {
   const router = useRouter();
   const isMasterPlanId = /^PMP[0-9A-F]+$/i.test(pmId);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const [maintenance, setMaintenance] = useState<PreventiveMaintenance | null>(null);
   const [masterPlan, setMasterPlan] = useState<PMMasterPlan | null>(null);
@@ -41,8 +40,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
   }, [pmId, router, status]);
 
   useEffect(() => {
-    const accessToken = session?.user?.accessToken;
-    if (status !== 'authenticated' || !accessToken) return;
+    if (status !== 'authenticated') return;
 
     if (!selectedPropertyId) {
       setMaintenance(null);
@@ -53,13 +51,12 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     }
 
     let active = true;
-    setPreventiveMaintenanceServiceToken(accessToken);
     setLoading(true);
     setError(null);
     setCanOperate(false);
     setMasterPlan(null);
     setMaintenance(null);
-    const service = createPreventiveMaintenanceService(accessToken);
+    const service = createPreventiveMaintenanceService();
     const detailRequest = isMasterPlanId
       ? service.getPMMasterPlan(pmId, selectedPropertyId!)
       : service.getPreventiveMaintenanceById(pmId, selectedPropertyId!);
@@ -96,16 +93,15 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     return () => {
       active = false;
     };
-  }, [isMasterPlanId, pmId, selectedPropertyId, session?.user?.accessToken, status]);
+  }, [isMasterPlanId, pmId, selectedPropertyId, status]);
 
   const deleteMasterPlan = async () => {
-    const accessToken = session?.user?.accessToken;
-    if (!accessToken || !selectedPropertyId || !masterPlan) return;
+    if (!selectedPropertyId || !masterPlan) return;
     const requestPropertyId = selectedPropertyId;
     setDeleting(true);
     setError(null);
     try {
-      await createPreventiveMaintenanceService(accessToken)
+      await createPreventiveMaintenanceService()
         .deletePMMasterPlan(masterPlan.plan_id, requestPropertyId);
       if (useMainStore.getState().selectedPropertyId !== requestPropertyId) return;
       router.push('/dashboard/preventive-maintenance/plans');
@@ -119,7 +115,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     }
   };
 
-  if (loading || status === 'loading' || (status === 'authenticated' && !session?.user?.accessToken)) {
+  if (loading || status === 'loading') {
     return <PageLoader />;
   }
 

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
 import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
 import { createPreventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
-import { useSession } from "@/app/lib/session.client";
 import { useMainStore } from "@/app/lib/stores/mainStore";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import Image from "next/image";
@@ -64,8 +63,6 @@ export default function PreventiveMaintenanceDashboard() {
     fetchStatistics,
   } = context;
   const selectedProperty = useMainStore(state => state.selectedPropertyId);
-  const { data: session } = useSession();
-  const accessToken = session?.user?.accessToken || null;
   const upcomingRequestRef = useRef(0);
   const statisticsRequestRef = useRef(0);
 
@@ -84,7 +81,7 @@ export default function PreventiveMaintenanceDashboard() {
   // Function to fetch upcoming maintenance with pagination
   const fetchUpcomingMaintenance = useCallback(
     async (page: number = 1, pageSize: number = 10) => {
-      if (!selectedProperty || !accessToken) {
+      if (!selectedProperty) {
         upcomingRequestRef.current += 1;
         setUpcomingItems([]);
         setUpcomingPropertyId(null);
@@ -105,7 +102,7 @@ export default function PreventiveMaintenanceDashboard() {
           property_id: selectedProperty,
         };
 
-        const service = createPreventiveMaintenanceService(accessToken);
+        const service = createPreventiveMaintenanceService();
         const response =
           await service.getAllPreventiveMaintenance(params);
 
@@ -148,7 +145,7 @@ export default function PreventiveMaintenanceDashboard() {
         if (requestId === upcomingRequestRef.current) setUpcomingLoading(false);
       }
     },
-    [accessToken, selectedProperty],
+    [selectedProperty],
   );
 
   // Fetch maintenance data on component mount

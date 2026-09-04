@@ -25,11 +25,10 @@ const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
 export default function PMMasterPlansPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const properties = useMainStore((state) => state.properties);
   const activeProperty = properties.find((property) => property.property_id === selectedPropertyId);
-  const accessToken = session?.user?.accessToken || null;
   const requestRef = useRef(0);
   const actionRequestRef = useRef(0);
   const requestedPropertyRef = useRef<string | null>(null);
@@ -63,13 +62,13 @@ export default function PMMasterPlansPage() {
     setMaterializationPreview(null);
     setError(null);
 
-    if (status !== "authenticated" || !accessToken || !selectedPropertyId) {
+    if (status !== "authenticated" || !selectedPropertyId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    const service = createPreventiveMaintenanceService(accessToken);
+    const service = createPreventiveMaintenanceService();
     Promise.all([
       service.getPMMasterPlans({ property_id: selectedPropertyId }),
       service.getPMMasterPlanProjection(selectedPropertyId, 30),
@@ -94,7 +93,7 @@ export default function PMMasterPlansPage() {
     return () => {
       requestRef.current += 1;
     };
-  }, [accessToken, refreshKey, selectedPropertyId, status]);
+  }, [refreshKey, selectedPropertyId, status]);
 
   useEffect(() => {
     setMaterializationResult(null);
@@ -114,14 +113,14 @@ export default function PMMasterPlansPage() {
   const scopedProjection = hasCurrentPropertyData ? projection : null;
 
   const reviewMaterialization = async () => {
-    if (!accessToken || !selectedPropertyId) return;
+    if (!selectedPropertyId) return;
     const requestPropertyId = selectedPropertyId;
     const actionRequestId = ++actionRequestRef.current;
     setMaterializing(true);
     setError(null);
     setMaterializationResult(null);
     try {
-      const response = await createPreventiveMaintenanceService(accessToken)
+      const response = await createPreventiveMaintenanceService()
         .materializePMMasterPlans(true, requestPropertyId);
       if (actionRequestId !== actionRequestRef.current || useMainStore.getState().selectedPropertyId !== requestPropertyId) return;
       setMaterializationPreview(response.data || null);
@@ -134,13 +133,13 @@ export default function PMMasterPlansPage() {
   };
 
   const confirmMaterialization = async () => {
-    if (!accessToken || !selectedPropertyId) return;
+    if (!selectedPropertyId) return;
     const requestPropertyId = selectedPropertyId;
     const actionRequestId = ++actionRequestRef.current;
     setMaterializing(true);
     setError(null);
     try {
-      const response = await createPreventiveMaintenanceService(accessToken)
+      const response = await createPreventiveMaintenanceService()
         .materializePMMasterPlans(false, requestPropertyId);
       if (actionRequestId !== actionRequestRef.current || useMainStore.getState().selectedPropertyId !== requestPropertyId) return;
       const count = response.data?.created_count || 0;
@@ -156,13 +155,13 @@ export default function PMMasterPlansPage() {
   };
 
   const confirmDelete = useCallback(async () => {
-    if (!accessToken || !selectedPropertyId || !deletePlan) return;
+    if (!selectedPropertyId || !deletePlan) return;
     const requestPropertyId = selectedPropertyId;
     const actionRequestId = ++actionRequestRef.current;
     setDeleting(true);
     setError(null);
     try {
-      await createPreventiveMaintenanceService(accessToken)
+      await createPreventiveMaintenanceService()
         .deletePMMasterPlan(deletePlan.plan_id, requestPropertyId);
       if (actionRequestId !== actionRequestRef.current || useMainStore.getState().selectedPropertyId !== requestPropertyId) return;
       setDeletePlan(null);
@@ -174,7 +173,7 @@ export default function PMMasterPlansPage() {
     } finally {
       if (actionRequestId === actionRequestRef.current) setDeleting(false);
     }
-  }, [accessToken, deletePlan, selectedPropertyId]);
+  }, [deletePlan, selectedPropertyId]);
 
   if (!selectedPropertyId) {
     return (

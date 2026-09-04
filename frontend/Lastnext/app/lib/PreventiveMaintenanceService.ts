@@ -1,7 +1,7 @@
 // app/lib/PreventiveMaintenanceService.ts
 
 import apiClient from "./api-client";
-import { handleApiError, ApiError } from "./api-client";
+import { handleApiError } from "./api-client";
 import {
   validateFrequency,
   type PreventiveMaintenance,
@@ -9,8 +9,6 @@ import {
   type ServiceResponse,
 } from "./preventiveMaintenanceModels";
 // Removed next-auth usage; apiClient handles auth headers
-import { jwtDecode } from "jwt-decode";
-import axios from "axios";
 
 export type CreatePreventiveMaintenanceData = {
   pmtitle: string;
@@ -162,29 +160,6 @@ type MaintenanceApiResponse =
 
 class PreventiveMaintenanceService {
   private baseUrl: string = "/api/v1/preventive-maintenance";
-  private accessToken?: string;
-
-  constructor(accessToken?: string) {
-    this.accessToken = accessToken;
-  }
-
-  // Helper method to get authorization headers
-  private getAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers.Authorization = `Bearer ${this.accessToken}`;
-    } else {
-      console.warn("⚠️ No access token provided for API request");
-      console.warn("⚠️ Service instance:", this);
-      console.warn("⚠️ accessToken value:", this.accessToken);
-    }
-    return headers;
-  }
-
-  // Public method to set the access token
-  public setAccessToken(accessToken: string): void {
-    this.accessToken = accessToken;
-  }
 
   // Helper method to check if an item matches a machine
   private itemMatchesMachine(
@@ -279,34 +254,11 @@ class PreventiveMaintenanceService {
       if (cleanParams.machine_id) {
       }
 
-      let response: any;
-
-      if (this.accessToken) {
-        // Use direct backend call with stored token
-        response = await apiClient.get<MaintenanceApiResponse>(
-          `${this.baseUrl}/`,
-          {
-            params: cleanParams,
-            headers: this.getAuthHeaders(),
-          },
-        );
-      } else {
-        // Use Next.js API proxy to include auth automatically
-
-        const queryString = new URLSearchParams(cleanParams).toString();
-        const url = `/api/preventive-maintenance/${queryString ? `?${queryString}` : ""}`;
-
-        const res = await fetch(url, { credentials: "include" });
-        if (!res.ok) {
-          throw new Error(
-            `Failed to fetch preventive maintenance: ${res.status}`,
-          );
-        }
-        const data = await res.json();
-
-        // Return in the same format as apiClient
-        response = { data };
-      }
+      // /api/v1 is the same-origin catch-all BFF. Its server boundary resolves
+      // the Redis session and injects the backend bearer credential.
+      const response = await apiClient.get<MaintenanceApiResponse>(
+        `${this.baseUrl}/`, { params: cleanParams },
+      );
 
       // Extract items for logging
       const { items, count } = this.extractItemsFromResponse(response.data);
@@ -488,7 +440,6 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/plans/`,
         {
           params,
-          headers: this.getAuthHeaders(),
         },
       );
       return {
@@ -512,7 +463,6 @@ class PreventiveMaintenanceService {
         data,
         {
           params: propertyId ? { property_id: propertyId } : undefined,
-          headers: this.getAuthHeaders(),
         },
       );
       return {
@@ -535,7 +485,6 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/plans/${encodeURIComponent(planId)}/`,
         {
           params: { property_id: propertyId },
-          headers: this.getAuthHeaders(),
         },
       );
       return { success: true, data: response.data, message: "PM master plan fetched successfully" };
@@ -556,7 +505,6 @@ class PreventiveMaintenanceService {
         data,
         {
           params: { property_id: propertyId },
-          headers: this.getAuthHeaders(),
         },
       );
       return { success: true, data: response.data, message: "PM master plan updated successfully" };
@@ -573,7 +521,6 @@ class PreventiveMaintenanceService {
     try {
       await apiClient.delete(`${this.baseUrl}/plans/${encodeURIComponent(planId)}/`, {
         params: { property_id: propertyId },
-        headers: this.getAuthHeaders(),
       });
       return { success: true, message: "PM master plan deleted successfully" };
     } catch (error: any) {
@@ -591,7 +538,6 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/projection/`,
         {
           params: { property_id: propertyId, days },
-          headers: this.getAuthHeaders(),
         },
       );
       return { success: true, data: response.data, message: "PM master plan projection fetched successfully" };
@@ -610,7 +556,6 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/materialize-plans/`,
         { dry_run: dryRun, property_id: propertyId },
         {
-          headers: this.getAuthHeaders(),
         },
       );
       return {
@@ -726,7 +671,7 @@ class PreventiveMaintenanceService {
 
       // CRITICAL: Don't set Content-Type header - let axios/browser set it automatically with boundary
       // The apiClient interceptor will detect FormData and remove Content-Type header
-      // apiClient interceptor will add Authorization header automatically
+      // The same-origin BFF injects the server-held credential.
       const createResponse = await apiClient.post<any>(
         `${this.baseUrl}/`,
         formData,
@@ -817,7 +762,6 @@ class PreventiveMaintenanceService {
           params: { property_id: propertyId },
           headers: {
             "Content-Type": "multipart/form-data",
-            ...this.getAuthHeaders(),
           },
         },
       );
@@ -842,7 +786,6 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/${pmId}/images/${encodeURIComponent(String(imageId))}/`,
         {
           params: { property_id: propertyId },
-          headers: this.getAuthHeaders(),
         },
       );
       return {
@@ -943,7 +886,6 @@ class PreventiveMaintenanceService {
         {
           headers: {
             "Content-Type": "multipart/form-data",
-            ...this.getAuthHeaders(),
           },
         },
       );
@@ -994,7 +936,6 @@ class PreventiveMaintenanceService {
           params: propertyId ? { property_id: propertyId } : undefined,
           headers: {
             "Content-Type": "multipart/form-data",
-            ...this.getAuthHeaders(),
           },
         },
       );
@@ -1024,7 +965,6 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/${id}/`,
         {
           params: propertyId ? { property_id: propertyId } : undefined,
-          headers: this.getAuthHeaders(),
         },
       );
       return {
@@ -1045,7 +985,6 @@ class PreventiveMaintenanceService {
       const response = await apiClient.get<PreventiveMaintenance[]>(
         `${this.baseUrl}/`,
         {
-          headers: this.getAuthHeaders(),
         },
       );
       return {
@@ -1067,7 +1006,6 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/stats/`,
         {
           params,
-          headers: this.getAuthHeaders(),
         },
       );
 
@@ -1114,7 +1052,6 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/upcoming/`,
         {
           params: { days },
-          headers: this.getAuthHeaders(),
         },
       );
 
@@ -1162,18 +1099,15 @@ class PreventiveMaintenanceService {
   async debugMaintenanceData(): Promise<void> {
     try {
       const statsResponse = await apiClient.get<any>(`${this.baseUrl}/stats/`, {
-        headers: this.getAuthHeaders(),
       });
 
       const upcomingResponse = await apiClient.get<any>(
         `${this.baseUrl}/upcoming/?days=30`,
         {
-          headers: this.getAuthHeaders(),
         },
       );
 
       const allResponse = await apiClient.get<any>(`${this.baseUrl}/`, {
-        headers: this.getAuthHeaders(),
       });
     } catch (error) {
       console.error("Debug error:", error);
@@ -1190,7 +1124,6 @@ class PreventiveMaintenanceService {
 
     try {
       const response = await apiClient.delete(`${this.baseUrl}/${id}/`, {
-        headers: this.getAuthHeaders(),
       });
       return {
         success: true,
@@ -1241,7 +1174,6 @@ class PreventiveMaintenanceService {
         try {
           const response = await apiClient.get<any>(`${this.baseUrl}/`, {
             params,
-            headers: this.getAuthHeaders(),
           });
           const { items } = this.extractItemsFromResponse(response.data);
 
@@ -1266,14 +1198,8 @@ class PreventiveMaintenanceService {
   }
 }
 
-// Export a function that creates a new service instance with the current access token
-export const createPreventiveMaintenanceService = (accessToken?: string) =>
-  new PreventiveMaintenanceService(accessToken);
+// Services use the same-origin BFF; browser code never receives credentials.
+export const createPreventiveMaintenanceService = () =>
+  new PreventiveMaintenanceService();
 
-// Keep the old export for backward compatibility, but it won't have authentication
 export const preventiveMaintenanceService = new PreventiveMaintenanceService();
-
-// Add a method to set the access token on the singleton
-export const setPreventiveMaintenanceServiceToken = (accessToken: string) => {
-  preventiveMaintenanceService.setAccessToken(accessToken);
-};

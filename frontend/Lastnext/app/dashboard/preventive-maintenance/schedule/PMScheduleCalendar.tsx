@@ -13,17 +13,9 @@ import {
   ArrowRight,
   Plus,
 } from "lucide-react";
-import { useSession } from "@/app/lib/session.client";
-import { fetchWithToken } from "@/app/lib/data.server";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils/cn";
 import { useMainStore } from "@/app/lib/stores/mainStore";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://pcms.live");
 
 type StatusFilter = "open" | "completed" | "all";
 
@@ -94,7 +86,6 @@ function startOfWeekMonday(date: Date): Date {
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function PMScheduleCalendar() {
-  const { data: session } = useSession();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const properties = useMainStore((state) => state.properties);
   const activeProperty = properties.find((property) => property.property_id === selectedPropertyId);
@@ -125,12 +116,6 @@ export function PMScheduleCalendar() {
 
   useEffect(() => {
     let cancelled = false;
-    const token = session?.user?.accessToken;
-    if (!token) {
-      setLoading(false);
-      setError("Sign in to view the PM schedule.");
-      return;
-    }
     if (!selectedPropertyId) {
       setData(null);
       setLoading(false);
@@ -148,8 +133,12 @@ export function PMScheduleCalendar() {
       property_id: selectedPropertyId,
     });
     if (activeAnchor) params.set("from", toISODate(startOfWeekMonday(activeAnchor)));
-    const url = `${API_BASE_URL}/api/v1/preventive-maintenance/schedule/?${params.toString()}`;
-    fetchWithToken<ScheduleResponse>(url, token)
+    const url = `/api/v1/preventive-maintenance/schedule/?${params.toString()}`;
+    fetch(url, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Failed to load PM schedule: ${response.status}`);
+        return response.json() as Promise<ScheduleResponse>;
+      })
       .then((res) => {
         if (cancelled) return;
         setData(res);
@@ -172,7 +161,6 @@ export function PMScheduleCalendar() {
     refreshKey,
     statusFilter,
     selectedPropertyId,
-    session?.user?.accessToken,
   ]);
 
   const dayIndex = useMemo(() => {

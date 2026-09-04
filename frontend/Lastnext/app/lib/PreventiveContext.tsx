@@ -3,13 +3,10 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useClientAuth0 } from './auth0';
-import { useSession } from '@/app/lib/session.client';
 import { Property } from '@/app/lib/types';
 import { usePreventiveMaintenanceStore, useAuthStore } from '@/app/lib/stores';
 import { 
   preventiveMaintenanceService,
-  setPreventiveMaintenanceServiceToken,
   CreatePreventiveMaintenanceData, 
   UpdatePreventiveMaintenanceData,
   CompletePreventiveMaintenanceData
@@ -51,9 +48,6 @@ export interface PreventiveMaintenanceContextType {
 const PreventiveMaintenanceContext = createContext<PreventiveMaintenanceContextType | undefined>(undefined);
 
 export function PreventiveMaintenanceProvider({ children }: { children: React.ReactNode }) {
-  const { accessToken: auth0AccessToken, user } = useClientAuth0();
-  const { data: session } = useSession();
-  const accessToken = auth0AccessToken || session?.user?.accessToken || null;
   const { selectedProperty } = useAuthStore();
   
   // Zustand store
@@ -80,22 +74,12 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
     clear: clearStore
   } = usePreventiveMaintenanceStore();
 
-  // Set the access token on the singleton service whenever it changes
-  useEffect(() => {
-    
-    if (accessToken) {
-      setPreventiveMaintenanceServiceToken(accessToken);
-    } else {
-      console.warn('⚠️ No access token available in PreventiveContext');
-    }
-  }, [accessToken]);
-
   // Enhanced fetchMachines function
   const fetchMachines = useCallback(async (propertyId?: string) => {
     try {
       // Production mode: Always make real API calls
       const machineService = new MachineService();
-      const response = await machineService.getMachines(propertyId || selectedProperty || undefined, accessToken || undefined);
+      const response = await machineService.getMachines(propertyId || selectedProperty || undefined);
 
       if (response.success && response.data) {
         setMachines(response.data);
@@ -107,21 +91,21 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
       console.warn('⚠️ Error fetching machines (machines may not be available):', err.message);
       setMachines([]);
     }
-  }, [selectedProperty, setMachines, accessToken]);
+  }, [selectedProperty, setMachines]);
 
   // Fetch topics
   const fetchTopics = useCallback(async () => {
     try {
       // Production mode: Always make real API calls
       const topicService = new TopicService();
-      const response = await topicService.getTopics(accessToken || undefined, selectedProperty);
+      const response = await topicService.getTopics(selectedProperty);
       if (response.success && response.data) {
         setTopics(response.data);
       }
     } catch (error) {
       console.error('Error fetching topics:', error);
     }
-  }, [setTopics, accessToken, selectedProperty]);
+  }, [setTopics, selectedProperty]);
 
   // Fetch maintenance items
   const fetchMaintenanceItems = useCallback(async (params?: SearchParams) => {
@@ -289,13 +273,11 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
 
   // Initialize data
   useEffect(() => {
-    if (accessToken) {
-      fetchTopics();
-      fetchMachines();
-      fetchMaintenanceItems();
-      fetchStatistics();
-    }
-  }, [accessToken, fetchTopics, fetchMachines, fetchMaintenanceItems, fetchStatistics]);
+    fetchTopics();
+    fetchMachines();
+    fetchMaintenanceItems();
+    fetchStatistics();
+  }, [fetchTopics, fetchMachines, fetchMaintenanceItems, fetchStatistics]);
 
   const contextValue: PreventiveMaintenanceContextType = {
     maintenanceItems,

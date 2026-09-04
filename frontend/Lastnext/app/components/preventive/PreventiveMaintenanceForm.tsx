@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useClientAuth0 } from "../../lib/auth0";
 import {
   Formik,
   Form,
@@ -29,7 +28,6 @@ import {
   preventiveMaintenanceService,
   type CreatePreventiveMaintenanceData,
   type UpdatePreventiveMaintenanceData,
-  setPreventiveMaintenanceServiceToken,
 } from "@/app/lib/PreventiveMaintenanceService";
 import TopicService from "@/app/lib/TopicService";
 import MachineService from "@/app/lib/MachineService";
@@ -104,10 +102,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   machineId,
 }) => {
   const { toast } = useToast();
-  const { accessToken: auth0AccessToken, user: auth0User } = useClientAuth0();
   const { data: session } = useSession();
-  const accessToken = auth0AccessToken || session?.user?.accessToken || null;
-  const user = session?.user || auth0User || null;
+  const user = session?.user || null;
 
   const { properties: userProperties } = useProperties();
   const { selectedPropertyId: selectedProperty, userProfile } = useUser();
@@ -162,16 +158,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [propertyTimezone, setPropertyTimezone] = useState<string | null>(null);
   const machineRequestRef = useRef(0);
 
-  // Set access token on service when available
-  React.useEffect(() => {
-    if (accessToken) {
-      setPreventiveMaintenanceServiceToken(accessToken);
-    }
-  }, [accessToken]);
-
   useEffect(() => {
     let active = true;
-    if (pmId || !selectedProperty || !accessToken) {
+    if (pmId || !selectedProperty) {
       setCanOperate(pmId ? true : null);
       setPropertyTimezone(null);
       setLoadingCapability(false);
@@ -201,7 +190,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     return () => {
       active = false;
     };
-  }, [accessToken, pmId, selectedProperty]);
+  }, [pmId, selectedProperty]);
 
   const formatDateForInput = useCallback((date: Date): string => {
     // Use local methods to match the user's timezone for datetime-local inputs
@@ -624,10 +613,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     try {
       const topicService = new TopicService();
       // Get access token from Auth0 hook
-      const response = await topicService.getTopics(
-        accessToken || undefined,
-        selectedProperty,
-      );
+      const response = await topicService.getTopics(selectedProperty);
       if (response.success && response.data) {
         // Map the topics to ensure description is always a string
         const mappedTopics: Topic[] = response.data.map((topic) => ({
@@ -645,7 +631,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     } finally {
       setLoadingTopics(false);
     }
-  }, [accessToken, selectedProperty]);
+  }, [selectedProperty]);
 
   const fetchAvailableMachines = useCallback(
     async (propertyId: string | null | undefined) => {
@@ -660,11 +646,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         const machineService = new MachineService();
         // Convert null/undefined to undefined for the API call
         const propertyIdForApi: string | undefined = propertyId || undefined;
-        const accessTokenForApi: string | undefined = accessToken || undefined;
-        const response = await machineService.getMachines(
-          propertyIdForApi,
-          accessTokenForApi,
-        );
+        const response = await machineService.getMachines(propertyIdForApi);
         if (requestId !== machineRequestRef.current) return;
         if (response.success && response.data) {
           setAvailableMachines(response.data);
@@ -697,7 +679,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         }
       }
     },
-    [accessToken],
+    [],
   );
 
   // Fetch available maintenance tasks (templates) - filtered by selected machines
@@ -852,11 +834,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Fetch maintenance tasks when machines are selected or on mount
   useEffect(() => {
-    if (accessToken) {
-      // Initial load - fetch all tasks if no machines selected yet
-      fetchAvailableMaintenanceTasks();
-    }
-  }, [accessToken, fetchAvailableMaintenanceTasks]);
+    // Initial load - fetch all tasks if no machines selected yet
+    fetchAvailableMaintenanceTasks();
+  }, [fetchAvailableMaintenanceTasks]);
 
   // Move all hooks to the top, before any conditional returns
   useEffect(() => {
@@ -2255,7 +2235,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               <section className="mb-4 rounded-md border border-gray-200 p-3 sm:mb-6 sm:p-4">
                 <h2 className="text-sm font-medium text-gray-700">Assignment</h2>
                 <p className="mt-1 text-sm text-gray-600">
-                  Assigned to {user?.name || user?.email || "the current user"}.
+                  Assigned to {[user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "the current user"}.
                   The server verifies an active operable TenantMembership for
                   this property.
                 </p>

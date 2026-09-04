@@ -1,6 +1,5 @@
 // app/lib/MachineService.ts
 
-import apiClient from "./api-client";
 import { handleApiError } from "./api-client";
 import type { ServiceResponse } from "./preventiveMaintenanceModels";
 
@@ -118,13 +117,8 @@ const buildQueryString = (params?: Record<string, string>): string => {
 };
 
 export default class MachineService {
-  private baseUrl: string = "/api/v1/machines";
-
-  // Remove constructor and accessToken storage - use parameter-based approach
-
   async getMachines(
     propertyId?: string,
-    accessToken?: string,
     signal?: AbortSignal,
   ): Promise<ServiceResponse<Machine[]>> {
     try {
@@ -133,40 +127,14 @@ export default class MachineService {
         page_size: String(DEFAULT_MACHINE_PAGE_SIZE),
       };
 
-      // Browser requests should go through the same-origin Next.js proxy so
-      // deployments do not depend on NEXT_PUBLIC_API_URL/CORS and can use the
-      // secure session cookie for authentication. Server-side callers with an
-      // explicit token can still call the Django API directly.
-      const useProxy = typeof window !== "undefined" || !accessToken;
-      if (!useProxy && !accessToken) {
-        throw new Error(
-          "Access token required for direct machine request is missing.",
-        );
-      }
       const accumulatedMachines: Machine[] = [];
 
       const fetchPage = async (
         params?: Record<string, string>,
         urlOverride?: string,
       ): Promise<MachineApiPayload> => {
-        if (!useProxy) {
-          const authToken = accessToken as string;
-          const headers: Record<string, string> = {
-            Authorization: `Bearer ${authToken}`,
-          };
-          const response = await apiClient.get<MachineApiPayload>(
-            urlOverride || this.baseUrl,
-            {
-              params,
-              headers,
-              signal,
-            },
-          );
-          return response.data;
-        }
-
         const queryString = buildQueryString(params);
-        const targetUrl = `${urlOverride || "/api/machines/"}${queryString}`;
+        const targetUrl = `${urlOverride || "/api/v1/machines/"}${queryString}`;
         const res = await fetch(targetUrl, { credentials: "include", signal });
 
         if (!res.ok) {
@@ -203,16 +171,11 @@ export default class MachineService {
           break;
         }
 
-        if (useProxy) {
-          params = parseNextParams(next);
-          if (!params.page_size) {
-            params.page_size = String(DEFAULT_MACHINE_PAGE_SIZE);
-          }
-          nextUrl = undefined;
-        } else {
-          params = undefined;
-          nextUrl = next;
+        params = parseNextParams(next);
+        if (!params.page_size) {
+          params.page_size = String(DEFAULT_MACHINE_PAGE_SIZE);
         }
+        nextUrl = undefined;
       }
 
       return { success: true, data: accumulatedMachines };

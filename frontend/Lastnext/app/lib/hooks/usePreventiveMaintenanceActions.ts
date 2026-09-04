@@ -4,21 +4,18 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { useMainStore } from '@/app/lib/stores/mainStore';
 import { createPreventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
-import { fetchTopics } from '@/app/lib/data.server';
 import MachineService from '@/app/lib/MachineService';
+import TopicService from '@/app/lib/TopicService';
 import type { SearchParams } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { logger } from '@/app/lib/utils/logger';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 
 export function usePreventiveMaintenanceActions() {
-  const { data: session } = useSession();
   const selectedProperty = useMainStore(state => state.selectedPropertyId);
-  const accessToken = session?.user?.accessToken || null;
   const maintenanceRequestRef = useRef(0);
   const statisticsRequestRef = useRef(0);
   const machineRequestRef = useRef(0);
@@ -69,22 +66,16 @@ export function usePreventiveMaintenanceActions() {
 
   // Fetch topics
   const fetchTopicsAction = useCallback(async () => {
-    if (!accessToken) {
-      logger.warn('No access token available for fetching topics');
-      return;
-    }
-
     if (!selectedProperty) {
       setTopics([]);
       return;
     }
 
     try {
-      // Use fetchTopics from data.server.ts
-      const topicsData = await fetchTopics(accessToken, selectedProperty);
+      const topicsData = await new TopicService().getTopics(selectedProperty);
       // Map topics to match the expected type (convert null to undefined for description)
-      const mappedTopics = Array.isArray(topicsData) 
-        ? topicsData.map(topic => ({
+      const mappedTopics = Array.isArray(topicsData.data)
+        ? topicsData.data.map(topic => ({
             ...topic,
             description: topic.description ?? undefined
           }))
@@ -94,15 +85,10 @@ export function usePreventiveMaintenanceActions() {
       logger.error('Error fetching topics', error);
       setError('Failed to fetch topics');
     }
-  }, [accessToken, selectedProperty, setTopics, setError]);
+  }, [selectedProperty, setTopics, setError]);
 
   // Fetch machines
   const fetchMachines = useCallback(async (propertyId?: string) => {
-    if (!accessToken) {
-      logger.warn('No access token available for fetching machines');
-      return;
-    }
-
     const targetPropertyId = propertyId || selectedProperty;
     if (!targetPropertyId) {
       machineRequestRef.current += 1;
@@ -113,7 +99,7 @@ export function usePreventiveMaintenanceActions() {
     const requestId = ++machineRequestRef.current;
     try {
       const machineService = new MachineService();
-      const response = await machineService.getMachines(targetPropertyId, accessToken);
+      const response = await machineService.getMachines(targetPropertyId);
       
       if (
         requestId === machineRequestRef.current &&
@@ -131,15 +117,10 @@ export function usePreventiveMaintenanceActions() {
       logger.error('Error fetching machines', error);
       setError('Failed to fetch machines');
     }
-  }, [accessToken, selectedProperty, setMachines, setError]);
+  }, [selectedProperty, setMachines, setError]);
 
   // Fetch maintenance items
   const fetchMaintenanceItems = useCallback(async (params?: SearchParams) => {
-    if (!accessToken) {
-      logger.warn('No access token available for fetching maintenance items');
-      return;
-    }
-
     if (!selectedProperty) {
       maintenanceRequestRef.current += 1;
       setMaintenanceItems([]);
@@ -171,7 +152,7 @@ export function usePreventiveMaintenanceActions() {
       
       logger.debug('Fetching maintenance items with params', fetchParams);
 
-      const service = createPreventiveMaintenanceService(accessToken);
+      const service = createPreventiveMaintenanceService();
       const response = await service.getAllPreventiveMaintenance(fetchParams);
 
       if (requestId !== maintenanceRequestRef.current) return;
@@ -263,11 +244,11 @@ export function usePreventiveMaintenanceActions() {
       if (requestId !== maintenanceRequestRef.current) return;
       clearLoadingAfterMinTime(loaderGeneration);
     }
-  }, [selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, setFilterParams, recordLoaderShown, clearLoadingAfterMinTime]);
+  }, [selectedProperty, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, setFilterParams, recordLoaderShown, clearLoadingAfterMinTime]);
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {
-    if (!accessToken || !selectedProperty) {
+    if (!selectedProperty) {
       statisticsRequestRef.current += 1;
       setStatistics(null);
       return;
@@ -276,7 +257,7 @@ export function usePreventiveMaintenanceActions() {
     const requestId = ++statisticsRequestRef.current;
 
     try {
-      const service = createPreventiveMaintenanceService(accessToken);
+      const service = createPreventiveMaintenanceService();
       const response = await service.getMaintenanceStatistics({
         property_id: selectedProperty
       });
@@ -290,17 +271,12 @@ export function usePreventiveMaintenanceActions() {
         setError('Failed to fetch maintenance statistics');
       }
     }
-  }, [accessToken, selectedProperty, setError, setStatistics]);
+  }, [selectedProperty, setError, setStatistics]);
 
   // Delete maintenance
   const deleteMaintenance = useCallback(async (pmId: string): Promise<boolean> => {
-    if (!accessToken) {
-      logger.warn('No access token available for deleting maintenance');
-      return false;
-    }
-
     try {
-      const service = createPreventiveMaintenanceService(accessToken);
+      const service = createPreventiveMaintenanceService();
       const response = await service.deletePreventiveMaintenance(pmId);
       
       if (response.success) {
@@ -317,20 +293,15 @@ export function usePreventiveMaintenanceActions() {
       setError('Failed to delete maintenance item');
       return false;
     }
-  }, [accessToken, maintenanceItems, totalCount, setMaintenanceItems, setTotalCount, setError]);
+  }, [maintenanceItems, totalCount, setMaintenanceItems, setTotalCount, setError]);
 
   // Fetch maintenance by ID
   const fetchMaintenanceById = useCallback(async (pmId: string): Promise<any | null> => {
-    if (!accessToken) {
-      logger.warn('No access token available for fetching maintenance by ID');
-      return null;
-    }
-
     try {
       setLoading(true);
-      logger.debug('Fetching maintenance by ID', { pmId, hasAccessToken: !!accessToken });
+      logger.debug('Fetching maintenance by ID', { pmId });
       
-      const service = createPreventiveMaintenanceService(accessToken);
+      const service = createPreventiveMaintenanceService();
       const response = await service.getPreventiveMaintenanceById(pmId);
       
       logger.debug('Fetch maintenance by ID response', { 
@@ -360,18 +331,13 @@ export function usePreventiveMaintenanceActions() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, setLoading, setSelectedMaintenance, setError]);
+  }, [setLoading, setSelectedMaintenance, setError]);
 
   // Update maintenance
   const updateMaintenance = useCallback(async (pmId: string, data: any): Promise<any | null> => {
-    if (!accessToken) {
-      logger.warn('No access token available for updating maintenance');
-      return null;
-    }
-
     try {
       setLoading(true);
-      const service = createPreventiveMaintenanceService(accessToken);
+      const service = createPreventiveMaintenanceService();
       const response = await service.updatePreventiveMaintenance(pmId, data);
       
       if (response.success && response.data) {
@@ -397,18 +363,13 @@ export function usePreventiveMaintenanceActions() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, maintenanceItems, setLoading, setMaintenanceItems, setError]);
+  }, [maintenanceItems, setLoading, setMaintenanceItems, setError]);
 
   // Complete maintenance
   const completeMaintenance = useCallback(async (pmId: string, data: any): Promise<any | null> => {
-    if (!accessToken) {
-      logger.warn('No access token available for completing maintenance');
-      return null;
-    }
-
     try {
       setLoading(true);
-      const service = createPreventiveMaintenanceService(accessToken);
+      const service = createPreventiveMaintenanceService();
       const response = await service.completePreventiveMaintenance(pmId, data);
       
       if (response.success && response.data) {
@@ -429,7 +390,7 @@ export function usePreventiveMaintenanceActions() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, maintenanceItems, setLoading, setMaintenanceItems, setError]);
+  }, [maintenanceItems, setLoading, setMaintenanceItems, setError]);
 
   return {
     // State

@@ -1,14 +1,10 @@
 // app/dashboard/preventive-maintenance/[pm_id]/PreventiveMaintenanceClient.tsx
 
 "use client";
-import {
-  preventiveMaintenanceService,
-  setPreventiveMaintenanceServiceToken,
-} from "@/app/lib/PreventiveMaintenanceService";
+import { preventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
 import { useState, useMemo, useEffect, useRef, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSession } from "@/app/lib/session.client";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import { PageLoader } from "@/app/components/ui/loading";
 import {
@@ -51,7 +47,6 @@ interface PreventiveMaintenanceClientProps {
 export default function PreventiveMaintenanceClient({
   maintenanceData: initialMaintenanceData,
 }: PreventiveMaintenanceClientProps) {
-  const { data: session } = useSession();
   const router = useRouter();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const [maintenanceData, setMaintenanceData] = useState(initialMaintenanceData);
@@ -89,13 +84,6 @@ export default function PreventiveMaintenanceClient({
   useEffect(() => () => {
     previewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
   }, []);
-
-  useEffect(() => {
-    const accessToken = session?.user?.accessToken;
-    if (accessToken) {
-      setPreventiveMaintenanceServiceToken(accessToken);
-    }
-  }, [session?.user?.accessToken]);
 
   const evidenceImages = useMemo(() => {
     if (maintenanceData.images?.length) {

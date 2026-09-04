@@ -98,7 +98,7 @@ test('authenticated BFF forwarding fails closed for missing or expired sealed se
 
 test('BFF obtains Bearer server-side and never forwards browser auth or cookies', async () => {
   const route = await readFile(new URL('app/api/invitations/[...path]/route.ts', root), 'utf8');
-  assert.match(route, /getSessionFromRequest\(request\)/);
+  assert.match(route, /getCompatServerSession\(\)/);
   assert.match(route, /hasUsableInvitationSession\(session\)/);
   assert.match(route, /headers\.set\('authorization', `Bearer \$\{accessToken\}`\)/);
   assert.match(route, /request\.arrayBuffer\(\)/);

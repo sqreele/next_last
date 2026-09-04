@@ -70,13 +70,12 @@ const messageFromError = (error: unknown, fallback: string) =>
 
 export default function PMMasterPlanForm({ planId }: { planId?: string }) {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const properties = useMainStore((state) => state.properties);
   const activePropertyName = properties.find(
     (property) => property.property_id === selectedPropertyId,
   )?.name;
-  const accessToken = session?.user?.accessToken || null;
   const requestRef = useRef(0);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -97,19 +96,19 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     setError(null);
     setCanOperate(false);
 
-    if (status !== "authenticated" || !accessToken || !selectedPropertyId) {
+    if (status !== "authenticated" || !selectedPropertyId) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    const service = createPreventiveMaintenanceService(accessToken);
+    const service = createPreventiveMaintenanceService();
     const machineService = new MachineService();
     const topicService = new TopicService();
 
     Promise.all([
-      machineService.getMachines(selectedPropertyId, accessToken),
-      topicService.getTopics(accessToken, selectedPropertyId),
+      machineService.getMachines(selectedPropertyId),
+      topicService.getTopics(selectedPropertyId),
       fetchAllMaintenanceProcedures({ pageSize: 100 }),
       service.getMaintenanceStatistics({ property_id: selectedPropertyId }),
       planId ? service.getPMMasterPlan(planId, selectedPropertyId) : Promise.resolve(null),
@@ -151,7 +150,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     return () => {
       requestRef.current += 1;
     };
-  }, [accessToken, planId, selectedPropertyId, status]);
+  }, [planId, selectedPropertyId, status]);
 
   const selectedMachineNames = useMemo(
     () => machines.filter((machine) => form.machineIds.includes(machine.machine_id)),
@@ -187,7 +186,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     }
     if (Number(form.leadTimeDays) < 0) nextErrors.leadTimeDays = "Lead time cannot be negative.";
     setFieldErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || !accessToken || !selectedPropertyId) return;
+    if (Object.keys(nextErrors).length > 0 || !selectedPropertyId) return;
     const submitPropertyId = selectedPropertyId;
 
     const payload: CreatePMMasterPlanData = {
@@ -208,7 +207,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     setSubmitting(true);
     setError(null);
     try {
-      const service = createPreventiveMaintenanceService(accessToken);
+      const service = createPreventiveMaintenanceService();
       const response = planId
         ? await service.updatePMMasterPlan(planId, payload, submitPropertyId)
         : await service.createPMMasterPlan(payload, submitPropertyId);

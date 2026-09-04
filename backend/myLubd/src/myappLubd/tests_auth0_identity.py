@@ -10,7 +10,14 @@ from .auth import (
     sync_user_display_profile_from_verified_claims,
 )
 from .invitations import create_invitation
-from .models import AuthIdentity, Property, Tenant, TenantMembership
+from .models import (
+    AuthIdentity,
+    Property,
+    SubscriptionPlan,
+    Tenant,
+    TenantMembership,
+    TenantSubscription,
+)
 from .tenancy import get_accessible_properties
 
 
@@ -209,6 +216,10 @@ class Auth0IdentityBindingTests(TestCase):
     def test_verified_invitee_login_links_identity_without_granting_access(self):
         owner = User.objects.create_user(username='owner', email='owner@example.com')
         tenant = Tenant.objects.create(name='Invited Identity Tenant')
+        plan = SubscriptionPlan.objects.create(
+            code='invited-identity', name='Invited Identity', max_users=5,
+        )
+        TenantSubscription.objects.create(tenant=tenant, plan=plan, status='active')
         property_obj = Property.objects.create(name='Invited Identity Property', tenant=tenant)
         invitation, _ = create_invitation(
             tenant=tenant,

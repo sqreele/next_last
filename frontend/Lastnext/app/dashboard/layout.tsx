@@ -82,7 +82,7 @@ export default function DashboardLayout({
           className="
             flex-1 overflow-auto
             p-0
-            pb-24 tablet:pb-0 desktop:pb-0
+            pb-[calc(6rem+env(safe-area-inset-bottom))] tablet:pb-0 desktop:pb-0
             transition-all duration-200
             scroll-smooth
             touch-pan-y

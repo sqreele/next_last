@@ -7,11 +7,11 @@ import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
 import {
   Activity,
   AlertTriangle,
+  ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
   BarChart3,
   Building2,
-  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -24,7 +24,6 @@ import {
   Sparkles,
   Timer,
   TrendingUp,
-  UserRound,
   Users,
   Wrench,
 } from 'lucide-react';
@@ -37,7 +36,6 @@ import {
   PriorityBadge,
   SkeletonCard,
   StatusBadge,
-  humanize,
   normalizePriority,
   normalizeStatus,
 } from '@/app/components/pcms-ui';
@@ -60,6 +58,13 @@ const STATUS_SUMMARY: Array<{ value: string; label: string; tone: StatTone }> = 
   { value: 'cancelled', label: 'Cancelled', tone: 'danger' },
   { value: 'defect', label: 'Defect', tone: 'danger' },
 ];
+
+const PRIORITY_SUMMARY = [
+  { value: 'critical', label: 'Critical priority', icon: ShieldAlert, tone: 'danger' },
+  { value: 'high', label: 'High priority', icon: ArrowUpRight, tone: 'warning' },
+  { value: 'medium', label: 'Medium priority', icon: Activity, tone: 'primary' },
+  { value: 'low', label: 'Low priority', icon: ArrowDownRight, tone: 'success' },
+] as const;
 
 const TAB_CONFIG = [
   { value: 'all', label: 'All Jobs' },
@@ -586,20 +591,21 @@ export default function ImprovedDashboard() {
               </div>
             </div>
 
-            <div className="sneat-card sneat-card--pad-lg">
+            <section className="sneat-card sneat-card--pad-lg dashboard-summary-card min-w-0" aria-labelledby="priority-summary-title">
               <div className="sneat-card__head">
                 <div>
-                  <h2>Jobs by Priority</h2>
+                  <h2 id="priority-summary-title" className="dashboard-summary-card__title">Jobs by Priority</h2>
                   <p className="sneat-card__subtitle">Critical work is highlighted for escalation</p>
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
+              <div className="dashboard-donut-block">
                 <div
                   className="sneat-donut"
                   style={{
-                    ['--p' as any]: metrics.total > 0 ? Math.round(((metrics.priorityCounts.critical || 0) / metrics.total) * 100) : 0,
-                  }}
-                  aria-hidden="true"
+                    '--p': metrics.total > 0 ? Math.round(((metrics.priorityCounts.critical || 0) / metrics.total) * 100) : 0,
+                  } as React.CSSProperties & Record<'--p', number>}
+                  role="img"
+                  aria-label={`${metrics.priorityCounts.critical || 0} critical priority jobs`}
                 >
                   <div className="sneat-donut__inner">
                     <strong>{metrics.priorityCounts.critical || 0}</strong>
@@ -608,35 +614,38 @@ export default function ImprovedDashboard() {
                 </div>
               </div>
               <div className="sneat-divider" />
-              <div className="sneat-list">
-                {(['critical', 'high', 'medium', 'low'] as const).map((priority) => {
-                  const count = metrics.priorityCounts[priority] || 0;
+              <div className="sneat-list dashboard-summary-list">
+                {PRIORITY_SUMMARY.map((priority) => {
+                  const count = metrics.priorityCounts[priority.value] || 0;
                   const percentage = metrics.total > 0 ? Math.round((count / metrics.total) * 100) : 0;
+                  const Icon = priority.icon;
                   return (
-                    <div key={priority} className="sneat-list__row">
-                      <span><PriorityBadge priority={priority} /></span>
-                      <div>
-                        <div className="sneat-list__title">{humanize(priority)} priority</div>
+                    <div key={priority.value} className="sneat-list__row dashboard-summary-row">
+                      <span className={`sneat-list__icon sneat-stat-card__icon--${priority.tone}`} aria-hidden="true">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div className="dashboard-summary-row__text">
+                        <div className="sneat-list__title">{priority.label}</div>
                         <div className="sneat-list__caption">{percentage}% of jobs</div>
                       </div>
-                      <span className="sneat-list__value">{count}</span>
+                      <span className="sneat-list__value" aria-label={`${count} jobs`}>{count}</span>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
           </div>
 
           {/* Status distribution + Recent transactions analog */}
           <div className="sneat-mid-grid">
-            <div className="sneat-card sneat-card--pad-lg">
+            <section className="sneat-card sneat-card--pad-lg dashboard-summary-card min-w-0" aria-labelledby="status-summary-title">
               <div className="sneat-card__head">
                 <div>
-                  <h2>Job Status Distribution</h2>
+                  <h2 id="status-summary-title" className="dashboard-summary-card__title">Job Status Distribution</h2>
                   <p className="sneat-card__subtitle">Workflow bottlenecks at a glance</p>
                 </div>
               </div>
-              <div className="sneat-list">
+              <div className="sneat-list dashboard-summary-list">
                 {STATUS_SUMMARY.map((status) => {
                   const normalized = normalizeStatus(status.value);
                   const count = metrics.statusCounts[normalized] || 0;
@@ -652,22 +661,22 @@ export default function ImprovedDashboard() {
                             : status.value,
                         )
                       }
-                      className="sneat-list__row"
-                      style={{ background: 'transparent', border: 0, padding: 0, cursor: 'pointer', textAlign: 'left' }}
+                      className="sneat-list__row dashboard-summary-row dashboard-summary-row--interactive"
+                      aria-label={`${status.label}: ${count} jobs, ${percentage}% of jobs`}
                     >
                       <span className={`sneat-list__icon sneat-stat-card__icon--${status.tone}`}>
-                        <Activity className="h-4 w-4" />
+                        <Activity className="h-5 w-5" aria-hidden="true" />
                       </span>
-                      <div>
+                      <div className="dashboard-summary-row__text">
                         <div className="sneat-list__title">{status.label}</div>
                         <div className="sneat-list__caption">{percentage}% of jobs</div>
                       </div>
-                      <span className="sneat-list__value">{count}</span>
+                      <span className="sneat-list__value" aria-hidden="true">{count}</span>
                     </button>
                   );
                 })}
               </div>
-            </div>
+            </section>
 
             {loading ? (
               <div className="sneat-card sneat-card--pad-lg">

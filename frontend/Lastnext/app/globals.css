@@ -3954,6 +3954,68 @@ body {
   margin: 0.25rem 0;
 }
 
+/* Dashboard priority/status summaries own their grid so the icon, text and
+   count remain distinct at every supported width. */
+.dashboard-summary-card {
+  gap: 0.875rem;
+}
+
+.dashboard-donut-block {
+  display: flex;
+  justify-content: center;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.dashboard-summary-list {
+  gap: 0.5rem;
+}
+
+.dashboard-summary-row {
+  min-width: 0;
+  min-height: 3.5rem;
+  grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+  column-gap: 0.875rem;
+  padding: 0.375rem 0;
+}
+
+.dashboard-summary-row__text {
+  min-width: 0;
+}
+
+.dashboard-summary-row .sneat-list__title,
+.dashboard-summary-row .sneat-list__caption {
+  overflow-wrap: anywhere;
+}
+
+.dashboard-summary-row .sneat-list__caption {
+  margin-top: 0.2rem;
+}
+
+.dashboard-summary-row .sneat-list__value {
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.dashboard-summary-row--interactive {
+  width: 100%;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 150ms ease;
+}
+
+.dashboard-summary-row--interactive:hover {
+  background: rgba(75, 70, 92, 0.06);
+}
+
+.dashboard-summary-row--interactive:focus-visible {
+  outline: 2px solid var(--sneat-primary);
+  outline-offset: 2px;
+}
+
 .sneat-muted {
   color: var(--sneat-text-muted);
   font-size: 0.8125rem;
@@ -4002,6 +4064,77 @@ body {
 
   .sneat-card--pad-lg {
     padding: 1rem;
+  }
+
+  .dashboard-summary-card {
+    gap: 0.5rem;
+  }
+
+  .dashboard-summary-card__title {
+    font-size: 1.375rem !important;
+    line-height: 1.2;
+  }
+
+  .dashboard-summary-card .sneat-card__subtitle {
+    margin-top: 0.5rem;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+  }
+
+  .dashboard-donut-block {
+    padding: 0.25rem 0 1rem;
+  }
+
+  .dashboard-donut-block .sneat-donut {
+    --size: 8rem;
+    aspect-ratio: 1;
+    max-width: 100%;
+  }
+
+  .dashboard-summary-card .sneat-divider {
+    margin: 0;
+  }
+
+  .dashboard-summary-list {
+    gap: 0.25rem;
+  }
+
+  .sneat-list__row.dashboard-summary-row {
+    display: grid;
+    min-height: 4rem;
+    grid-template-columns: 2.5rem minmax(0, 1fr) 2.75rem;
+    align-items: center;
+    column-gap: 0.75rem;
+    padding: 0.5rem 0;
+  }
+
+  .dashboard-summary-row--interactive {
+    padding-right: 0.25rem;
+    padding-left: 0.25rem;
+  }
+
+  .dashboard-summary-row .sneat-list__icon {
+    flex: none;
+  }
+
+  .dashboard-summary-row .sneat-list__title {
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .dashboard-summary-row .sneat-list__caption {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+
+  .dashboard-summary-row .sneat-list__value {
+    min-width: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+    text-align: right;
   }
 
   .sneat-page-header,

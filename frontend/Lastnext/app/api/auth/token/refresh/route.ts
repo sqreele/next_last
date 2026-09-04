@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromRequest, setSessionCookie } from '@/app/lib/auth0/session-cookie';
+import { readSessionReference } from '@/app/lib/auth0/session-cookie';
+import { loadServerSession, updateServerSession } from '@/app/lib/auth0/server-session-store';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
-  const session = await getSessionFromRequest(request);
+  const reference = readSessionReference(request.cookies.get('auth0_session')?.value);
+  const session = reference ? await loadServerSession(reference) : null;
   const refreshToken = session?.user?.refreshToken;
-  if (!session?.user || !refreshToken) {
+  if (!reference || !session?.user || !refreshToken) {
     return NextResponse.json({ error: 'Refresh token unavailable' }, { status: 401 });
   }
 
@@ -47,9 +49,8 @@ export async function POST(request: NextRequest) {
     }
 
     const accessTokenExpires = Date.now() + expiresIn * 1000;
-    const response = NextResponse.json({ access, expires_in: expiresIn });
-    await setSessionCookie(
-      response,
+    await updateServerSession(
+      reference,
       {
         ...session,
         user: {
@@ -60,9 +61,9 @@ export async function POST(request: NextRequest) {
         },
         expires: accessTokenExpires,
       },
-      60 * 24 * 60 * 60,
     );
-    return response;
+    // Never return a bearer token to browser JavaScript. BFF routes load it.
+    return NextResponse.json({ expires_in: expiresIn });
   } catch {
     console.error('auth0_refresh_failed', { reason: 'network_error' });
     return NextResponse.json({ error: 'Token refresh failed' }, { status: 502 });

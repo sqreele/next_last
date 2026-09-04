@@ -32,12 +32,11 @@ import TopicPicker from "./TopicPicker";
 import FileUpload from "./FileUpload";
 import { Room, TopicFromAPI } from "@/app/lib/types"; // Ensure types path is correct
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Configure axios instance (consider moving to api-client if not already done)
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '/api',
   headers: {
     "Content-Type": "application/json",
   },
@@ -146,7 +145,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
     if (
       open &&
       status === "authenticated" &&
-      session?.user?.accessToken &&
+      session?.user &&
       propertyId
     ) {
       fetchData(propertyId); // Pass propertyId to fetchData
@@ -157,7 +156,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
       setTopics([]);
     }
     // Add propertyId to dependency array
-  }, [open, status, session?.user?.accessToken, propertyId]);
+  }, [open, status, session?.user, propertyId]);
 
   // --- 4. (Recommended) Update fetchData to use propertyId ---
   const fetchData = async (currentPropertyId: string) => {
@@ -264,7 +263,6 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
         headers: {
           // Content-Type is set automatically by browser for FormData
           "Content-Type": undefined, // Let browser set boundary
-          Authorization: `Bearer ${session.user.accessToken}`,
         },
       });
       setOpen(false); // Close dialog on success

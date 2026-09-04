@@ -1,8 +1,9 @@
 // Simplified server session that doesn't depend on problematic imports
 import type { CompatUser, CompatSession } from './session-compat';
 import { cookies } from 'next/headers';
-import { openSessionCookie } from './session-cookie';
+import { readSessionReference } from './session-cookie';
 import { logSessionDiagnostic } from './session-diagnostics.mjs';
+import { loadServerSession } from './server-session-store';
 
 export async function getCompatServerSession(): Promise<CompatSession | null> {
   let cookieValue: string | undefined;
@@ -20,8 +21,13 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
       return null;
     }
 
-    const parsed = await openSessionCookie(cookieValue);
-    logSessionDiagnostic(cookieValue, parsed);
+    const reference = readSessionReference(cookieValue);
+    if (!reference) {
+      logSessionDiagnostic(cookieValue, null, { lookup: 'not_attempted' });
+      return null;
+    }
+    const parsed = await loadServerSession(reference);
+    logSessionDiagnostic(cookieValue, parsed, { lookup: 'success' });
     if (!parsed?.user || !parsed.user.accessToken) {
       return null;
     }
@@ -32,11 +38,17 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
 
     return parsed;
     
-  } catch (error) {
-    logSessionDiagnostic(cookieValue, null);
-    console.error('❌ Error in getCompatServerSession:', error);
+  } catch {
+    logSessionDiagnostic(cookieValue, null, { lookup: 'failed' });
+    console.error('auth_server_session_unavailable', { reason: 'store_unavailable' });
     return { user: undefined, error: 'session_error' };
   }
+}
+
+/** Server/BFF-only auth boundary. Browser input is never accepted as a token. */
+export async function requireServerAccessToken(): Promise<string | null> {
+  const session = await getCompatServerSession();
+  return session?.user?.accessToken || null;
 }
 
 export async function getUserProfile(userId: string): Promise<CompatUser | null> {

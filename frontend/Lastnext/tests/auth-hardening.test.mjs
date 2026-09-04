@@ -181,16 +181,21 @@ test('login and callback retain state, require nonce and PKCE, and fail closed',
   assert.match(callback, /resolvePostLoginDestination\(requestedRedirect, hasPropertyAccess\)/);
 });
 
-test('sessions are sealed and logout clears the session cookie', async () => {
+test('sessions use an opaque v2 reference and logout clears the session cookie', async () => {
   const session = await readFile(new URL('app/lib/auth0/session-cookie.ts', root), 'utf8');
+  const store = await readFile(new URL('app/lib/auth0/server-session-store.ts', root), 'utf8');
   const middleware = await readFile(new URL('middleware.ts', root), 'utf8');
   const logout = await readFile(new URL('app/api/auth/logout/route.ts', root), 'utf8');
-  assert.match(session, /aes-256-gcm/);
+  assert.match(session, /randomBytes\(32\)/);
+  assert.match(session, /SESSION_ID_PATTERN/);
+  assert.doesNotMatch(session, /sealSession/);
+  assert.match(store, /aes-256-gcm/);
+  assert.match(store, /auth:session:/);
   assert.match(session, /httpOnly: true/);
   assert.match(session, /secure: process\.env\.NODE_ENV === 'production'/);
   assert.match(session, /sameSite: 'lax'/);
-  assert.match(session, /ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION/);
-  assert.match(middleware, /Plain JSON is rejected in production/);
+  assert.doesNotMatch(session, /ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION/);
+  assert.match(middleware, /OPAQUE_SESSION_REFERENCE/);
   assert.match(logout, /clearSessionCookie\(response\)/);
 });
 
@@ -259,16 +264,18 @@ test('callback and session readers emit metadata-only auth diagnostics', async (
   assert.match(callback, /session_cookie_bytes/);
   assert.match(callback, /set_cookie/);
   assert.doesNotMatch(callback, /console\.(?:info|log)\([^\n]*(?:accessToken|refreshToken|sealedSession)/);
-  assert.match(serverSession, /logSessionDiagnostic\(cookieValue, parsed\)/);
-  assert.match(middleware, /logSessionDiagnostic\(auth0SessionCookie, sessionData\)/);
+  assert.match(serverSession, /logSessionDiagnostic\(cookieValue, parsed, \{ lookup: 'success' \}\)/);
+  assert.match(middleware, /logSessionDiagnostic\(auth0SessionCookie, null, \{ lookup: 'edge_deferred' \}\)/);
 });
 
-test('legacy token proxy is retired and refresh uses only the sealed Auth0 session', async () => {
+test('legacy token proxy is retired and refresh uses only the server-side Auth0 session', async () => {
   const issue = await readFile(new URL('app/api/auth/token/route.ts', root), 'utf8');
   const refresh = await readFile(new URL('app/api/auth/token/refresh/route.ts', root), 'utf8');
   assert.match(issue, /status: 410/);
   assert.doesNotMatch(issue, /api\/v1\/token/);
   assert.match(refresh, /session\?\.user\?\.refreshToken/);
+  assert.match(refresh, /updateServerSession/);
+  assert.doesNotMatch(refresh, /NextResponse\.json\(\{ access,/);
   assert.match(refresh, /https:\/\/\$\{domain\}\/oauth\/token/);
   assert.doesNotMatch(refresh, /request\.json/);
   assert.doesNotMatch(refresh, /api\/v1\/token\/refresh/);

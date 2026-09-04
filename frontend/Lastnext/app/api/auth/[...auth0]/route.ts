@@ -6,9 +6,11 @@ import {
 import { beginHardenedAuth0Login } from '@/app/lib/auth0/login-flow';
 import {
   clearSessionCookie,
-  getSessionFromRequest,
+  readSessionReference,
   sanitizeSessionForClient,
 } from '@/app/lib/auth0/session-cookie';
+import { getCompatServerSession } from '@/app/lib/auth0/server-session';
+import { deleteServerSession } from '@/app/lib/auth0/server-session-store';
 
 function clearLocalAuthCookies(response: NextResponse) {
   clearSessionCookie(response);
@@ -25,6 +27,11 @@ export async function GET(request: NextRequest) {
   const baseUrl = process.env.AUTH0_BASE_URL || request.nextUrl.origin;
 
   if (action === 'logout') {
+    const reference = readSessionReference(request.cookies.get('auth0_session')?.value);
+    if (reference) {
+      try { await deleteServerSession(reference); }
+      catch { console.error('auth_server_session_delete_failed', { reason: 'store_unavailable' }); }
+    }
     const domain = process.env.AUTH0_DOMAIN;
     const clientId = process.env.AUTH0_CLIENT_ID;
     if (!domain || !clientId) {
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (action === 'profile') {
-    const session = await getSessionFromRequest(request);
+    const session = await getCompatServerSession();
     const clientSession = sanitizeSessionForClient(session);
     return clientSession?.user
       ? NextResponse.json({ user: clientSession.user })

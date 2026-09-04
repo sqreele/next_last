@@ -10,7 +10,9 @@ type SessionCompat = {
     profile_image: string | null;
     positions: string;
     properties: any[];
-    accessToken: string;
+    /** Never present in the session-compat response; retained only while later
+     * phases migrate remaining client modules. */
+    accessToken?: string;
     refreshToken?: string;
     accessTokenExpires?: number;
     first_name?: string | null;

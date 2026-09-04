@@ -7,15 +7,18 @@ export interface SessionDiagnostic {
   required_user_id_present: 'yes' | 'no';
   access_token_present: 'yes' | 'no';
   access_token_expired: 'yes' | 'no';
+  server_session_lookup?: string;
 }
 
 export function createSessionDiagnostic(
   cookieValue: string | undefined,
   session: CompatSession | null,
+  options?: { lookup?: string } | number,
   now?: number,
 ): SessionDiagnostic;
 
 export function logSessionDiagnostic(
   cookieValue: string | undefined,
   session: CompatSession | null,
+  options?: { lookup?: string },
 ): void;

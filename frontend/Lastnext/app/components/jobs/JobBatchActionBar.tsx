@@ -12,17 +12,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Job, JobStatus, Property } from "@/app/lib/types";
-import { fetchWithToken } from "@/app/lib/data.server";
 import { jobsToCSV, downloadCSV } from "@/app/lib/utils/csv-export";
 import { exportJobsToExcel } from "@/app/lib/utils/excel-export";
 import { StatusBadge } from "@/app/components/pcms-ui";
 import { cn } from "@/app/lib/utils/cn";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://staymaint.com");
 
 interface JobBatchActionBarProps {
   selected: Job[];
@@ -61,13 +55,12 @@ export function JobBatchActionBar({
   const applyStatus = async (newStatus: JobStatus) => {
     setError(null);
     setStatusPickerOpen(false);
-    if (!session?.user?.accessToken) {
+    if (!session?.user) {
       setError("Please sign in again before bulk-updating.");
       return;
     }
     setWorking("status");
     try {
-      const accessToken = session.user.accessToken;
       let failed = 0;
       for (const job of selected) {
         try {
@@ -75,12 +68,11 @@ export function JobBatchActionBar({
           if (newStatus === "completed") {
             payload.completed_at = new Date().toISOString();
           }
-          await fetchWithToken(
-            `${API_BASE_URL}/api/v1/jobs/${job.job_id}/`,
-            accessToken,
-            "PATCH",
-            payload,
-          );
+          const response = await fetch(`/api/v1/jobs/${encodeURIComponent(String(job.job_id))}/`, {
+            method: 'PATCH', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          });
+          if (!response.ok) throw new Error('Bulk update failed');
         } catch (err) {
           console.warn("Bulk status update failed for", job.job_id, err);
           failed += 1;

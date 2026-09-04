@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { backendFetch } from '@/app/lib/backend-fetch';
-import { getSessionFromRequest } from '@/app/lib/auth0/session-cookie';
+import { getCompatServerSession } from '@/app/lib/auth0/server-session';
 import {
   hasUsableInvitationSession,
   resolveInvitationBackendPath,
@@ -28,7 +28,7 @@ async function proxyInvitationRequest(request: NextRequest, context: RouteContex
     return jsonError(400, 'Invitation tokens must be sent in the request body.');
   }
 
-  const session = target.requiresAuth ? await getSessionFromRequest(request) : null;
+  const session = target.requiresAuth ? await getCompatServerSession() : null;
   if (target.requiresAuth && !hasUsableInvitationSession(session)) {
     return jsonError(401, 'Authentication required.');
   }

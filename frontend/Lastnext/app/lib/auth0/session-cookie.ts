@@ -1,96 +1,37 @@
 import 'server-only';
 
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
-import type { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
+import type { NextResponse } from 'next/server';
 import type { CompatSession } from './session-compat';
 
 const COOKIE_NAME = 'auth0_session';
-const VERSION = 'v1';
+const VERSION = 'v2';
+const SESSION_ID_PATTERN = /^v2\.[A-Za-z0-9_-]{43}$/;
 
-function getSecret(): string {
-  const secret =
-    process.env.AUTH0_SESSION_SECRET ||
-    process.env.AUTH0_SECRET ||
-    process.env.SESSION_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.AUTH0_CLIENT_SECRET;
-
-  if (secret) return secret;
-
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('AUTH0_SESSION_SECRET or AUTH0_SECRET is required to encrypt auth session cookies.');
-  }
-
-  return 'dev-only-auth-session-secret-change-me';
+/** A 256-bit random opaque reference. It contains no identity or token data. */
+export function createSessionReference(): string {
+  return `${VERSION}.${randomBytes(32).toString('base64url')}`;
 }
 
-function getKey(): Buffer {
-  return createHash('sha256').update(getSecret()).digest();
+/** Old sealed and plaintext cookies intentionally do not have a compatibility path. */
+export function readSessionReference(cookieValue?: string | null): string | null {
+  return cookieValue && SESSION_ID_PATTERN.test(cookieValue) ? cookieValue : null;
 }
 
-function encode(value: Buffer): string {
-  return value.toString('base64url');
-}
-
-function decode(value: string): Buffer {
-  return Buffer.from(value, 'base64url');
-}
-
-export async function sealSession(session: CompatSession): Promise<string> {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', getKey(), iv);
-  const plaintext = Buffer.from(JSON.stringify(session), 'utf8');
-  const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return [VERSION, encode(iv), encode(tag), encode(encrypted)].join('.');
-}
-
-export async function openSessionCookie(cookieValue?: string | null): Promise<CompatSession | null> {
-  if (!cookieValue) return null;
-
-  try {
-    const [version, iv, tag, encrypted] = cookieValue.split('.');
-    if (version === VERSION && iv && tag && encrypted) {
-      const decipher = createDecipheriv('aes-256-gcm', getKey(), decode(iv));
-      decipher.setAuthTag(decode(tag));
-      const plaintext = Buffer.concat([decipher.update(decode(encrypted)), decipher.final()]);
-      return JSON.parse(plaintext.toString('utf8')) as CompatSession;
-    }
-
-    // A short-lived local-only escape hatch exists for development cutovers.
-    // Production accepts authenticated encryption only.
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      process.env.ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION === 'true' &&
-      cookieValue.trim().startsWith('{')
-    ) {
-      return JSON.parse(cookieValue) as CompatSession;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-export async function getSessionFromRequest(request: NextRequest): Promise<CompatSession | null> {
-  return openSessionCookie(request.cookies.get(COOKIE_NAME)?.value);
-}
-
-export async function setSessionCookie(
+export function setSessionCookie(
   response: NextResponse,
-  session: CompatSession,
+  reference: string,
   maxAge: number,
-): Promise<number> {
-  const sealedSession = await sealSession(session);
-  response.cookies.set(COOKIE_NAME, sealedSession, {
+): number {
+  if (!readSessionReference(reference)) throw new Error('Invalid server session reference.');
+  response.cookies.set(COOKIE_NAME, reference, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     maxAge,
   });
-  return Buffer.byteLength(sealedSession, 'utf8');
+  return Buffer.byteLength(reference, 'utf8');
 }
 
 export function clearSessionCookie(response: NextResponse): void {
@@ -106,6 +47,8 @@ export function clearSessionCookie(response: NextResponse): void {
 export function sanitizeSessionForClient(session: CompatSession | null): CompatSession | null {
   if (!session?.user) return session;
   const userWithoutRefreshToken = { ...session.user };
+  // Access and refresh tokens are server-only. Browser callers use BFF routes.
+  delete (userWithoutRefreshToken as Partial<typeof session.user>).accessToken;
   delete userWithoutRefreshToken.refreshToken;
   return {
     ...session,

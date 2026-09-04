@@ -45,9 +45,9 @@ const apiClient: AxiosInstance = axios.create({
       // Server-side: use internal docker networking
       return process.env.NEXT_PRIVATE_API_URL || "http://backend:8000";
     }
-    // Client-side: use public URL
-    return process.env.NEXT_PUBLIC_API_URL || 
-      (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://staymaint.com");
+    // Browser traffic must remain same-origin so Next BFF routes can inject
+    // the server-held bearer token from Redis.
+    return '';
   })(),
   timeout: 30000, // Increased to 30 seconds
   headers: {
@@ -74,17 +74,17 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // --- Token Refresh Logic ---
 let isRefreshing = false;
-let refreshPromise: Promise<string | null> | null = null;
-const pendingRequests: Array<(token: string | null) => void> = [];
+let refreshPromise: Promise<boolean> | null = null;
+const pendingRequests: Array<(refreshed: boolean) => void> = [];
 
 // Function to process queued requests after token refresh attempt
-const processPendingRequests = (token: string | null): void => {
-  pendingRequests.forEach(callback => callback(token));
+const processPendingRequests = (refreshed: boolean): void => {
+  pendingRequests.forEach(callback => callback(refreshed));
   pendingRequests.length = 0; // Clear the queue
 };
 
 // Function to attempt token refresh
-async function refreshToken(): Promise<string | null> {
+async function refreshToken(): Promise<boolean> {
   try {
     // Use the Next.js route so the httpOnly session cookie can be updated.
     const response = await fetch('/api/auth/token/refresh', {
@@ -103,14 +103,10 @@ async function refreshToken(): Promise<string | null> {
        throw new ApiError(`Token refresh failed with status: ${response.status}`, response.status);
     }
 
-    const refreshedTokens = await response.json();
-    if (!refreshedTokens.access) {
-      throw new Error('Refresh response did not contain access token');
-    }
-    return refreshedTokens.access; // Return only the new access token
+    return true;
   } catch (error) {
     console.error('[Auth] Error during token refresh:', error);
-    return null; // Indicate refresh failure
+    return false;
   }
 }
 
@@ -133,30 +129,9 @@ apiClient.interceptors.request.use(
       delete config.headers['content-type'];
     }
 
-    // For Auth0, we need to get the current access token from the session
-    // and add it to the request headers
-    try {
-      // Get the current session data
-      const sessionResponse = await fetch('/api/auth/session-compat', { 
-        credentials: 'include',
-        cache: 'no-store'
-      });
-      
-      if (sessionResponse.ok) {
-        const sessionData: any = await sessionResponse.json();
-        
-        if (sessionData?.user?.accessToken) {
-          // Add the access token to the request headers
-          config.headers.Authorization = `Bearer ${sessionData.user.accessToken}`;
-        } else {
-          console.warn("[RequestInterceptor] No access token found in session");
-        }
-      } else {
-        console.warn("[RequestInterceptor] Failed to get session data");
-      }
-    } catch (error) {
-      console.warn("[RequestInterceptor] Error getting session data:", error);
-    }
+    // Never obtain or attach browser bearer tokens. Same-origin BFF routes
+    // resolve the opaque session and inject credentials server-side.
+    delete config.headers.Authorization;
     
     // Add CSRF token for non-GET/HEAD/OPTIONS requests, even for multipart submissions
     const method = typeof config.method === 'string' ? config.method.toUpperCase() : undefined;
@@ -239,12 +214,12 @@ apiClient.interceptors.response.use(
           });
         }
 
-        const newAccessToken = await refreshPromise;
-        processPendingRequests(newAccessToken);
+        const refreshed = (await refreshPromise) ?? false;
+        processPendingRequests(refreshed);
 
-        if (newAccessToken) {
-          originalRequest.headers = originalRequest.headers || {};
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        if (refreshed) {
+          // Retry through the BFF; it reads the refreshed server-side token.
+          delete originalRequest.headers?.Authorization;
           return apiClient(originalRequest);
         }
       } catch (refreshError) {

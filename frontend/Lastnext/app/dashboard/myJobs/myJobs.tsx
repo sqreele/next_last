@@ -60,10 +60,6 @@ import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 import { PageContainer } from "@/app/components/layout/PageContainer";
 import { PageHeader, SectionHeader } from "@/app/components/layout/PageHeader";
 import { useSession } from "@/app/lib/session.client";
-import {
-  deleteJob as deleteJobApi,
-  updateJob as updateJobApi,
-} from "@/app/lib/data.server";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
 import {
   canMutateMyJob,
@@ -836,7 +832,7 @@ const MyJobs: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      if (!session?.user?.accessToken) throw new Error("Not authenticated");
+      if (!session?.user) throw new Error("Not authenticated");
       const mutationPropertyId = selectedProperty;
       const formData = new FormData(event.currentTarget);
       const updatedJobData: Partial<Job> = {
@@ -851,11 +847,12 @@ const MyJobs: React.FC = () => {
         is_preventivemaintenance:
           formData.get("is_preventivemaintenance") === "on",
       };
-      const updatedJob = await updateJobApi(
-        selectedJob.job_id,
-        updatedJobData,
-        session.user.accessToken,
-      );
+      const mutationResponse = await fetch(`/api/v1/jobs/${encodeURIComponent(String(selectedJob.job_id))}/`, {
+        method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedJobData),
+      });
+      if (!mutationResponse.ok) throw new Error('Unable to update job');
+      const updatedJob = await mutationResponse.json();
       if (
         useMainStore.getState().selectedPropertyId !== mutationPropertyId ||
         String(updatedJob.property_id || "") !== mutationPropertyId
@@ -891,14 +888,13 @@ const MyJobs: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      if (!session?.user?.accessToken) throw new Error("Not authenticated");
+      if (!session?.user) throw new Error("Not authenticated");
       const mutationPropertyId = selectedProperty;
 
-      await deleteJobApi(
-        String(selectedJob.job_id),
-        session.user.accessToken,
-        mutationPropertyId,
-      );
+      const deleteResponse = await fetch(`/api/v1/jobs/${encodeURIComponent(String(selectedJob.job_id))}/?property_id=${encodeURIComponent(String(mutationPropertyId || ''))}`, {
+        method: 'DELETE', credentials: 'include',
+      });
+      if (!deleteResponse.ok) throw new Error('Unable to delete job');
       if (useMainStore.getState().selectedPropertyId !== mutationPropertyId) return;
       storeDeleteJob(selectedJob.id);
       removeJob(selectedJob.job_id);

@@ -10,6 +10,10 @@ import {
   verifyAuth0IdToken,
 } from '@/app/lib/auth0/auth-security.mjs';
 import { setSessionCookie } from '@/app/lib/auth0/session-cookie';
+import { createSessionReference } from '@/app/lib/auth0/session-cookie';
+import { ABSOLUTE_SESSION_SECONDS, createServerSession } from '@/app/lib/auth0/server-session-store';
+
+export const runtime = 'nodejs';
 
 function clearTransaction(response: NextResponse): NextResponse {
   for (const cookieName of OAUTH_TRANSACTION_COOKIES) response.cookies.delete(cookieName);
@@ -163,11 +167,10 @@ export async function GET(request: NextRequest) {
 
     const destination = resolvePostLoginDestination(requestedRedirect, hasPropertyAccess);
     const response = NextResponse.redirect(localAppUrl(baseUrl, destination));
-    const sessionCookieBytes = await setSessionCookie(
-      response,
-      sessionData,
-      refreshToken ? 60 * 24 * 60 * 60 : Math.max(expiresIn, 24 * 60 * 60),
-    );
+    const sessionReference = createSessionReference();
+    // Store first: failure must never result in an authenticated browser cookie.
+    await createServerSession(sessionReference, sessionData, ABSOLUTE_SESSION_SECONDS);
+    const sessionCookieBytes = setSessionCookie(response, sessionReference, ABSOLUTE_SESSION_SECONDS);
     // Temporary metadata-only diagnostic for the production cookie handoff.
     console.info('auth_callback_success', {
       session_cookie_bytes: sessionCookieBytes,

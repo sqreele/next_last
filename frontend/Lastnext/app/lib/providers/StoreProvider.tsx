@@ -14,17 +14,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setUserProfile = useMainStore(state => state.setUserProfile);
   const setProperties = useMainStore(state => state.setProperties);
   const setSelectedPropertyId = useMainStore(state => state.setSelectedPropertyId);
-  const setAuthTokens = useMainStore(state => state.setAuthTokens);
 
   // Sync session data to Zustand store
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
       
-      // Set auth tokens
-      if (session.user?.accessToken) {
-        setAuthTokens(session.user.accessToken, '');
-      }
-
       // Create user profile from session data
       if (session.user) {
         const userProfile = {
@@ -86,9 +80,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setUserProfile(null);
       setProperties([]);
       setSelectedPropertyId(null);
-      setAuthTokens('', '');
     }
-  }, [session, status, setUserProfile, setProperties, setSelectedPropertyId, setAuthTokens]);
+  }, [session, status, setUserProfile, setProperties, setSelectedPropertyId]);
 
   return <>{children}</>;
 }

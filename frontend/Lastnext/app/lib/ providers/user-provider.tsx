@@ -6,7 +6,6 @@ import React, { createContext, useContext, useState, useCallback, useEffect, Dis
 import { useSession } from '@/app/lib/session.client';
 import { type UserProfile, type UserContextType, type Property } from '@/app/lib/types'; // Import Property if needed for profile structure
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Create context with the correct type OR undefined
@@ -27,7 +26,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = useCallback(async () => {
     // Don't fetch if not authenticated
-    if (status !== 'authenticated' || !session?.user?.accessToken) {
+    if (status !== 'authenticated' || !session?.user) {
         setUserProfile(null); // Clear profile if not authenticated
         setLoading(false); // Stop loading if auth status changes to unauthenticated
         return null;
@@ -42,11 +41,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setError(null); // Clear previous errors
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/user-profiles/me/`, { // Using v1 prefix
-        // credentials: 'include', // Usually not needed when sending Bearer token
+      const response = await fetch('/api/v1/user-profiles/me/', {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.user.accessToken}`,
         },
       });
 
@@ -91,7 +89,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         // Ensure loading is set to false even if fetchUserProfile is called when component isn't mounted (though useEffect handles initial)
         setLoading(false);
     }
-  }, [session?.user?.accessToken, status, selectedProperty /* removed userProfile, lastFetched to avoid potential loops if fetchUserProfile is in useEffect deps */ ]);
+  }, [session?.user, status, selectedProperty /* removed userProfile, lastFetched to avoid potential loops if fetchUserProfile is in useEffect deps */ ]);
 
 
   // Effect to fetch profile when session status changes to authenticated

@@ -2,134 +2,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { logSessionDiagnostic } from "@/app/lib/auth0/session-diagnostics.mjs";
 
-type MiddlewareSession = {
-  user?: {
-    id?: string;
-    accessToken?: string;
-    accessTokenExpires?: number;
-  };
-};
-
 const AUTH0_SESSION_COOKIE = "auth0_session";
-const SEALED_COOKIE_VERSION = "v1";
+const OPAQUE_SESSION_REFERENCE = /^v2\.[A-Za-z0-9_-]{43}$/;
 
-function getSessionSecret(): string | undefined {
-  return (
-    process.env.AUTH0_SESSION_SECRET ||
-    process.env.AUTH0_SECRET ||
-    process.env.SESSION_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.AUTH0_CLIENT_SECRET ||
-    (process.env.NODE_ENV === "production"
-      ? undefined
-      : "dev-only-auth-session-secret-change-me")
-  );
-}
-
-function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> | null {
-  if (!value || value.length % 4 === 1 || !/^[A-Za-z0-9_-]+$/.test(value)) {
-    return null;
-  }
-
-  try {
-    const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-    const binary = atob(padded);
-    const bytes = new Uint8Array(new ArrayBuffer(binary.length));
-
-    for (let index = 0; index < binary.length; index += 1) {
-      bytes[index] = binary.charCodeAt(index);
-    }
-
-    return bytes;
-  } catch {
-    return null;
-  }
-}
-
-async function deriveAesKey(secret: string): Promise<CryptoKey> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(secret),
-  );
-  return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["decrypt"]);
-}
-
-async function openSealedSessionCookie(
-  cookieValue: string,
-): Promise<MiddlewareSession | null> {
-  const [version, iv, tag, encrypted] = cookieValue.split(".");
-
-  if (version !== SEALED_COOKIE_VERSION || !iv || !tag || !encrypted) {
-    return null;
-  }
-
-  const secret = getSessionSecret();
-  if (!secret) {
-    console.warn(
-      "Cannot decrypt auth0_session cookie: AUTH0_SESSION_SECRET or AUTH0_SECRET is not configured.",
-    );
-    return null;
-  }
-
-  const ivBytes = base64UrlToBytes(iv);
-  const encryptedBytes = base64UrlToBytes(encrypted);
-  const tagBytes = base64UrlToBytes(tag);
-
-  if (!ivBytes || !encryptedBytes || !tagBytes) {
-    return null;
-  }
-
-  const ciphertextWithTag = new Uint8Array(
-    new ArrayBuffer(encryptedBytes.length + tagBytes.length),
-  );
-  ciphertextWithTag.set(encryptedBytes);
-  ciphertextWithTag.set(tagBytes, encryptedBytes.length);
-
-  const plaintext = await crypto.subtle.decrypt(
-    {
-      name: "AES-GCM",
-      iv: ivBytes,
-      tagLength: 128,
-    },
-    await deriveAesKey(secret),
-    ciphertextWithTag,
-  );
-
-  return JSON.parse(new TextDecoder().decode(plaintext)) as MiddlewareSession;
-}
-
-async function readSessionCookie(
-  cookieValue?: string,
-): Promise<MiddlewareSession | null> {
-  if (!cookieValue) return null;
-
-  try {
-    if (
-      process.env.NODE_ENV !== "production" &&
-      process.env.ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION === "true" &&
-      cookieValue.trim().startsWith("{")
-    ) {
-      return JSON.parse(cookieValue) as MiddlewareSession;
-    }
-
-    if (cookieValue.startsWith(`${SEALED_COOKIE_VERSION}.`)) {
-      return await openSealedSessionCookie(cookieValue);
-    }
-  } catch (error) {
-    console.error("Error opening auth0_session cookie:", error);
-  }
-
-  return null;
-}
-
-function hasValidSession(session: MiddlewareSession | null): boolean {
-  return !!(
-    session?.user?.accessToken &&
-    session.user.id &&
-    (!session.user.accessTokenExpires ||
-      Date.now() < session.user.accessTokenExpires)
-  );
+/* Middleware runs in the Edge runtime, which cannot open the Docker-only
+ * Redis TCP endpoint. It rejects every legacy format here; Node BFF routes
+ * load Redis and fail closed before forwarding authenticated API requests. */
+function hasOpaqueSessionReference(cookieValue?: string): boolean {
+  return !!cookieValue && OPAQUE_SESSION_REFERENCE.test(cookieValue);
 }
 
 function sanitizeLocalRedirect(value: string | null, fallback: string): string {
@@ -202,14 +82,13 @@ export async function middleware(request: NextRequest) {
   );
 
   // Get the auth0_session cookie and check if user is authenticated.
-  // Cookies written by app/lib/auth0/session-cookie.ts are AES-GCM sealed as
-  // v1.<iv>.<tag>.<ciphertext>. Plain JSON is rejected in production.
+  // Only a v2 opaque reference is accepted. v1 sealed payloads and plaintext
+  // legacy cookies require a fresh login and have no compatibility fallback.
   const auth0SessionCookie = request.cookies.get(AUTH0_SESSION_COOKIE)?.value;
-  const sessionData = await readSessionCookie(auth0SessionCookie);
-  const isAuthenticated = hasValidSession(sessionData);
+  const isAuthenticated = hasOpaqueSessionReference(auth0SessionCookie);
 
   if (isProtectedRoute || isProtectedApiRoute) {
-    logSessionDiagnostic(auth0SessionCookie, sessionData);
+    logSessionDiagnostic(auth0SessionCookie, null, { lookup: 'edge_deferred' });
   }
 
   // Handle protected routes

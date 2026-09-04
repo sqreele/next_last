@@ -122,15 +122,13 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   // Get selected property from main store
   const selectedPropertyId = useMainStore(state => state.selectedPropertyId);
 
-  // Memoized access token
-  const accessToken = useMemo(() => session?.user?.accessToken, [session?.user?.accessToken]);
-
-  // Check if user is authenticated
-  const isAuthenticated = useMemo(() => !!accessToken, [accessToken]);
+  // Browser authentication is represented by safe session identity only; BFF
+  // routes load the bearer token from the opaque Redis-backed session.
+  const isAuthenticated = useMemo(() => !!session?.user, [session?.user]);
 
   // Refresh jobs data with pagination
   const refreshJobs = useCallback(async (loadMore: boolean = false) => {
-    if (!isAuthenticated || !accessToken) return;
+    if (!isAuthenticated) return;
 
     // Pagination must not overlap another request. A property/filter refresh
     // may supersede an in-flight request and is guarded by the generation.
@@ -192,9 +190,9 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
       } as Omit<typeof currentFilters, 'property'> & { property_id: string };
 
       const [jobsResponse, properties, stats] = await Promise.all([
-        jobsApi.getJobs(accessToken, filtersWithProperty, pageToLoad, currentPagination.pageSize),
-        jobsApi.getProperties(accessToken),
-        jobsApi.getJobStats(accessToken, filtersWithProperty)
+        jobsApi.getJobs(filtersWithProperty, pageToLoad, currentPagination.pageSize),
+        jobsApi.getProperties(),
+        jobsApi.getJobStats(filtersWithProperty)
       ]);
 
       if (requestGeneration !== requestGenerationRef.current) return;
@@ -235,7 +233,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         isLoadingRef.current = false;
       }
     }
-  }, [isAuthenticated, accessToken, selectedPropertyId]);
+  }, [isAuthenticated, selectedPropertyId]);
 
   // Store refreshJobs in a ref early to avoid dependency loops
   const refreshJobsRef = useRef<typeof refreshJobs>(async () => {});
@@ -245,10 +243,10 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
 
   // Update job status
   const updateJobStatus = useCallback(async (jobId: string, status: string) => {
-    if (!isAuthenticated || !accessToken) return;
+    if (!isAuthenticated) return;
 
     try {
-      const updatedJob = await jobsApi.updateJob(accessToken, jobId, { status });
+      const updatedJob = await jobsApi.updateJob(jobId, { status });
       
       // Update local state
       setState(prev => ({
@@ -273,14 +271,14 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         toast.error('Failed to update job status');
       }
     }
-  }, [isAuthenticated, accessToken, state.filters, toast]);
+  }, [isAuthenticated, state.filters, toast]);
 
   // Delete job
   const deleteJob = useCallback(async (jobId: string) => {
-    if (!isAuthenticated || !accessToken) return;
+    if (!isAuthenticated) return;
 
     try {
-      await jobsApi.deleteJob(accessToken, jobId);
+      await jobsApi.deleteJob(jobId);
       
       // Update local state
       setState(prev => ({
@@ -303,7 +301,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         toast.error('Failed to delete job');
       }
     }
-  }, [isAuthenticated, accessToken, state.jobs, state.properties, state.filters, toast]);
+  }, [isAuthenticated, state.jobs, state.properties, state.filters, toast]);
 
   // Update filters
   const updateFilters = useCallback((newFilters: Partial<JobsDashboardState['filters']>) => {
@@ -349,10 +347,10 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
 
   // Enable real-time updates
   const enableRealTime = useCallback(() => {
-    if (!isAuthenticated || !accessToken) return;
+    if (!isAuthenticated) return;
 
     try {
-      jobsApi.enableRealTime(accessToken);
+      jobsApi.enableRealTime();
       
       const unsubscribe = jobsApi.subscribeToUpdates((data) => {
         // Handle real-time updates
@@ -386,7 +384,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     } catch (error) {
       console.error('Error enabling real-time updates:', error);
     }
-  }, [isAuthenticated, accessToken, state.filters]);
+  }, [isAuthenticated, state.filters]);
 
   // Disable real-time updates
   const disableRealTime = useCallback(() => {
@@ -410,7 +408,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
 
   // Export jobs
   const exportJobs = useCallback(async (format: 'csv' | 'excel' | 'pdf') => {
-    if (!isAuthenticated || !accessToken) return;
+    if (!isAuthenticated) return;
 
     try {
       if (format === 'csv') {
@@ -479,7 +477,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         description: 'Failed to export jobs'
       });
     }
-  }, [isAuthenticated, accessToken, state.jobs, state.properties, state.filters, toast]);
+  }, [isAuthenticated, state.jobs, state.properties, state.filters, toast]);
 
   // Computed values - return raw jobs for JobList to handle filtering
   const filteredJobs = useMemo(() => {

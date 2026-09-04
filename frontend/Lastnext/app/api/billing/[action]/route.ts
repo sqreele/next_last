@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { backendFetch } from "@/app/lib/backend-fetch";
 import { API_CONFIG } from "@/app/lib/config";
-import { getSessionFromRequest } from "@/app/lib/auth0/session-cookie";
+import { getCompatServerSession } from "@/app/lib/auth0/server-session";
 
 export const runtime = "nodejs";
 
@@ -26,7 +26,7 @@ async function proxyBillingRequest(
   context: RouteContext,
   actions: Record<string, string>,
 ) {
-  const session = await getSessionFromRequest(request);
+  const session = await getCompatServerSession();
   const accessToken = session?.user?.accessToken;
   if (!accessToken) {
     return NextResponse.json(

@@ -178,7 +178,6 @@ export class JobsApiService {
   // Enhanced fetch with timeout and retry logic
   private async fetchWithRetry<T>(
     url: string,
-    token: string,
     options: RequestInit = {},
     retries: number = 3
   ): Promise<T> {
@@ -191,7 +190,6 @@ export class JobsApiService {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
           ...options.headers,
         },
       });
@@ -216,7 +214,7 @@ export class JobsApiService {
 
       if (retries > 0) {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        return this.fetchWithRetry(url, token, options, retries - 1);
+        return this.fetchWithRetry(url, options, retries - 1);
       }
 
       throw error;
@@ -232,7 +230,7 @@ export class JobsApiService {
   }
 
   // Jobs CRUD operations with pagination support
-  async getJobs(token: string, filters?: any, page: number = 1, pageSize: number = 24): Promise<any> {
+  async getJobs(filters?: any, page: number = 1, pageSize: number = 24): Promise<any> {
     const params = new URLSearchParams();
     
     // Add pagination params
@@ -254,15 +252,18 @@ export class JobsApiService {
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
-    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/?${params.toString()}`;
-    const response = await this.fetchWithRetry<any>(url, token);
+    const url = `/api/v1/jobs/?${params.toString()}`;
+    const response = await this.fetchWithRetry<any>(url);
     
     this.cache.set(cacheKey, response);
     return response;
   }
 
   // Get job statistics without loading all jobs
-  async getJobStats(token: string, filters?: any): Promise<any> {
+  async getJobStats(filtersOrLegacyToken?: any, legacyFilters?: any): Promise<any> {
+    // Transitional call compatibility for deferred, non-Phase-1 callers. The
+    // first string argument is ignored; no browser credential is transmitted.
+    const filters = typeof filtersOrLegacyToken === 'string' ? legacyFilters : filtersOrLegacyToken;
     const params = new URLSearchParams();
     
     if (filters) {
@@ -273,26 +274,26 @@ export class JobsApiService {
       });
     }
     
-    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/stats/?${params.toString()}`;
-    const stats = await this.fetchWithRetry<any>(url, token);
+    const url = `/api/v1/jobs/stats/?${params.toString()}`;
+    const stats = await this.fetchWithRetry<any>(url);
     return stats;
   }
 
-  async getJob(token: string, jobId: string): Promise<any> {
+  async getJob(jobId: string): Promise<any> {
     const cacheKey = `job:${jobId}`;
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
-    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<any>(url, token);
+    const url = `/api/v1/jobs/${jobId}/`;
+    const job = await this.fetchWithRetry<any>(url);
     
     this.cache.set(cacheKey, job);
     return job;
   }
 
-  async createJob(token: string, jobData: any): Promise<any> {
-    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/`;
-    const job = await this.fetchWithRetry<any>(url, token, {
+  async createJob(jobData: any): Promise<any> {
+    const url = `/api/v1/jobs/`;
+    const job = await this.fetchWithRetry<any>(url, {
       method: 'POST',
       body: jobData,
     });
@@ -301,9 +302,9 @@ export class JobsApiService {
     return job;
   }
 
-  async updateJob(token: string, jobId: string, jobData: any): Promise<any> {
-    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<any>(url, token, {
+  async updateJob(jobId: string, jobData: any): Promise<any> {
+    const url = `/api/v1/jobs/${jobId}/`;
+    const job = await this.fetchWithRetry<any>(url, {
       method: 'PATCH',
       body: jobData,
     });
@@ -313,30 +314,31 @@ export class JobsApiService {
     return job;
   }
 
-  async deleteJob(token: string, jobId: string): Promise<void> {
-    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`;
-    await this.fetchWithRetry<void>(url, token, { method: 'DELETE' });
+  async deleteJob(jobId: string): Promise<void> {
+    const url = `/api/v1/jobs/${jobId}/`;
+    await this.fetchWithRetry<void>(url, { method: 'DELETE' });
     
     this.cache.invalidate(`job:${jobId}`);
     this.cache.invalidate('jobs');
   }
 
   // Properties
-  async getProperties(token: string): Promise<any[]> {
+  async getProperties(..._legacyArguments: unknown[]): Promise<any[]> {
     const cacheKey = 'properties';
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
-    const url = `${API_CONFIG.baseUrl}/api/v1/properties/`;
-    const properties = await this.fetchWithRetry<any[]>(url, token);
+    const url = `/api/v1/properties/`;
+    const properties = await this.fetchWithRetry<any[]>(url);
     
     this.cache.set(cacheKey, properties);
     return properties;
   }
 
   // Real-time updates
-  enableRealTime(token: string): void {
-    this.realTimeUpdates.connect(token);
+  enableRealTime(): void {
+    // Streaming remains disabled; never obtain a browser bearer token for it.
+    this.realTimeUpdates.connect('');
   }
 
   disableRealTime(): void {

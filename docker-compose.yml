@@ -39,6 +39,9 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
+      # Internal only. Auth session records are kept in Redis; the browser only
+      # receives an opaque reference cookie.
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/1}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/api/health/', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
@@ -51,6 +54,7 @@ services:
     depends_on:
       - backend
       - db
+      - redis
     networks:
       app-network:
         aliases:

@@ -8,7 +8,8 @@ export interface CompatUser {
   profile_image: string | null;
   positions: string;
   properties: any[];
-  accessToken: string;
+  /** Server-only fields; sanitizeSessionForClient removes them from wire output. */
+  accessToken?: string;
   refreshToken?: string;
   accessTokenExpires?: number;
   first_name?: string | null;

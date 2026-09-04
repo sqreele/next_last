@@ -77,6 +77,7 @@ services:
       timeout: 10s
       retries: 3
     networks:
+      - redis-network
       - app-network
 
   backend:
@@ -206,6 +207,9 @@ networks:
   app-network:
     name: pcms_network
     driver: bridge
+  redis-network:
+    name: next_last_redis-network
+    external: true
 
 volumes:
   postgres_data_v17:

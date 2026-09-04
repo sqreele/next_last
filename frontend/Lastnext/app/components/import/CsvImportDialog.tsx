@@ -19,14 +19,7 @@ import {
   DialogTrigger,
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
-import { useSession } from "@/app/lib/session.client";
 import { cn } from "@/app/lib/utils/cn";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://staymaint.com");
 
 export interface CsvImportResult {
   created_count: number;
@@ -72,7 +65,6 @@ export function CsvImportDialog({
   triggerLabel,
   className,
 }: CsvImportDialogProps) {
-  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -89,15 +81,8 @@ export function CsvImportDialog({
   };
 
   const downloadTemplate = async () => {
-    const token = session?.user?.accessToken;
-    if (!token) {
-      setError("Sign in again to download the template.");
-      return;
-    }
     try {
-      const res = await fetch(`${API_BASE_URL}${templatePath}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(templatePath, { credentials: "include" });
       if (!res.ok) throw new Error(`Template fetch failed (${res.status})`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -120,11 +105,6 @@ export function CsvImportDialog({
       setError("Pick a CSV file first.");
       return;
     }
-    const token = session?.user?.accessToken;
-    if (!token) {
-      setError("Sign in again to import.");
-      return;
-    }
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -132,15 +112,15 @@ export function CsvImportDialog({
       if (currentPropertyId) formData.append("property_id", currentPropertyId);
 
       const res = await fetch(
-        `${API_BASE_URL}${importPath}${
+        `${importPath}${
           currentPropertyId
             ? `?property_id=${encodeURIComponent(currentPropertyId)}`
             : ""
         }`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
           body: formData,
+          credentials: "include",
         },
       );
       const data = (await res.json().catch(() => null)) as

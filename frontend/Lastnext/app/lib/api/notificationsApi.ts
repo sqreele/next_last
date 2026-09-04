@@ -1,5 +1,3 @@
-import { API_CONFIG } from '../config';
-
 export class NotificationsApiError extends Error {
   status: number;
   code: string;
@@ -50,14 +48,14 @@ class NotificationsApiService {
     }
   }
 
-  private async fetchWithAuth<T>(url: string, token: string, options: RequestInit = {}): Promise<T> {
+  private async fetchWithAuth<T>(url: string, options: RequestInit = {}): Promise<T> {
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -85,39 +83,35 @@ class NotificationsApiService {
   }
 
   async getOverdueNotifications<T = unknown>(
-    token: string,
     propertyId?: string | null,
   ): Promise<NotificationsListResponse<T>> {
-    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/overdue/${this.buildQuery({ property_id: propertyId })}`;
-    return this.fetchWithAuth<NotificationsListResponse<T>>(url, token);
+    const url = `/api/v1/notifications/overdue/${this.buildQuery({ property_id: propertyId })}`;
+    return this.fetchWithAuth<NotificationsListResponse<T>>(url);
   }
 
   async getUpcomingNotifications<T = unknown>(
-    token: string,
     days: number = 7,
     propertyId?: string | null,
   ): Promise<UpcomingNotificationsResponse<T>> {
     const normalizedDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : 7;
-    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/upcoming/${this.buildQuery({ days: normalizedDays, property_id: propertyId })}`;
-    return this.fetchWithAuth<UpcomingNotificationsResponse<T>>(url, token);
+    const url = `/api/v1/notifications/upcoming/${this.buildQuery({ days: normalizedDays, property_id: propertyId })}`;
+    return this.fetchWithAuth<UpcomingNotificationsResponse<T>>(url);
   }
 
   async getAllNotifications<T = unknown>(
-    token: string,
     days: number = 7,
     propertyId?: string | null,
   ): Promise<AllNotificationsResponse<T>> {
     const normalizedDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : 7;
-    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/all/${this.buildQuery({ days: normalizedDays, property_id: propertyId })}`;
-    return this.fetchWithAuth<AllNotificationsResponse<T>>(url, token);
+    const url = `/api/v1/notifications/all/${this.buildQuery({ days: normalizedDays, property_id: propertyId })}`;
+    return this.fetchWithAuth<AllNotificationsResponse<T>>(url);
   }
 
   async updateEmailNotifications(
-    token: string,
     payload: UpdateEmailNotificationsPayload
   ): Promise<UpdateEmailNotificationsResponse> {
-    const url = `${API_CONFIG.baseUrl}/api/v1/user-profiles/update_email_notifications/`;
-    return this.fetchWithAuth<UpdateEmailNotificationsResponse>(url, token, {
+    const url = `/api/v1/user-profiles/update_email_notifications/`;
+    return this.fetchWithAuth<UpdateEmailNotificationsResponse>(url, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });

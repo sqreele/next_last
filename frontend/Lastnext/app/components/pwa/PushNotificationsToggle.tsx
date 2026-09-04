@@ -3,15 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Bell, BellOff, Loader2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
-import { useSession } from "@/app/lib/session.client";
-import { fetchWithToken } from "@/app/lib/data.server";
 import { cn } from "@/app/lib/utils/cn";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://staymaint.com");
 
 type PushState =
   | "unsupported"
@@ -46,14 +38,23 @@ function arrayBufferToBase64(buffer: ArrayBuffer | null): string {
     : "";
 }
 
+async function fetchPush<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(path, {
+    ...options,
+    credentials: "include",
+    headers: options.body
+      ? { "Content-Type": "application/json", ...options.headers }
+      : options.headers,
+  });
+  if (!response.ok) throw new Error(`Push request failed (${response.status})`);
+  return response.json() as Promise<T>;
+}
+
 export function PushNotificationsToggle({ className }: { className?: string }) {
-  const { data: session } = useSession();
   const [state, setState] = useState<PushState>("unsubscribed");
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const accessToken = session?.user?.accessToken;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -78,11 +79,7 @@ export function PushNotificationsToggle({ className }: { className?: string }) {
   }, []);
 
   useEffect(() => {
-    if (!accessToken) return;
-    fetchWithToken<{ public_key: string; configured: boolean }>(
-      `${API_BASE_URL}/api/v1/push/public-key/`,
-      accessToken,
-    )
+    fetchPush<{ public_key: string; configured: boolean }>("/api/v1/push/public-key/")
       .then((res) => {
         if (!res.configured || !res.public_key) {
           setState((s) => (s === "subscribed" ? s : "unconfigured"));
@@ -91,12 +88,12 @@ export function PushNotificationsToggle({ className }: { className?: string }) {
         setPublicKey(res.public_key);
       })
       .catch(() => undefined);
-  }, [accessToken]);
+  }, []);
 
   if (state === "unsupported") return null;
 
   const subscribe = async () => {
-    if (!accessToken || !publicKey) return;
+    if (!publicKey) return;
     setBusy(true);
     setError(null);
     setState("subscribing");
@@ -115,20 +112,21 @@ export function PushNotificationsToggle({ className }: { className?: string }) {
         });
       }
       const subscriptionPayload = subscription.toJSON();
-      await fetchWithToken(
-        `${API_BASE_URL}/api/v1/push/subscribe/`,
-        accessToken,
-        "POST",
+      await fetchPush(
+        "/api/v1/push/subscribe/",
         {
-          endpoint: subscription.endpoint,
-          keys: {
-            p256dh:
-              subscriptionPayload.keys?.p256dh ||
-              arrayBufferToBase64(subscription.getKey("p256dh")),
-            auth:
-              subscriptionPayload.keys?.auth ||
-              arrayBufferToBase64(subscription.getKey("auth")),
-          },
+          method: "POST",
+          body: JSON.stringify({
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh:
+                subscriptionPayload.keys?.p256dh ||
+                arrayBufferToBase64(subscription.getKey("p256dh")),
+              auth:
+                subscriptionPayload.keys?.auth ||
+                arrayBufferToBase64(subscription.getKey("auth")),
+            },
+          }),
         },
       );
       setState("subscribed");
@@ -142,18 +140,15 @@ export function PushNotificationsToggle({ className }: { className?: string }) {
   };
 
   const unsubscribe = async () => {
-    if (!accessToken) return;
     setBusy(true);
     setError(null);
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       const subscription = await registration?.pushManager.getSubscription();
       if (subscription) {
-        await fetchWithToken(
-          `${API_BASE_URL}/api/v1/push/unsubscribe/`,
-          accessToken,
-          "POST",
-          { endpoint: subscription.endpoint },
+        await fetchPush(
+          "/api/v1/push/unsubscribe/",
+          { method: "POST", body: JSON.stringify({ endpoint: subscription.endpoint }) },
         ).catch(() => undefined);
         await subscription.unsubscribe();
       }

@@ -11,18 +11,10 @@ import {
   ArrowRight,
   X,
 } from "lucide-react";
-import { useSession } from "@/app/lib/session.client";
-import { fetchWithToken } from "@/app/lib/data.server";
 import { Button } from "@/app/components/ui/button";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import { cn } from "@/app/lib/utils/cn";
 import { useMainStore } from "@/app/lib/stores/mainStore";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://staymaint.com");
 
 const POLL_INTERVAL_MS = 60_000;
 const READ_KEY = "pcms-notifications-read";
@@ -126,7 +118,6 @@ export function NotificationBell({
   variant = "compact",
   className,
 }: NotificationBellProps) {
-  const { data: session } = useSession();
   const t = useT();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<NotificationsResponse | null>(null);
@@ -134,19 +125,19 @@ export function NotificationBell({
   const [readSet, setReadSet] = useState<Set<string>>(() => loadReadSet());
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const accessToken = session?.user?.accessToken;
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
 
   const fetchNotifications = React.useCallback(async () => {
-    if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ days: "7" });
       if (selectedPropertyId) params.set("property_id", selectedPropertyId);
-      const res = await fetchWithToken<NotificationsResponse>(
-        `${API_BASE_URL}/api/v1/notifications/all/?${params.toString()}`,
-        accessToken,
+      const response = await fetch(
+        `/api/v1/notifications/all/?${params.toString()}`,
+        { credentials: "include" },
       );
+      if (!response.ok) throw new Error(`Notifications fetch failed (${response.status})`);
+      const res = await response.json() as NotificationsResponse;
       setData(res);
     } catch (err) {
       // swallow; the bell stays in its previous state instead of disrupting
@@ -155,14 +146,13 @@ export function NotificationBell({
     } finally {
       setLoading(false);
     }
-  }, [accessToken, selectedPropertyId]);
+  }, [selectedPropertyId]);
 
   useEffect(() => {
-    if (!accessToken) return;
     fetchNotifications();
     const interval = window.setInterval(fetchNotifications, POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [accessToken, fetchNotifications]);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     if (!open) return;

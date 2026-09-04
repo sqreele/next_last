@@ -33,7 +33,6 @@ import {
 import { Job, Property, Room } from "@/app/lib/types";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
-import { useSession } from "@/app/lib/session.client";
 import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
 import { SkeletonList } from "@/app/components/ui/loading";
 import {
@@ -58,9 +57,6 @@ export default function SearchContent() {
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setIsLoading);
 
-  // Get auth token from session
-  const { data: session } = useSession();
-  const accessToken = session?.user?.accessToken;
   // The shared global store owns the active Property context.
   const { selectedPropertyId: selectedProperty } = useUser();
 
@@ -82,12 +78,6 @@ export default function SearchContent() {
       setError(null);
 
       try {
-        // Add auth headers to requests
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: accessToken ? `Bearer ${accessToken}` : "",
-        };
-
         // Fetch jobs with proper error handling
         let jobsData: Job[] = [];
         try {
@@ -96,8 +86,8 @@ export default function SearchContent() {
             jobsParams.set("property_id", selectedProperty);
           if (query) jobsParams.set("search", query);
           const jobsRes = await fetch(
-            `/api/jobs/${jobsParams.toString() ? `?${jobsParams.toString()}` : ""}`,
-            { headers },
+              `/api/v1/jobs/${jobsParams.toString() ? `?${jobsParams.toString()}` : ""}`,
+            { credentials: "include" },
           );
           if (jobsRes.ok) {
             const jobsPayload = await jobsRes.json();
@@ -119,7 +109,7 @@ export default function SearchContent() {
         // Fetch properties with proper error handling
         let propertiesData: Property[] = [];
         try {
-          const propertiesRes = await fetch("/api/properties", { headers });
+          const propertiesRes = await fetch("/api/v1/properties/", { credentials: "include" });
           if (propertiesRes.ok) {
             propertiesData = await propertiesRes.json();
             // Ensure we have an array
@@ -141,8 +131,8 @@ export default function SearchContent() {
             console.warn("Skipping rooms fetch: no property selected");
           } else {
             const roomsRes = await fetch(
-              `/api/rooms/?property=${encodeURIComponent(selectedProperty)}`,
-              { headers },
+              `/api/v1/rooms/?property=${encodeURIComponent(selectedProperty)}`,
+              { credentials: "include" },
             );
             if (roomsRes.ok) {
               roomsData = await roomsRes.json();
@@ -187,7 +177,6 @@ export default function SearchContent() {
     };
   }, [
     query,
-    accessToken,
     selectedProperty,
     recordLoaderShown,
     clearLoadingAfterMinTime,

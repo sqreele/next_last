@@ -72,6 +72,10 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
   if (contentType) {
     responseHeaders.set('content-type', contentType);
   }
+  const contentDisposition = backendResponse.headers.get('content-disposition');
+  if (contentDisposition) {
+    responseHeaders.set('content-disposition', contentDisposition);
+  }
 
   const body = request.method === 'HEAD' ? null : await backendResponse.arrayBuffer();
   return new NextResponse(body, {

@@ -3,12 +3,7 @@
 import React, { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import { useSession } from '@/app/lib/session.client';
 import { cn } from '@/app/lib/utils/cn';
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://staymaint.com');
 
 interface PropertyExportButtonProps {
   className?: string;
@@ -16,22 +11,14 @@ interface PropertyExportButtonProps {
 }
 
 export function PropertyExportButton({ className, label }: PropertyExportButtonProps) {
-  const { data: session } = useSession();
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const download = async () => {
     setError(null);
-    const token = session?.user?.accessToken;
-    if (!token) {
-      setError('Sign in again to export.');
-      return;
-    }
     setDownloading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/properties/export/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/v1/properties/export/', { credentials: 'include' });
       if (!res.ok) throw new Error(`Export failed (${res.status})`);
       const blob = await res.blob();
       // Pull the filename suggested by the Content-Disposition header so the

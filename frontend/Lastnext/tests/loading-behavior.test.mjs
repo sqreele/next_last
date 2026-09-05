@@ -59,6 +59,19 @@ test("shared skeletons expose busy state and honor reduced motion", async () => 
   assert.match(skeletons, /SettingsPageSkeleton/);
 });
 
+test("bouncing dots loader is accessible, responsive, and motion-safe", async () => {
+  const loader = await source("app/components/ui/BouncingDotsLoader.tsx");
+  assert.equal((loader.match(/data-loader-dot(?:\s|>)/g) ?? []).length, 3);
+  assert.match(loader, /role="status"/);
+  assert.match(loader, /aria-live="polite"/);
+  assert.match(loader, /label \? "ml-2" : "sr-only"/);
+  assert.match(loader, /size\?: "sm" \| "md" \| "lg"/);
+  assert.match(loader, /fullScreen && "min-h-screen w-full"/);
+  assert.match(loader, /motion-safe:animate-bounce/);
+  assert.match(loader, /motion-reduce:animate-none/);
+  assert.match(loader, /motion-reduce:opacity-/);
+});
+
 test("background overlay is informative without blocking settled content", async () => {
   const overlay = await source("app/components/ui/loading/LoadingOverlay.tsx");
   assert.match(overlay, /pointer-events-none/);

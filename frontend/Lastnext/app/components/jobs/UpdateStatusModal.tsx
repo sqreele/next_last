@@ -16,8 +16,9 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { StatusBadge } from "@/app/components/pcms-ui";
 import { Textarea } from "@/app/components/ui/textarea";
-import { Loader2, ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -311,7 +312,7 @@ export function UpdateStatusModal({
           >
             {isUpdating ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <BouncingDotsLoader size="sm" />
                 {t("updateStatus.saving")}
               </>
             ) : (

@@ -24,7 +24,6 @@ import {
   MapPin,
   FileText,
   History,
-  Loader2,
   AlertCircle,
   QrCode,
   Download,
@@ -42,6 +41,7 @@ import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import dynamic from "next/dynamic";
 import { DetailPageSkeleton } from "@/app/components/ui/loading";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCode = dynamic(
@@ -50,7 +50,7 @@ const QRCode = dynamic(
     ssr: false,
     loading: () => (
       <div className="w-[200px] h-[200px] flex items-center justify-center text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <BouncingDotsLoader size="md" />
       </div>
     ),
   },
@@ -573,7 +573,7 @@ export default function MachineDetailPage({
                 />
               ) : (
                 <div className="w-[100px] h-[100px] flex items-center justify-center text-muted-foreground">
-                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <BouncingDotsLoader size="md" />
                 </div>
               )}
             </div>
@@ -794,12 +794,11 @@ export default function MachineDetailPage({
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
           {loadingHistory ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <p className="ml-3 text-muted-foreground">
-                Loading maintenance history...
-              </p>
-            </div>
+            <BouncingDotsLoader
+              size="md"
+              label="Loading maintenance history..."
+              className="w-full py-12 text-muted-foreground"
+            />
           ) : pmHistory.length === 0 ? (
             <div className="text-center py-12">
               <History className="h-16 w-16 text-muted-foreground mx-auto mb-4" />

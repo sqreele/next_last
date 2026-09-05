@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
-  Loader2,
   ArrowRight,
   X,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import { Button } from "@/app/components/ui/button";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import { cn } from "@/app/lib/utils/cn";
 import { useMainStore } from "@/app/lib/stores/mainStore";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 const POLL_INTERVAL_MS = 60_000;
 const READ_KEY = "pcms-notifications-read";
@@ -255,7 +255,7 @@ export function NotificationBell({
           <div className="max-h-[60vh] overflow-y-auto">
             {loading && !data ? (
               <div className="flex items-center gap-2 px-4 py-6 text-sm font-medium text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+                <BouncingDotsLoader size="sm" label="Loading..." />
               </div>
             ) : data && data.results.length === 0 ? (
               <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">

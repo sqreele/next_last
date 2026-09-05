@@ -5,7 +5,6 @@ import {
   Upload,
   FileSpreadsheet,
   Download,
-  Loader2,
   AlertCircle,
   CheckCircle2,
   X,
@@ -20,6 +19,7 @@ import {
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils/cn";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 interface InventoryCsvImportProps {
   currentPropertyId?: string | null;
@@ -273,7 +273,7 @@ export function InventoryCsvImport({
             >
               {submitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  <BouncingDotsLoader size="sm" />
                   Importing...
                 </>
               ) : (

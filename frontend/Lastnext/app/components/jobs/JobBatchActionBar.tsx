@@ -1,11 +1,11 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState } from "react";
 import { useSession } from "@/app/lib/session.client";
 import {
   CheckCircle2,
   FileSpreadsheet,
-  Loader2,
   X,
   Wrench,
   RefreshCw,
@@ -164,7 +164,7 @@ export function JobBatchActionBar({
             className="h-10 bg-blue-600 text-sm font-bold text-white hover:bg-blue-700"
           >
             {working === "status" ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <BouncingDotsLoader size="sm" />
             ) : (
               <Wrench className="mr-2 h-4 w-4" />
             )}
@@ -196,7 +196,7 @@ export function JobBatchActionBar({
           className="h-10 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
         >
           {working === "xlsx" ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <BouncingDotsLoader size="sm" />
           ) : (
             <FileSpreadsheet className="mr-2 h-4 w-4" />
           )}

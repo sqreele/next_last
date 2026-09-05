@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import Link from "next/link";
 import { Button } from "@/app/components/ui/button";
-import { PageLoader } from "@/app/components/ui/loading";
+import { BouncingDotsLoader, PageLoader } from "@/app/components/ui/loading";
 import {
   Card,
   CardContent,
@@ -1464,10 +1464,7 @@ export default function JobsReport({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">
-              Loading your session...
-            </p>
+            <BouncingDotsLoader size="md" label="Loading your session..." className="text-muted-foreground" />
           </div>
         </CardContent>
       </Card>

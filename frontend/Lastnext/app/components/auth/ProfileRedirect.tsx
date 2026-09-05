@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
+import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
 
 export default function ProfileRedirect() {
   const router = useRouter();
@@ -21,9 +22,7 @@ export default function ProfileRedirect() {
   // Show loading while checking authentication
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
+      <BouncingDotsLoader size="md" label="Loading profile" className="w-full p-8" />
     );
   }
 

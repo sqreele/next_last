@@ -40,6 +40,7 @@ import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
 import { Logo, StayMaintMark } from "@/app/components/branding/Logo";
 import { SubscriptionWarningBanner } from "@/app/components/subscription/SubscriptionWarningBanner";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 export default function DashboardLayout({
   children,
@@ -481,7 +482,7 @@ function SearchInput() {
       />
       {isPending && (
         <div className="absolute right-3 top-3">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary" />
+          <BouncingDotsLoader size="sm" />
         </div>
       )}
     </form>
@@ -548,7 +549,7 @@ function MobileSearch() {
             />
             {isPending && (
               <div className="absolute right-3 top-3">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-primary" />
+                <BouncingDotsLoader size="sm" />
               </div>
             )}
           </form>

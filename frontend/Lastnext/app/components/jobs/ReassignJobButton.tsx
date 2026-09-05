@@ -1,8 +1,9 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -248,8 +249,7 @@ export function ReassignJobButton({
           <div className="max-h-[40vh] space-y-1.5 overflow-y-auto rounded-xl border-2 border-border bg-card p-1">
             {candidateStatus === "loading" ? (
               <div className="flex items-center gap-2 px-3 py-6 text-sm font-medium text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading
-                teammates...
+                <BouncingDotsLoader size="sm" label="Loading teammates..." />
               </div>
             ) : candidateStatus === "unavailable" ? (
               <p className="px-3 py-6 text-center text-sm font-semibold text-amber-700">
@@ -354,7 +354,7 @@ export function ReassignJobButton({
           >
             {submitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <BouncingDotsLoader size="sm" />
                 Reassigning...
               </>
             ) : (

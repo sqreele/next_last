@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 export default function RegisterForm() {
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -21,7 +22,7 @@ export default function RegisterForm() {
       >
         {isRedirecting ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            <BouncingDotsLoader size="sm" />
             Opening secure registration…
           </>
         ) : (

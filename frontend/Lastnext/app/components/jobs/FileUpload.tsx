@@ -1,4 +1,5 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, {
   useState,
@@ -9,7 +10,7 @@ import React, {
   useMemo,
 } from "react";
 import Image from "next/image";
-import { X, AlertCircle, Loader2 } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { cn } from "@/app/lib/utils/cn";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
@@ -229,7 +230,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             >
               {!loadedPreviews[file.name] && (
                 <div className="absolute inset-0 z-10 grid place-items-center bg-muted">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <BouncingDotsLoader size="sm" className="text-primary" />
                 </div>
               )}
               <Image

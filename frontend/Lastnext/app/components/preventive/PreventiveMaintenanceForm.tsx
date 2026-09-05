@@ -1,4 +1,5 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -36,7 +37,6 @@ import {
   type MaintenanceProcedureTemplate,
 } from "@/app/lib/maintenanceProcedures";
 import apiClient from "@/app/lib/api-client";
-import { Loader } from "lucide-react";
 
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -1332,9 +1332,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         aria-busy="true"
         role="status"
       >
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-          <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
-        </div>
+        <BouncingDotsLoader size="lg" />
         <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
           Loading form, please wait…
         </p>
@@ -1560,12 +1558,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   aria-busy="true"
                   role="status"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-                    <Loader
-                      className="h-8 w-8 animate-spin text-blue-600"
-                      aria-hidden
-                    />
-                  </div>
+                  <BouncingDotsLoader size="lg" />
                   <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
                     Saving, please wait…
                   </p>
@@ -2026,12 +2019,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                         Please select a property to see available machines.
                       </p>
                     ) : loadingMachines ? (
-                      <div className="flex justify-center items-center h-24">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        <p className="ml-2 text-sm text-gray-500">
-                          Loading machines...
-                        </p>
-                      </div>
+                      <BouncingDotsLoader size="md" label="Loading machines..." className="h-24 w-full text-sm text-gray-500" />
                     ) : (
                       (() => {
                         const selectedTask = availableMaintenanceTasks.find(
@@ -2348,10 +2336,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       </button>
                     )}
                     {isImageUploading && (
-                      <div className="flex items-center justify-center sm:justify-start space-x-2 text-blue-600 py-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                        <span className="text-sm">Uploading images...</span>
-                      </div>
+                      <BouncingDotsLoader size="sm" label="Uploading images..." className="py-2 text-sm text-blue-600" />
                     )}
                   </div>
                   <button
@@ -2372,7 +2357,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   >
                     {isSubmitting || isLoading ? (
                       <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        <BouncingDotsLoader size="sm" />
                         <span>
                           {pmId || actualInitialData
                             ? "Updating..."

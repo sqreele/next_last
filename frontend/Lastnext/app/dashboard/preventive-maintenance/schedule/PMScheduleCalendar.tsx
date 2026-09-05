@@ -1,4 +1,5 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -6,7 +7,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   AlertCircle,
   RefreshCw,
   Sparkles,
@@ -357,7 +357,7 @@ export function PMScheduleCalendar() {
 
       {loading && !visibleData ? (
         <div className="flex min-h-48 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-6 text-sm font-medium text-slate-600 shadow-xs" role="status">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading schedule…
+          <BouncingDotsLoader size="sm" label="Loading schedule…" />
         </div>
       ) : error && !visibleData ? null : <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xs sm:p-4">
         <div className="hidden grid-cols-7 gap-1 pb-2 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 sm:grid">

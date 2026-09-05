@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Building2, CheckCircle2, Clock3, Loader2, LockKeyhole, XCircle } from "lucide-react";
+import { AlertCircle, Building2, CheckCircle2, Clock3, LockKeyhole, XCircle } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { Badge } from "@/app/components/ui/badge";
@@ -11,6 +11,7 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
 import { captureInvitationToken, clearInvitationToken } from "@/app/lib/invitation-token.mjs";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 type PreviewStatus = "pending" | "accepted" | "expired" | "revoked";
 type Preview = {
@@ -22,7 +23,7 @@ type Preview = {
 };
 
 function InvitationLoading() {
-  return <div className="grid min-h-screen place-items-center bg-slate-50"><Loader2 className="h-7 w-7 animate-spin text-blue-600" aria-label="Loading invitation" /></div>;
+  return <BouncingDotsLoader size="lg" label="Loading invitation" fullScreen className="bg-slate-50" />;
 }
 
 function AcceptInvitationContent() {

@@ -1,8 +1,9 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { AlertCircle, Clock, Loader, MessageSquare, Send } from "lucide-react";
+import { AlertCircle, Clock, MessageSquare, Send } from "lucide-react";
 import { Textarea } from "@/app/components/ui/textarea";
 import { Button } from "@/app/components/ui/button";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -273,8 +274,7 @@ const JobCommentsSection: React.FC<Props> = ({
           role="status"
           aria-live="polite"
         >
-          <Loader className="h-4 w-4 animate-spin" aria-hidden="true" />
-          Loading comments…
+          <BouncingDotsLoader size="sm" label="Loading comments…" />
         </div>
       ) : viewState === "empty" ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-6 text-center">
@@ -365,7 +365,7 @@ const JobCommentsSection: React.FC<Props> = ({
             className="min-h-11 w-full gap-2 sm:w-auto"
           >
             {submitting ? (
-              <Loader className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <BouncingDotsLoader size="sm" />
             ) : (
               <Send className="h-4 w-4" aria-hidden="true" />
             )}

@@ -1,5 +1,6 @@
 // ./app/components/jobs/RoomAutocomplete.tsx
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
@@ -16,7 +17,7 @@ import {
   PopoverTrigger,
 } from "@/app/components/ui/popover";
 import { Button } from "@/app/components/ui/button";
-import { Check, ChevronsUpDown, Building, Loader } from "lucide-react";
+import { Check, ChevronsUpDown, Building } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import { Room } from "@/app/lib/types";
@@ -301,7 +302,7 @@ const RoomAutocomplete = ({
                   : placeholder}
             </span>
             {loading ? (
-              <Loader className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-70" />
+              <BouncingDotsLoader size="sm" className="ml-2 shrink-0 opacity-70" />
             ) : (
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             )}

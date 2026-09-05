@@ -5,6 +5,7 @@ import { usePreventiveMaintenanceJobs } from "@/app/lib/hooks/usePreventiveMaint
 import { Job } from "@/app/lib/types";
 import Link from "next/link";
 import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 interface PreventiveMaintenanceListProps {
   propertyId: string;
@@ -38,10 +39,11 @@ export default function PreventiveMaintenanceList({
 
   if (isLoading) {
     return (
-      <div className="p-4 flex justify-center items-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-blue-600 mr-2"></div>
-        <span>Loading preventive maintenance jobs...</span>
-      </div>
+      <BouncingDotsLoader
+        size="md"
+        label="Loading preventive maintenance jobs..."
+        className="w-full p-4"
+      />
     );
   }
 

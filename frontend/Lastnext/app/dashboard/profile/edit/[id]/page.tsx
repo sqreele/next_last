@@ -34,6 +34,7 @@ import {
   profileErrorMessage,
   profileFieldErrors,
 } from "@/app/lib/profile-request.mjs";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 const EMPTY_FORM: ProfilePatch = {
   first_name: "",
@@ -385,7 +386,7 @@ function StateCard({
           role={loading ? "status" : "alert"}
         >
           {loading ? (
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+            <BouncingDotsLoader size="md" />
           ) : (
             <AlertCircle className="h-10 w-10 text-destructive" />
           )}

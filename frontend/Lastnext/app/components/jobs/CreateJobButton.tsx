@@ -1,5 +1,6 @@
 // ./app/components/jobs/CreateJobButton.tsx (Modified)
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState, useEffect } from "react";
 import { Formik, Form, Field } from "formik";
@@ -8,7 +9,7 @@ import axios from "axios";
 import apiClient from "@/app/lib/api-client";
 import { Button } from "@/app/components/ui/button";
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, ChevronDown, ChevronUp, Loader } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import {
   Dialog,
@@ -321,7 +322,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
         {/* Display API/Validation Error */}
         {isLoadingFormData && (
           <Alert className="my-4 border-cyan-200 bg-cyan-50 text-cyan-900">
-            <Loader className="h-4 w-4 animate-spin" />
+            <BouncingDotsLoader size="sm" />
             <AlertDescription>
               Loading rooms and maintenance topics...
             </AlertDescription>

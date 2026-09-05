@@ -6,6 +6,7 @@ import { appSignOut } from "@/app/lib/logout";
 import { ROUTES } from "@/app/lib/config";
 import { ProfileImage } from "@/app/components/ui/UniversalImage";
 import { getDisplayName } from "@/app/lib/utils/display-name";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 interface AuthStatusProps {
   showUserInfo?: boolean;
@@ -22,12 +23,11 @@ export default function AuthStatus({
 
   if (isLoading) {
     return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-        <span className="text-sm text-muted-foreground">
-          Checking authentication...
-        </span>
-      </div>
+      <BouncingDotsLoader
+        size="sm"
+        label="Checking authentication..."
+        className={`text-sm text-muted-foreground ${className}`}
+      />
     );
   }
 

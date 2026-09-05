@@ -14,7 +14,6 @@ import {
   Trash2,
   MapPin,
   AlertCircle,
-  Loader,
   Search,
   X,
 } from "lucide-react";
@@ -42,6 +41,7 @@ import { useToast } from "@/app/components/ui/use-toast";
 import { useProperties, useUser } from "@/app/lib/stores/mainStore";
 import type { Area } from "@/app/lib/types";
 import { SkeletonTable } from "@/app/components/ui/loading";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 type AreaFormState = {
   id?: number;
@@ -560,7 +560,7 @@ const AreasClient: React.FC = () => {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {saving ? <BouncingDotsLoader size="sm" /> : null}
               {saving ? "Saving…" : form.id ? "Save" : "Create"}
             </Button>
           </DialogFooter>
@@ -588,7 +588,7 @@ const AreasClient: React.FC = () => {
               disabled={deleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              {deleting ? <Loader className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="mr-1 h-4 w-4" />}
+              {deleting ? <BouncingDotsLoader size="sm" /> : <Trash2 className="mr-1 h-4 w-4" />}
               {deleting ? "Deactivating…" : "Deactivate"}
             </Button>
           </DialogFooter>

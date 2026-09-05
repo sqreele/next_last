@@ -1,5 +1,6 @@
 // ./components/jobs/DeleteJobDialog.tsx
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React from "react";
 import { Button } from "@/app/components/ui/button";
@@ -12,7 +13,7 @@ import {
   DialogFooter,
   DialogClose, // Import DialogClose
 } from "@/app/components/ui/dialog";
-import { Loader, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 interface DeleteDialogProps {
   isOpen: boolean;
@@ -43,10 +44,7 @@ const DeleteJobDialog: React.FC<DeleteDialogProps> = ({
             role="status"
           >
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-              <Loader
-                className="h-8 w-8 animate-spin text-blue-600"
-                aria-hidden
-              />
+              <BouncingDotsLoader size="md" />
             </div>
             <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
               Deleting, please wait…
@@ -77,7 +75,7 @@ const DeleteJobDialog: React.FC<DeleteDialogProps> = ({
             onClick={onConfirm} // Call confirm handler
             disabled={isSubmitting}
           >
-            {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting && <BouncingDotsLoader size="sm" />}
             Delete Job
           </Button>
         </DialogFooter>

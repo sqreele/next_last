@@ -3,7 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/app/lib/utils/cn";
-import { Spinner } from "@/app/components/ui/loading/Spinner";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 const buttonVariants = cva(
   "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md border text-sm font-semibold transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 touch-manipulation motion-reduce:transition-none",
@@ -73,7 +73,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {isLoading ? (
           <span className="inline-flex items-center justify-center gap-2">
-            <Spinner size="sm" />
+            <BouncingDotsLoader size="sm" />
             {loadingText ?? children}
           </span>
         ) : (

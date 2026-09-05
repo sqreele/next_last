@@ -1,10 +1,11 @@
 'use client';
+import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
 
 import { getRoomPropertyId } from '@/app/lib/utils/property-filter';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
-import { Printer, ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { Printer, ArrowLeft, Download } from 'lucide-react';
 import { Job, Property } from '@/app/lib/types';
 import { Button } from '@/app/components/ui/button';
 import { StatusBadge, PriorityBadge } from '@/app/components/pcms-ui';
@@ -248,7 +249,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
             className="h-9 bg-emerald-600 text-white hover:bg-emerald-700"
           >
             {isDownloadingPdf ? (
-              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              <BouncingDotsLoader size="sm" />
             ) : (
               <Download className="mr-1 h-4 w-4" />
             )}

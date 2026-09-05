@@ -54,6 +54,7 @@ import { Download } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jobsApi } from "@/app/lib/api/jobsApi";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 type WorkflowStatusKey = JobStatus | "defect";
 
@@ -782,10 +783,7 @@ const PropertyJobsDashboard = ({
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="w-full">
           <CardContent className="text-center p-6 sm:p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              Loading charts...
-            </p>
+            <BouncingDotsLoader size="md" label="Loading charts..." className="text-sm text-muted-foreground sm:text-base" />
           </CardContent>
         </Card>
       </div>

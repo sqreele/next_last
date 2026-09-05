@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { appSignOut } from '@/app/lib/logout';
+import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
 
 function LogoutContent() {
   const searchParams = useSearchParams();
@@ -38,7 +39,7 @@ function LogoutContent() {
         </div>
         <div className="mt-8 space-y-6">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <BouncingDotsLoader size="lg" />
           </div>
         </div>
       </div>
@@ -61,7 +62,7 @@ export default function LogoutPage() {
           </div>
           <div className="mt-8 space-y-6">
             <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              <BouncingDotsLoader size="lg" />
             </div>
           </div>
         </div>

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils/cn';
+import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
 
 interface PropertyExportButtonProps {
   className?: string;
@@ -51,7 +52,7 @@ export function PropertyExportButton({ className, label }: PropertyExportButtonP
         className="h-10 gap-2"
       >
         {downloading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <BouncingDotsLoader size="sm" />
         ) : (
           <Download className="h-4 w-4" />
         )}

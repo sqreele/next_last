@@ -1,4 +1,5 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useEffect, useState } from "react";
 import {
@@ -7,7 +8,6 @@ import {
   Camera,
   MessageSquare,
   Activity,
-  Loader2,
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
@@ -169,8 +169,7 @@ export function JobAuditTimeline({ jobId, className }: JobAuditTimelineProps) {
 
       {loading && !data && (
         <div className="flex items-center gap-2 px-1 py-4 text-sm font-medium text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading audit log...
+          <BouncingDotsLoader size="sm" label="Loading audit log..." />
         </div>
       )}
 

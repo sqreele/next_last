@@ -9,6 +9,7 @@ import { useMainStore } from "@/app/lib/stores/mainStore";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import Image from "next/image";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 // Updated interface to match Django API response
 interface FrequencyDistributionItem {
@@ -227,9 +228,8 @@ export default function PreventiveMaintenanceDashboard() {
   if (statisticsLoading && !statistics) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-xl border border-border bg-card py-12 text-center shadow-soft" aria-busy="true">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"></div>
-          <p className="mt-3 text-sm font-medium text-muted-foreground">Loading dashboard...</p>
+        <div className="rounded-xl border border-border bg-card py-12 text-center shadow-soft">
+          <BouncingDotsLoader size="md" label="Loading dashboard..." className="text-sm font-medium text-muted-foreground" />
         </div>
       </div>
     );
@@ -565,11 +565,8 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {upcomingLoading ? (
-          <div className="p-10 text-center" aria-busy="true">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"></div>
-            <p className="mt-3 text-sm font-medium text-muted-foreground">
-              Loading upcoming maintenance...
-            </p>
+          <div className="p-10 text-center">
+            <BouncingDotsLoader size="md" label="Loading upcoming maintenance..." className="text-sm font-medium text-muted-foreground" />
           </div>
         ) : upcomingError ? (
           <div className="p-8 text-center" role="alert">

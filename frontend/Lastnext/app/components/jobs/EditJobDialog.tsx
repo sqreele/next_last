@@ -1,7 +1,8 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { FC, useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Loader } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Job } from "@/app/lib/types";
 import { Button } from "@/app/components/ui/button";
 import { Checkbox } from "@/app/components/ui/checkbox";
@@ -108,10 +109,7 @@ const EditJobDialog: FC<EditDialogProps> = ({
             role="status"
           >
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-              <Loader
-                className="h-8 w-8 animate-spin text-blue-600"
-                aria-hidden
-              />
+              <BouncingDotsLoader size="md" />
             </div>
             <p className="text-center text-lg font-medium text-muted-foreground">
               {t("editJob.savingOverlay")}
@@ -345,7 +343,7 @@ const EditJobDialog: FC<EditDialogProps> = ({
               disabled={isSubmitting}
               className="h-11 w-full bg-blue-600 font-bold text-white hover:bg-blue-700 sm:w-auto"
             >
-              {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting && <BouncingDotsLoader size="sm" />}
               {t("editJob.saveChanges")}
             </Button>
           </DialogFooter>

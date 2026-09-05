@@ -1,4 +1,5 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useCallback, useMemo, useEffect } from "react";
 import {
@@ -8,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { Button } from "@/app/components/ui/button";
-import { Check, ChevronDown, Building2, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Building2 } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { useMainStore } from "@/app/lib/stores/mainStore";
 import {
@@ -88,7 +89,7 @@ const HeaderPropertyList = React.memo(() => {
         disabled
         className="h-11 w-full gap-2 rounded-md border-border bg-card px-3 text-muted-foreground sm:w-auto"
       >
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        <BouncingDotsLoader size="sm" />
         Loading...
       </Button>
     );

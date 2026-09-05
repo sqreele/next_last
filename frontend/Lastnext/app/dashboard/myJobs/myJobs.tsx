@@ -1,4 +1,5 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +9,6 @@ import {
   Calendar,
   CheckCircle2,
   Home,
-  Loader,
   MapPin,
   MoreHorizontal,
   Pencil,
@@ -652,7 +652,7 @@ const EditDialog: React.FC<EditDialogProps> = ({
               className="min-h-11 w-full sm:w-auto"
             >
               {isSubmitting ? (
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                <BouncingDotsLoader size="sm" />
               ) : null}
               Save Changes
             </Button>
@@ -693,7 +693,7 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
           className="min-h-11 w-full bg-red-600 hover:bg-red-700 sm:w-auto"
         >
           {isSubmitting ? (
-            <Loader className="mr-2 h-4 w-4 animate-spin" />
+            <BouncingDotsLoader size="sm" />
           ) : null}
           Delete
         </AlertDialogAction>

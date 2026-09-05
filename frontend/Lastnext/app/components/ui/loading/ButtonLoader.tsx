@@ -1,9 +1,9 @@
-import { Spinner } from './Spinner';
+import { BouncingDotsLoader } from '../BouncingDotsLoader';
 
 export function ButtonLoader({ text = 'Loading...' }: { text?: string }) {
   return (
     <>
-      <Spinner size="sm" className="mr-2" />
+      <BouncingDotsLoader size="sm" className="mr-2" />
       <span>{text}</span>
     </>
   );

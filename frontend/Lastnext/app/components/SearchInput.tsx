@@ -3,6 +3,7 @@ import React, { useTransition, useCallback } from "react"; // ✅ PERFORMANCE: A
 import { useRouter } from "next/navigation";
 import { Input } from "@/app/components/ui/input";
 import { Search } from "lucide-react";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 // ✅ PERFORMANCE: Memoize SearchInput to prevent unnecessary re-renders
 export const SearchInput = React.memo(function SearchInput() {
@@ -40,7 +41,7 @@ export const SearchInput = React.memo(function SearchInput() {
       />
       {isPending && (
         <div className="absolute right-2.5 top-[.6rem]">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-blue-600" />
+          <BouncingDotsLoader size="sm" />
         </div>
       )}
     </form>

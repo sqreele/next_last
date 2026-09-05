@@ -1,4 +1,5 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,6 @@ import {
   X,
   FileImage,
   AlertCircle,
-  Loader2,
 } from "lucide-react";
 
 interface CompletePreventiveMaintenanceProps {
@@ -327,7 +327,7 @@ export default function CompletePreventiveMaintenance({
 
         <div className="flex items-center justify-center py-12 md:py-20">
           <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
+            <BouncingDotsLoader size="md" />
             <p className="mt-2 text-muted-foreground">
               Loading maintenance task...
             </p>
@@ -373,8 +373,7 @@ export default function CompletePreventiveMaintenance({
 
             {isLoadingRecords ? (
               <div className="flex items-center text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Loading available records...
+                <BouncingDotsLoader size="sm" label="Loading available records..." />
               </div>
             ) : availableRecords.length > 0 ? (
               <div className="space-y-2">
@@ -429,7 +428,7 @@ export default function CompletePreventiveMaintenance({
               disabled={isLoadingRecords}
             >
               {isLoadingRecords ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <BouncingDotsLoader size="sm" />
               ) : (
                 <span>🔄</span>
               )}
@@ -787,7 +786,7 @@ export default function CompletePreventiveMaintenance({
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <BouncingDotsLoader size="sm" />
                         Processing...
                       </>
                     ) : (

@@ -1,8 +1,8 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Loader } from "lucide-react";
 import { Job } from "@/app/lib/types";
 import FileUpload from "@/app/components/jobs/FileUpload";
 import Image from "next/image";
@@ -168,12 +168,7 @@ export default function EditJobPage() {
           aria-busy="true"
           role="status"
         >
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-            <Loader
-              className="h-8 w-8 animate-spin text-blue-600"
-              aria-hidden
-            />
-          </div>
+          <BouncingDotsLoader size="lg" />
           <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
             Saving, please wait…
           </p>

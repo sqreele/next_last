@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Building, Loader2, ShieldCheck } from 'lucide-react';
+import { Building, ShieldCheck } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/app/components/ui/card';
+import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
 
 export default function LoginPage() {
   const loginStarted = useRef(false);
@@ -40,8 +41,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4 pb-8">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-            <Loader2 className="h-4 w-4 animate-spin text-blue-600" aria-hidden />
-            Redirecting to secure sign in…
+            <BouncingDotsLoader size="sm" label="Redirecting to secure sign in…" />
           </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" aria-hidden />

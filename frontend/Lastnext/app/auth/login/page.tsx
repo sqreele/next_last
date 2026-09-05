@@ -8,7 +8,6 @@ import {
   Check,
   CheckCircle2,
   ClipboardCheck,
-  Loader2,
   LockKeyhole,
   ShieldCheck,
   Wrench,
@@ -18,6 +17,7 @@ import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import { Button } from '@/app/components/ui/button';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
 import { Logo } from '@/app/components/branding/Logo';
+import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
 
 const capabilities = [
   {
@@ -63,7 +63,7 @@ function LoadingState({ label = 'Checking your session…' }: { label?: string }
     >
       <div className="flex flex-col items-center gap-4">
         <div className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
-          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+          <BouncingDotsLoader size="sm" />
         </div>
         <p className="text-sm font-medium text-slate-600">{label}</p>
       </div>

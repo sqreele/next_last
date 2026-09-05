@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 // ✅ PERFORMANCE: Lazy load chart components (recharts is heavy ~150KB)
 // Only load when charts are actually displayed
@@ -59,10 +60,7 @@ export const LazyPropertyJobsDashboard = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-border border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
-        </div>
+        <BouncingDotsLoader size="md" label="Loading dashboard..." className="text-sm text-muted-foreground" />
       </div>
     ),
     ssr: false,

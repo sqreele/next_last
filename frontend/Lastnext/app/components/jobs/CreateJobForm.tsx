@@ -1,4 +1,5 @@
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Formik, Form, Field, FormikErrors } from "formik";
@@ -15,7 +16,6 @@ import type { DictKey } from "@/app/lib/i18n/dictionary";
 import { Textarea } from "@/app/components/ui/textarea";
 import {
   Plus,
-  Loader,
   AlertCircle,
   CheckCircle,
   Check,
@@ -1037,10 +1037,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
             role="status"
           >
             <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-              <Loader
-                className="h-8 w-8 animate-spin text-primary"
-                aria-hidden
-              />
+              <BouncingDotsLoader size="md" className="text-primary" />
             </div>
             <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
               {t("createJob.loadingForm")}
@@ -1100,10 +1097,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             role="status"
                           >
                             <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-                              <Loader
-                                className="h-8 w-8 animate-spin text-primary"
-                                aria-hidden
-                              />
+                              <BouncingDotsLoader size="md" className="text-primary" />
                             </div>
                             <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
                               {t("createJob.creating")}
@@ -1483,7 +1477,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 >
                                   {isFloorLoading ? (
                                     <span className="flex items-center gap-2 text-muted-foreground">
-                                      <Loader className="h-4 w-4 animate-spin" />{" "}
+                                      <BouncingDotsLoader size="sm" />{" "}
                                       {t("createJob.loadingFloors")}
                                     </span>
                                   ) : (
@@ -2071,7 +2065,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             >
                               {isSubmitting ? (
                                 <div className="flex items-center gap-3">
-                                  <Loader className="h-5 w-5 animate-spin" />
+                                  <BouncingDotsLoader size="sm" />
                                   <span>{t("createJob.creating")}</span>
                                 </div>
                               ) : (

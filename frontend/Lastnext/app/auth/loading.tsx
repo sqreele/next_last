@@ -1,5 +1,5 @@
-import { PageLoader } from '@/app/components/ui/loading';
+import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
 
 export default function AuthLoading() {
-  return <PageLoader label="Loading secure sign-in" description="Checking your StayMaint authentication session." />;
+  return <BouncingDotsLoader size="lg" label="Loading secure sign-in" fullScreen />;
 }

@@ -1,5 +1,6 @@
 // app/dashboard/preventive-maintenance/edit/[pm_id]/page.tsx
 "use client";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState, useEffect, useRef } from "react";
 import type { JSX } from "react";
@@ -1080,7 +1081,7 @@ export default function EditPreventiveMaintenancePage() {
               >
                 {isSubmitting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <BouncingDotsLoader size="sm" />
                     Saving...
                   </>
                 ) : (

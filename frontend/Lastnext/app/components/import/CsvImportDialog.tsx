@@ -5,7 +5,6 @@ import {
   Upload,
   FileSpreadsheet,
   Download,
-  Loader2,
   AlertCircle,
   CheckCircle2,
   X,
@@ -20,6 +19,7 @@ import {
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils/cn";
+import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 export interface CsvImportResult {
   created_count: number;
@@ -300,7 +300,7 @@ export function CsvImportDialog({
             >
               {submitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <BouncingDotsLoader size="sm" />
                   Importing...
                 </>
               ) : (

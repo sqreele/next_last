@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/app/lib/utils/cn";
-import { Spinner } from "./Spinner";
+import { BouncingDotsLoader } from "../BouncingDotsLoader";
 
 export function LoadingOverlay({
   show,
@@ -24,8 +24,7 @@ export function LoadingOverlay({
       aria-atomic="true"
     >
       <div className="flex items-center gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground shadow-card">
-        <Spinner size="sm" className="text-cyan-600" aria-hidden="true" role="presentation" />
-        {label}
+        <BouncingDotsLoader size="sm" label={label} />
       </div>
     </div>
   );

@@ -298,11 +298,8 @@ const nextConfig = {
           source: '/auth/:path*',
           destination: '/auth/:path*',
         },
-        // Pass-through for already versioned API calls
-        {
-          source: '/api/v1/:path*',
-          destination: `${privateApi}/api/v1/:path*`,
-        },
+        // /api/v1 is owned by the dynamic BFF route. An afterFiles rewrite
+        // takes precedence over it and bypasses server-side session lookup.
         // Proxy specific backend API endpoints (only rewrite what we need)
         {
           source: '/api/users/:path*',
@@ -328,11 +325,7 @@ const nextConfig = {
         source: '/media/:path*',
         destination: `${mediaApi}/media/:path*`,
       },
-      // Pass-through for already versioned API calls
-      {
-        source: '/api/v1/:path*',
-        destination: `${privateApi}/api/v1/:path*`,
-      },
+      // /api/v1 is owned by the dynamic BFF route, not an external rewrite.
       // Proxy specific backend API endpoints (only rewrite what we need)
       {
         source: '/api/users/:path*',

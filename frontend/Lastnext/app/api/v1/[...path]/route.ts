@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { API_CONFIG } from '@/app/lib/config';
+import { buildBffUpstream } from '@/app/lib/bff-upstream';
 import { requireServerAccessToken } from '@/app/lib/auth0/server-session';
 import { backendFetch } from '@/app/lib/backend-fetch';
 
@@ -28,9 +28,7 @@ async function getSessionAccessToken(request: NextRequest): Promise<string | nul
 
 async function proxyRequest(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
-  const backendPath = path.map(encodeURIComponent).join('/');
   const search = request.nextUrl.search || '';
-  const targetUrl = `${API_CONFIG.baseUrl}/api/v1/${backendPath}/${search}`;
 
   const headers = new Headers();
   request.headers.forEach((value, key) => {
@@ -54,6 +52,7 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
     );
   }
   headers.set('authorization', `Bearer ${accessToken}`);
+  const targetUrl = buildBffUpstream(path, search);
 
   const init: RequestInit = {
     method: request.method,

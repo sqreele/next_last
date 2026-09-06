@@ -199,6 +199,18 @@ test('sessions use an opaque v2 reference and logout clears the session cookie',
   assert.match(logout, /clearSessionCookie\(response\)/);
 });
 
+test('dev compose provides health-gated Redis-backed frontend sessions', async () => {
+  const compose = await readFile(new URL('../../docker-compose.dev.yml', root), 'utf8');
+  const store = await readFile(new URL('app/lib/auth0/server-session-store.ts', root), 'utf8');
+  assert.match(compose, /^  redis-dev:\n/m);
+  assert.match(compose, /image: redis:7-alpine/);
+  assert.match(compose, /REDIS_URL=redis:\/\/redis-dev:6379\/0/);
+  assert.match(compose, /redis-dev:\n\s+condition: service_healthy/);
+  assert.match(compose, /test: \["CMD", "redis-cli", "ping"\]/);
+  assert.match(store, /throw new Error\('REDIS_URL is required for server sessions\.'\)/);
+  assert.doesNotMatch(store, /in[ -]?memory/i);
+});
+
 test('OAuth login actions use top-level navigation without Next router or prefetch', async () => {
   const loginPage = await readFile(new URL('app/auth/login/page.tsx', root), 'utf8');
   const legacyLoginPage = await readFile(new URL('app/login/page.tsx', root), 'utf8');

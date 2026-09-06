@@ -19,13 +19,18 @@ services:
       - NEXT_PUBLIC_MEDIA_URL=http://localhost:8000
       - NEXT_MEDIA_API_URL=http://backend:8000
       - API_URL=http://backend:8000
+      - REDIS_URL=redis://redis-dev:6379/0
       - NODE_ENV=development
     command: npm run dev -- --hostname 0.0.0.0
     ports:
       - "3000:3000"
     depends_on:
-      - backend
-      - db
+      backend:
+        condition: service_started
+      db:
+        condition: service_started
+      redis-dev:
+        condition: service_healthy
     networks:
       - dev-network
 
@@ -85,12 +90,31 @@ services:
     networks:
       - dev-network
 
+  redis-dev:
+    image: redis:7-alpine
+    container_name: redis-dev
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - dev-network
+
 networks:
   dev-network:
     driver: bridge
 
 volumes:
   postgres_dev_data_v17:
+    driver: local
+  redis_dev_data:
     driver: local
   static_volume_dev:
     driver: local

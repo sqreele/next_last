@@ -23,6 +23,7 @@ from .models import (
 
 TENANT_ADMIN_ROLES = {'owner', 'admin', 'billing'}
 TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'}
+CAN_REASSIGN_JOB_ROLES = {'owner', 'admin', 'manager', 'supervisor'}
 # These are the existing roles which intentionally see every property in a
 # tenant.  Keep this decision here rather than duplicating role checks in API
 # views.
@@ -193,6 +194,37 @@ def get_operable_properties(user, tenant=None):
         tenant__memberships__role__in=TENANT_WIDE_PROPERTY_ROLES & TENANT_OPERATOR_ROLES,
     )
     qs = Property.objects.filter(assigned_operator_q | tenant_wide_operator_q).distinct()
+    return qs.filter(tenant=tenant) if tenant is not None else qs
+
+
+def get_job_reassignable_properties(user, tenant=None):
+    """Properties on which the user may reassign Jobs.
+
+    Reassignment is narrower than general operational writes: technicians may
+    update work assigned to them but may not choose another assignee. Owners,
+    admins, and managers retain tenant-wide access, while supervisors must have
+    an explicit grant from their active membership for the Job's Property.
+    """
+    if not getattr(user, 'is_authenticated', False):
+        return Property.objects.none()
+    if user.is_superuser:
+        qs = Property.objects.all()
+        return qs.filter(tenant=tenant) if tenant is not None else qs
+
+    assigned_reassigner_q = Q(
+        tenant_memberships__user=user,
+        tenant_memberships__is_active=True,
+        tenant_memberships__role__in=CAN_REASSIGN_JOB_ROLES,
+        tenant_memberships__tenant=models.F('tenant'),
+    )
+    tenant_wide_reassigner_q = Q(
+        tenant__memberships__user=user,
+        tenant__memberships__is_active=True,
+        tenant__memberships__role__in=TENANT_WIDE_PROPERTY_ROLES & CAN_REASSIGN_JOB_ROLES,
+    )
+    qs = Property.objects.filter(
+        assigned_reassigner_q | tenant_wide_reassigner_q
+    ).distinct()
     return qs.filter(tenant=tenant) if tenant is not None else qs
 
 

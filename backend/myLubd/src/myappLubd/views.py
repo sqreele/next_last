@@ -76,6 +76,7 @@ from .tenancy import (
     get_accessible_properties,
     lock_tenants_for_membership_change,
     get_active_membership,
+    get_job_reassignable_properties,
     get_operable_properties,
     get_property_summary_recipients,
     get_user_tenants,
@@ -1585,6 +1586,17 @@ def _ensure_user_can_operate_property(user, property_obj):
         return
     if not get_operable_properties(user).filter(pk=property_obj.pk).exists():
         raise PermissionDenied("Your role cannot modify data for this property.")
+
+
+def _ensure_user_can_reassign_job(user, job):
+    """Enforce the narrower role and canonical Property scope for reassignment."""
+    property_obj = getattr(job, 'property', None)
+    if property_obj is None:
+        raise ValidationError({'property': 'Job must have a canonical Property.'})
+    if user.is_superuser:
+        return
+    if not get_job_reassignable_properties(user).filter(pk=property_obj.pk).exists():
+        raise PermissionDenied("Your role cannot reassign jobs for this property.")
 
 
 def _job_assignment_candidates(property_obj):
@@ -3972,11 +3984,15 @@ class JobViewSet(viewsets.ModelViewSet):
             request.user.is_superuser
             or get_operable_properties(request.user).filter(pk=active_property.pk).exists()
         )
+        can_assign = bool(
+            request.user.is_superuser
+            or get_job_reassignable_properties(request.user).filter(pk=active_property.pk).exists()
+        )
         context = {
             'property_id': property_id,
             'property_name': active_property.name,
             'can_operate': can_operate,
-            'can_assign': can_operate,
+            'can_assign': can_assign,
             'status_counts': status_counts,
         }
         if page is not None:
@@ -4751,8 +4767,11 @@ class JobViewSet(viewsets.ModelViewSet):
         Stamps the remarks with the same status-note format the audit log
         already parses, so the timeline picks up the reassignment as a
         first-class event. Pushes both the new and previous assignee."""
-        job = self.get_object()
-        _ensure_user_can_operate_property(request.user, job.property)
+        job = get_object_or_404(
+            Job.objects.select_related('property', 'property__tenant', 'user'),
+            job_id=job_id,
+        )
+        _ensure_user_can_reassign_job(request.user, job)
 
         active_property_id = str((request.data or {}).get('property_id') or '').strip()
         if not active_property_id:
@@ -4853,8 +4872,11 @@ class JobViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='assignment-candidates')
     def assignment_candidates(self, request, job_id=None):
         """Return the smallest same-Property set needed by reassignment UI."""
-        job = self.get_object()
-        _ensure_user_can_operate_property(request.user, job.property)
+        job = get_object_or_404(
+            Job.objects.select_related('property', 'property__tenant'),
+            job_id=job_id,
+        )
+        _ensure_user_can_reassign_job(request.user, job)
 
         active_property_id = str(request.query_params.get('property_id') or '').strip()
         if not active_property_id:

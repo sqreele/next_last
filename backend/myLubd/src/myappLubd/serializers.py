@@ -30,6 +30,7 @@ from .timezones import is_valid_timezone, object_timezone
 from .tenancy import (
     TENANT_WIDE_PROPERTY_ROLES,
     get_accessible_properties,
+    get_job_reassignable_properties,
     get_operable_properties,
     get_user_tenant_memberships,
 )
@@ -864,7 +865,17 @@ class JobDashboardSerializer(serializers.ModelSerializer):
         return self._can_operate(obj)
 
     def get_can_assign(self, obj):
-        return self._can_operate(obj)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        if user.is_superuser:
+            return True
+        if not hasattr(self, '_reassignable_property_ids'):
+            self._reassignable_property_ids = set(
+                get_job_reassignable_properties(user).values_list('pk', flat=True)
+            )
+        return obj.property_id in self._reassignable_property_ids
 
 
 # Job serializer
@@ -953,7 +964,17 @@ class JobSerializer(serializers.ModelSerializer):
         return self._can_operate(obj)
 
     def get_can_assign(self, obj):
-        return self._can_operate(obj)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False) or not obj.property_id:
+            return False
+        if user.is_superuser:
+            return True
+        if not hasattr(self, '_reassignable_property_ids'):
+            self._reassignable_property_ids = set(
+                get_job_reassignable_properties(user).values_list('pk', flat=True)
+            )
+        return obj.property_id in self._reassignable_property_ids
 
     def get_comments_count(self, obj):
         annotated_count = getattr(obj, '_comments_count', None)

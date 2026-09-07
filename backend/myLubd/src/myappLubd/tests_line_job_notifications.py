@@ -113,7 +113,9 @@ class JobLineNotificationTests(TransactionTestCase):
         }
 
     def _create_job(self):
-        response = self.client.post('/api/v1/jobs/', self._payload(), format='json')
+        response = self.client.post(
+            '/api/v1/jobs/', self._payload(), format='json', secure=True,
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
         return response, Job.objects.get(job_id=response.data['job_id'])
 
@@ -193,6 +195,7 @@ class JobLineNotificationTests(TransactionTestCase):
             f'/api/v1/jobs/{job.job_id}/update_status/',
             {'status': 'in_progress'},
             format='json',
+            secure=True,
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
@@ -213,6 +216,7 @@ class JobLineNotificationTests(TransactionTestCase):
             f'/api/v1/jobs/{job.job_id}/update_status/',
             {'status': 'pending'},
             format='json',
+            secure=True,
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
@@ -227,6 +231,7 @@ class JobLineNotificationTests(TransactionTestCase):
             f'/api/v1/jobs/{job.job_id}/',
             {'remarks': 'No event transition'},
             format='json',
+            secure=True,
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
@@ -251,6 +256,7 @@ class JobLineNotificationTests(TransactionTestCase):
                 'property_id': self.property.property_id,
             },
             format='json',
+            secure=True,
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
@@ -274,6 +280,7 @@ class JobLineNotificationTests(TransactionTestCase):
                 'property_id': self.property.property_id,
             },
             format='json',
+            secure=True,
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -291,6 +298,7 @@ class JobLineNotificationTests(TransactionTestCase):
                 'property_id': self.property.property_id,
             },
             format='json',
+            secure=True,
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -312,6 +320,7 @@ class JobLineNotificationTests(TransactionTestCase):
                 'property_id': self.property.property_id,
             },
             format='json',
+            secure=True,
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

@@ -22,7 +22,7 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade',
 ]);
 
-async function getSessionAccessToken(request: NextRequest): Promise<string | null> {
+async function getSessionAccessToken(): Promise<string | null> {
   return requireServerAccessToken();
 }
 
@@ -41,7 +41,7 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
   // Browser-provided Authorization is never trusted. The server-side session
   // is the only source for the backend bearer token.
   headers.delete('authorization');
-  const accessToken = await getSessionAccessToken(request);
+  const accessToken = await getSessionAccessToken();
   if (!accessToken) {
     return NextResponse.json(
       { detail: 'Authentication required.' },
@@ -61,8 +61,10 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
   };
 
   if (!['GET', 'HEAD'].includes(request.method)) {
-    init.body = request.body;
-    (init as { duplex?: 'half' }).duplex = 'half';
+    // Buffer the browser body before forwarding it. Passing the incoming
+    // ReadableStream makes Node send a chunked request without Content-Length;
+    // Django's WSGI request then exposes an empty body to DRF.
+    init.body = await request.arrayBuffer();
   }
 
   const backendResponse = await backendFetch(targetUrl, init);

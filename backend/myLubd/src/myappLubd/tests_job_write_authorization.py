@@ -115,6 +115,7 @@ class JobWriteAuthorizationTests(APITestCase):
             f'?property_id={self.property.property_id}',
             {'status': 'in_progress'},
             format='json',
+            secure=True,
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
@@ -123,6 +124,55 @@ class JobWriteAuthorizationTests(APITestCase):
         job.refresh_from_db()
         self.assertEqual(job.status, 'in_progress')
         self.assertEqual(job.updated_by, technician)
+
+        job.status = 'pending'
+        job.save(update_fields=['status'])
+        numeric_property = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/'
+            f'?property_id={self.property.pk}',
+            {'status': 'in_progress'},
+            format='json',
+            secure=True,
+        )
+        self.assertEqual(numeric_property.status_code, status.HTTP_404_NOT_FOUND)
+
+        missing_property = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/',
+            {'status': 'in_progress'},
+            format='json',
+            secure=True,
+        )
+        self.assertEqual(missing_property.status_code, status.HTTP_200_OK)
+
+        invalid_status = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/'
+            f'?property_id={self.property.property_id}',
+            {'status': 'not-a-status'},
+            format='json',
+            secure=True,
+        )
+        self.assertEqual(invalid_status.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid_status.data, {'detail': 'Invalid status value.'})
+
+        missing_status = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/'
+            f'?property_id={self.property.property_id}',
+            {},
+            format='json',
+            secure=True,
+        )
+        self.assertEqual(missing_status.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(missing_status.data, {'detail': 'Status is required.'})
+
+        self.login(self.users['viewer'])
+        viewer_response = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/'
+            f'?property_id={self.property.property_id}',
+            {'status': 'pending'},
+            format='json',
+            secure=True,
+        )
+        self.assertEqual(viewer_response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_my_job_status_action_enforces_active_property_and_membership(self):
         owner = self.users['owner']
@@ -140,6 +190,7 @@ class JobWriteAuthorizationTests(APITestCase):
             f'?property_id={self.other_property.property_id}',
             {'status': 'in_progress'},
             format='json',
+            secure=True,
         )
         self.assertEqual(cross_property.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -157,6 +208,7 @@ class JobWriteAuthorizationTests(APITestCase):
             f'?property_id={self.other_property.property_id}',
             {'status': 'in_progress'},
             format='json',
+            secure=True,
         )
         self.assertEqual(unauthorized.status_code, status.HTTP_404_NOT_FOUND)
         job.refresh_from_db()

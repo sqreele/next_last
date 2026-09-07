@@ -10,8 +10,8 @@ describe('My Job status update contract', () => {
   it('uses the dedicated action with active Property context and a status-only payload', async () => {
     let captured;
     const updatedJob = {
-      job_id: 'j1',
-      property_id: 'PA',
+      job_id: 'j2639C2BF',
+      property_id: 'PE17D8D2C',
       status: 'in_progress',
     };
     const fetchImpl = async (url, init) => {
@@ -20,21 +20,22 @@ describe('My Job status update contract', () => {
     };
 
     const result = await requestMyJobStatusUpdate({
-      jobId: 'j1',
-      propertyId: 'PA',
+      jobId: 'j2639C2BF',
+      propertyId: 'PE17D8D2C',
       status: 'in_progress',
       fetchImpl,
     });
 
     assert.equal(
       captured.url,
-      '/api/v1/jobs/j1/update_status/?property_id=PA',
+      '/api/v1/jobs/j2639C2BF/update_status/?property_id=PE17D8D2C',
     );
     assert.equal(captured.init.method, 'PATCH');
     assert.equal(captured.init.credentials, 'include');
     assert.equal(captured.init.cache, 'no-store');
     assert.deepEqual(JSON.parse(captured.init.body), { status: 'in_progress' });
     assert.deepEqual(result, updatedJob);
+    assert.doesNotMatch(captured.url, /property_id=2(?:&|$)/);
   });
 
   it('rejects a cross-Property or stale response', async () => {

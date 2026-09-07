@@ -44,8 +44,9 @@ test('BFF defaults internally and rejects public, frontend, and malformed upstre
   }
 });
 
-async function harness(authenticated) {
+async function harness(authenticated, upstreamResponse = () => Response.json({ ok: true })) {
   const events = [];
+  const forwardedRequests = [];
   const env = { NEXT_PRIVATE_API_URL: 'http://backend:8000', NEXT_PUBLIC_API_URL: 'https://staymaint.com' };
   const upstream = await load('app/lib/bff-upstream.ts', env);
   const backend = await load('app/lib/backend-fetch.ts', env, {}, {
@@ -56,7 +57,16 @@ async function harness(authenticated) {
       assert.equal(init.headers.get('host'), null);
       assert.equal(init.headers.get('authorization'), 'Bearer synthetic-server-credential');
       assert.equal(init.headers.get('x-forwarded-proto'), 'https');
-      return Response.json({ ok: true });
+      forwardedRequests.push({
+        method: init.method,
+        contentType: init.headers.get('content-type'),
+        contentLength: init.headers.get('content-length'),
+        transferEncoding: init.headers.get('transfer-encoding'),
+        body: init.body === undefined
+          ? null
+          : [...new Uint8Array(await new Response(init.body).arrayBuffer())],
+      });
+      return upstreamResponse();
     },
   });
   const targets = [];
@@ -72,7 +82,7 @@ async function harness(authenticated) {
       return backend.backendFetch(url, init);
     } },
   });
-  return { route, events, targets };
+  return { route, events, forwardedRequests, targets };
 }
 
 for (const path of [
@@ -105,4 +115,80 @@ test('missing server session returns 401 without any upstream request', async ()
   assert.equal(response.status, 401);
   assert.deepEqual(events, ['session']);
   assert.deepEqual(targets, []);
+});
+
+test('BFF preserves raw bodies and headers for every supported non-GET method', async () => {
+  const json = new TextEncoder().encode('{"status":"in_progress"}');
+  const binary = new Uint8Array([0, 255, 16, 128, 65]);
+  const multipart = new TextEncoder().encode(
+    '--staymaint-boundary\r\nContent-Disposition: form-data; name="file"; filename="x.bin"\r\nContent-Type: application/octet-stream\r\n\r\nbytes\r\n--staymaint-boundary--\r\n',
+  );
+  const cases = [
+    { method: 'PATCH', contentType: 'application/json', body: json },
+    { method: 'POST', contentType: 'multipart/form-data; boundary=staymaint-boundary', body: multipart },
+    { method: 'PUT', contentType: 'application/octet-stream', body: binary },
+    { method: 'DELETE', contentType: null, body: null },
+  ];
+
+  for (const testCase of cases) {
+    const { route, forwardedRequests } = await harness(true);
+    const url = new URL(
+      '/api/v1/jobs/j2639C2BF/update_status/?property_id=PE17D8D2C',
+      'https://staymaint.com',
+    );
+    const headers = new Headers({ 'content-length': '999' });
+    if (testCase.contentType) headers.set('content-type', testCase.contentType);
+    const request = new Request(url, {
+      method: testCase.method,
+      headers,
+      body: testCase.body,
+    });
+    Object.defineProperty(request, 'nextUrl', { value: url });
+
+    const response = await route[testCase.method](request, {
+      params: Promise.resolve({ path: ['jobs', 'j2639C2BF', 'update_status'] }),
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(forwardedRequests, [{
+      method: testCase.method,
+      contentType: testCase.contentType,
+      contentLength: null,
+      transferEncoding: null,
+      body: [...(testCase.body || new Uint8Array())],
+    }]);
+  }
+});
+
+test('BFF does not add bodies to GET or HEAD requests', async () => {
+  for (const method of ['GET', 'HEAD']) {
+    const { route, forwardedRequests } = await harness(true);
+    const url = new URL('/api/v1/properties/', 'https://staymaint.com');
+    const response = await route[method]({
+      method,
+      nextUrl: url,
+      headers: new Headers(),
+    }, { params: Promise.resolve({ path: ['properties'] }) });
+    assert.equal(response.status, 200);
+    assert.equal(forwardedRequests[0].body, null);
+  }
+});
+
+test('BFF preserves upstream error status and response bytes', async () => {
+  const { route } = await harness(
+    true,
+    () => new Response('{"detail":"upstream validation"}', {
+      status: 422,
+      headers: { 'content-type': 'application/json' },
+    }),
+  );
+  const url = new URL('/api/v1/jobs/example/', 'https://staymaint.com');
+  const response = await route.PATCH(Object.assign(
+    new Request(url, { method: 'PATCH', body: new Uint8Array() }),
+    { nextUrl: url },
+  ), { params: Promise.resolve({ path: ['jobs', 'example'] }) });
+
+  assert.equal(response.status, 422);
+  assert.equal(response.headers.get('content-type'), 'application/json');
+  assert.equal(await response.text(), '{"detail":"upstream validation"}');
 });

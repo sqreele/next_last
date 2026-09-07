@@ -1044,6 +1044,15 @@ class Property(models.Model):
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_preventivemaintenance=models.BooleanField(default=False)
+    line_notifications_enabled = models.BooleanField(
+        default=False,
+        help_text="Send Job event alerts to this Property's LINE destination.",
+    )
+    line_destination_id = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='LINE Messaging API user, group, or room destination ID.',
+    )
 
     class Meta:
         ordering = ['name']

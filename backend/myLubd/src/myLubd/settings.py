@@ -496,6 +496,14 @@ DAILY_SUMMARY_RECIPIENTS = os.getenv('DAILY_SUMMARY_RECIPIENTS')
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://staymaint.com')
 TENANT_INVITATION_EXPIRY_DAYS = int(os.getenv('TENANT_INVITATION_EXPIRY_DAYS', '7'))
 
+# LINE Messaging API credentials are deployment-only. Property destinations
+# live on Property records so notifications can never fall back across a
+# tenant or Property boundary.
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', '').strip()
+LINE_MESSAGING_TIMEOUT_SECONDS = float(
+    os.getenv('LINE_MESSAGING_TIMEOUT_SECONDS', '3')
+)
+
 # Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Bangkok'

@@ -1,17 +1,19 @@
 """
-Django signals that emit Web Push notifications for important workflow events.
+Django signals that emit Web Push and LINE notifications for workflow events.
 
 Side-effect strategy: every signal call is wrapped in try/except so a push
-provider hiccup can never roll back the originating database write. The
-helpers in `push.py` already degrade gracefully when VAPID is unconfigured,
-so this module is safe to ship before push keys are provisioned.
+provider hiccup can never roll back the originating database write. LINE work
+is registered with ``transaction.on_commit`` and its transport also degrades
+gracefully when credentials are absent or the provider is unavailable.
 """
 
 from __future__ import annotations
 
 import logging
+from functools import partial
 
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
@@ -33,6 +35,7 @@ logger = logging.getLogger(__name__)
 # Track the prior status on each Job instance so post_save can decide whether
 # a status transition actually happened (instead of pushing for every PATCH).
 _PRIOR_STATUS_ATTR = '_pcms_prior_status'
+_PRIOR_ASSIGNEE_ATTR = '_pcms_prior_assignee_id'
 # Same trick for Inventory.status so we only push on the transition into
 # low_stock / out_of_stock, never on every PATCH that touches an unrelated
 # field on a row that happens to already be low.
@@ -43,17 +46,36 @@ _PRIOR_INV_STATUS_ATTR = '_pcms_prior_inv_status'
 def _capture_prior_status(sender, instance: Job, **kwargs):
     if instance.pk is None:
         setattr(instance, _PRIOR_STATUS_ATTR, None)
+        setattr(instance, _PRIOR_ASSIGNEE_ATTR, None)
         return
     try:
-        prior = Job.objects.only('status').get(pk=instance.pk).status
+        prior = Job.objects.only('status', 'user_id').get(pk=instance.pk)
     except Job.DoesNotExist:
-        prior = None
-    setattr(instance, _PRIOR_STATUS_ATTR, prior)
+        setattr(instance, _PRIOR_STATUS_ATTR, None)
+        setattr(instance, _PRIOR_ASSIGNEE_ATTR, None)
+        return
+    setattr(instance, _PRIOR_STATUS_ATTR, prior.status)
+    setattr(instance, _PRIOR_ASSIGNEE_ATTR, prior.user_id)
+
+
+def _schedule_job_line_event(**event):
+    """Register LINE work without making notification wiring a write hazard."""
+    try:
+        from .notifications.jobs import send_job_event_notification
+    except Exception:  # pragma: no cover - startup/package failure safeguard
+        logger.exception('Unable to load Job LINE notification service')
+        return
+    transaction.on_commit(partial(send_job_event_notification, **event))
 
 
 @receiver(post_save, sender=Job)
 def _push_on_status_change(sender, instance: Job, created: bool, **kwargs):
     if created:
+        _schedule_job_line_event(
+            job_id=instance.pk,
+            event_type='JOB_CREATED',
+            actor_id=instance.updated_by_id,
+        )
         _safe_push(
             instance.user,
             {
@@ -66,6 +88,22 @@ def _push_on_status_change(sender, instance: Job, created: bool, **kwargs):
         return
 
     prior = getattr(instance, _PRIOR_STATUS_ATTR, None)
+    prior_assignee_id = getattr(instance, _PRIOR_ASSIGNEE_ATTR, None)
+    if prior is not None and prior != instance.status:
+        _schedule_job_line_event(
+            job_id=instance.pk,
+            event_type='JOB_STATUS_CHANGED',
+            actor_id=instance.updated_by_id,
+            old_status=prior,
+        )
+    if prior_assignee_id is not None and prior_assignee_id != instance.user_id:
+        _schedule_job_line_event(
+            job_id=instance.pk,
+            event_type='JOB_REASSIGNED',
+            actor_id=instance.updated_by_id,
+            old_assignee_id=prior_assignee_id,
+        )
+
     if prior is None or prior == instance.status:
         return
 

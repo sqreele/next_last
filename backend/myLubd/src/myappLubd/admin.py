@@ -2650,15 +2650,28 @@ class JobImageAdmin(admin.ModelAdmin):
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
     list_per_page = 25
-    list_display = ['name', 'tenant', 'is_preventivemaintenance', 'created_at']
+    list_display = [
+        'name', 'tenant', 'is_preventivemaintenance',
+        'line_notifications_enabled', 'created_at',
+    ]
     search_fields = ['property_id', 'name', 'description', 'tenant__name', 'tenant__tenant_id']
-    list_filter = ['tenant', 'created_at', CreatedAtMonthFilter, 'is_preventivemaintenance']
+    list_filter = [
+        'tenant', 'created_at', CreatedAtMonthFilter,
+        'is_preventivemaintenance', 'line_notifications_enabled',
+    ]
     readonly_fields = ['property_id', 'created_at']
     list_select_related = ['tenant']
     
     fieldsets = (
         ('Property Information', {
             'fields': ('property_id', 'name', 'description', 'is_preventivemaintenance')
+        }),
+        ('LINE Messaging', {
+            'fields': ('line_notifications_enabled', 'line_destination_id'),
+            'description': (
+                'The channel access token remains server-only. Configure one '
+                'LINE user, group, or room destination for this Property.'
+            ),
         }),
         ('Timestamps', {
             'classes': ('collapse',),

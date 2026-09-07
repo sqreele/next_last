@@ -72,6 +72,7 @@ export async function requestMyJobsPage({
   const response = await fetchImpl(url, {
     signal,
     credentials: 'include',
+    cache: 'no-store',
     headers: { Accept: 'application/json' },
   });
   const text = await response.text();

@@ -514,6 +514,7 @@ function JobCard({
         {canOperate ? (
           <UpdateStatusButton
             job={job}
+            activePropertyId={activePropertyId}
             onStatusUpdated={onStatusUpdated}
             variant="outline"
             size="sm"

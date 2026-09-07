@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       status: response.status,
       headers: {
         'Content-Type': response.headers.get('content-type') || 'application/json',
+        'Cache-Control': 'private, no-store, max-age=0',
       },
     });
   } catch (error) {

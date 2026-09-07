@@ -98,6 +98,72 @@ class JobWriteAuthorizationTests(APITestCase):
     def test_owner_can_create_update_status_comment_and_delete(self):
         self.assert_operator_lifecycle('owner')
 
+    def test_my_job_status_action_persists_and_returns_updated_status(self):
+        technician = self.users['technician']
+        job = Job.objects.create(
+            user=technician,
+            updated_by=technician,
+            property=self.property,
+            description='Assigned status regression job',
+            remarks='Status regression',
+            status='pending',
+        )
+        self.login(technician)
+
+        response = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/'
+            f'?property_id={self.property.property_id}',
+            {'status': 'in_progress'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data['status'], 'in_progress')
+        self.assertEqual(response.data['property_id'], self.property.property_id)
+        job.refresh_from_db()
+        self.assertEqual(job.status, 'in_progress')
+        self.assertEqual(job.updated_by, technician)
+
+    def test_my_job_status_action_enforces_active_property_and_membership(self):
+        owner = self.users['owner']
+        job = Job.objects.create(
+            user=owner,
+            updated_by=owner,
+            property=self.property,
+            description='Property scoped status job',
+            remarks='Property scoped',
+            status='pending',
+        )
+        self.login(owner)
+        cross_property = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/'
+            f'?property_id={self.other_property.property_id}',
+            {'status': 'in_progress'},
+            format='json',
+        )
+        self.assertEqual(cross_property.status_code, status.HTTP_404_NOT_FOUND)
+
+        inaccessible_job = Job.objects.create(
+            user=self.users['technician'],
+            updated_by=owner,
+            property=self.other_property,
+            description='Inaccessible status job',
+            remarks='Inaccessible',
+            status='pending',
+        )
+        self.login(self.users['technician'])
+        unauthorized = self.client.patch(
+            f'/api/v1/jobs/{inaccessible_job.job_id}/update_status/'
+            f'?property_id={self.other_property.property_id}',
+            {'status': 'in_progress'},
+            format='json',
+        )
+        self.assertEqual(unauthorized.status_code, status.HTTP_404_NOT_FOUND)
+        job.refresh_from_db()
+        inaccessible_job.refresh_from_db()
+        self.assertEqual(job.status, 'pending')
+        self.assertEqual(inaccessible_job.status, 'pending')
+
     def test_admin_can_mutate(self):
         self.assert_operator_lifecycle('admin')
 

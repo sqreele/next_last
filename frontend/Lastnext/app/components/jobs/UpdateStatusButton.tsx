@@ -21,7 +21,7 @@ import {
 } from "@/app/components/ui/select";
 import { Label } from "@/app/components/ui/label";
 import { Job, JobStatus } from "@/app/lib/types";
-import { requestWithSession } from "@/app/lib/api-client";
+import { requestMyJobStatusUpdate } from "@/app/lib/hooks/my-job-status-update.mjs";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useSession } from "@/app/lib/session.client";
 import { cn } from "@/app/lib/utils/cn";
@@ -62,6 +62,7 @@ const STATUS_SUBMIT_CLASSES: Record<string, string> = {
 
 interface UpdateStatusButtonProps {
   job: Job;
+  activePropertyId: string;
   onStatusUpdated: (updatedJob: Job) => void;
   variant?:
     | "default"
@@ -80,6 +81,7 @@ interface UpdateStatusButtonProps {
 
 const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
   job,
+  activePropertyId,
   onStatusUpdated,
   variant = "outline",
   size = "sm",
@@ -93,7 +95,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
     job.status as JobStatus,
   );
   const { toast } = useToast();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const currentStatusTone = normalizeStatus(job.status);
   const selectedStatusTone = normalizeStatus(selectedStatus);
   const isCompleted = currentStatusTone === JOB_STATUS.COMPLETED;
@@ -137,32 +139,11 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Create a minimal update payload that preserves all required fields
-      const updateData = {
+      const updatedJob = await requestMyJobStatusUpdate({
+        jobId: job.job_id,
+        propertyId: activePropertyId,
         status: selectedStatus,
-        property_id: job.property_id,
-        // Include other fields from the original job that the API requires
-        // NOTE: This is the key fix - including required fields
-        room_id: job.rooms?.[0]?.room_id,
-        topic_data: job.topics?.[0]
-          ? JSON.stringify({
-              title: job.topics[0]?.title || "Unknown",
-              description: job.topics[0]?.description || "",
-            })
-          : JSON.stringify({ title: "Unknown", description: "" }),
-        // Include other fields for completeness
-        description: job.description,
-        priority: job.priority,
-        remarks: job.remarks || "",
-        is_defective: job.is_defective || false,
-        is_preventivemaintenance: job.is_preventivemaintenance || false,
-      };
-
-      const updatedJob = await requestWithSession<Job>(
-        `/api/v1/jobs/${encodeURIComponent(String(job.job_id))}/`,
-        "PATCH",
-        updateData,
-      );
+      }) as Job;
 
       // Update local state
       onStatusUpdated(updatedJob);

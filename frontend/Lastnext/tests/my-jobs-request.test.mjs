@@ -69,4 +69,14 @@ describe('My Jobs active Property contract', () => {
     const result = await requestMyJobsPage({ propertyId: 'PA', fetchImpl: successfulFetch });
     assert.equal(result.results[0].job_id, 'j1');
   });
+
+  it('always bypasses browser HTTP cache when refreshing My Jobs', async () => {
+    let requestOptions;
+    const fetchImpl = async (_url, options) => {
+      requestOptions = options;
+      return Response.json({ property_id: 'PA', results: [] });
+    };
+    await requestMyJobsPage({ propertyId: 'PA', fetchImpl });
+    assert.equal(requestOptions.cache, 'no-store');
+  });
 });

@@ -11,6 +11,7 @@ import {
   type MyJobsFilters,
   type MyJobsStatusCounts,
 } from "@/app/lib/hooks/my-jobs-request.mjs";
+import { applyMyJobStatusUpdate } from "@/app/lib/hooks/my-job-status-update.mjs";
 
 interface UseJobsDataOptions {
   propertyId?: string | null;
@@ -183,11 +184,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
   );
 
   const updateJob = useCallback((updatedJob: Job) => {
-    setJobs((current) =>
-      current.map((job) =>
-        String(job.job_id) === String(updatedJob.job_id) ? updatedJob : job,
-      ),
-    );
+    setJobs((current) => applyMyJobStatusUpdate(current, updatedJob));
   }, []);
 
   const removeJob = useCallback((jobId: string | number) => {

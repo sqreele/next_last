@@ -4326,7 +4326,12 @@ class JobViewSet(viewsets.ModelViewSet):
     def update_status(self, request, job_id=None):
         job = self.get_object()
         status_value = request.data.get('status')
-        if status_value and status_value not in dict(Job.STATUS_CHOICES):
+        if status_value is None:
+            return Response(
+                {"detail": "Status is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if status_value not in dict(Job.STATUS_CHOICES):
             return Response({"detail": "Invalid status value."}, status=status.HTTP_400_BAD_REQUEST)
         if job.status == 'completed' and status_value != 'completed':
             return Response(

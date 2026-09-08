@@ -1,0 +1,23 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:myappLubd_property_changelist' %}">Properties</a>
+  &rsaquo; <a href="{{ cancel_url }}">{{ property }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<p><strong>Property:</strong> {{ property.name }}</p>
+<p>{{ warning }}</p>
+<form method="post" action="{{ action_url }}">
+  {% csrf_token %}
+  <div class="submit-row">
+    <input type="submit" value="{{ action_label }}" class="default">
+    <a href="{{ cancel_url }}" class="closelink">Cancel</a>
+  </div>
+</form>
+{% endblock %}

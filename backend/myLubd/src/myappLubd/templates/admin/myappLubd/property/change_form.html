@@ -1,0 +1,17 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+  {% if line_can_manage %}
+    {% if not line_is_connected and not line_has_active_pairing %}
+      <li><a href="{% url 'admin:myappLubd_property_line_generate' original.pk|admin_urlquote %}">Generate Pairing Code</a></li>
+    {% endif %}
+    {% if line_has_active_pairing %}
+      <li><a href="{% url 'admin:myappLubd_property_line_revoke' original.pk|admin_urlquote %}">Revoke Pairing</a></li>
+    {% endif %}
+    {% if line_is_connected %}
+      <li><a href="{% url 'admin:myappLubd_property_line_disconnect' original.pk|admin_urlquote %}">Disconnect LINE Group</a></li>
+    {% endif %}
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

@@ -1,6 +1,6 @@
 import os
 import re
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.html import format_html, format_html_join
 from django.utils import timezone
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -35,14 +35,15 @@ except admin.sites.NotRegistered:
 admin.site.register(User, CustomUserAdmin)
 
 from django import forms
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, F, Q
 from collections import Counter
 
 from .timezones import timezone_choices
 from django.db import models, transaction
 from datetime import timedelta, datetime
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.template.response import TemplateResponse
 from django.urls import reverse, path
 from django.conf import settings
 import csv
@@ -89,6 +90,11 @@ from .tenancy import (
     get_property_summary_recipients,
     get_tenant_user_capacity,
     lock_tenants_for_membership_change,
+)
+from .notifications.line_webhook import (
+    generate_pairing_code,
+    masked_destination,
+    pairing_ttl,
 )
 
 
@@ -2650,28 +2656,38 @@ class JobImageAdmin(admin.ModelAdmin):
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
+    change_form_template = 'admin/myappLubd/property/change_form.html'
     list_per_page = 25
     list_display = [
         'name', 'tenant', 'is_preventivemaintenance',
-        'line_notifications_enabled', 'created_at',
+        'line_notification_status', 'line_connection_status',
+        'has_active_line_pairing', 'created_at',
     ]
     search_fields = ['property_id', 'name', 'description', 'tenant__name', 'tenant__tenant_id']
     list_filter = [
         'tenant', 'created_at', CreatedAtMonthFilter,
         'is_preventivemaintenance', 'line_notifications_enabled',
     ]
-    readonly_fields = ['property_id', 'created_at']
+    readonly_fields = [
+        'property_id', 'created_at', 'line_notification_status',
+        'line_connection_status', 'line_destination_masked',
+        'line_pairing_status', 'line_pairing_expiry',
+    ]
     list_select_related = ['tenant']
     
     fieldsets = (
         ('Property Information', {
             'fields': ('property_id', 'name', 'description', 'is_preventivemaintenance')
         }),
-        ('LINE Messaging', {
-            'fields': ('line_notifications_enabled', 'line_destination_id'),
+        ('LINE Notifications', {
+            'fields': (
+                'line_notification_status', 'line_connection_status',
+                'line_destination_masked', 'line_pairing_status',
+                'line_pairing_expiry',
+            ),
             'description': (
-                'The channel access token remains server-only. Configure one '
-                'LINE user, group, or room destination for this Property.'
+                'LINE destinations can only be connected through secure pairing. '
+                'Sensitive destination and channel credentials are never displayed here.'
             ),
         }),
         ('Timestamps', {
@@ -2679,6 +2695,311 @@ class PropertyAdmin(admin.ModelAdmin):
             'fields': ('created_at',)
         }),
     )
+
+    def get_urls(self):
+        opts = self.model._meta
+        custom_urls = [
+            path(
+                '<path:object_id>/line/generate/',
+                self.admin_site.admin_view(self.generate_line_pairing_view),
+                name=f'{opts.app_label}_{opts.model_name}_line_generate',
+            ),
+            path(
+                '<path:object_id>/line/revoke/',
+                self.admin_site.admin_view(self.revoke_line_pairing_view),
+                name=f'{opts.app_label}_{opts.model_name}_line_revoke',
+            ),
+            path(
+                '<path:object_id>/line/disconnect/',
+                self.admin_site.admin_view(self.disconnect_line_group_view),
+                name=f'{opts.app_label}_{opts.model_name}_line_disconnect',
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    @staticmethod
+    def _active_pairing(property_obj, *, lock=False):
+        queryset = LineGroupPairing.objects.filter(
+            property=property_obj,
+            used_at__isnull=True,
+            revoked_at__isnull=True,
+            expires_at__gt=timezone.now(),
+        ).order_by('-created_at')
+        if lock:
+            queryset = queryset.select_for_update()
+        return queryset.first()
+
+    @staticmethod
+    def _line_authority_memberships(user, property_obj):
+        if property_obj.tenant_id is None:
+            return TenantMembership.objects.none()
+        return TenantMembership.objects.filter(
+            tenant_id=property_obj.tenant_id,
+            user=user,
+            is_active=True,
+            role__in=('owner', 'admin', 'manager'),
+        )
+
+    @classmethod
+    def _can_manage_line(cls, user, property_obj):
+        return bool(
+            user.is_superuser
+            or cls._line_authority_memberships(user, property_obj).exists()
+        )
+
+    @classmethod
+    def _lock_line_authority(cls, user, property_obj):
+        if user.is_superuser:
+            return
+        membership = (
+            cls._line_authority_memberships(user, property_obj)
+            .select_for_update()
+            .only('pk')
+            .first()
+        )
+        if membership is None:
+            raise PermissionDenied('Your role cannot manage LINE for this Property.')
+
+    def _get_line_property(self, request, object_id):
+        property_obj = self.get_object(request, object_id)
+        if property_obj is None:
+            raise PermissionDenied
+        if not self._can_manage_line(request.user, property_obj):
+            raise PermissionDenied('Your role cannot manage LINE for this Property.')
+        return property_obj
+
+    def _line_action_context(
+        self, request, property_obj, *, title, action_url, action_label, warning
+    ):
+        return {
+            **self.admin_site.each_context(request),
+            'opts': self.model._meta,
+            'original': property_obj,
+            'title': title,
+            'property': property_obj,
+            'action_url': action_url,
+            'action_label': action_label,
+            'warning': warning,
+            'cancel_url': reverse(
+                f'admin:{self.model._meta.app_label}_{self.model._meta.model_name}_change',
+                args=(property_obj.pk,),
+            ),
+        }
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        property_obj = self.get_object(request, object_id)
+        extra_context = dict(extra_context or {})
+        extra_context['line_can_manage'] = bool(
+            property_obj and self._can_manage_line(request.user, property_obj)
+        )
+        if property_obj:
+            extra_context['line_is_connected'] = bool(property_obj.line_destination_id)
+            extra_context['line_has_active_pairing'] = bool(self._active_pairing(property_obj))
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def generate_line_pairing_view(self, request, object_id):
+        property_obj = self._get_line_property(request, object_id)
+        opts = self.model._meta
+        action_url = reverse(
+            f'admin:{opts.app_label}_{opts.model_name}_line_generate', args=(property_obj.pk,)
+        )
+        if request.method != 'POST':
+            response = TemplateResponse(
+                request,
+                'admin/myappLubd/property/line_action_confirm.html',
+                self._line_action_context(
+                    request,
+                    property_obj,
+                    title='Generate LINE pairing code',
+                    action_url=action_url,
+                    action_label='Generate pairing code',
+                    warning=(
+                        'The code will be shown once. Do not leave the next page '
+                        'until it has been copied securely.'
+                    ),
+                ),
+            )
+            response['Cache-Control'] = 'no-store'
+            return response
+
+        now = timezone.now()
+        with transaction.atomic():
+            locked_property = Property.objects.select_for_update().get(pk=property_obj.pk)
+            self._lock_line_authority(request.user, locked_property)
+            if locked_property.line_destination_id:
+                self.message_user(
+                    request,
+                    'This Property is already connected. Disconnect it explicitly before pairing again.',
+                    level=messages.ERROR,
+                )
+                return HttpResponseRedirect(action_url)
+            if self._active_pairing(locked_property, lock=True):
+                self.message_user(
+                    request,
+                    'An active pairing already exists. Revoke it explicitly before generating another.',
+                    level=messages.ERROR,
+                )
+                return HttpResponseRedirect(action_url)
+            code = generate_pairing_code()
+            pairing = LineGroupPairing(
+                property=locked_property,
+                created_by=request.user,
+                expires_at=now + pairing_ttl(),
+            )
+            pairing.set_token(code)
+            pairing.save()
+
+        self.log_change(request, locked_property, 'Generated a one-time LINE pairing code.')
+        context = {
+            **self.admin_site.each_context(request),
+            'opts': opts,
+            'title': 'LINE pairing code generated',
+            'property': locked_property,
+            'pairing_command': f'STAYMAINT LINK {code}',
+            'expires_at': pairing.expires_at,
+            'change_url': reverse(
+                f'admin:{opts.app_label}_{opts.model_name}_change', args=(locked_property.pk,)
+            ),
+        }
+        response = TemplateResponse(
+            request, 'admin/myappLubd/property/line_pairing_generated.html', context
+        )
+        response['Cache-Control'] = 'no-store'
+        return response
+
+    def revoke_line_pairing_view(self, request, object_id):
+        property_obj = self._get_line_property(request, object_id)
+        opts = self.model._meta
+        action_url = reverse(
+            f'admin:{opts.app_label}_{opts.model_name}_line_revoke', args=(property_obj.pk,)
+        )
+        if request.method != 'POST':
+            return TemplateResponse(
+                request,
+                'admin/myappLubd/property/line_action_confirm.html',
+                self._line_action_context(
+                    request,
+                    property_obj,
+                    title='Revoke LINE pairing',
+                    action_url=action_url,
+                    action_label='Revoke active pairing',
+                    warning=(
+                        'The current unused pairing command will stop working. '
+                        'The LINE destination will not change.'
+                    ),
+                ),
+            )
+
+        now = timezone.now()
+        with transaction.atomic():
+            locked_property = Property.objects.select_for_update().get(pk=property_obj.pk)
+            self._lock_line_authority(request.user, locked_property)
+            pairing = self._active_pairing(locked_property, lock=True)
+            if pairing:
+                pairing.revoked_at = now
+                pairing.save(update_fields=['revoked_at'])
+        if pairing:
+            self.log_change(request, locked_property, 'Revoked the active unused LINE pairing.')
+            self.message_user(request, 'The active LINE pairing was revoked.', messages.SUCCESS)
+        else:
+            self.message_user(
+                request,
+                'There is no active unused LINE pairing to revoke.',
+                messages.WARNING,
+            )
+        return HttpResponseRedirect(reverse(
+            f'admin:{opts.app_label}_{opts.model_name}_change', args=(locked_property.pk,)
+        ))
+
+    def disconnect_line_group_view(self, request, object_id):
+        property_obj = self._get_line_property(request, object_id)
+        opts = self.model._meta
+        action_url = reverse(
+            f'admin:{opts.app_label}_{opts.model_name}_line_disconnect',
+            args=(property_obj.pk,),
+        )
+        if request.method != 'POST':
+            return TemplateResponse(
+                request,
+                'admin/myappLubd/property/line_action_confirm.html',
+                self._line_action_context(
+                    request,
+                    property_obj,
+                    title='Disconnect LINE Group',
+                    action_url=action_url,
+                    action_label='Disconnect LINE Group',
+                    warning=(
+                        'Notifications will be disabled and the current destination removed. '
+                        'Other Property data and pairing history remain intact.'
+                    ),
+                ),
+            )
+
+        now = timezone.now()
+        with transaction.atomic():
+            locked_property = Property.objects.select_for_update().get(pk=property_obj.pk)
+            self._lock_line_authority(request.user, locked_property)
+            was_connected = bool(locked_property.line_destination_id)
+            locked_property.line_destination_id = ''
+            locked_property.line_notifications_enabled = False
+            locked_property.save(update_fields=['line_destination_id', 'line_notifications_enabled'])
+            LineGroupPairing.objects.select_for_update().filter(
+                property=locked_property,
+                used_at__isnull=True,
+                revoked_at__isnull=True,
+                expires_at__gt=now,
+            ).update(revoked_at=now)
+        self.log_change(
+            request,
+            locked_property,
+            'Disconnected the LINE Group and disabled LINE notifications.',
+        )
+        if was_connected:
+            self.message_user(
+                request,
+                'LINE Group disconnected and notifications disabled.',
+                messages.SUCCESS,
+            )
+        else:
+            self.message_user(
+                request,
+                'LINE was already disconnected; notifications are disabled.',
+                messages.INFO,
+            )
+        return HttpResponseRedirect(reverse(
+            f'admin:{opts.app_label}_{opts.model_name}_change', args=(locked_property.pk,)
+        ))
+
+    @admin.display(description='LINE notifications', ordering='line_notifications_enabled')
+    def line_notification_status(self, obj):
+        return 'Enabled' if obj.line_notifications_enabled else 'Disabled'
+
+    @admin.display(description='LINE connection')
+    def line_connection_status(self, obj):
+        destination = str(obj.line_destination_id or '')
+        return f'Connected ({masked_destination(destination)})' if destination else 'Not connected'
+
+    @admin.display(description='Destination')
+    def line_destination_masked(self, obj):
+        destination = str(obj.line_destination_id or '')
+        return masked_destination(destination) if destination else 'Not connected'
+
+    @admin.display(description='Pairing status')
+    def line_pairing_status(self, obj):
+        active = self._active_pairing(obj)
+        if active:
+            return 'Active pairing'
+        latest = LineGroupPairing.objects.filter(property=obj).order_by('-created_at').first()
+        return latest.status.title() if latest else 'None'
+
+    @admin.display(description='Pairing expiry')
+    def line_pairing_expiry(self, obj):
+        active = self._active_pairing(obj)
+        return timezone.localtime(active.expires_at) if active else None
+
+    @admin.display(description='Active pairing', boolean=True)
+    def has_active_line_pairing(self, obj):
+        return bool(self._active_pairing(obj))
 
     def get_users_count(self, obj):
         return get_property_summary_recipients(obj).count()
@@ -6413,8 +6734,8 @@ class TenantInvitationAdmin(admin.ModelAdmin):
 class LineGroupPairingAdmin(admin.ModelAdmin):
     list_per_page = 50
     list_display = [
-        'property', 'status_display', 'created_by', 'created_at', 'expires_at',
-        'safe_destination',
+        'property', 'created_by', 'created_at', 'expires_at', 'used_at',
+        'revoked_at', 'safe_destination', 'status_display',
     ]
     list_filter = ['created_at', 'expires_at', 'used_at', 'revoked_at']
     search_fields = ['property__property_id', 'property__name']
@@ -6427,11 +6748,46 @@ class LineGroupPairingAdmin(admin.ModelAdmin):
 
     @admin.display(description='Status')
     def status_display(self, obj):
-        return obj.status.title()
+        return 'Active pairing' if obj.status == 'pending' else obj.status.title()
 
     @admin.display(description='Destination')
     def safe_destination(self, obj):
         return f'***{obj.bound_destination_suffix}' if obj.bound_destination_suffix else '—'
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request).select_related('property', 'created_by')
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(
+            property__tenant__memberships__user=request.user,
+            property__tenant__memberships__is_active=True,
+            property__tenant__memberships__role__in=('owner', 'admin', 'manager'),
+        ).distinct()
+
+    def has_module_permission(self, request):
+        return bool(
+            super().has_module_permission(request)
+            and (
+                request.user.is_superuser
+                or TenantMembership.objects.filter(
+                    user=request.user,
+                    is_active=True,
+                    role__in=('owner', 'admin', 'manager'),
+                ).exists()
+            )
+        )
+
+    def has_view_permission(self, request, obj=None):
+        allowed = super().has_view_permission(request, obj)
+        if not allowed or request.user.is_superuser:
+            return allowed
+        if obj is None:
+            return TenantMembership.objects.filter(
+                user=request.user,
+                is_active=True,
+                role__in=('owner', 'admin', 'manager'),
+            ).exists()
+        return PropertyAdmin._can_manage_line(request.user, obj.property)
 
     def has_add_permission(self, request):
         return False

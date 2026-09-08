@@ -1,0 +1,40 @@
+{% extends "admin/base_site.html" %}
+{% load i18n tz %}
+
+{% block extrahead %}
+{{ block.super }}
+<meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:myappLubd_property_changelist' %}">Properties</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="module aligned">
+  <h2>Use this pairing command now</h2>
+  <div class="form-row"><strong>Property:</strong> {{ property.name }}</div>
+  <div class="form-row">
+    <strong>Command:</strong>
+    <pre style="font-size: 1.2em; padding: 1em; user-select: all;">{{ pairing_command }}</pre>
+  </div>
+  <div class="form-row"><strong>Expires:</strong> {{ expires_at|localtime }}</div>
+</div>
+
+<div class="module">
+  <h2>Instructions</h2>
+  <ol style="padding-left: 2em;">
+    <li>Add StayMaint Official Account to the target LINE Group</li>
+    <li>Send the command exactly once in that group</li>
+    <li>Refresh Property Admin</li>
+    <li>Connection should change to Connected</li>
+  </ol>
+</div>
+
+<p><strong>This is the only time the plaintext pairing code will be displayed.</strong></p>
+<p><a href="{{ change_url }}" class="button">Return to Property Admin</a></p>
+{% endblock %}

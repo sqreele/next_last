@@ -77,6 +77,7 @@ from .models import (
     SubscriptionPlan,
     TenantSubscription,
     TenantInvitation,
+    LineGroupPairing,
     BillingWebhookEvent,
     UsageMetric,
     InventoryUsage,
@@ -6397,6 +6398,40 @@ class TenantInvitationAdmin(admin.ModelAdmin):
     @admin.display(description='Status')
     def status_display(self, obj):
         return obj.status.title()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(LineGroupPairing)
+class LineGroupPairingAdmin(admin.ModelAdmin):
+    list_per_page = 50
+    list_display = [
+        'property', 'status_display', 'created_by', 'created_at', 'expires_at',
+        'safe_destination',
+    ]
+    list_filter = ['created_at', 'expires_at', 'used_at', 'revoked_at']
+    search_fields = ['property__property_id', 'property__name']
+    readonly_fields = [
+        'property', 'created_by', 'created_at', 'expires_at', 'used_at',
+        'revoked_at', 'bound_destination_suffix',
+    ]
+    exclude = ['token_hash']
+    list_select_related = ['property', 'created_by']
+
+    @admin.display(description='Status')
+    def status_display(self, obj):
+        return obj.status.title()
+
+    @admin.display(description='Destination')
+    def safe_destination(self, obj):
+        return f'***{obj.bound_destination_suffix}' if obj.bound_destination_suffix else '—'
 
     def has_add_permission(self, request):
         return False

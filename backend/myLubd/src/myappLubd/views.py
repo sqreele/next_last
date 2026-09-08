@@ -23,7 +23,7 @@ from .models import (
     PreventiveMaintenanceImage, PMMasterPlan, JobImage, Machine,
     MaintenanceProcedure, UtilityConsumption, Inventory, InventoryCategory,
     Area, JobComment, PushSubscription, Tenant,
-    TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
+    TenantMembership, LineGroupPairing, SubscriptionPlan, TenantSubscription, UsageMetric,
     InventoryUsage, MaintenanceChecklist, MaintenanceHistory,
 )
 from django.urls import reverse
@@ -92,6 +92,7 @@ from .subscription_permissions import (
     require_subscription_write,
     resolve_tenant_from_target,
 )
+from .notifications.line_webhook import generate_pairing_code, pairing_ttl
 
 
 GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
@@ -5400,6 +5401,122 @@ class PropertyViewSet(viewsets.ModelViewSet):
         except Property.DoesNotExist:
             logger.error(f"Property with ID {property_id} not found in database")
             raise
+
+    def _require_line_integration_manager(self, property_obj):
+        if self.request.user.is_superuser:
+            return
+        if property_obj.tenant_id is None:
+            raise PermissionDenied('LINE integrations require a tenant-backed Property.')
+        allowed = TenantMembership.objects.filter(
+            tenant_id=property_obj.tenant_id,
+            user=self.request.user,
+            is_active=True,
+            role__in={'owner', 'admin', 'manager'},
+        ).exists()
+        if not allowed:
+            raise PermissionDenied('Your role cannot manage LINE for this Property.')
+
+    @action(detail=True, methods=['post'], url_path='line/pairing')
+    def create_line_pairing(self, request, property_id=None):
+        property_obj = self.get_object()
+        self._require_line_integration_manager(property_obj)
+        now = timezone.now()
+
+        with transaction.atomic():
+            locked_property = Property.objects.select_for_update().get(pk=property_obj.pk)
+            if locked_property.line_destination_id:
+                return Response(
+                    {
+                        'detail': 'This Property is already connected. Disconnect it explicitly before pairing again.',
+                        'code': 'line_already_connected',
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            LineGroupPairing.objects.select_for_update().filter(
+                property=locked_property,
+                used_at__isnull=True,
+                revoked_at__isnull=True,
+            ).update(revoked_at=now)
+            code = generate_pairing_code()
+            pairing = LineGroupPairing(
+                property=locked_property,
+                created_by=request.user,
+                expires_at=now + pairing_ttl(),
+            )
+            pairing.set_token(code)
+            pairing.save()
+
+        return Response(
+            {
+                'property': {
+                    'property_id': locked_property.property_id,
+                    'name': locked_property.name,
+                },
+                'pairing_code': code,
+                'pairing_command': f'STAYMAINT LINK {code}',
+                'expires_at': pairing.expires_at,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=['get'], url_path='line/status')
+    def line_integration_status(self, request, property_id=None):
+        property_obj = self.get_object()
+        self._require_line_integration_manager(property_obj)
+        destination = str(property_obj.line_destination_id or '')
+        pending = LineGroupPairing.objects.filter(
+            property=property_obj,
+            used_at__isnull=True,
+            revoked_at__isnull=True,
+            expires_at__gt=timezone.now(),
+        ).order_by('-created_at').first()
+        return Response({
+            'property': {
+                'property_id': property_obj.property_id,
+                'name': property_obj.name,
+            },
+            'connected': bool(destination),
+            'notifications_enabled': bool(
+                destination and property_obj.line_notifications_enabled
+            ),
+            'destination_suffix': destination[-4:] if destination else '',
+            'pairing_expires_at': pending.expires_at if pending else None,
+        })
+
+    @action(detail=True, methods=['post'], url_path='line/pairing/revoke')
+    def revoke_line_pairing(self, request, property_id=None):
+        property_obj = self.get_object()
+        self._require_line_integration_manager(property_obj)
+        now = timezone.now()
+        with transaction.atomic():
+            locked_property = Property.objects.select_for_update().get(pk=property_obj.pk)
+            revoked = LineGroupPairing.objects.select_for_update().filter(
+                property=locked_property,
+                used_at__isnull=True,
+                revoked_at__isnull=True,
+            ).update(revoked_at=now)
+        return Response({'revoked': revoked})
+
+    @action(detail=True, methods=['post'], url_path='line/disconnect')
+    def disconnect_line_group(self, request, property_id=None):
+        property_obj = self.get_object()
+        self._require_line_integration_manager(property_obj)
+        now = timezone.now()
+        with transaction.atomic():
+            locked_property = Property.objects.select_for_update().get(pk=property_obj.pk)
+            was_connected = bool(locked_property.line_destination_id)
+            locked_property.line_destination_id = ''
+            locked_property.line_notifications_enabled = False
+            locked_property.save(
+                update_fields=['line_destination_id', 'line_notifications_enabled']
+            )
+            LineGroupPairing.objects.select_for_update().filter(
+                property=locked_property,
+                used_at__isnull=True,
+                revoked_at__isnull=True,
+            ).update(revoked_at=now)
+        return Response({'disconnected': was_connected})
 
     @action(detail=True, methods=['get'])
     def is_preventivemaintenance(self, request, property_id=None):

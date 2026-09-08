@@ -17,6 +17,7 @@ from .invitations import (
     TenantInvitationViewSet,
 )
 from .billing.views import StripeCheckoutView, StripePortalView, StripeWebhookView
+from .line_integration import LineWebhookView
 
 # Set the app name
 app_name = 'myappLubd'
@@ -58,6 +59,7 @@ urlpatterns = [
     path('api/v1/billing/checkout/', StripeCheckoutView.as_view(), name='stripe-checkout'),
     path('api/v1/billing/portal/', StripePortalView.as_view(), name='stripe-portal'),
     path('api/v1/billing/webhooks/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'),
+    path('api/v1/integrations/line/webhook/', LineWebhookView.as_view(), name='line-webhook'),
     
     # Preventive maintenance endpoints (MUST come before router to avoid conflicts)
     path('api/v1/preventive-maintenance/jobs/', views.get_preventive_maintenance_jobs, name='preventive_maintenance_jobs'),

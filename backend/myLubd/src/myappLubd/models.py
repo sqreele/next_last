@@ -1073,6 +1073,59 @@ class Property(models.Model):
         super().save(*args, **kwargs)
 
 
+class LineGroupPairing(models.Model):
+    """Short-lived, hash-only authority to bind one Property to one LINE group."""
+
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='line_group_pairings',
+    )
+    token_hash = models.CharField(max_length=64, editable=False, db_index=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='created_line_group_pairings',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    bound_destination_suffix = models.CharField(max_length=4, blank=True, editable=False)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(
+                fields=['property', 'created_at'],
+                name='line_pair_property_created_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f'LINE pairing for {self.property.property_id} ({self.status})'
+
+    @staticmethod
+    def hash_token(token):
+        return hashlib.sha256(str(token or '').encode('ascii')).hexdigest()
+
+    def set_token(self, token):
+        self.token_hash = self.hash_token(token)
+
+    def matches_token(self, token):
+        return constant_time_compare(self.token_hash, self.hash_token(token))
+
+    @builtins.property
+    def status(self):
+        if self.used_at is not None:
+            return 'used'
+        if self.revoked_at is not None:
+            return 'revoked'
+        if self.expires_at <= timezone.now():
+            return 'expired'
+        return 'pending'
+
+
 class Room(models.Model):
     room_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, unique=True)

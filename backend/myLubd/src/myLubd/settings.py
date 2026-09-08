@@ -500,6 +500,8 @@ TENANT_INVITATION_EXPIRY_DAYS = int(os.getenv('TENANT_INVITATION_EXPIRY_DAYS', '
 # live on Property records so notifications can never fall back across a
 # tenant or Property boundary.
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', '').strip()
+LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', '').strip()
+LINE_PAIRING_EXPIRY_MINUTES = int(os.getenv('LINE_PAIRING_EXPIRY_MINUTES', '15'))
 LINE_MESSAGING_TIMEOUT_SECONDS = float(
     os.getenv('LINE_MESSAGING_TIMEOUT_SECONDS', '3')
 )

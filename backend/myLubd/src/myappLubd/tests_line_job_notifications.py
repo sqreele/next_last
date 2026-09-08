@@ -6,10 +6,18 @@ import requests
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.test import SimpleTestCase, TransactionTestCase, override_settings
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from .models import Area, Job, Property, Room, Tenant, TenantMembership
+from .notifications.jobs import (
+    DETAIL_MAX_LENGTH,
+    _compose_created,
+    _detail,
+    _location,
+    _status_label,
+)
 from .notifications.line import LINE_PUSH_ENDPOINT, send_text_message
 
 
@@ -49,6 +57,7 @@ class LineTransportTests(SimpleTestCase):
 
 @override_settings(
     LINE_CHANNEL_ACCESS_TOKEN='server-only-test-token',
+    LINE_CHANNEL_SECRET='server-only-test-secret',
     LINE_MESSAGING_TIMEOUT_SECONDS=1,
     FRONTEND_BASE_URL='https://staymaint.com',
 )
@@ -112,9 +121,9 @@ class JobLineNotificationTests(TransactionTestCase):
             'topic_data': {'title': 'Plumbing'},
         }
 
-    def _create_job(self):
+    def _create_job(self, payload=None):
         response = self.client.post(
-            '/api/v1/jobs/', self._payload(), format='json', secure=True,
+            '/api/v1/jobs/', payload or self._payload(), format='json', secure=True,
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
         return response, Job.objects.get(job_id=response.data['job_id'])
@@ -129,12 +138,16 @@ class JobLineNotificationTests(TransactionTestCase):
         self.assertEqual(send.call_args.kwargs['destination_id'], 'line-siam')
         message = send.call_args.kwargs['text']
         self.assertIn('🔧 New Maintenance Job', message)
-        self.assertIn('Property: LINE Siam', message)
-        self.assertIn('Room/Area: LINE-101', message)
-        self.assertIn('Job: Plumbing', message)
-        self.assertIn('Priority: High', message)
-        self.assertIn('Created by: Mali Manager', message)
+        self.assertIn('🏨 Property: LINE Siam', message)
+        self.assertIn('📍 Location: Room LINE-101', message)
+        self.assertIn('🛠 Issue: Plumbing', message)
+        self.assertIn('📝 Detail: Repair leaking sink', message)
+        self.assertIn('👤 Assigned to: Mali Manager', message)
+        self.assertIn('📌 Status: Pending', message)
+        self.assertIn(f'⏰ Created: {timezone.localtime(job.created_at):%d %b %Y %H:%M}', message)
+        self.assertIn(f'Job ID: {job.job_id}', message)
         self.assertIn(f'https://staymaint.com/dashboard/jobs/{job.job_id}', message)
+        self.assertTrue(message.endswith('StayMaint'))
         self.assertNotIn('server-only-test-token', str(response.data))
 
     @patch('myappLubd.notifications.jobs.send_text_message')
@@ -187,7 +200,7 @@ class JobLineNotificationTests(TransactionTestCase):
         send.assert_not_called()
 
     @patch('myappLubd.notifications.jobs.send_text_message')
-    def test_status_change_sends_once_with_labels_actor_and_property(self, send):
+    def test_status_change_sends_once_with_labels_assignee_and_property(self, send):
         _, job = self._create_job()
         self._enable()
 
@@ -200,12 +213,42 @@ class JobLineNotificationTests(TransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
         send.assert_called_once()
+        job.refresh_from_db()
         self.assertEqual(send.call_args.kwargs['destination_id'], 'line-siam')
         message = send.call_args.kwargs['text']
         self.assertIn('🔄 Job Status Updated', message)
-        self.assertIn('Pending → In Progress', message)
-        self.assertIn('Updated by:\nMali Manager', message)
-        self.assertIn('Property: LINE Siam', message)
+        self.assertIn('Pending ➜ In Progress', message)
+        self.assertIn('👤 Technician: Mali Manager', message)
+        self.assertIn('🏨 LINE Siam', message)
+        self.assertIn(f'⏰ Updated: {timezone.localtime(job.updated_at):%d %b %Y %H:%M}', message)
+        self.assertIn(f'Job ID: {job.job_id}', message)
+
+    @patch('myappLubd.notifications.jobs.send_text_message')
+    def test_completed_status_uses_dedicated_template(self, send):
+        _, job = self._create_job()
+        self._enable()
+
+        response = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/',
+            {'status': 'completed'},
+            format='json',
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        send.assert_called_once()
+        job.refresh_from_db()
+        message = send.call_args.kwargs['text']
+        self.assertIn('✅ Maintenance Completed', message)
+        self.assertNotIn('🔄 Job Status Updated', message)
+        self.assertIn('📌 Status: Completed', message)
+        self.assertIn('👤 Completed by: Mali Manager', message)
+        self.assertIn(
+            f'⏰ Completed: {timezone.localtime(job.completed_at):%d %b %Y %H:%M}',
+            message,
+        )
+        self.assertIn(f'Job ID: {job.job_id}', message)
+        self.assertTrue(message.endswith('StayMaint'))
 
     @patch('myappLubd.notifications.jobs.send_text_message')
     def test_unchanged_status_sends_nothing(self, send):
@@ -262,10 +305,74 @@ class JobLineNotificationTests(TransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
         send.assert_called_once()
         message = send.call_args.kwargs['text']
-        self.assertIn('👤 Job Reassigned', message)
-        self.assertIn('From:\nMali Manager', message)
-        self.assertIn('To:\nTech Two', message)
-        self.assertIn('Reassigned by:\nSuda Supervisor', message)
+        self.assertIn('👷 Job Reassigned', message)
+        self.assertIn('From: Mali Manager', message)
+        self.assertIn('To: Tech Two', message)
+        self.assertIn('📌 Status: Pending', message)
+        self.assertIn(f'Job ID: {job.job_id}', message)
+
+    @patch('myappLubd.notifications.jobs.send_text_message')
+    def test_unicode_detail_is_preserved_and_long_detail_is_truncated(self, send):
+        self._enable()
+        payload = self._payload()
+        payload['description'] = '  แอร์ไม่เย็น\n\n' + ('ทดสอบ' * 70)
+
+        _, job = self._create_job(payload)
+
+        message = send.call_args.kwargs['text']
+        detail_line = next(line for line in message.splitlines() if line.startswith('📝 Detail: '))
+        rendered_detail = detail_line.removeprefix('📝 Detail: ')
+        self.assertIn('แอร์ไม่เย็น', rendered_detail)
+        self.assertNotIn('\n', rendered_detail)
+        self.assertEqual(len(rendered_detail), DETAIL_MAX_LENGTH)
+        self.assertTrue(rendered_detail.endswith('…'))
+        self.assertEqual(rendered_detail, _detail(job))
+
+    def test_formatter_fallbacks_avoid_none_email_and_raw_relations(self):
+        _, job = self._create_job()
+        email_user = User.objects.create_user(username='private@example.com')
+        second_room = Room.objects.create(
+            name='LINE-102', room_type='Standard', property=self.property,
+        )
+        job.user = email_user
+        job.description = '  Check\n\nwater   pressure  '
+        job.rooms.add(second_room)
+
+        message = _compose_created(job)
+
+        self.assertIn('📍 Location: Rooms LINE-101, LINE-102', message)
+        self.assertIn('📝 Detail: Check water pressure', message)
+        self.assertIn('👤 Assigned to: Unassigned', message)
+        self.assertNotIn('private@example.com', message)
+        self.assertNotIn('None', message)
+        self.assertNotIn('null', message.casefold())
+        self.assertNotIn('<QuerySet', message)
+
+        job.user = None
+        self.assertIn('👤 Assigned to: Unassigned', _compose_created(job))
+
+    def test_area_fallback_and_human_status_label(self):
+        _, job = self._create_job()
+        job.rooms.clear()
+
+        self.assertEqual(_location(job), 'LINE Lobby')
+        self.assertEqual(_status_label('waiting_sparepart'), 'Waiting Spare Part')
+
+    @patch('myappLubd.notifications.jobs.send_text_message')
+    def test_message_does_not_leak_internal_or_line_configuration_values(self, send):
+        self._enable(destination='private-group-destination-A1B2')
+
+        _, job = self._create_job()
+
+        message = send.call_args.kwargs['text']
+        self.assertIn(f'Job ID: {job.job_id}', message)
+        self.assertNotIn('private-group-destination-A1B2', message)
+        self.assertNotIn('server-only-test-token', message)
+        self.assertNotIn('server-only-test-secret', message)
+        self.assertNotIn('LINE_CHANNEL_ACCESS_TOKEN', message)
+        self.assertNotIn('LINE_CHANNEL_SECRET', message)
+        self.assertNotIn('Property ID:', message)
+        self.assertNotIn('Tenant ID:', message)
 
     @patch('myappLubd.notifications.jobs.send_text_message')
     def test_technician_denied_reassign_sends_nothing(self, send):

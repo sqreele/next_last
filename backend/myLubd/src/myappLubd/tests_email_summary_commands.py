@@ -4,6 +4,7 @@ from io import StringIO
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.core.management import CommandError, call_command
 from django.db.models import Q
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -385,6 +386,33 @@ class TestUserPropertySummaryRegression(SummaryCommandFixture):
 
 
 class TestEmailTransportValidation(SimpleTestCase):
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        EMAIL_HOST_USER='sender@example.test',
+        EMAIL_HOST_PASSWORD='secret-placeholder',
+        DEFAULT_FROM_EMAIL='sender@example.test',
+    )
+    @patch('myappLubd.email_utils._build_gmail_service', return_value=None)
+    def test_smtp_fallback_preserves_unicode_and_sends_once(self, _gmail_service):
+        result = send_email(
+            'recipient@example.test',
+            'สรุปงาน StayMaint',
+            'รายละเอียดงานภาษาไทย',
+            html_body='<p>รายละเอียดงานภาษาไทย</p>',
+        )
+
+        self.assertTrue(result)
+        self.assertEqual(len(mail.outbox), 1)
+        message = mail.outbox[0]
+        self.assertEqual(message.to, ['recipient@example.test'])
+        self.assertEqual(message.from_email, 'sender@example.test')
+        self.assertEqual(message.subject, 'สรุปงาน StayMaint')
+        self.assertEqual(message.body, 'รายละเอียดงานภาษาไทย')
+        self.assertEqual(
+            message.alternatives,
+            [('<p>รายละเอียดงานภาษาไทย</p>', 'text/html')],
+        )
+
     @override_settings(
         EMAIL_HOST_USER='configured@example.test',
         EMAIL_HOST_PASSWORD='secret-placeholder',

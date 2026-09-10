@@ -220,6 +220,45 @@ class InventoryContractTests(APITestCase):
         response = self.client.get('/api/v1/inventory/', {'property_id': self.prop.property_id})
         self.assertEqual([row['item_id'] for row in results(response)], [self.item.item_id])
 
+    def test_image_urls_are_same_origin_media_paths(self):
+        self.item.image.name = 'inventory_images/2026/09/filter.jpg'
+        self.item.save(update_fields=['image'])
+        self.login(self.tech)
+
+        list_response = self.client.get(
+            '/api/v1/inventory/',
+            {'property_id': self.prop.property_id},
+            HTTP_HOST='backend:8000',
+            HTTP_X_FORWARDED_PROTO='https',
+        )
+        detail_response = self.client.get(
+            f'/api/v1/inventory/{self.item.item_id}/',
+            HTTP_HOST='backend:8000',
+            HTTP_X_FORWARDED_PROTO='https',
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            results(list_response)[0]['image_url'],
+            '/media/inventory_images/2026/09/filter.jpg',
+        )
+        self.assertEqual(
+            detail_response.data['image_url'],
+            '/media/inventory_images/2026/09/filter.jpg',
+        )
+
+    def test_item_without_image_has_null_image_url(self):
+        self.login(self.tech)
+
+        response = self.client.get(
+            '/api/v1/inventory/',
+            {'property_id': self.prop.property_id},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(results(response)[0]['image_url'])
+
     def test_unauthorized_item_is_hidden(self):
         self.login(self.tech)
         self.assertEqual(

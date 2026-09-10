@@ -87,6 +87,8 @@ os.fchmod(fd, 0o600)
 with os.fdopen(fd, 'w', encoding='utf-8') as env_file:
     for name in names:
         value = os.environ.get(name, '')
+        if name == 'LINE_MESSAGING_TIMEOUT_SECONDS' and not value:
+            value = '3'
         env_file.write(f'export {name}={shlex.quote(value)}\n')
 PY
 

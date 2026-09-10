@@ -20,6 +20,7 @@ from django.conf import settings
 import logging
 import hashlib
 import secrets
+import uuid
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -915,6 +916,122 @@ class PreventiveMaintenance(models.Model):
                 os.remove(after_image_path)
             except OSError:
                 pass  # File may have already been deleted
+
+
+class PMLineReminderBatch(models.Model):
+    DAY_BEFORE = 'day_before'
+    SAME_DAY = 'same_day'
+    REMINDER_TYPE_CHOICES = [
+        (DAY_BEFORE, 'Day before'),
+        (SAME_DAY, 'Same day'),
+    ]
+
+    property = models.ForeignKey(
+        'Property',
+        on_delete=models.CASCADE,
+        related_name='pm_line_reminder_batches',
+    )
+    reminder_type = models.CharField(max_length=16, choices=REMINDER_TYPE_CHOICES)
+    scheduled_date = models.DateField()
+    retry_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    destination_id = models.CharField(max_length=255, editable=False)
+    message_text = models.TextField(editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=['property', 'reminder_type', 'scheduled_date', 'accepted_at'],
+                name='pm_line_batch_pending_idx',
+            ),
+            models.Index(
+                fields=['accepted_at', 'created_at'],
+                name='pm_line_batch_retry_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.reminder_type} PM reminder batch on {self.scheduled_date}'
+
+
+class PMLineReminderDelivery(models.Model):
+    """Successful per-PM reminder outcome."""
+
+    DAY_BEFORE = PMLineReminderBatch.DAY_BEFORE
+    SAME_DAY = PMLineReminderBatch.SAME_DAY
+    REMINDER_TYPE_CHOICES = PMLineReminderBatch.REMINDER_TYPE_CHOICES
+
+    batch = models.ForeignKey(
+        PMLineReminderBatch,
+        on_delete=models.CASCADE,
+        related_name='deliveries',
+    )
+    property = models.ForeignKey(
+        'Property',
+        on_delete=models.CASCADE,
+        related_name='pm_line_reminder_deliveries',
+    )
+    preventive_maintenance = models.ForeignKey(
+        PreventiveMaintenance,
+        on_delete=models.CASCADE,
+        related_name='line_reminder_deliveries',
+    )
+    reminder_type = models.CharField(max_length=16, choices=REMINDER_TYPE_CHOICES)
+    scheduled_date = models.DateField()
+    delivered_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    'property',
+                    'preventive_maintenance',
+                    'reminder_type',
+                    'scheduled_date',
+                ],
+                name='uniq_pm_line_reminder_delivery',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=['property', 'reminder_type', 'scheduled_date'],
+                name='pm_line_delivery_lookup_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.reminder_type} PM reminder on {self.scheduled_date}'
+
+
+class PMLineReminderBatchItem(models.Model):
+    """Durable PM membership reserved for one immutable provider request."""
+
+    batch = models.ForeignKey(
+        PMLineReminderBatch,
+        on_delete=models.CASCADE,
+        related_name='items',
+    )
+    property = models.ForeignKey('Property', on_delete=models.CASCADE)
+    preventive_maintenance = models.ForeignKey(PreventiveMaintenance, on_delete=models.CASCADE)
+    reminder_type = models.CharField(
+        max_length=16,
+        choices=PMLineReminderBatch.REMINDER_TYPE_CHOICES,
+    )
+    scheduled_date = models.DateField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    'property',
+                    'preventive_maintenance',
+                    'reminder_type',
+                    'scheduled_date',
+                ],
+                name='uniq_pm_line_reminder_reservation',
+            ),
+        ]
 
 
 class PreventiveMaintenanceImage(models.Model):

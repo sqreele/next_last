@@ -54,6 +54,50 @@ class LineTransportTests(SimpleTestCase):
         post.side_effect = requests.Timeout('provider unavailable')
         self.assertFalse(send_text_message(destination_id='group-1234', text='hello'))
 
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_retry_key_is_sent_and_already_accepted_response_succeeds(self, post):
+        response = requests.Response()
+        response.status_code = 409
+        response.headers['X-Line-Accepted-Request-Id'] = 'accepted-request-id'
+        post.return_value = response
+
+        delivered = send_text_message(
+            destination_id='group-1234',
+            text='hello',
+            retry_key='123e4567-e89b-12d3-a456-426614174000',
+        )
+
+        self.assertTrue(delivered)
+        self.assertEqual(
+            post.call_args.kwargs['headers']['X-Line-Retry-Key'],
+            '123e4567-e89b-12d3-a456-426614174000',
+        )
+
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_arbitrary_keyed_409_remains_an_error(self, post):
+        response = requests.Response()
+        response.status_code = 409
+        post.return_value = response
+        self.assertFalse(send_text_message(
+            destination_id='group-1234',
+            text='hello',
+            retry_key='123e4567-e89b-12d3-a456-426614174000',
+        ))
+
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_unkeyed_409_remains_an_error(self, post):
+        response = requests.Response()
+        response.status_code = 409
+        post.return_value = response
+        self.assertFalse(send_text_message(destination_id='group-1234', text='hello'))
+
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_invalid_retry_key_is_rejected_before_transport(self, post):
+        self.assertFalse(send_text_message(
+            destination_id='group-1234', text='hello', retry_key='not-a-uuid',
+        ))
+        post.assert_not_called()
+
 
 @override_settings(
     LINE_CHANNEL_ACCESS_TOKEN='server-only-test-token',

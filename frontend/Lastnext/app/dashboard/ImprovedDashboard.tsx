@@ -31,7 +31,6 @@ import {
   PriorityBadge,
   SkeletonCard,
   StatusBadge,
-  humanize,
   normalizePriority,
   normalizeStatus,
 } from '@/app/components/pcms-ui';
@@ -43,6 +42,8 @@ import { useMainStore } from '@/app/lib/stores/mainStore';
 import { PageContainer } from '@/app/components/layout/PageContainer';
 import { PageHeader } from '@/app/components/layout/PageHeader';
 import { FeedbackState } from '@/app/components/feedback/FeedbackState';
+import { useLocale } from '@/app/lib/i18n/LocaleProvider';
+import type { DictKey, Locale } from '@/app/lib/i18n/dictionary';
 
 type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
 
@@ -69,6 +70,14 @@ const TAB_CONFIG = [
   { value: 'preventive_maintenance', label: 'Preventive' },
 ];
 
+const STATUS_LABEL_KEYS: Record<string, DictKey> = {
+  all: 'common.all', pending: 'status.pending', assigned: 'status.pending',
+  in_progress: 'status.inProgress', waiting_sparepart: 'status.waitingSparepart',
+  waiting_vendor: 'status.waitingVendor', completed: 'status.completed',
+  verified: 'status.verified', cancelled: 'status.cancelled',
+  defect: 'status.waitingFixDefect', preventive_maintenance: 'status.preventiveMaintenance',
+};
+
 function getUserName(user: Job['user']) {
   return getDisplayName(user, 'Unknown Technician');
 }
@@ -77,26 +86,31 @@ function getRoomOrArea(job: Job) {
   return job.room_name || job.rooms?.[0]?.name || 'Not assigned';
 }
 
-function formatDate(dateString?: string | null) {
+function localeTag(locale: Locale) {
+  return locale === 'th' ? 'th-TH-u-ca-gregory' : 'en-US';
+}
+
+function formatDate(dateString: string | null | undefined, locale: Locale) {
   if (!dateString) return 'Not set';
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return 'Not set';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString(localeTag(locale), { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function relativeTime(dateString?: string | null) {
+function relativeTime(dateString: string | null | undefined, locale: Locale) {
   if (!dateString) return '';
   const date = new Date(dateString).getTime();
   if (Number.isNaN(date)) return '';
   const diff = Date.now() - date;
   const minutes = Math.round(diff / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  const formatter = new Intl.RelativeTimeFormat(localeTag(locale), { numeric: 'auto' });
+  if (minutes < 1) return formatter.format(0, 'minute');
+  if (minutes < 60) return formatter.format(-minutes, 'minute');
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return formatter.format(-hours, 'hour');
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return formatDate(dateString);
+  if (days < 7) return formatter.format(-days, 'day');
+  return formatDate(dateString, locale);
 }
 
 function isOverdue(job: Job) {
@@ -136,12 +150,13 @@ function statusTone(status?: string): StatTone {
 }
 
 function DashboardLoading() {
+  const { t } = useLocale();
   return (
     <div className="sneat-dashboard" aria-busy="true" aria-live="polite">
       <div className="sneat-page-header">
         <div className="sneat-page-header__title">
-          <h1>KPI Dashboard</h1>
-          <p>Loading maintenance overview...</p>
+          <h1>{t('dashboard.title')}</h1>
+          <p>{t('dashboard.loading')}</p>
         </div>
       </div>
       <div className="sneat-top-row">
@@ -156,6 +171,7 @@ function DashboardLoading() {
 
 export default function ImprovedDashboard() {
   useSessionGuard();
+  const { locale, t } = useLocale();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -240,7 +256,7 @@ export default function ImprovedDashboard() {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       buckets.push({
-        label: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3),
+        label: d.toLocaleDateString(localeTag(locale), { weekday: 'short' }),
         count: 0,
       });
     }
@@ -333,7 +349,7 @@ export default function ImprovedDashboard() {
       weeklyPeakIndex: peakIndex,
       weeklyTotal: buckets.reduce((sum, b) => sum + b.count, 0),
     };
-  }, [jobs, stats]);
+  }, [jobs, locale, stats]);
 
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && event.key !== 'Home' && event.key !== 'End') return;
@@ -355,9 +371,9 @@ export default function ImprovedDashboard() {
       <PageContainer className="flex min-h-[55vh] items-center">
         <FeedbackState
           variant="error"
-          title="Unable to load KPI Dashboard"
+          title={t('dashboard.loadError')}
           description={error}
-          action={<Button onClick={refreshJobs}>Try Again</Button>}
+          action={<Button onClick={refreshJobs}>{t('action.tryAgain')}</Button>}
           className="w-full"
         />
       </PageContainer>
@@ -373,20 +389,20 @@ export default function ImprovedDashboard() {
       {/* Page header */}
       <PageHeader
         eyebrow="Operations overview"
-        title="KPI Dashboard"
+        title={t('dashboard.title')}
         description="Hotel maintenance overview, job progress, and technician performance."
         actions={
           <>
             {!hasNoActiveProperty && (
               <Button asChild>
                 <Link href="/dashboard/create-job">
-                  <Plus className="h-4 w-4" aria-hidden="true" /> Create Job
+                  <Plus className="h-4 w-4" aria-hidden="true" /> {t('nav.createJob')}
                 </Link>
               </Button>
             )}
             <Button asChild variant="outline">
               <Link href="/dashboard/jobs-report">
-                <FileText className="h-4 w-4" aria-hidden="true" /> Reports
+                <FileText className="h-4 w-4" aria-hidden="true" /> {t('nav.reports')}
               </Link>
             </Button>
             <Button
@@ -397,7 +413,7 @@ export default function ImprovedDashboard() {
               aria-label="Refresh dashboard data"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-              {loading ? 'Loading...' : 'Refresh'}
+              {loading ? t('common.loading') : t('action.refresh')}
             </Button>
           </>
         }
@@ -405,12 +421,12 @@ export default function ImprovedDashboard() {
 
       {hasNoActiveProperty ? (
         <FeedbackState
-          title="Select a property"
-          description="Select a property in the header to view its maintenance dashboard."
+          title={t('common.selectProperty')}
+          description={t('dashboard.selectPropertyHint')}
         />
       ) : hasNoMaintenanceData ? (
         <FeedbackState
-          title="No maintenance data yet"
+          title={t('dashboard.noData')}
           description="Create the first maintenance job to start tracking hotel operations."
           action={
             <Button asChild>
@@ -438,15 +454,15 @@ export default function ImprovedDashboard() {
           {/* Desktop summary; the compact KPI strip above owns mobile/tablet. */}
           <div className="sneat-top-row sneat-dashboard__desktop-summary !hidden xl:!grid">
             <div className="sneat-welcome-card">
-              <span className="sneat-welcome-card__eyebrow">Welcome back</span>
-              <h2>Operations on track!</h2>
+              <span className="sneat-welcome-card__eyebrow">{t('dashboard.welcome')}</span>
+              <h2>{t('dashboard.onTrack')}</h2>
               <p className="sneat-welcome-card__lead">
-                {metrics.completionRate}% of maintenance work is complete this period. Keep momentum on pending and overdue jobs.
+                {t('dashboard.completionSummary', { rate: metrics.completionRate })}
               </p>
               <span className="sneat-welcome-card__big">{metrics.completionRate}%</span>
-              <span className="sneat-welcome-card__caption">Completion rate across {metrics.total} jobs</span>
+              <span className="sneat-welcome-card__caption">{t('dashboard.completionAcross', { count: metrics.total })}</span>
               <Link href="/dashboard/jobs-report" className="sneat-btn sneat-btn--primary sneat-welcome-card__cta">
-                View Report <ArrowRight className="h-4 w-4" />
+                {t('dashboard.viewReport')} <ArrowRight className="h-4 w-4" />
               </Link>
               <div className="sneat-welcome-card__art" aria-hidden="true">
                 <Wrench className="h-10 w-10" />
@@ -458,10 +474,10 @@ export default function ImprovedDashboard() {
                 <div className="sneat-stat-card__top">
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--primary"><ClipboardList className="h-5 w-5" /></span>
                 </div>
-                <span className="sneat-stat-card__label">Total Jobs</span>
+                <span className="sneat-stat-card__label">{t('kpi.totalJobs')}</span>
                 <strong className="sneat-stat-card__value">{metrics.total}</strong>
                 <span className="sneat-stat-card__delta sneat-stat-card__delta--up">
-                  <TrendingUp className="h-3.5 w-3.5" /> All maintenance jobs
+                  <TrendingUp className="h-3.5 w-3.5" /> {t('dashboard.allJobs')}
                 </span>
               </div>
 
@@ -469,28 +485,28 @@ export default function ImprovedDashboard() {
                 <div className="sneat-stat-card__top">
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--info"><Clock className="h-5 w-5" /></span>
                 </div>
-                <span className="sneat-stat-card__label">Pending</span>
+                <span className="sneat-stat-card__label">{t('status.pending')}</span>
                 <strong className="sneat-stat-card__value">{metrics.open}</strong>
-                <span className="sneat-muted">Awaiting assignment</span>
+                <span className="sneat-muted">{t('dashboard.awaitingAssignment')}</span>
               </div>
 
               <div className="sneat-stat-card">
                 <div className="sneat-stat-card__top">
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--warning"><Hammer className="h-5 w-5" /></span>
                 </div>
-                <span className="sneat-stat-card__label">In Progress</span>
+                <span className="sneat-stat-card__label">{t('status.inProgress')}</span>
                 <strong className="sneat-stat-card__value">{metrics.inProgress}</strong>
-                <span className="sneat-muted">Currently handled</span>
+                <span className="sneat-muted">{t('dashboard.currentlyHandled')}</span>
               </div>
 
               <div className="sneat-stat-card">
                 <div className="sneat-stat-card__top">
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--success"><CheckCircle2 className="h-5 w-5" /></span>
                 </div>
-                <span className="sneat-stat-card__label">Completed</span>
+                <span className="sneat-stat-card__label">{t('status.completed')}</span>
                 <strong className="sneat-stat-card__value">{metrics.completed}</strong>
                 <span className="sneat-stat-card__delta sneat-stat-card__delta--up">
-                  <ArrowUpRight className="h-3.5 w-3.5" /> {metrics.verified} verified
+                  <ArrowUpRight className="h-3.5 w-3.5" /> {t('dashboard.verifiedCount', { count: metrics.verified })}
                 </span>
               </div>
 
@@ -498,36 +514,36 @@ export default function ImprovedDashboard() {
                 <div className="sneat-stat-card__top">
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--danger"><ShieldAlert className="h-5 w-5" /></span>
                 </div>
-                <span className="sneat-stat-card__label">Overdue</span>
+                <span className="sneat-stat-card__label">{t('status.overdue')}</span>
                 <strong className="sneat-stat-card__value">{metrics.overdue}</strong>
-                <span className="sneat-muted">Critical or 3+ days old</span>
+                <span className="sneat-muted">{t('dashboard.criticalOld')}</span>
               </div>
 
               <div className="sneat-stat-card">
                 <div className="sneat-stat-card__top">
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--secondary"><Timer className="h-5 w-5" /></span>
                 </div>
-                <span className="sneat-stat-card__label">Waiting Parts</span>
+                <span className="sneat-stat-card__label">{t('kpi.waitingParts')}</span>
                 <strong className="sneat-stat-card__value">{metrics.statusCounts.waiting_spare_part || 0}</strong>
-                <span className="sneat-muted">Blocked on inventory</span>
+                <span className="sneat-muted">{t('dashboard.blockedInventory')}</span>
               </div>
 
               <div className="sneat-stat-card">
                 <div className="sneat-stat-card__top">
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--primary"><Users className="h-5 w-5" /></span>
                 </div>
-                <span className="sneat-stat-card__label">Active Techs</span>
+                <span className="sneat-stat-card__label">{t('dashboard.activeTechs')}</span>
                 <strong className="sneat-stat-card__value">{metrics.technicianRows.length}</strong>
-                <span className="sneat-muted">Top contributors</span>
+                <span className="sneat-muted">{t('dashboard.topContributors')}</span>
               </div>
 
               <div className="sneat-stat-card">
                 <div className="sneat-stat-card__top">
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--info"><Activity className="h-5 w-5" /></span>
                 </div>
-                <span className="sneat-stat-card__label">Completion Rate</span>
+                <span className="sneat-stat-card__label">{t('kpi.completionRate')}</span>
                 <strong className="sneat-stat-card__value">{metrics.completionRate}%</strong>
-                <span className="sneat-muted">Completed + verified</span>
+                <span className="sneat-muted">{t('dashboard.completedVerified')}</span>
               </div>
             </div>
           </div>
@@ -537,16 +553,16 @@ export default function ImprovedDashboard() {
             <div className="sneat-chart-card min-w-0">
               <div className="sneat-card__head">
                 <div>
-                  <h2>Weekly Maintenance Activity</h2>
+                  <h2>{t('dashboard.weeklyActivity')}</h2>
                   <p className="sneat-card__subtitle">
                     {metrics.weeklyTotal > 0
-                      ? `Jobs created in the last 7 days · peak on ${peakDayLabel}`
-                      : 'No jobs were created in the last 7 days'}
+                      ? t('dashboard.weeklyJobs', { day: peakDayLabel })
+                      : t('dashboard.weeklyEmpty')}
                   </p>
                 </div>
                 <div className="sneat-chart-card__legend">
-                  <span className="sneat-legend-pill"><span className="sneat-legend-pill__dot" /> Created</span>
-                  <span className="sneat-legend-pill sneat-legend-pill--success"><span className="sneat-legend-pill__dot" /> Peak day</span>
+                  <span className="sneat-legend-pill"><span className="sneat-legend-pill__dot" /> {t('dashboard.created')}</span>
+                  <span className="sneat-legend-pill sneat-legend-pill--success"><span className="sneat-legend-pill__dot" /> {t('dashboard.peakDay')}</span>
                 </div>
               </div>
               <div className="sneat-bars" role="img" aria-label={`Weekly job creation chart, ${metrics.weeklyTotal} jobs total`}>
@@ -568,11 +584,11 @@ export default function ImprovedDashboard() {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="sneat-muted">7-day total</p>
-                  <strong className="text-xl text-foreground">{metrics.weeklyTotal} jobs</strong>
+                  <p className="sneat-muted">{t('dashboard.sevenDayTotal')}</p>
+                  <strong className="text-xl text-foreground">{t('dashboard.jobsCount', { count: metrics.weeklyTotal })}</strong>
                 </div>
                 <Link href="/dashboard/jobs" className="sneat-btn sneat-btn--ghost">
-                  View Jobs <ArrowRight className="h-4 w-4" />
+                  {t('dashboard.viewJobs')} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -580,8 +596,8 @@ export default function ImprovedDashboard() {
             <div className="sneat-card sneat-card--pad-lg min-w-0">
               <div className="sneat-card__head">
                 <div>
-                  <h2>Jobs by Priority</h2>
-                  <p className="sneat-card__subtitle">Critical work is highlighted for escalation</p>
+                  <h2>{t('dashboard.jobsByPriority')}</h2>
+                  <p className="sneat-card__subtitle">{t('dashboard.priorityHint')}</p>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
@@ -594,7 +610,7 @@ export default function ImprovedDashboard() {
                 >
                   <div className="sneat-donut__inner">
                     <strong>{metrics.priorityCounts.critical || 0}</strong>
-                    <span>Critical</span>
+                    <span>{t('priority.critical')}</span>
                   </div>
                 </div>
               </div>
@@ -607,8 +623,8 @@ export default function ImprovedDashboard() {
                     <div key={priority} className="sneat-list__row">
                       <span><PriorityBadge priority={priority} /></span>
                       <div>
-                        <div className="sneat-list__title">{humanize(priority)} priority</div>
-                        <div className="sneat-list__caption">{percentage}% of jobs</div>
+                        <div className="sneat-list__title">{t(`priority.${priority}` as DictKey)}</div>
+                        <div className="sneat-list__caption">{t('dashboard.percentJobs', { percent: percentage })}</div>
                       </div>
                       <span className="sneat-list__value">{count}</span>
                     </div>
@@ -623,8 +639,8 @@ export default function ImprovedDashboard() {
             <div className="sneat-card sneat-card--pad-lg min-w-0">
               <div className="sneat-card__head">
                 <div>
-                  <h2>Job Status Distribution</h2>
-                  <p className="sneat-card__subtitle">Workflow bottlenecks at a glance</p>
+                  <h2>{t('dashboard.statusDistribution')}</h2>
+                  <p className="sneat-card__subtitle">{t('dashboard.statusHint')}</p>
                 </div>
               </div>
               <div className="sneat-list">
@@ -649,8 +665,8 @@ export default function ImprovedDashboard() {
                         <Activity className="h-4 w-4" aria-hidden="true" />
                       </span>
                       <div>
-                        <div className="sneat-list__title">{status.label}</div>
-                        <div className="sneat-list__caption">{percentage}% of jobs</div>
+                        <div className="sneat-list__title">{t(STATUS_LABEL_KEYS[status.value])}</div>
+                        <div className="sneat-list__caption">{t('dashboard.percentJobs', { percent: percentage })}</div>
                       </div>
                       <span className="sneat-list__value">{count}</span>
                     </button>
@@ -679,8 +695,8 @@ export default function ImprovedDashboard() {
             <div className="sneat-card sneat-card--pad-lg min-w-0">
               <div className="sneat-card__head">
                 <div>
-                  <h2>Top Categories</h2>
-                  <p className="sneat-card__subtitle">Where maintenance effort concentrates</p>
+                  <h2>{t('dashboard.topCategories')}</h2>
+                  <p className="sneat-card__subtitle">{t('dashboard.categoryHint')}</p>
                 </div>
               </div>
               <div className="sneat-list">
@@ -694,19 +710,19 @@ export default function ImprovedDashboard() {
                         </span>
                         <div className="min-w-0">
                           <div className="sneat-list__title break-words">{category}</div>
-                          <div className="sneat-list__caption break-words">{percentage}% of maintenance jobs</div>
+                          <div className="sneat-list__caption break-words">{t('dashboard.percentMaintenanceJobs', { percent: percentage })}</div>
                         </div>
                         <span className="sneat-list__value">{count}</span>
                       </div>
                     );
                   })
                 ) : (
-                  <p className="sneat-muted">No category data available yet.</p>
+                  <p className="sneat-muted">{t('dashboard.noCategories')}</p>
                 )}
               </div>
               <div className="sneat-divider" />
               <div>
-                <h3 style={{ fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Technician Performance</h3>
+                <h3 style={{ fontSize: '0.9375rem', marginBottom: '0.5rem' }}>{t('dashboard.technicianPerformance')}</h3>
                 <div className="sneat-list">
                   {metrics.technicianRows.length > 0 ? (
                     metrics.technicianRows.map((row) => (
@@ -714,7 +730,7 @@ export default function ImprovedDashboard() {
                         <span className="sneat-tx-row__avatar">{getInitials(row.name)}</span>
                         <div className="min-w-0">
                           <div className="sneat-list__title break-words">{row.name}</div>
-                          <div className="sneat-list__caption">{row.assigned} assigned &middot; {row.completed} done</div>
+                          <div className="sneat-list__caption">{t('dashboard.assignedDone', { assigned: row.assigned, completed: row.completed })}</div>
                         </div>
                         <span className={`sneat-chip sneat-chip--${row.rate >= 75 ? 'success' : row.rate >= 50 ? 'warning' : 'danger'}`}>
                           {row.rate}%
@@ -722,7 +738,7 @@ export default function ImprovedDashboard() {
                       </div>
                     ))
                   ) : (
-                    <p className="sneat-muted">No technician assignments available yet.</p>
+                    <p className="sneat-muted">{t('dashboard.noAssignments')}</p>
                   )}
                 </div>
               </div>
@@ -731,12 +747,12 @@ export default function ImprovedDashboard() {
             <div className="sneat-card sneat-card--pad-lg min-w-0">
               <div className="sneat-card__head">
                 <div>
-                  <h2>Activity Timeline</h2>
-                  <p className="sneat-card__subtitle">Most recent maintenance updates</p>
+                  <h2>{t('dashboard.activityTimeline')}</h2>
+                  <p className="sneat-card__subtitle">{t('dashboard.activityHint')}</p>
                 </div>
               </div>
               {metrics.timelineJobs.length === 0 ? (
-                <p className="sneat-muted">No activity yet.</p>
+                <p className="sneat-muted">{t('dashboard.noActivity')}</p>
               ) : (
                 <div className="sneat-timeline">
                   {metrics.timelineJobs.map((job) => {
@@ -746,10 +762,10 @@ export default function ImprovedDashboard() {
                       <div key={job.job_id || job.id} className={`sneat-timeline__item sneat-timeline__item--${tone} min-w-0`}>
                         <div className="sneat-timeline__top">
                           <span className="sneat-timeline__title min-w-0 break-words">#{job.job_id} &middot; {title}</span>
-                          <span className="sneat-timeline__time">{relativeTime(job.created_at)}</span>
+                          <span className="sneat-timeline__time">{relativeTime(job.created_at, locale)}</span>
                         </div>
                         <p className="sneat-timeline__body break-words">
-                          {getRoomOrArea(job)} &middot; assigned to {getUserName(job.user)}
+                          {t('dashboard.assignedTo', { location: getRoomOrArea(job), name: getUserName(job.user) })}
                         </p>
                         <div style={{ marginTop: '0.4rem', display: 'inline-flex', gap: '0.35rem' }}>
                           <StatusBadge status={job.status} />
@@ -767,22 +783,22 @@ export default function ImprovedDashboard() {
           <div className="sneat-card sneat-card--pad-lg">
             <div className="sneat-card__head">
               <div>
-                <h2>Maintenance Job Board</h2>
-                <p className="sneat-card__subtitle">Filter by status and drill into the live job list</p>
+                <h2>{t('dashboard.jobBoard')}</h2>
+                <p className="sneat-card__subtitle">{t('dashboard.jobBoardHint')}</p>
               </div>
               <button
                 type="button"
                 onClick={() => exportJobs('csv')}
                 disabled={loading || jobs.length === 0}
                 className="sneat-btn sneat-btn--ghost"
-                aria-label="Export maintenance jobs as CSV"
+                aria-label={t('dashboard.exportCsvLabel')}
               >
-                <Download className="h-4 w-4" aria-hidden="true" /> Export CSV
+                <Download className="h-4 w-4" aria-hidden="true" /> {t('inventory.exportCsv')}
               </button>
             </div>
 
             <div className="sneat-tabs" role="tablist" aria-label="Maintenance job status filters">
-              {TAB_CONFIG.map(({ value, label }, index) => (
+              {TAB_CONFIG.map(({ value }, index) => (
                 <button
                   key={value}
                   ref={(element) => {
@@ -794,7 +810,7 @@ export default function ImprovedDashboard() {
                   onKeyDown={(event) => handleTabKeyDown(event, index)}
                   className={selectedTab === value ? 'is-active' : ''}
                 >
-                  {label}
+                  {t(STATUS_LABEL_KEYS[value])}
                 </button>
               ))}
             </div>

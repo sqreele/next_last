@@ -2,36 +2,38 @@
 
 import { Settings, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { Stats } from "@/app/lib/types/filterTypes";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface StatsCardsProps {
   stats: Stats;
 }
 
 export default function StatsCards({ stats }: StatsCardsProps) {
+  const t = useT();
   const cards = [
     {
-      label: "Overdue",
+      label: t("status.overdue"),
       value: stats.overdue,
       icon: AlertCircle,
       iconClass: "bg-destructive/10 text-destructive",
       valueClass: "text-destructive",
     },
     {
-      label: "Open",
+      label: t("pm.open"),
       value: stats.pending,
       icon: Clock,
       iconClass: "bg-warning/10 text-warning-emphasis",
       valueClass: "text-warning-emphasis",
     },
     {
-      label: "Total",
+      label: t("pm.total"),
       value: stats.total,
       icon: Settings,
       iconClass: "bg-info/10 text-info",
       valueClass: "text-info",
     },
     {
-      label: "Completed",
+      label: t("status.completed"),
       value: stats.completed,
       icon: CheckCircle,
       iconClass: "bg-success/10 text-success",
@@ -40,7 +42,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
   ];
 
   return (
-    <section aria-label="Preventive maintenance summary" className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+    <section aria-label={t("pm.summary")} className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (

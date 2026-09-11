@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Repeat2,
 } from "lucide-react";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface DesktopHeaderProps {
   currentFilters: any;
@@ -31,22 +32,23 @@ export default function DesktopHeader({
   onRefresh,
   onToggleFilters,
 }: DesktopHeaderProps) {
+  const t = useT();
   return (
     <header className="hidden w-full md:block">
       <div className="flex flex-col gap-5 border-b border-border pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Maintenance workspace
+            {t("pm.workspace")}
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">
-            Preventive Maintenance
+            {t("pm.title")}
           </h1>
           <p className="mt-2 text-base leading-6 text-muted-foreground">
-            Manage your scheduled maintenance tasks
+            {t("pm.manage")}
             {currentFilters.machine && (
               <span className="font-semibold text-primary">
                 {" "}
-                • Filtered by: {getMachineNameById(currentFilters.machine)}
+                • {t("pm.filteredBy", { name: getMachineNameById(currentFilters.machine) })}
               </span>
             )}
           </p>
@@ -58,7 +60,7 @@ export default function DesktopHeader({
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <BarChart3 className="h-4 w-4" aria-hidden="true" />
-            Dashboard
+            {t("pm.dashboard")}
           </Link>
 
           <Link
@@ -66,7 +68,7 @@ export default function DesktopHeader({
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <CalendarDays className="h-4 w-4" aria-hidden="true" />
-            Calendar
+            {t("nav.calendar")}
           </Link>
 
           <Link
@@ -74,7 +76,7 @@ export default function DesktopHeader({
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Repeat2 className="h-4 w-4" aria-hidden="true" />
-            Master Plans
+            {t("pm.masterPlans")}
           </Link>
 
           <button
@@ -88,7 +90,7 @@ export default function DesktopHeader({
               className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
               aria-hidden="true"
             />
-            Refresh
+            {t("action.refresh")}
           </button>
 
           <button
@@ -101,7 +103,7 @@ export default function DesktopHeader({
             aria-label="Toggle maintenance filters"
           >
             <Filter className="h-4 w-4" aria-hidden="true" />
-            Filters
+            {t("inventory.filters")}
             {activeFiltersCount > 0 && (
               <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
                 {activeFiltersCount}
@@ -115,7 +117,7 @@ export default function DesktopHeader({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              New Maintenance
+              {t("pm.newMaintenance")}
             </Link>
           )}
         </div>

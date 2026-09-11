@@ -16,7 +16,6 @@ import {
 } from "@/app/lib/navigation-active.mjs";
 import { triggerHaptic } from "@/app/lib/hooks/useHaptic";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
-import type { DictKey } from "@/app/lib/i18n/dictionary";
 import {
   Sheet,
   SheetContent,
@@ -24,22 +23,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./sheet";
-
-// Map nav item canonical names -> dictionary keys. Anything not in this map
-// keeps the existing English literal via the fallback in useT().
-const NAV_I18N: Record<string, DictKey> = {
-  Dashboard: "nav.dashboard",
-  Overview: "nav.dashboard",
-  "Maintenance Jobs": "nav.jobs",
-  "Work Orders": "nav.jobs",
-  "My Jobs": "nav.myJobs",
-  "Create Job": "nav.createJob",
-  Inventory: "nav.inventory",
-  Reports: "nav.reports",
-  Rooms: "nav.rooms",
-  Areas: "nav.areas",
-  Machines: "nav.machines",
-};
 
 interface MobileNavProps {
   className?: string;
@@ -118,7 +101,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                         : "text-muted-foreground",
                   )}
                 >
-                  {NAV_I18N[item.name] ? t(NAV_I18N[item.name]) : item.shortName}
+                  {t(item.labelKey)}
                 </span>
                 {isActive ? (
                   <span
@@ -147,7 +130,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
               }
             >
               <Grid2X2 className="h-6 w-6" aria-hidden="true" />
-              <span className="text-xs font-semibold leading-none">More</span>
+              <span className="text-xs font-semibold leading-none">{t("nav.more")}</span>
               {hasActiveSecondaryItem ? (
                 <span
                   className="absolute bottom-0.5 h-1 w-4 rounded-full bg-primary"
@@ -186,7 +169,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                     )}
                   >
                     <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 break-words leading-5">{item.name}</span>
+                    <span className="min-w-0 break-words leading-5">{t(item.labelKey)}</span>
                     {isActive ? (
                       <span
                         className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary"

@@ -27,6 +27,7 @@ import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 import { LoadingOverlay } from '@/app/components/ui/loading';
 import Link from 'next/link';
 import { Filter, Plus } from 'lucide-react';
+import { useLocale } from '@/app/lib/i18n/LocaleProvider';
 
 // Import utility functions
 import {
@@ -40,6 +41,7 @@ import {
 type SortField = 'date' | 'status' | 'machine';
 
 function PreventiveMaintenanceListPageContent() {
+  const { locale, t } = useLocale();
   const selectedProperty = useMainStore(state => state.selectedPropertyId);
   const { 
     status, 
@@ -333,7 +335,7 @@ function PreventiveMaintenanceListPageContent() {
 
   const handleBulkDelete = useCallback(async () => {
     if (mutationPending) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) {
+    if (!window.confirm(t('pm.deleteWarning'))) {
       return;
     }
 
@@ -346,7 +348,7 @@ function PreventiveMaintenanceListPageContent() {
     } finally {
       setMutationPending(false);
     }
-  }, [selectedItems, deleteMaintenance, mutationPending]);
+  }, [selectedItems, deleteMaintenance, mutationPending, t]);
 
   // Refresh handler - preserves current page and filters
   const handleRefresh = useCallback(async () => {
@@ -415,8 +417,8 @@ function PreventiveMaintenanceListPageContent() {
     return (
       <PageContainer className="flex min-h-[55vh] items-center">
         <FeedbackState
-          title="Select a property"
-          description="Choose an active property from the dashboard header to view and manage its preventive maintenance."
+          title={t('common.selectProperty')}
+          description={t('pm.manage')}
           className="w-full"
         />
       </PageContainer>
@@ -502,7 +504,7 @@ function PreventiveMaintenanceListPageContent() {
             {/* Show loading overlay when refreshing existing data */}
             <LoadingOverlay
               show={isLoading && maintenanceItems.length > 0}
-              label="Updating preventive maintenance…"
+              label={t('pm.updating')}
             />
             <MaintenanceList
               items={sortedItems}
@@ -513,8 +515,11 @@ function PreventiveMaintenanceListPageContent() {
               onDelete={setDeleteConfirm}
               sortBy={sortBy}
               sortOrder={sortOrder}
-              formatDate={formatDate}
-              getMachineNames={getMachineNames}
+              formatDate={(date) => formatDate(date, locale)}
+              getMachineNames={(machines) => {
+                const names = getMachineNames(machines);
+                return names === 'None' || names === 'Unknown' ? t('common.none') : names;
+              }}
               getStatusInfo={getStatusInfo}
               canOperate={canOperate}
             />
@@ -567,7 +572,7 @@ function PreventiveMaintenanceListPageContent() {
             }`}
           >
             <Filter className="h-4 w-4" aria-hidden="true" />
-            Filters
+            {t('inventory.filters')}
             {activeFiltersCount > 0 && (
               <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
                 {activeFiltersCount}
@@ -581,7 +586,7 @@ function PreventiveMaintenanceListPageContent() {
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
-              New Maintenance
+              {t('pm.newMaintenance')}
             </Link>
           )}
           

@@ -8,35 +8,56 @@ import {
   type DictKey,
   getDictionary,
 } from '@/app/lib/i18n/dictionary';
+import { interpolateTranslation, resolveClientLocale } from '@/app/lib/i18n/runtime.mjs';
 
-const STORAGE_KEY = 'pcms-locale';
+export const LOCALE_STORAGE_KEY = 'pcms-locale';
+export const LOCALE_COOKIE_KEY = 'pcms-locale';
 
 interface LocaleContextValue {
   locale: Locale;
   setLocale: (next: Locale) => void;
-  t: (key: DictKey) => string;
+  t: (key: DictKey, values?: Record<string, string | number>) => string;
 }
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
-function detectLocale(): Locale {
-  if (typeof window === 'undefined') return DEFAULT_LOCALE;
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored && (SUPPORTED_LOCALES as readonly string[]).includes(stored)) {
-    return stored as Locale;
-  }
-  const browser = (navigator.language || DEFAULT_LOCALE).slice(0, 2).toLowerCase();
-  if ((SUPPORTED_LOCALES as readonly string[]).includes(browser)) {
-    return browser as Locale;
-  }
-  return DEFAULT_LOCALE;
+function isLocale(value: string | null | undefined): value is Locale {
+  return Boolean(value && (SUPPORTED_LOCALES as readonly string[]).includes(value));
 }
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+function detectLocale(initialLocale: Locale): Locale {
+  if (typeof window === 'undefined') return initialLocale;
+  return resolveClientLocale(
+    window.localStorage.getItem(LOCALE_STORAGE_KEY),
+    initialLocale,
+    SUPPORTED_LOCALES,
+  );
+}
+
+export function LocaleProvider({
+  children,
+  initialLocale = DEFAULT_LOCALE,
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
-    setLocaleState(detectLocale());
+    const detected = detectLocale(initialLocale);
+    setLocaleState(detected);
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, detected);
+    document.cookie = `${LOCALE_COOKIE_KEY}=${detected}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  }, [initialLocale]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === LOCALE_STORAGE_KEY && isLocale(event.newValue)) {
+        setLocaleState(event.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   useEffect(() => {
@@ -48,13 +69,20 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, next);
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, next);
+      document.cookie = `${LOCALE_COOKIE_KEY}=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
     }
   }, []);
 
   const dictionary = useMemo(() => getDictionary(locale), [locale]);
 
-  const t = useCallback((key: DictKey) => dictionary[key] ?? key, [dictionary]);
+  const t = useCallback(
+    (key: DictKey, values?: Record<string, string | number>) => {
+      const template = dictionary[key] ?? getDictionary(DEFAULT_LOCALE)[key] ?? key;
+      return interpolateTranslation(template, values);
+    },
+    [dictionary],
+  );
 
   const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
 

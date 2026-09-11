@@ -216,7 +216,7 @@ test("inventory preserves settled content and pagination during same-scope updat
   const inventory = await source("app/dashboard/inventory/page.tsx");
   assert.match(inventory, /loading && !hasLoadedInventory/);
   assert.match(inventory, /if \(!hasLoadedInventory\) \{/);
-  assert.match(inventory, /Updating inventory…/);
+  assert.match(inventory, /t\("common\.loading"\)/);
   assert.match(inventory, /disabled=\{loading \|\| page >= totalPages\}/);
 });
 
@@ -243,7 +243,7 @@ test("preventive maintenance mutations use targeted pending controls", async () 
   const modal = await source("app/components/preventive/list/DeleteModal.tsx");
   const bulk = await source("app/components/preventive/list/BulkActions.tsx");
   assert.match(page, /isPending=\{mutationPending\}/);
-  assert.match(modal, /isPending \? 'Deleting…'/);
+  assert.match(modal, /isPending \? t\("pm\.deleting"\)/);
   assert.match(bulk, /disabled=\{isPending\}/);
 });
 

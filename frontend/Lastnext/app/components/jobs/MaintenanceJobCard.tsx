@@ -35,6 +35,8 @@ import { getDisplayName } from "@/app/lib/utils/display-name";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import { PriorityBadge } from "@/app/components/PriorityBadge";
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey, Locale } from "@/app/lib/i18n/dictionary";
 
 type ViewMode = "grid" | "list";
 
@@ -43,46 +45,48 @@ interface MaintenanceJobCardProps {
   viewMode?: ViewMode;
 }
 
-function formatDate(dateString: string | null | undefined): string {
-  if (!dateString) return "Not set";
+type Translate = (key: DictKey, values?: Record<string, string | number>) => string;
+
+function formatDate(dateString: string | null | undefined, locale: Locale, t: Translate): string {
+  if (!dateString) return t("jobs.notSet");
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return "Not set";
+  if (Number.isNaN(date.getTime())) return t("jobs.notSet");
 
   const now = new Date();
   const diffInDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
-  if (diffInDays === 0) return "Today";
-  if (diffInDays === 1) return "Yesterday";
-  if (diffInDays > 1 && diffInDays < 7) return `${diffInDays} days ago`;
+  if (diffInDays === 0) return t("action.today");
+  if (diffInDays === 1) return t("jobs.yesterday");
+  if (diffInDays > 1 && diffInDays < 7) return t("jobs.daysAgo", { count: diffInDays });
 
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString(locale === "th" ? "th-TH-u-ca-gregory" : "en-US", {
     month: "short",
     day: "numeric",
     year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
   });
 }
 
-function getLocation(job: Job): string {
+function getLocation(job: Job, fallback = "Unassigned location"): string {
   return (
     job.area?.name ||
     job.area_name ||
     job.rooms?.[0]?.name ||
     job.room_name ||
-    "Unassigned location"
+    fallback
   );
 }
 
-function getAssignee(job: Job): string {
+function getAssignee(job: Job, fallback = "Unassigned technician"): string {
   return getDisplayName(
     job.user,
     job.technician_name ||
       job.user_name ||
       job.created_by_name ||
-      "Unassigned technician",
+      fallback,
   );
 }
 
-function getProblemSummary(job: Job): string {
-  return job.description?.trim() || job.title?.trim() || "Maintenance job";
+function getProblemSummary(job: Job, fallback = "Maintenance job"): string {
+  return job.description?.trim() || job.title?.trim() || fallback;
 }
 
 function getJobImageUrl(job: Job): string | null {
@@ -162,6 +166,8 @@ export default function MaintenanceJobCard({
   job,
   viewMode = "grid",
 }: MaintenanceJobCardProps) {
+  const { locale, t } = useLocale();
+  const location = getLocation(job, t("jobs.unassignedLocation"));
   const detailHref = job.property_id
     ? `/dashboard/jobs/${encodeURIComponent(job.job_id)}?property_id=${encodeURIComponent(String(job.property_id))}`
     : `/dashboard/jobs/${encodeURIComponent(job.job_id)}`;
@@ -179,13 +185,13 @@ export default function MaintenanceJobCard({
       <Link
         href={detailHref}
         className="flex h-full min-h-0 flex-col focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        aria-label={`Open maintenance job ${job.job_id}`}
+        aria-label={`${t("action.viewDetails")} ${job.job_id}`}
       >
         <div className="job-card-image relative h-28 w-full overflow-hidden border-b border-border bg-muted sm:h-44">
           {imageUrl && !imageFailed ? (
             <Image
               src={imageUrl}
-              alt={`Maintenance job at ${getLocation(job)}`}
+              alt={`${t("jobs.defaultTitle")} · ${location}`}
               fill
               loading="lazy"
               sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw"
@@ -201,7 +207,7 @@ export default function MaintenanceJobCard({
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-card shadow-xs">
                   <ImageIcon className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <span>No job photo</span>
+                <span>{t("jobs.noPhoto")}</span>
               </span>
             </div>
           )}
@@ -209,10 +215,10 @@ export default function MaintenanceJobCard({
           <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1 p-1.5 sm:gap-2 sm:p-3">
             <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-white/90 px-1.5 py-1 text-[10px] font-bold text-slate-800 shadow-xs backdrop-blur-sm sm:px-2.5 sm:text-xs">
               <MapPin className="h-3 w-3 flex-none text-slate-500" />
-              <span className="truncate">{getLocation(job)}</span>
+              <span className="truncate">{location}</span>
             </span>
             <span className="max-w-[52%] flex-none truncate rounded-md bg-white/90 px-1.5 py-1 text-[9px] font-semibold text-slate-800 shadow-xs backdrop-blur-sm sm:max-w-none sm:px-2.5 sm:text-xs">
-              Job #{job.job_id || "New"}
+              {t("jobs.number", { id: job.job_id || t("jobs.new") })}
             </span>
           </div>
         </div>
@@ -222,10 +228,10 @@ export default function MaintenanceJobCard({
             <div className="min-w-0">
               <div className="job-card-location flex min-w-0 items-center gap-1 text-sm font-bold text-foreground sm:gap-1.5 sm:text-base">
                 <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span className="truncate">{getLocation(job)}</span>
+                <span className="truncate">{location}</span>
               </div>
               <p className="job-card-id mt-0.5 truncate text-[10px] text-muted-foreground sm:text-xs">
-                Job #{job.job_id || "New"}
+                {t("jobs.number", { id: job.job_id || t("jobs.new") })}
               </p>
             </div>
             <span
@@ -239,7 +245,7 @@ export default function MaintenanceJobCard({
           </div>
 
           <h2 className="job-card-title mt-2 line-clamp-2 text-sm font-black leading-5 text-card-foreground sm:text-lg sm:leading-7">
-            {getProblemSummary(job)}
+            {getProblemSummary(job, t("jobs.defaultTitle"))}
           </h2>
 
           <div className="job-card-status mt-3 flex flex-wrap items-center gap-2">
@@ -251,23 +257,23 @@ export default function MaintenanceJobCard({
             <div className="flex min-w-0 items-center gap-1.5">
               <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
               <dt className="sr-only">Assigned technician</dt>
-              <dd className="truncate">{getAssignee(job)}</dd>
+              <dd className="truncate">{getAssignee(job, t("jobs.unassignedTechnician"))}</dd>
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
               <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
               <dt className="sr-only">Created time</dt>
               <dd className="truncate">
-                {formatDate(job.created_at)}
+                {formatDate(job.created_at, locale, t)}
               </dd>
             </div>
           </dl>
 
           <div className="job-card-footer mt-auto pt-3 sm:pt-4">
             <span className="hidden truncate text-xs text-muted-foreground sm:block">
-              Updated {formatDate(job.updated_at)}
+              {t("myJobs.updatedDate", { date: formatDate(job.updated_at, locale, t) })}
             </span>
             <span className="job-card-action mt-1 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-2 text-[11px] font-semibold text-primary shadow-xs transition-colors group-hover:bg-primary/15 sm:min-h-11 sm:text-sm">
-              View details
+              {t("action.viewDetails")}
               <ArrowRight
                 className="h-4 w-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"
                 aria-hidden="true"

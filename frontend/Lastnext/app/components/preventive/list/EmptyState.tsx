@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface EmptyStateProps {
   hasFilters: boolean;
@@ -18,33 +19,34 @@ export default function EmptyState({
   onClearFilters,
   getMachineNameById,
 }: EmptyStateProps) {
+  const t = useT();
   const machineDescription =
     hasFilters && currentFilters.machine
-      ? `No tasks were found for ${getMachineNameById(currentFilters.machine)}.`
+      ? t("pm.noTasksMachine", { name: getMachineNameById(currentFilters.machine) })
       : undefined;
 
   return (
     <FeedbackState
       variant={hasFilters ? "no-results" : "empty"}
-      title="No maintenance tasks found"
+      title={t("pm.noTasks")}
       description={
         machineDescription ??
         (hasFilters
-          ? "Adjust or clear the current filters to see more tasks."
-          : "Create the first preventive maintenance task for this property.")
+          ? t("pm.adjustFilters")
+          : t("pm.createFirst"))
       }
       action={
         <div className="flex flex-col gap-2 sm:flex-row">
           {hasFilters ? (
             <Button type="button" variant="outline" onClick={onClearFilters}>
               <X className="h-4 w-4" aria-hidden="true" />
-              Clear filters
+              {t("inventory.clearFilters")}
             </Button>
           ) : null}
           <Button asChild>
             <Link href="/dashboard/preventive-maintenance/create">
               <Plus className="h-4 w-4" aria-hidden="true" />
-              Create maintenance task
+              {t("pm.createTask")}
             </Link>
           </Button>
         </div>

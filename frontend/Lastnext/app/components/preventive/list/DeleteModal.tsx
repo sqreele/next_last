@@ -2,6 +2,7 @@
 
 import React from "react";
 import { AlertCircle } from "lucide-react";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface DeleteModalProps {
   onConfirm: () => void;
@@ -10,6 +11,7 @@ interface DeleteModalProps {
 }
 
 const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel, isPending = false }) => {
+  const t = useT();
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-card p-4 sm:p-6">
@@ -21,16 +23,15 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel, isPendin
           </div>
           <div className="ml-4">
             <h3 className="text-lg font-medium text-foreground">
-              Confirm Deletion
+              {t("pm.confirmDelete")}
             </h3>
             <p className="text-sm text-muted-foreground">
-              This action cannot be undone.
+              {t("pm.cannotUndo")}
             </p>
           </div>
         </div>
         <p className="text-muted-foreground mb-6 text-sm md:text-base">
-          Are you sure you want to delete this maintenance task? All associated
-          data will be permanently removed.
+          {t("pm.deleteWarning")}
         </p>
         <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
           <button
@@ -38,14 +39,14 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel, isPendin
             disabled={isPending}
             className="min-h-11 w-full rounded-lg border border-border px-4 py-2 text-muted-foreground transition-colors hover:bg-muted sm:w-auto"
           >
-            Cancel
+            {t("action.cancel")}
           </button>
           <button
             onClick={onConfirm}
             disabled={isPending}
             className="min-h-11 w-full rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
           >
-            {isPending ? 'Deleting…' : 'Delete Task'}
+            {isPending ? t("pm.deleting") : t("pm.deleteTask")}
           </button>
         </div>
       </div>

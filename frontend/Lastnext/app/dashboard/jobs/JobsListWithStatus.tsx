@@ -22,27 +22,30 @@ import { PageHeader } from "@/app/components/layout/PageHeader";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
 
 const PAGE_SIZE = 24;
 const EMPTY_COUNTS: JobsDashboardStatusCounts = {
   total: 0, pending: 0, in_progress: 0, waiting_sparepart: 0,
   completed: 0, cancelled: 0, defect: 0, preventive_maintenance: 0,
 };
-const TABS: Array<{ value: TabValue; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In progress" },
-  { value: "waiting_sparepart", label: "Waiting parts" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "defect", label: "Defective" },
-  { value: "preventive_maintenance", label: "Preventive" },
+const TABS: Array<{ value: TabValue; labelKey: DictKey }> = [
+  { value: "all", labelKey: "common.all" },
+  { value: "pending", labelKey: "status.pending" },
+  { value: "in_progress", labelKey: "status.inProgress" },
+  { value: "waiting_sparepart", labelKey: "status.waitingSparepart" },
+  { value: "completed", labelKey: "status.completed" },
+  { value: "cancelled", labelKey: "status.cancelled" },
+  { value: "defect", labelKey: "myJobs.defective" },
+  { value: "preventive_maintenance", labelKey: "status.preventiveMaintenance" },
 ];
 
 type DateFilter = "all" | "today" | "week" | "month";
 type Ordering = "-created_at" | "created_at" | "-updated_at";
 
 export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue }) {
+  const t = useT();
   const router = useRouter();
   const { status } = useSession();
   const { selectedPropertyId } = useUser();
@@ -154,19 +157,19 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Jobs workspace"
-        title="Maintenance jobs"
+        eyebrow={t("jobs.workspace")}
+        title={t("jobs.title")}
         description={
           !activePropertyId
-            ? "Choose an active property to load its maintenance work."
+            ? t("jobs.chooseProperty")
             : scopedResponse
-              ? `${scopedResponse.count} job${scopedResponse.count === 1 ? "" : "s"} at ${scopedResponse.property_name}`
-              : "Property-scoped maintenance work"
+              ? t("jobs.countAt", { count: scopedResponse.count, property: scopedResponse.property_name })
+              : t("jobs.propertyScoped")
         }
         actions={scopedResponse?.can_operate ? (
           <Button asChild>
             <Link href={`/dashboard/create-job?property_id=${encodeURIComponent(activePropertyId)}`}>
-              <Plus className="h-4 w-4" aria-hidden="true" /> Create job
+              <Plus className="h-4 w-4" aria-hidden="true" /> {t("nav.createJob")}
             </Link>
           </Button>
         ) : undefined}
@@ -192,7 +195,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                   htmlFor="jobs-search"
                   className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                 >
-                  Search jobs
+                  {t("jobs.search")}
                 </label>
                 <div className="relative min-w-0">
                   <Search
@@ -203,7 +206,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     id="jobs-search"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search job ID, description, room, area, topic, or assignee"
+                    placeholder={t("jobs.searchPlaceholder")}
                     className="h-12 min-w-0 pl-10 lg:h-11"
                   />
                 </div>
@@ -214,7 +217,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                     htmlFor="jobs-priority"
                   >
-                    Priority
+                    {t("editJob.priority")}
                   </label>
                   <select
                     id="jobs-priority"
@@ -224,10 +227,10 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     }
                     className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-40"
                   >
-                    <option value="all">All priorities</option>
-                    <option value="high">High priority</option>
-                    <option value="medium">Medium priority</option>
-                    <option value="low">Low priority</option>
+                    <option value="all">{t("myJobs.allPriorities")}</option>
+                    <option value="high">{t("priority.high")}</option>
+                    <option value="medium">{t("priority.medium")}</option>
+                    <option value="low">{t("priority.low")}</option>
                   </select>
                 </div>
                 <div className="min-w-0 space-y-1.5">
@@ -235,7 +238,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                     htmlFor="jobs-date"
                   >
-                    Created date
+                    {t("jobs.createdDate")}
                   </label>
                   <select
                     id="jobs-date"
@@ -245,10 +248,10 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     }
                     className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-36"
                   >
-                    <option value="all">Any date</option>
-                    <option value="today">Today</option>
-                    <option value="week">Last 7 days</option>
-                    <option value="month">Last 30 days</option>
+                    <option value="all">{t("myJobs.anyDate")}</option>
+                    <option value="today">{t("action.today")}</option>
+                    <option value="week">{t("myJobs.last7Days")}</option>
+                    <option value="month">{t("myJobs.last30Days")}</option>
                   </select>
                 </div>
                 <div className="min-w-0 space-y-1.5">
@@ -256,7 +259,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                     htmlFor="jobs-ordering"
                   >
-                    Sort jobs
+                    {t("jobs.sort")}
                   </label>
                   <select
                     id="jobs-ordering"
@@ -266,9 +269,9 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     }
                     className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-44"
                   >
-                    <option value="-created_at">Newest first</option>
-                    <option value="created_at">Oldest first</option>
-                    <option value="-updated_at">Recently updated</option>
+                    <option value="-created_at">{t("jobActions.newest")}</option>
+                    <option value="created_at">{t("jobActions.oldest")}</option>
+                    <option value="-updated_at">{t("jobs.recentlyUpdated")}</option>
                   </select>
                 </div>
                 <div className="flex items-end sm:pt-[1.375rem] xl:pt-0">
@@ -280,7 +283,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     aria-label="Refresh jobs"
                   >
                     <RefreshCcw className="h-4 w-4" aria-hidden="true" />{" "}
-                    Refresh
+                    {t("action.refresh")}
                   </Button>
                 </div>
               </div>
@@ -292,7 +295,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
               htmlFor="mobile-job-status"
               className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted-foreground"
             >
-              Job status
+              {t("jobs.status")}
             </label>
             <select
               id="mobile-job-status"
@@ -302,7 +305,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
             >
               {TABS.map((tab) => (
                 <option key={tab.value} value={tab.value}>
-                  {tab.label} ({countFor(tab.value)})
+                  {t(tab.labelKey)} ({countFor(tab.value)})
                 </option>
               ))}
             </select>
@@ -328,7 +331,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                       : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary",
                   )}
                 >
-                  {tab.label}
+                  {t(tab.labelKey)}
                   <span
                     className={cn(
                       "rounded-full px-2 py-0.5 text-[11px] tabular-nums",
@@ -356,19 +359,19 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
           {loading && !scopedResponse ? <JobListSkeleton count={6} /> : !scopedResponse && error ? (
             <FeedbackState
               variant="error"
-              title="Jobs could not be loaded"
+              title={t("jobs.loadError")}
               description={error}
-              action={<Button type="button" variant="outline" onClick={() => setRefreshKey((value) => value + 1)}>Try again</Button>}
+              action={<Button type="button" variant="outline" onClick={() => setRefreshKey((value) => value + 1)}>{t("action.tryAgain")}</Button>}
             />
           ) : jobs.length === 0 ? (
             <FeedbackState
               variant={hasActiveFilters ? "no-results" : "empty"}
-              title={hasActiveFilters ? "No jobs match these filters" : "No jobs found for this property"}
-              description={hasActiveFilters ? "Try clearing the search, status, priority, or date filter." : "New maintenance jobs for this property will appear here."}
+              title={hasActiveFilters ? t("myJobs.noMatches") : t("jobs.noneProperty")}
+              description={hasActiveFilters ? t("jobs.clearHint") : t("jobs.noneHint")}
             />
           ) : (
             <div className="relative" aria-busy={loading}>
-              <LoadingOverlay show={loading} label="Updating jobs…" />
+              <LoadingOverlay show={loading} label={t("jobs.updating")} />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                 {jobs.map((job) => <MaintenanceJobCard key={job.job_id} job={job} />)}
               </div>
@@ -383,10 +386,10 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
               >
                 <p className="text-center text-sm font-medium text-muted-foreground sm:text-left">
                   <span className="font-semibold text-foreground">
-                    Page {page} of {totalPages}
+                    {t("pm.pageOf", { page, total: totalPages })}
                   </span>
                   <span aria-hidden="true"> · </span>
-                  {scopedResponse.count} jobs
+                  {t("dashboard.jobsCount", { count: scopedResponse.count })}
                 </p>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
                   <Button
@@ -398,7 +401,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     aria-label="Go to previous jobs page"
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden="true" />{" "}
-                    Previous
+                    {t("action.previous")}
                   </Button>
                   <Button
                     type="button"
@@ -408,7 +411,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
                     className="w-full px-3 sm:w-auto"
                     aria-label="Go to next jobs page"
                   >
-                    Next <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                    {t("action.next")} <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </nav>

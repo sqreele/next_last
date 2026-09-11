@@ -52,10 +52,12 @@ import {
 } from "@/app/components/ui/alert-dialog";
 import { Skeleton } from "@/app/components/ui/loading";
 import { useToast } from "@/app/components/ui/use-toast";
+import { useLocale, useT } from "@/app/lib/i18n/LocaleProvider";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import Pagination from "@/app/components/jobs/Pagination";
 import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton";
 import { StatusBadge } from "@/app/components/StatusBadge";
+import { PriorityBadge } from "@/app/components/PriorityBadge";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 import { PageContainer } from "@/app/components/layout/PageContainer";
 import { PageHeader, SectionHeader } from "@/app/components/layout/PageHeader";
@@ -120,11 +122,11 @@ const defaultFilters: FilterState = {
   room: "",
 };
 
-function formatDate(value?: string | null) {
+function formatDate(value: string | null | undefined, locale: "en" | "th") {
   if (!value) return "Not set";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Not set";
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(locale === "th" ? "th-TH-u-ca-gregory" : "en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -209,44 +211,45 @@ function JobStatusSummary({
   activeStatus: FilterState["status"];
   onStatusChange: (status: FilterState["status"]) => void;
 }) {
+  const t = useT();
   const metrics = [
     {
-      label: "Total Jobs",
+      label: t("kpi.totalJobs"),
       value: counts.total,
       tone: "text-foreground",
       icon: Briefcase,
       status: "all" as const,
     },
     {
-      label: "Pending / New",
+      label: t("myJobs.pendingNew"),
       value: counts.pending,
       tone: "text-blue-600 dark:text-blue-300",
       icon: Briefcase,
       status: "pending" as const,
     },
     {
-      label: "In Progress",
+      label: t("status.inProgress"),
       value: counts.in_progress,
       tone: "text-warning-emphasis",
       icon: Wrench,
       status: "in_progress" as const,
     },
     {
-      label: "Waiting",
+      label: t("myJobs.waiting"),
       value: counts.waiting_sparepart,
       tone: "text-violet-600 dark:text-violet-300",
       icon: Wrench,
       status: "waiting_sparepart" as const,
     },
     {
-      label: "Completed",
+      label: t("status.completed"),
       value: counts.completed,
       tone: "text-success",
       icon: CheckCircle2,
       status: "completed" as const,
     },
     {
-      label: "Cancelled",
+      label: t("status.cancelled"),
       value: counts.cancelled,
       tone: "text-destructive",
       icon: X,
@@ -290,7 +293,7 @@ function JobStatusSummary({
             </p>
             {activeStatus === metric.status && (
               <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-                Selected
+                {t("myJobs.selected")}
               </span>
             )}
           </button>
@@ -309,6 +312,7 @@ function FilterBar({
   onChange: (filters: FilterState) => void;
   onReset: () => void;
 }) {
+  const t = useT();
   const hasFilters =
     filters.search.trim() !== "" ||
     filters.status !== "all" ||
@@ -322,7 +326,7 @@ function FilterBar({
       aria-label="Filter jobs"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-foreground">Find Jobs</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("myJobs.find")}</h2>
         {hasFilters ? (
           <Button
             type="button"
@@ -332,14 +336,14 @@ function FilterBar({
             className="h-10 px-2"
           >
             <X className="mr-1 h-4 w-4" />
-            Reset
+            {t("myJobs.reset")}
           </Button>
         ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_1fr]">
         <label className="space-y-1.5 sm:col-span-2 lg:col-span-1">
-          <span className="text-sm font-medium text-foreground">Search</span>
+          <span className="text-sm font-medium text-foreground">{t("action.search")}</span>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -347,14 +351,14 @@ function FilterBar({
               onChange={(event) =>
                 onChange({ ...filters, search: event.target.value })
               }
-              placeholder="Job title, ID, topic..."
+              placeholder={t("myJobs.searchPlaceholder")}
               className="pl-10 text-base sm:text-sm"
             />
           </div>
         </label>
 
         <label className="space-y-1.5">
-          <span className="text-sm font-medium text-foreground">Status</span>
+          <span className="text-sm font-medium text-foreground">{t("editJob.status")}</span>
           <Select
             value={filters.status}
             onValueChange={(value) =>
@@ -362,21 +366,21 @@ function FilterBar({
             }
           >
             <SelectTrigger className="h-11 border-input bg-background text-base sm:text-sm">
-              <SelectValue placeholder="All status" />
+              <SelectValue placeholder={t("pm.allStatuses")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending / New</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="waiting_sparepart">Waiting</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">{t("pm.allStatuses")}</SelectItem>
+              <SelectItem value="pending">{t("myJobs.pendingNew")}</SelectItem>
+              <SelectItem value="in_progress">{t("status.inProgress")}</SelectItem>
+              <SelectItem value="waiting_sparepart">{t("myJobs.waiting")}</SelectItem>
+              <SelectItem value="completed">{t("status.completed")}</SelectItem>
+              <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
             </SelectContent>
           </Select>
         </label>
 
         <label className="space-y-1.5">
-          <span className="text-sm font-medium text-foreground">Priority</span>
+          <span className="text-sm font-medium text-foreground">{t("editJob.priority")}</span>
           <Select
             value={filters.priority}
             onValueChange={(value) =>
@@ -387,19 +391,19 @@ function FilterBar({
             }
           >
             <SelectTrigger className="h-11 border-input bg-background text-base sm:text-sm">
-              <SelectValue placeholder="All priority" />
+              <SelectValue placeholder={t("myJobs.allPriorities")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Priority</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="all">{t("myJobs.allPriorities")}</SelectItem>
+              <SelectItem value="high">{t("priority.high")}</SelectItem>
+              <SelectItem value="medium">{t("priority.medium")}</SelectItem>
+              <SelectItem value="low">{t("priority.low")}</SelectItem>
             </SelectContent>
           </Select>
         </label>
 
         <label className="space-y-1.5">
-          <span className="text-sm font-medium text-foreground">Date</span>
+          <span className="text-sm font-medium text-foreground">{t("pm.date")}</span>
           <Select
             value={filters.date}
             onValueChange={(value) =>
@@ -407,20 +411,20 @@ function FilterBar({
             }
           >
             <SelectTrigger className="h-11 border-input bg-background text-base sm:text-sm">
-              <SelectValue placeholder="Any date" />
+              <SelectValue placeholder={t("myJobs.anyDate")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Any Date</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="week">Last 7 Days</SelectItem>
-              <SelectItem value="month">Last 30 Days</SelectItem>
+              <SelectItem value="all">{t("myJobs.anyDate")}</SelectItem>
+              <SelectItem value="today">{t("action.today")}</SelectItem>
+              <SelectItem value="week">{t("myJobs.last7Days")}</SelectItem>
+              <SelectItem value="month">{t("myJobs.last30Days")}</SelectItem>
             </SelectContent>
           </Select>
         </label>
 
         <label className="space-y-1.5">
           <span className="text-sm font-medium text-foreground">
-            Room / Area
+            {t("myJobs.roomArea")}
           </span>
           <div className="relative">
             <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -429,7 +433,7 @@ function FilterBar({
               onChange={(event) =>
                 onChange({ ...filters, room: event.target.value })
               }
-              placeholder="Room 204, lobby..."
+              placeholder={t("myJobs.roomPlaceholder")}
               className="pl-10 text-base sm:text-sm"
             />
           </div>
@@ -448,8 +452,9 @@ function JobCard({
   onDelete,
   onStatusUpdated,
 }: JobActionProps) {
+  const { locale, t } = useLocale();
   const router = useRouter();
-  const description = job.description || "No description provided.";
+  const description = job.description || t("myJobs.noDescription");
   const location = getJobLocation(job);
   const technician = getTechnician(job);
   const canOperate = canMutateMyJob(job, activePropertyId);
@@ -478,9 +483,7 @@ function JobCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <StatusBadge status={job.status} />
-          <Badge variant="outline" className="capitalize">
-            {job.priority} priority
-          </Badge>
+          <PriorityBadge priority={job.priority} />
         </div>
       </div>
 
@@ -495,7 +498,7 @@ function JobCard({
         </div>
         <div className="flex min-w-0 items-center gap-2">
           <Calendar className="h-4 w-4 shrink-0" />
-          <span>Updated {formatDate(job.updated_at)}</span>
+          <span>{t("myJobs.updatedDate", { date: formatDate(job.updated_at, locale) })}</span>
         </div>
       </div>
 
@@ -509,7 +512,7 @@ function JobCard({
           onClick={openDetail}
           className="h-11 w-full sm:w-auto"
         >
-          View Detail
+          {t("myJobs.viewDetail")}
         </Button>
         {canOperate ? (
           <UpdateStatusButton
@@ -519,14 +522,14 @@ function JobCard({
             variant="outline"
             size="sm"
             className="h-11 w-full sm:w-auto"
-            buttonText="Update Status"
+            buttonText={t("myJobs.updateStatus")}
           />
         ) : null}
         {canOperate ? (
           <details className="relative col-span-2 sm:ml-auto">
             <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:border-0">
               <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-              More
+              {t("myJobs.more")}
             </summary>
             <div className="mt-2 grid gap-1 rounded-lg border border-border bg-popover p-1 shadow-card sm:absolute sm:bottom-full sm:right-0 sm:z-20 sm:mb-2 sm:mt-0 sm:w-40">
               <Button
@@ -536,7 +539,7 @@ function JobCard({
                 className="justify-start"
               >
                 <Pencil className="h-4 w-4" />
-                Edit
+                {t("action.edit")}
               </Button>
               <Button
                 type="button"
@@ -545,7 +548,7 @@ function JobCard({
                 className="justify-start text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
-                Delete
+                {t("action.delete")}
               </Button>
             </div>
           </details>
@@ -561,7 +564,9 @@ const EditDialog: React.FC<EditDialogProps> = ({
   job,
   onSubmit,
   isSubmitting,
-}) => (
+}) => {
+  const t = useT();
+  return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-hidden rounded-2xl p-0 sm:max-h-[90vh] sm:max-w-[520px]">
         <form
@@ -570,16 +575,16 @@ const EditDialog: React.FC<EditDialogProps> = ({
         >
           <DialogHeader className="shrink-0 border-b border-border px-4 pb-4 pt-5 pr-12 text-left sm:px-6 sm:pt-6">
             <DialogTitle className="break-all text-lg sm:text-xl">
-              Edit Job #{job?.job_id}
+              {t("myJobs.editNumber", { id: job?.job_id || "" })}
             </DialogTitle>
             <DialogDescription>
-              Update this maintenance job and save your changes.
+              {t("myJobs.editHint")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6">
             <label className="space-y-2">
               <span className="text-sm font-medium text-muted-foreground">
-                Description
+                {t("editJob.description")}
               </span>
               <Textarea
                 id="description"
@@ -592,23 +597,23 @@ const EditDialog: React.FC<EditDialogProps> = ({
 
             <label className="space-y-2">
               <span className="text-sm font-medium text-muted-foreground">
-                Priority
+                {t("editJob.priority")}
               </span>
               <Select name="priority" defaultValue={job?.priority}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select priority" />
+                  <SelectValue placeholder={t("editJob.priority")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="low">{t("priority.low")}</SelectItem>
+                  <SelectItem value="medium">{t("priority.medium")}</SelectItem>
+                  <SelectItem value="high">{t("priority.high")}</SelectItem>
                 </SelectContent>
               </Select>
             </label>
 
             <label className="space-y-2">
               <span className="text-sm font-medium text-muted-foreground">
-                Remarks
+                {t("editJob.remarks")}
               </span>
               <Textarea
                 id="remarks"
@@ -625,7 +630,7 @@ const EditDialog: React.FC<EditDialogProps> = ({
                   name="is_defective"
                   defaultChecked={job?.is_defective}
                 />
-                Defective
+                {t("myJobs.defective")}
               </label>
               <label className="flex items-center gap-2 rounded-lg border border-border p-3 text-sm font-medium text-muted-foreground">
                 <Checkbox
@@ -633,7 +638,7 @@ const EditDialog: React.FC<EditDialogProps> = ({
                   name="is_preventivemaintenance"
                   defaultChecked={job?.is_preventivemaintenance}
                 />
-                Preventive
+                {t("editJob.preventive")}
               </label>
             </div>
           </div>
@@ -645,7 +650,7 @@ const EditDialog: React.FC<EditDialogProps> = ({
               disabled={isSubmitting}
               className="min-h-11 w-full sm:w-auto"
             >
-              Cancel
+              {t("action.cancel")}
             </Button>
             <Button
               type="submit"
@@ -655,29 +660,31 @@ const EditDialog: React.FC<EditDialogProps> = ({
               {isSubmitting ? (
                 <BouncingDotsLoader size="sm" />
               ) : null}
-              Save Changes
+              {t("editJob.saveChanges")}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-);
+  );
+};
 
 const DeleteDialog: React.FC<DeleteDialogProps> = ({
   isOpen,
   onClose,
   onConfirm,
   isSubmitting,
-}) => (
+}) => {
+  const t = useT();
+  return (
   <AlertDialog open={isOpen} onOpenChange={onClose}>
     <AlertDialogContent className="w-[calc(100%-1rem)] rounded-2xl sm:max-w-md">
       <AlertDialogHeader>
         <AlertDialogTitle className="text-left">
-          Delete this job?
+          {t("myJobs.deleteTitle")}
         </AlertDialogTitle>
         <AlertDialogDescription className="text-left leading-6">
-          This action cannot be undone. The maintenance job will be permanently
-          removed.
+          {t("myJobs.deleteWarning")}
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter className="gap-2">
@@ -686,7 +693,7 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
           disabled={isSubmitting}
           className="min-h-11 w-full sm:w-auto"
         >
-          Cancel
+          {t("action.cancel")}
         </AlertDialogCancel>
         <AlertDialogAction
           onClick={onConfirm}
@@ -696,14 +703,16 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
           {isSubmitting ? (
             <BouncingDotsLoader size="sm" />
           ) : null}
-          Delete
+          {t("action.delete")}
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
-);
+  );
+};
 
 const MyJobs: React.FC = () => {
+  const t = useT();
   const router = useRouter();
   const { toast } = useToast();
   const { data: session, status: sessionStatus } = useSession();
@@ -863,16 +872,13 @@ const MyJobs: React.FC = () => {
       updateJob(updatedJob);
       await refreshJobs();
 
-      toast({ title: "Success", description: "Job updated successfully." });
+      toast({ title: t("success.title"), description: t("myJobs.updated") });
       setIsEditDialogOpen(false);
       setSelectedJob(null);
-    } catch (editError) {
+    } catch {
       toast({
-        title: "Update Failed",
-        description:
-          editError instanceof Error
-            ? editError.message
-            : "An unknown error occurred.",
+        title: t("myJobs.updateFailed"),
+        description: t("error.generic"),
         variant: "destructive",
       });
     } finally {
@@ -900,7 +906,7 @@ const MyJobs: React.FC = () => {
       storeDeleteJob(selectedJob.id);
       removeJob(selectedJob.job_id);
 
-      toast({ title: "Success", description: "Job deleted successfully." });
+      toast({ title: t("success.title"), description: t("myJobs.deleted") });
       setIsDeleteDialogOpen(false);
       setSelectedJob(null);
 
@@ -909,13 +915,10 @@ const MyJobs: React.FC = () => {
       } else {
         await refreshJobs();
       }
-    } catch (deleteError) {
+    } catch {
       toast({
-        title: "Deletion Failed",
-        description:
-          deleteError instanceof Error
-            ? deleteError.message
-            : "An unknown error occurred.",
+        title: t("myJobs.deleteFailed"),
+        description: t("error.generic"),
         variant: "destructive",
       });
     } finally {
@@ -927,8 +930,8 @@ const MyJobs: React.FC = () => {
     const success = await refreshJobs(true);
     if (!success) {
       toast({
-        title: "Warning",
-        description: "Job created, but the list did not refresh.",
+        title: t("myJobs.warning"),
+        description: t("myJobs.refreshWarning"),
         variant: "default",
       });
     }
@@ -960,13 +963,11 @@ const MyJobs: React.FC = () => {
     <div className="min-h-full w-full bg-background">
       <PageContainer>
         <PageHeader
-          title="My Jobs"
+          title={t("myJobs.title")}
           description={
             selectedProperty
-              ? `${propertyName} · Jobs assigned to ${
-                  userProfile ? getDisplayName(userProfile, "you") : "you"
-                }.`
-              : "Select a property to view jobs assigned to you."
+              ? t("myJobs.assignedToYou", { property: propertyName, name: userProfile ? getDisplayName(userProfile, "you") : "you" })
+              : t("myJobs.selectPropertyHint")
           }
           eyebrow="Work orders"
           actions={
@@ -987,7 +988,7 @@ const MyJobs: React.FC = () => {
                 <RefreshCcw
                   className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")}
                 />
-                Refresh
+                {t("action.refresh")}
               </Button> : null}
             </>
           }
@@ -996,7 +997,7 @@ const MyJobs: React.FC = () => {
         {!selectedProperty ? (
           <FeedbackState
             variant="empty"
-            title={properties.length ? "Select a property" : "No accessible properties"}
+            title={properties.length ? t("common.selectProperty") : t("common.selectProperty")}
             description={
               properties.length
                 ? "Use the Property selector in the dashboard header to choose which operational queue to view."
@@ -1028,7 +1029,7 @@ const MyJobs: React.FC = () => {
         {selectedProperty && isPropertyQueryReady && error ? (
           <FeedbackState
             variant="error"
-            title="Unable to load jobs"
+            title={t("myJobs.loadError")}
             description={error}
             action={
               <Button
@@ -1038,7 +1039,7 @@ const MyJobs: React.FC = () => {
                 className="h-11"
               >
                 <RefreshCcw className="mr-2 h-4 w-4" />
-                Retry
+                {t("action.tryAgain")}
               </Button>
             }
           />
@@ -1051,10 +1052,10 @@ const MyJobs: React.FC = () => {
         jobs.length > 0 ? (
           <section className="space-y-4">
             <SectionHeader
-              title="Assigned Jobs"
+              title={t("myJobs.assigned")}
               action={
                 <p className="text-sm font-medium text-muted-foreground">
-                  Showing {startIndex + 1}-{endIndex} of {totalCount}
+                  {t("myJobs.showing", { from: startIndex + 1, to: endIndex, total: totalCount })}
                 </p>
               }
             />
@@ -1092,11 +1093,11 @@ const MyJobs: React.FC = () => {
         jobs.length === 0 ? (
           <FeedbackState
             variant={hasFilters ? "no-results" : "empty"}
-            title={hasFilters ? "No jobs match these filters" : "No jobs assigned to you"}
+            title={hasFilters ? t("myJobs.noMatches") : t("myJobs.noneAssigned")}
             description={
               hasFilters
-                ? "Try resetting the filters or searching by a different room, area, status, or priority."
-                : `When a maintenance job is assigned to you at ${propertyName}, it will appear here.`
+                ? t("myJobs.resetHint")
+                : t("myJobs.noneHint", { property: propertyName })
             }
             action={
               <div className="flex flex-col justify-center gap-2 sm:flex-row">
@@ -1107,7 +1108,7 @@ const MyJobs: React.FC = () => {
                     onClick={handleResetFilters}
                     className="h-11 w-full sm:w-auto"
                   >
-                    Reset Filters
+                    {t("inventory.clearFilters")}
                   </Button>
                 ) : null}
                 <Button
@@ -1116,7 +1117,7 @@ const MyJobs: React.FC = () => {
                   className="h-11 w-full sm:w-auto"
                 >
                   <RefreshCcw className="mr-2 h-4 w-4" />
-                  Refresh
+                  {t("action.refresh")}
                 </Button>
               </div>
             }

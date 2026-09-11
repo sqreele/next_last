@@ -16,6 +16,7 @@ import {
   Clipboard,
 } from "lucide-react";
 import { StatusBadge } from "@/app/components/StatusBadge";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface MaintenanceItemProps {
   item: PreventiveMaintenance;
@@ -42,6 +43,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
   getStatusInfo,
   canOperate,
 }) => {
+  const t = useT();
   const statusInfo = getStatusInfo(item);
   const canonicalStatus = determinePMStatus(item).toLowerCase();
   const statusSurface = canonicalStatus === "overdue"
@@ -81,22 +83,19 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                     href={`/dashboard/preventive-maintenance/${item.pm_id}`}
                     className="min-w-0 break-words text-base font-semibold leading-5 text-foreground hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    {item.pmtitle || `Task ${item.pm_id}`}
+                    {item.pmtitle || t("pm.taskId", { id: item.pm_id })}
                   </Link>
                 </div>
 
                 <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                   <div className="flex min-w-0 items-start gap-2">
                     <Calendar className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 break-words">Scheduled {formatDate(item.scheduled_date)}</span>
+                    <span className="min-w-0 break-words">{t("pm.scheduledDate", { date: formatDate(item.scheduled_date) })}</span>
                   </div>
                   <div className="flex min-w-0 items-start gap-2">
                     <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                     <span className="min-w-0 break-words">
-                      Next due:{" "}
-                      {item.next_due_date
-                        ? formatDate(item.next_due_date)
-                        : "N/A"}
+                      {t("pm.nextDueDate", { date: item.next_due_date ? formatDate(item.next_due_date) : t("common.notAvailable") })}
                     </span>
                   </div>
                   <div className="flex min-w-0 items-start gap-2">
@@ -121,7 +120,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                     <Link
                       href={`/dashboard/preventive-maintenance/${item.pm_id}`}
                       className="grid h-11 w-11 place-items-center rounded-lg text-primary hover:bg-primary/10 hover:text-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      title="View Details"
+                      title={t("action.viewDetails")}
                       aria-label={`View ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
                       <Eye className="h-4 w-4" aria-hidden="true" />
@@ -129,7 +128,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                     {canOperate && <Link
                       href={`/dashboard/preventive-maintenance/edit/${item.pm_id}`}
                       className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      title="Edit"
+                      title={t("action.edit")}
                       aria-label={`Edit ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
                       <Edit className="h-4 w-4" aria-hidden="true" />
@@ -137,7 +136,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                     {canOperate && <button
                       onClick={() => onDelete(item.pm_id)}
                       className="grid h-11 w-11 place-items-center rounded-lg text-destructive hover:bg-destructive/10 hover:text-[hsl(var(--destructive-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      title="Delete"
+                      title={t("action.delete")}
                       aria-label={`Delete ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -156,7 +155,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                   href={`/dashboard/preventive-maintenance/${item.pm_id}`}
                   className="block break-words font-semibold hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  {item.pmtitle || `Task ${item.pm_id}`}
+                  {item.pmtitle || t("pm.taskId", { id: item.pm_id })}
                 </Link>
                 <div className="text-xs text-muted-foreground">
                   {formatDate(item.scheduled_date)}
@@ -164,9 +163,9 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
               </div>
 
               <div className="text-sm text-foreground">
-                <div className="text-xs text-muted-foreground">Next due</div>
+                <div className="text-xs text-muted-foreground">{t("pm.nextDue")}</div>
                 <div>
-                  {item.next_due_date ? formatDate(item.next_due_date) : "N/A"}
+                  {item.next_due_date ? formatDate(item.next_due_date) : t("common.notAvailable")}
                 </div>
               </div>
 
@@ -202,7 +201,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                   </Link>
                 ) : (
                   <span className="text-muted-foreground text-xs">
-                    No template
+                    {t("pm.noTemplate")}
                   </span>
                 )}
               </div>
@@ -211,7 +210,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                 <Link
                   href={`/dashboard/preventive-maintenance/${item.pm_id}`}
                   className="grid h-11 w-11 place-items-center rounded-lg text-primary hover:bg-primary/10 hover:text-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  title="View Details"
+                  title={t("action.viewDetails")}
                   aria-label={`View ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
                   <Eye className="h-4 w-4" aria-hidden="true" />
@@ -219,7 +218,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                 {canOperate && <Link
                   href={`/dashboard/preventive-maintenance/edit/${item.pm_id}`}
                   className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  title="Edit"
+                  title={t("action.edit")}
                   aria-label={`Edit ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
                   <Edit className="h-4 w-4" aria-hidden="true" />
@@ -227,7 +226,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                 {canOperate && <button
                   onClick={() => onDelete(item.pm_id)}
                   className="grid h-11 w-11 place-items-center rounded-lg text-destructive hover:bg-destructive/10 hover:text-[hsl(var(--destructive-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  title="Delete"
+                  title={t("action.delete")}
                   aria-label={`Delete ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
                   <Trash2 className="h-4 w-4" aria-hidden="true" />

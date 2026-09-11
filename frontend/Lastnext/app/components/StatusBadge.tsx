@@ -18,6 +18,12 @@ const STATUS_I18N: Record<string, DictKey> = {
   waiting_sparepart: "status.waitingSparepart",
   cancelled: "status.cancelled",
   overdue: "status.overdue",
+  waiting_fix_defect: "status.waitingFixDefect",
+  waiting_vendor: "status.waitingVendor",
+  preventive_maintenance: "status.preventiveMaintenance",
+  scheduled: "status.scheduled",
+  rejected: "status.rejected",
+  urgent: "status.urgent",
 };
 
 export function normalizeStatus(status?: string) {

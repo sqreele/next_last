@@ -2,12 +2,8 @@
 
 import React from "react";
 import { Search, X, ChevronDown } from "lucide-react";
-
-const getFrequencyText = (freq: string | number) => {
-  if (typeof freq === "number") return `Freq ${freq}`;
-  if (!freq) return "";
-  return freq.charAt(0).toUpperCase() + freq.slice(1);
-};
+import { useT } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
 
 interface FilterState {
   search: string;
@@ -57,6 +53,15 @@ export default function FilterPanel({
   onClearFiltersAction,
   onSortChangeAction,
 }: FilterPanelProps) {
+  const t = useT();
+  const statusKeys: Record<string, DictKey> = {
+    completed: "status.completed", pending: "pm.upcoming", overdue: "status.overdue",
+  };
+  const frequencyKeys: Record<string, DictKey> = {
+    daily: "pm.frequency.daily", weekly: "pm.frequency.weekly", monthly: "pm.frequency.monthly",
+    quarterly: "pm.frequency.quarterly", semi_annual: "pm.frequency.semiAnnual",
+    annual: "pm.frequency.annual", custom: "pm.frequency.custom",
+  };
   const getMachineNameById = (machineId: string) => {
     const machine = machineOptions.find((m) => m.id === machineId);
     return machine ? machine.name : machineId;
@@ -74,7 +79,7 @@ export default function FilterPanel({
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <input
           type="text"
-          placeholder="Search maintenance tasks..."
+          placeholder={t("pm.search")}
           aria-label="Search preventive maintenance tasks"
           value={currentFilters.search || ""}
           onChange={(e) => onFilterChangeAction("search", e.target.value)}
@@ -95,21 +100,21 @@ export default function FilterPanel({
       <div className="mb-4 flex flex-wrap gap-2">
         {currentFilters.status && (
           <FilterChip
-            label={`Status: ${currentFilters.status}`}
+            label={`${t("editJob.status")}: ${t(statusKeys[currentFilters.status] || "status.pending")}`}
             onRemove={() => onFilterChangeAction("status", "")}
             color="blue"
           />
         )}
         {currentFilters.frequency && (
           <FilterChip
-            label={`Freq: ${getFrequencyText(currentFilters.frequency)}`}
+            label={t(frequencyKeys[String(currentFilters.frequency)] || "pm.frequency.custom")}
             onRemove={() => onFilterChangeAction("frequency", "")}
             color="green"
           />
         )}
         {currentFilters.machine && (
           <FilterChip
-            label={`Machine: ${getMachineNameById(currentFilters.machine)}`}
+            label={`${t("pm.machine")}: ${getMachineNameById(currentFilters.machine)}`}
             onRemove={() => onFilterChangeAction("machine", "")}
             color="purple"
           />
@@ -118,7 +123,7 @@ export default function FilterPanel({
 
       {/* Expandable sections */}
       <div className="divide-y divide-border rounded-lg border border-border bg-background px-3 sm:px-4">
-        <FilterSection title="Status & Frequency">
+        <FilterSection title={t("pm.statusFrequency")}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
               aria-label="Filter by maintenance status"
@@ -126,10 +131,10 @@ export default function FilterPanel({
               onChange={(e) => onFilterChangeAction("status", e.target.value)}
               className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
-              <option value="">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Upcoming</option>
-              <option value="overdue">Overdue</option>
+              <option value="">{t("pm.allStatuses")}</option>
+              <option value="completed">{t("status.completed")}</option>
+              <option value="pending">{t("pm.upcoming")}</option>
+              <option value="overdue">{t("status.overdue")}</option>
             </select>
             <select
               aria-label="Filter by maintenance frequency"
@@ -139,19 +144,13 @@ export default function FilterPanel({
               }
               className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
-              <option value="">All Frequencies</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="semi_annual">Semi-Annual</option>
-              <option value="annual">Annual</option>
-              <option value="custom">Custom</option>
+              <option value="">{t("pm.allFrequencies")}</option>
+              {Object.entries(frequencyKeys).map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
             </select>
           </div>
         </FilterSection>
 
-        <FilterSection title="Machine & Dates">
+        <FilterSection title={t("pm.machineDates")}>
           <div className="space-y-3">
             <select
               aria-label="Filter by machine"
@@ -159,7 +158,7 @@ export default function FilterPanel({
               onChange={(e) => onFilterChangeAction("machine", e.target.value)}
               className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
-              <option value="">All Machines</option>
+              <option value="">{t("pm.allMachines")}</option>
               {machineOptions.map((machine) => (
                 <option key={machine.id} value={machine.id}>
                   {machine.label} ({machine.count})
@@ -169,7 +168,7 @@ export default function FilterPanel({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Start Date
+                  {t("pm.startDate")}
                 </label>
                 <input
                   type="date"
@@ -182,7 +181,7 @@ export default function FilterPanel({
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  End Date
+                  {t("pm.endDate")}
                 </label>
                 <input
                   type="date"
@@ -197,7 +196,7 @@ export default function FilterPanel({
           </div>
         </FilterSection>
 
-        <FilterSection title="Sort & Display">
+        <FilterSection title={t("pm.sortDisplay")}>
           <select
             aria-label="Sort preventive maintenance tasks"
             value={`${sortBy}-${sortOrder}`}
@@ -217,10 +216,10 @@ export default function FilterPanel({
       {/* Filter actions */}
       <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <span className="min-w-0 text-sm text-muted-foreground">
-          {totalCount} tasks found
+          {t("pm.tasksFound", { count: totalCount })}
           {currentFilters.machine && (
             <span className="mt-1 block break-words font-semibold text-primary">
-              Filtered by: {getMachineNameById(currentFilters.machine)}
+              {t("pm.filteredBy", { name: getMachineNameById(currentFilters.machine) })}
             </span>
           )}
         </span>
@@ -228,7 +227,7 @@ export default function FilterPanel({
           onClick={onClearFiltersAction}
           className="inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 hover:text-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          Clear all
+          {t("pm.clearAll")}
         </button>
       </div>
     </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface PaginationProps {
   currentPage: number;
@@ -19,16 +20,17 @@ export default function Pagination({
   onPageChange,
   onPageSizeChange,
 }: PaginationProps) {
+  const t = useT();
   const startItem = (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalCount);
 
   return (
     <>
       {/* Mobile Pagination */}
-      <nav aria-label="Preventive maintenance pagination" className="rounded-xl border border-border bg-card p-4 shadow-soft lg:hidden">
+      <nav aria-label={t("pm.pagination")} className="rounded-xl border border-border bg-card p-4 shadow-soft lg:hidden">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-medium tabular-nums text-muted-foreground">
-            {startItem}-{endItem} of {totalCount}
+            {t("pm.showing", { from: startItem, to: endItem, total: totalCount })}
           </span>
           <select
             value={pageSize}
@@ -36,9 +38,9 @@ export default function Pagination({
             className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20"
             aria-label="Tasks per page"
           >
-            <option value={10}>10 per page</option>
-            <option value={25}>25 per page</option>
-            <option value={50}>50 per page</option>
+            <option value={10}>{t("pm.perPage", { count: 10 })}</option>
+            <option value={25}>{t("pm.perPage", { count: 25 })}</option>
+            <option value={50}>{t("pm.perPage", { count: 50 })}</option>
           </select>
         </div>
 
@@ -53,7 +55,7 @@ export default function Pagination({
           </button>
 
           <span className="min-w-0 text-center text-sm font-semibold tabular-nums text-foreground">
-            Page {currentPage} of {totalPages}
+            {t("pm.pageOf", { page: currentPage, total: totalPages })}
           </span>
 
           <button
@@ -68,10 +70,10 @@ export default function Pagination({
       </nav>
 
       {/* Desktop Pagination */}
-      <nav aria-label="Preventive maintenance pagination" className="hidden items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-soft lg:flex">
+      <nav aria-label={t("pm.pagination")} className="hidden items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-soft lg:flex">
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <span>
-            Showing {startItem} to {endItem} of {totalCount} results
+            {t("pm.showing", { from: startItem, to: endItem, total: totalCount })}
           </span>
           <select
             value={pageSize}
@@ -79,9 +81,9 @@ export default function Pagination({
             className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20"
             aria-label="Tasks per page"
           >
-            <option value={10}>10 per page</option>
-            <option value={25}>25 per page</option>
-            <option value={50}>50 per page</option>
+            <option value={10}>{t("pm.perPage", { count: 10 })}</option>
+            <option value={25}>{t("pm.perPage", { count: 25 })}</option>
+            <option value={50}>{t("pm.perPage", { count: 50 })}</option>
           </select>
         </div>
 

@@ -27,6 +27,8 @@ import { JobStatus, JobPriority } from "@/app/lib/types";
 import { cn } from "@/app/lib/utils/cn";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/app/components/ui/calendar";
+import { StatusBadge } from "@/app/components/StatusBadge";
+import { PriorityBadge } from "@/app/components/PriorityBadge";
 
 export interface FilterState {
   search: string;
@@ -418,7 +420,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
                 variant="secondary"
                 className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
               >
-                Status: {filters.status.replace("_", " ")}
+                <StatusBadge size="sm" status={filters.status} />
                 <X
                   className="h-3 w-3 cursor-pointer hover:text-blue-900"
                   onClick={() => onFilterChange({ ...filters, status: "all" })}
@@ -431,7 +433,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
                 variant="secondary"
                 className="flex items-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition-colors"
               >
-                Priority: {filters.priority}
+                <PriorityBadge size="sm" priority={filters.priority} />
                 <X
                   className="h-3 w-3 cursor-pointer hover:text-amber-900"
                   onClick={() =>

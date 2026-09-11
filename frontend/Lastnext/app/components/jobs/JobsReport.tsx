@@ -63,6 +63,8 @@ import { exportJobsToExcel } from "@/app/lib/utils/excel-export";
 import { exportJobsReportToPdf } from "@/app/lib/utils/pdf-export";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import type { UtilityConsumptionRow } from "@/app/dashboard/utility-consumption/types";
+import { StatusBadge } from "@/app/components/StatusBadge";
+import { PriorityBadge } from "@/app/components/PriorityBadge";
 import {
   assertJobsReportPropertyBoundary,
   buildJobsReportCsvUrl,
@@ -1955,14 +1957,12 @@ export default function JobsReport({
                             {job.description || job.topics?.[0]?.title || "Untitled job"}
                           </p>
                         </div>
-                        <span className="shrink-0 rounded-full border border-border px-2 py-1 text-xs font-semibold capitalize">
-                          {String(job.status).replaceAll("_", " ")}
-                        </span>
+                        <StatusBadge className="shrink-0" size="sm" status={job.status} />
                       </div>
                       <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
                         <div className="flex justify-between gap-3">
                           <dt>Priority</dt>
-                          <dd className="font-medium capitalize text-foreground">{job.priority}</dd>
+                          <dd><PriorityBadge size="sm" priority={job.priority} /></dd>
                         </div>
                         <div className="flex justify-between gap-3">
                           <dt>Location</dt>
@@ -2023,11 +2023,9 @@ export default function JobsReport({
                             {format(new Date(job.created_at), "PP")}
                           </td>
                           <td className="px-3 py-3">
-                            <span className="rounded-full border border-border px-2 py-1 text-xs font-semibold capitalize">
-                              {String(job.status).replaceAll("_", " ")}
-                            </span>
+                            <StatusBadge size="sm" status={job.status} />
                           </td>
-                          <td className="px-3 py-3 capitalize">{job.priority}</td>
+                          <td className="px-3 py-3"><PriorityBadge size="sm" priority={job.priority} /></td>
                           <td className="max-w-xs px-3 py-3">
                             <span className="line-clamp-2" title={job.description || ""}>
                               {job.description || job.topics?.[0]?.title || "Untitled job"}

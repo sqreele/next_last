@@ -22,7 +22,7 @@ const LANG_LABELS = {
 } as const;
 
 export function LocaleToggle({ className }: LocaleToggleProps) {
-  const { locale, setLocale } = useLocale();
+  const { locale, setLocale, t } = useLocale();
   const current = LANG_LABELS[locale];
 
   return (
@@ -32,7 +32,8 @@ export function LocaleToggle({ className }: LocaleToggleProps) {
           variant="ghost"
           size="icon"
           className={cn("h-9 w-9 touch-manipulation relative", className)}
-          aria-label={`Language: ${current.label}. Tap to change.`}
+          aria-label={t("common.languageSelector", { language: current.label })}
+          data-locale={locale}
         >
           <Languages className="h-5 w-5" />
           <span className="absolute -bottom-0.5 right-0.5 rounded-full bg-slate-900 px-1 text-[9px] font-bold leading-tight text-white">
@@ -46,6 +47,7 @@ export function LocaleToggle({ className }: LocaleToggleProps) {
             <DropdownMenuItem
               key={code}
               onClick={() => setLocale(code)}
+              aria-current={locale === code ? "true" : undefined}
               className={cn("gap-2", locale === code && "font-bold")}
             >
               <span className="w-8 text-xs font-bold text-muted-foreground">

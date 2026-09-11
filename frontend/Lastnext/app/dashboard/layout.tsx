@@ -41,6 +41,7 @@ import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
 import { Logo, StayMaintMark } from "@/app/components/branding/Logo";
 import { SubscriptionWarningBanner } from "@/app/components/subscription/SubscriptionWarningBanner";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 export default function DashboardLayout({
   children,
@@ -120,6 +121,7 @@ function DesktopNav({
   toggleCollapse: () => void;
 }) {
   const pathname = usePathname();
+  const t = useT();
 
   return (
     <aside
@@ -170,7 +172,7 @@ function DesktopNav({
             <div key={group.label}>
               {!collapsed ? (
                 <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/60">
-                  {group.label}
+                  {t(group.labelKey)}
                 </p>
               ) : null}
               <div className="grid gap-1.5">
@@ -193,7 +195,7 @@ function DesktopNav({
                           ? "bg-sidebar-accent font-semibold text-sidebar-primary ring-1 ring-inset ring-sidebar-primary/25"
                           : "text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
                       )}
-                      title={collapsed ? item.name : undefined}
+                      title={collapsed ? t(item.labelKey) : undefined}
                     >
                       {isActive && (
                         <span
@@ -212,7 +214,7 @@ function DesktopNav({
                         <item.icon className="h-[18px] w-[18px]" aria-hidden="true" />
                       </span>
                       {!collapsed && (
-                        <span className="truncate">{item.name}</span>
+                        <span className="truncate">{t(item.labelKey)}</span>
                       )}
                     </Link>
                   );
@@ -330,6 +332,7 @@ function DesktopHeader() {
 
 function MobileNav() {
   const pathname = usePathname();
+  const t = useT();
   const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -420,7 +423,7 @@ function MobileNav() {
                     >
                       <item.icon className="h-5 w-5" aria-hidden="true" />
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                    <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
                     {isActive && (
                       <span
                         className="h-2 w-2 rounded-full bg-primary"

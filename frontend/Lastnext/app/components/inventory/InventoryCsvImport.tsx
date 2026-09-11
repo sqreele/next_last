@@ -20,6 +20,7 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils/cn";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface InventoryCsvImportProps {
   currentPropertyId?: string | null;
@@ -39,6 +40,7 @@ export function InventoryCsvImport({
   onImported,
   className,
 }: InventoryCsvImportProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -70,8 +72,8 @@ export function InventoryCsvImport({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err?.message || "Could not download the template.");
+    } catch {
+      setError(t("inventory.downloadError"));
     }
   };
 
@@ -79,7 +81,7 @@ export function InventoryCsvImport({
     setError(null);
     setResult(null);
     if (!file) {
-      setError("Pick a CSV file first.");
+      setError(t("inventory.pickCsv"));
       return;
     }
     setSubmitting(true);
@@ -111,8 +113,8 @@ export function InventoryCsvImport({
       if ((data as ImportResult).created_count > 0) {
         onImported?.();
       }
-    } catch (err: any) {
-      setError(err?.message || "Could not import the file.");
+    } catch {
+      setError(t("inventory.importError"));
     } finally {
       setSubmitting(false);
     }
@@ -129,18 +131,16 @@ export function InventoryCsvImport({
       <DialogTrigger asChild>
         <Button variant="outline" className={cn("gap-2", className)}>
           <Upload className="h-4 w-4" aria-hidden="true" />
-          Import CSV
+          {t("inventory.importCsv")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl bg-card p-0 sm:max-w-lg">
         <DialogHeader className="border-b border-border px-5 py-4 text-left">
           <DialogTitle className="text-lg font-bold text-foreground">
-            Bulk-import inventory
+            {t("inventory.bulkImport")}
           </DialogTitle>
           <p className="text-xs font-medium text-muted-foreground">
-            Upload a CSV with columns: name, quantity, min_quantity, and
-            optional category, unit, unit_price, location, supplier,
-            description, property_id.
+            {t("inventory.csvHint")}
           </p>
         </DialogHeader>
 
@@ -148,7 +148,7 @@ export function InventoryCsvImport({
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-info/25 bg-info/10 p-3 text-sm font-semibold text-foreground">
             <span className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4 text-info" aria-hidden="true" />
-              Need a starting point?
+              {t("inventory.needStart")}
             </span>
             <Button
               type="button"
@@ -157,7 +157,7 @@ export function InventoryCsvImport({
               onClick={downloadTemplate}
               className="h-9 min-h-9 border-info/30 text-info hover:bg-info/10 hover:text-info"
             >
-              <Download className="mr-1 h-4 w-4" aria-hidden="true" /> Template
+              <Download className="mr-1 h-4 w-4" aria-hidden="true" /> {t("inventory.template")}
             </Button>
           </div>
 
@@ -167,12 +167,12 @@ export function InventoryCsvImport({
           >
             <Upload className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm font-bold text-foreground">
-              {file ? file.name : "Choose a CSV file"}
+              {file ? file.name : t("inventory.chooseCsv")}
             </span>
             <span className="text-xs font-medium text-muted-foreground">
               {file
                 ? `${(file.size / 1024).toFixed(1)} KB`
-                : "Tap to browse or drag-and-drop"}
+                : t("inventory.browseCsv")}
             </span>
             <input
               ref={inputRef}
@@ -199,7 +199,7 @@ export function InventoryCsvImport({
                   if (inputRef.current) inputRef.current.value = "";
                 }}
                 className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label="Remove selected file"
+                aria-label={t("inventory.removeFile")}
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -225,18 +225,14 @@ export function InventoryCsvImport({
               >
                 <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true" />
                 <span>
-                  Imported {result.created_count} item
-                  {result.created_count === 1 ? "" : "s"}
-                  {result.error_count > 0 &&
-                    ` · ${result.error_count} row(s) skipped`}
-                  .
+                  {t("inventory.imported", { created: result.created_count, skipped: result.error_count })}
                 </span>
               </div>
 
               {result.errors.length > 0 && (
                 <div className="rounded-xl border border-border bg-card">
                   <p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Rows skipped
+                    {t("inventory.rowsSkipped")}
                   </p>
                   <ul className="max-h-40 divide-y divide-slate-100 overflow-y-auto px-3 pb-2 text-sm">
                     {result.errors.map((row) => (
@@ -244,7 +240,7 @@ export function InventoryCsvImport({
                         key={`err-${row.row}`}
                         className="py-1.5 font-medium text-destructive"
                       >
-                        Row {row.row}: {row.error}
+                        {t("inventory.rowError", { row: row.row, error: row.error })}
                       </li>
                     ))}
                   </ul>
@@ -262,7 +258,7 @@ export function InventoryCsvImport({
             disabled={submitting}
             className="h-11 w-full sm:w-auto"
           >
-            {result ? "Close" : "Cancel"}
+            {result ? t("action.close") : t("action.cancel")}
           </Button>
           {!result && (
             <Button
@@ -274,10 +270,10 @@ export function InventoryCsvImport({
               {submitting ? (
                 <>
                   <BouncingDotsLoader size="sm" />
-                  Importing...
+                  {t("inventory.importing")}
                 </>
               ) : (
-                "Import"
+                t("inventory.import")
               )}
             </Button>
           )}
@@ -288,7 +284,7 @@ export function InventoryCsvImport({
               onClick={reset}
               className="h-11 w-full sm:w-auto"
             >
-              Try another file
+              {t("inventory.tryAnother")}
             </Button>
           )}
         </DialogFooter>

@@ -15,7 +15,8 @@
     "test:pm-pdf": "node --test tests/pm-pdf-evidence.test.cjs",
     "test:runtime-origins": "node --test tests/runtime-origin-regression.test.mjs",
     "test:subscription-warning": "node --test tests/subscription-warning.test.mjs",
-    "test:billing": "node --test tests/billing.test.mjs"
+    "test:billing": "node --test tests/billing.test.mjs",
+    "test:i18n": "node --test tests/i18n.test.mjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.13.3",

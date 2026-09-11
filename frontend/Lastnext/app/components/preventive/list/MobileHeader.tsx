@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BarChart3, RefreshCw, Filter, Plus, CalendarDays, Repeat2 } from "lucide-react";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface MobileHeaderProps {
   totalCount: number;
@@ -26,20 +27,21 @@ export default function MobileHeader({
   onRefresh,
   onToggleFilters,
 }: MobileHeaderProps) {
+  const t = useT();
   return (
     <header className="rounded-xl border border-border bg-card p-4 shadow-soft md:hidden">
       <div className="space-y-4">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Maintenance workspace
+            {t("pm.workspace")}
           </p>
           <h1 className="mt-1 text-xl font-bold leading-tight tracking-tight text-foreground">
-            Preventive Maintenance
+            {t("pm.title")}
           </h1>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            {totalCount} tasks • {overdueCount === undefined ? "…" : overdueCount} overdue
+            {t("pm.tasksOverdue", { tasks: totalCount, overdue: overdueCount === undefined ? "…" : overdueCount })}
             {currentFilters.machine && (
-              <span className="font-semibold text-primary"> • Filtered</span>
+              <span className="font-semibold text-primary"> • {t("pm.filtered")}</span>
             )}
           </p>
         </div>
@@ -47,7 +49,7 @@ export default function MobileHeader({
           <Link
             href="/dashboard/preventive-maintenance/dashboard"
             className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            title="Dashboard"
+            title={t("pm.dashboard")}
             aria-label="Open maintenance dashboard"
           >
             <BarChart3 className="h-5 w-5" aria-hidden="true" />
@@ -55,7 +57,7 @@ export default function MobileHeader({
           <Link
             href="/dashboard/preventive-maintenance/schedule"
             className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            title="Calendar"
+            title={t("nav.calendar")}
             aria-label="Open maintenance calendar"
           >
             <CalendarDays className="h-5 w-5" aria-hidden="true" />
@@ -63,7 +65,7 @@ export default function MobileHeader({
           <Link
             href="/dashboard/preventive-maintenance/plans"
             className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            title="Master Plans"
+            title={t("pm.masterPlans")}
             aria-label="Open PM master plans"
           >
             <Repeat2 className="h-5 w-5" aria-hidden="true" />
@@ -72,7 +74,7 @@ export default function MobileHeader({
             onClick={onRefresh}
             disabled={isLoading}
             className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            title="Refresh"
+            title={t("action.refresh")}
             aria-label="Refresh maintenance data"
           >
             <RefreshCw

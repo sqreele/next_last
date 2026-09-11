@@ -36,6 +36,8 @@ import {
 } from "@/app/components/ui/table";
 import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
 import { SettingsPageSkeleton, SkeletonTable } from "@/app/components/ui/loading";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
 
 type Tenant = { id: number; tenant_id: string; name: string };
 type Property = { id: number; property_id: string; name: string; tenant: number };
@@ -73,6 +75,14 @@ function roleLabel(role: string) {
   return role.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+const ROLE_LABEL_KEYS: Record<string, DictKey> = {
+  owner: "role.owner", admin: "role.admin", manager: "role.manager",
+  supervisor: "role.supervisor", technician: "role.technician",
+  viewer: "role.viewer", billing: "role.billing", chief_engineer: "role.chiefEngineer",
+  pending: "status.pending", accepted: "invitation.accepted",
+  expired: "invitation.expired", revoked: "invitation.revoked",
+};
+
 function invitationPropertyNames(invitation: Pick<Invitation, "role" | "properties">) {
   if (invitation.properties.length) return invitation.properties.map((property) => property.name);
   if (tenantWideRoles.has(invitation.role)) return ["All properties (tenant-wide access)"];
@@ -106,6 +116,8 @@ function statusVariant(status: InvitationStatus): "default" | "secondary" | "des
 }
 
 export default function TenantUsersSettingsPage() {
+  const t = useT();
+  const localizedRoleLabel = (value: string) => ROLE_LABEL_KEYS[value] ? t(ROLE_LABEL_KEYS[value]) : roleLabel(value);
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ requireAuth: true });
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -257,7 +269,7 @@ export default function TenantUsersSettingsPage() {
       } else {
         setFeedback({
           title: `Invitation sent to ${invitation.email}`,
-          role: roleLabel(invitation.role),
+          role: localizedRoleLabel(invitation.role),
           properties: invitationPropertyNames(invitation),
         });
       }
@@ -289,7 +301,7 @@ export default function TenantUsersSettingsPage() {
           title: action === "resend"
             ? `Invitation resent to ${invitation.email}`
             : `Invitation revoked for ${invitation.email}`,
-          role: roleLabel(invitation.role),
+          role: localizedRoleLabel(invitation.role),
           properties: invitationPropertyNames(invitation),
         });
       }
@@ -352,7 +364,7 @@ export default function TenantUsersSettingsPage() {
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {roles.map((value) => <SelectItem key={value} value={value}>{roleLabel(value)}</SelectItem>)}
+                    {roles.map((value) => <SelectItem key={value} value={value}>{localizedRoleLabel(value)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -436,9 +448,9 @@ export default function TenantUsersSettingsPage() {
               <TableBody>{scopedInvitations.map((invitation) => (
                 <TableRow key={invitation.id}>
                   <TableCell mobileLabel="Email" className="font-medium">{invitation.email}</TableCell>
-                  <TableCell mobileLabel="Role">{roleLabel(invitation.role)}</TableCell>
+                  <TableCell mobileLabel="Role">{localizedRoleLabel(invitation.role)}</TableCell>
                   <TableCell mobileLabel="Properties">{invitationPropertyNames(invitation).join(", ")}</TableCell>
-                  <TableCell mobileLabel="Status"><Badge variant={statusVariant(invitation.status)}>{roleLabel(invitation.status)}</Badge></TableCell>
+                  <TableCell mobileLabel="Status"><Badge variant={statusVariant(invitation.status)}>{localizedRoleLabel(invitation.status)}</Badge></TableCell>
                   <TableCell mobileLabel="Expires">{new Date(invitation.expires_at).toLocaleString()}</TableCell>
                   <TableCell mobileLabel="Actions" className="text-right">
                     {invitation.status === "pending" || invitation.status === "expired" ? (

@@ -3,6 +3,7 @@
 import React from 'react';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import MaintenanceItem from './MaintenanceItem';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 
 // Define the sort field type
 type SortField = 'date' | 'status' | 'machine';
@@ -37,6 +38,7 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
   getStatusInfo,
   canOperate,
 }) => {
+  const t = useT();
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft" aria-label="Preventive maintenance tasks">
       {/* Desktop Header */}
@@ -57,33 +59,33 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
               onClick={() => onSort('date')}
               className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+              {t('pm.date')} {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
 
             <div className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Next Due
+              {t('pm.nextDue')}
             </div>
             
             <button
               onClick={() => onSort('status')}
               className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+              {t('editJob.status')} {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
             
             <button
               onClick={() => onSort('machine')}
               className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              Machine {sortBy === 'machine' && (sortOrder === 'asc' ? '↑' : '↓')}
+              {t('pm.machine')} {sortBy === 'machine' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
             
             <div className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Task Template
+              {t('pm.taskTemplate')}
             </div>
             
             <div className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Actions
+              {t('inventory.actions')}
             </div>
           </div>
         </div>

@@ -59,6 +59,7 @@ import { Textarea } from "@/app/components/ui/textarea";
 import { InventoryMobileStats } from "@/app/components/inventory/InventoryMobileStats";
 import { InventoryCsvImport } from "@/app/components/inventory/InventoryCsvImport";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
 import {
   buildInventoryListParams,
   scheduleInventorySearch,
@@ -690,9 +691,16 @@ export default function InventoryPage() {
   const getStatusBadge = (status: string) => {
     const colorClass =
       STATUS_COLORS[status] || "bg-muted text-foreground border-border";
-    const statusText = status
-      .replace("_", " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase());
+    const statusKeys: Record<string, DictKey> = {
+      available: "inventory.status.available",
+      low_stock: "inventory.status.lowStock",
+      out_of_stock: "inventory.status.outOfStock",
+      reserved: "inventory.status.reserved",
+      maintenance: "inventory.status.maintenance",
+    };
+    const statusText = statusKeys[status]
+      ? t(statusKeys[status])
+      : status.replaceAll("_", " ");
 
     return (
       <Badge className={`${colorClass} gap-1 whitespace-nowrap`}>
@@ -705,9 +713,19 @@ export default function InventoryPage() {
     );
   };
 
+  const getCategoryLabel = (category: string, fallback?: string) => {
+    const categoryKeys: Record<string, DictKey> = {
+      tools: "inventory.category.tools", parts: "inventory.category.parts",
+      supplies: "inventory.category.supplies", equipment: "inventory.category.equipment",
+      consumables: "inventory.category.consumables", safety: "inventory.category.safety",
+      safety_equipment: "inventory.category.safety", other: "inventory.category.other",
+    };
+    return categoryKeys[category] ? t(categoryKeys[category]) : (fallback || category);
+  };
+
   if (status === "loading" || (loading && !hasLoadedInventory)) {
     return (
-      <PageContainer aria-busy="true" aria-label="Loading inventory">
+      <PageContainer aria-busy="true" aria-label={t("inventory.loading")}>
         <DashboardKpiSkeleton />
         <SkeletonList rows={6} />
       </PageContainer>
@@ -719,10 +737,10 @@ export default function InventoryPage() {
       <PageContainer>
         <FeedbackState
           variant="error"
-          title="Unable to load inventory"
+          title={t("inventory.loadError")}
           description={error}
           action={
-            <Button onClick={() => void fetchInventory()}>Try again</Button>
+            <Button onClick={() => void fetchInventory()}>{t("action.tryAgain")}</Button>
           }
         />
       </PageContainer>
@@ -734,8 +752,8 @@ export default function InventoryPage() {
       <PageContainer>
         <FeedbackState
           variant="empty"
-          title="Select a property"
-          description="Select a property to view inventory."
+          title={t("common.selectProperty")}
+          description={t("inventory.selectPropertyHint")}
         />
       </PageContainer>
     );
@@ -768,7 +786,7 @@ export default function InventoryPage() {
       {/* Header */}
       <header className="flex min-w-0 flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex-1">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">Inventory workspace</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">{t("inventory.workspace")}</p>
           <div className="mb-1 flex min-w-0 items-center gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
               <Package className="h-5 w-5" aria-hidden="true" />
@@ -792,7 +810,7 @@ export default function InventoryPage() {
               lowStockOnly ||
               selectedJobFilter !== "all" ||
               selectedPmFilter !== "all") &&
-              ` (${filteredInventory.length} filtered)`}
+              ` (${t("inventory.filteredCount", { count: filteredInventory.length })})`}
           </p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap sm:items-center">
@@ -810,14 +828,14 @@ export default function InventoryPage() {
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
-                Add Item
+                {t("inventory.addItem")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-2xl sm:p-6">
               <DialogHeader>
-                <DialogTitle>Add New Inventory Item</DialogTitle>
+                <DialogTitle>{t("inventory.addTitle")}</DialogTitle>
                 <DialogDescription>
-                  Create a new inventory item for tracking
+                  {t("inventory.addDescription")}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -828,10 +846,10 @@ export default function InventoryPage() {
                 ) : null}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="name">Item Name *</Label>
+                    <Label htmlFor="name">{t("inventory.itemName")} *</Label>
                     <Input
                       id="name"
-                      placeholder="Enter item name"
+                      placeholder={t("inventory.enterItemName")}
                       value={newItem.name}
                       onChange={(event) =>
                         setNewItem((item) => ({
@@ -842,7 +860,7 @@ export default function InventoryPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="category">Category *</Label>
+                    <Label htmlFor="category">{t("inventory.category")} *</Label>
                     <Select
                       value={newItem.category}
                       onValueChange={(category) =>
@@ -850,12 +868,12 @@ export default function InventoryPage() {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder={t("inventory.selectCategory")} />
                       </SelectTrigger>
                       <SelectContent>
                         {categoryOptions.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
+                            {getCategoryLabel(cat.value, cat.label)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -863,10 +881,10 @@ export default function InventoryPage() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t("inventory.description")}</Label>
                   <Textarea
                     id="description"
-                    placeholder="Enter description"
+                    placeholder={t("inventory.enterDescription")}
                     value={newItem.description}
                     onChange={(event) =>
                       setNewItem((item) => ({
@@ -878,7 +896,7 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <Label htmlFor="quantity">Initial Quantity *</Label>
+                    <Label htmlFor="quantity">{t("inventory.initialQuantity")} *</Label>
                     <Input
                       id="quantity"
                       type="number"
@@ -893,7 +911,7 @@ export default function InventoryPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="min_quantity">Min Quantity</Label>
+                    <Label htmlFor="min_quantity">{t("inventory.minQuantity")}</Label>
                     <Input
                       id="min_quantity"
                       type="number"
@@ -908,7 +926,7 @@ export default function InventoryPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="unit">Unit</Label>
+                    <Label htmlFor="unit">{t("inventory.unit")}</Label>
                     <Input
                       id="unit"
                       value={newItem.unit}
@@ -923,10 +941,10 @@ export default function InventoryPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="location">Location</Label>
+                    <Label htmlFor="location">{t("inventory.location")}</Label>
                     <Input
                       id="location"
-                      placeholder="Storage location"
+                      placeholder={t("inventory.storageLocation")}
                       value={newItem.location}
                       onChange={(event) =>
                         setNewItem((item) => ({
@@ -937,10 +955,10 @@ export default function InventoryPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="supplier">Supplier</Label>
+                    <Label htmlFor="supplier">{t("inventory.supplier")}</Label>
                     <Input
                       id="supplier"
-                      placeholder="Supplier name"
+                      placeholder={t("inventory.supplierName")}
                       value={newItem.supplier}
                       onChange={(event) =>
                         setNewItem((item) => ({
@@ -957,13 +975,13 @@ export default function InventoryPage() {
                   variant="outline"
                   onClick={() => setShowAddDialog(false)}
                 >
-                  Cancel
+                  {t("action.cancel")}
                 </Button>
                 <Button
                   onClick={() => void handleAddItem()}
                   disabled={addPending || !newItem.name.trim()}
                 >
-                  {addPending ? "Adding…" : "Add Item"}
+                  {addPending ? t("inventory.adding") : t("inventory.addItem")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -993,8 +1011,8 @@ export default function InventoryPage() {
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   type="text"
-                  aria-label="Search inventory"
-                  placeholder="Search by name, ID, location, supplier..."
+                  aria-label={t("inventory.search")}
+                  placeholder={t("inventory.searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="h-11 min-w-0 rounded-lg pl-10"
@@ -1033,14 +1051,14 @@ export default function InventoryPage() {
             >
               <span className="inline-flex items-center gap-2">
                 <Filter className="h-4 w-4" aria-hidden="true" />
-                Filters
+                {t("inventory.filters")}
               </span>
               <span className="text-xs font-bold">
                 {activeFilterCount > 0
-                  ? `${activeFilterCount} active`
+                  ? t("inventory.activeFilters", { count: activeFilterCount })
                   : showMobileFilters
-                    ? "Hide"
-                    : "Show"}
+                    ? t("inventory.hide")
+                    : t("inventory.show")}
               </span>
             </Button>
 
@@ -1059,13 +1077,13 @@ export default function InventoryPage() {
                 }}
               >
                 <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by category">
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder={t("inventory.allCategories")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="all">{t("inventory.allCategories")}</SelectItem>
                   {categoryOptions.map((cat) => (
                     <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
+                      {getCategoryLabel(cat.value, cat.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1080,13 +1098,13 @@ export default function InventoryPage() {
                 }}
               >
                 <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by status">
-                  <SelectValue placeholder="All Status" />
+                  <SelectValue placeholder={t("inventory.allStatuses")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="all">{t("inventory.allStatuses")}</SelectItem>
                   {statusOptions.map((stat) => (
                     <SelectItem key={stat.value} value={stat.value}>
-                      {stat.label}
+                      {getStatusBadge(stat.value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1101,10 +1119,10 @@ export default function InventoryPage() {
                 }}
               >
                 <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by room">
-                  <SelectValue placeholder="All Rooms" />
+                  <SelectValue placeholder={t("inventory.allRooms")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Rooms</SelectItem>
+                  <SelectItem value="all">{t("inventory.allRooms")}</SelectItem>
                   {rooms.map((room) => (
                     <SelectItem key={room.room_id} value={room.room_id}>
                       {room.roomname}
@@ -1122,14 +1140,14 @@ export default function InventoryPage() {
                 }}
               >
                 <SelectTrigger className="h-11 w-full rounded-lg sm:w-[180px]" aria-label="Filter by job">
-                  <SelectValue placeholder="All Jobs" />
+                  <SelectValue placeholder={t("inventory.allJobs")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Jobs</SelectItem>
+                  <SelectItem value="all">{t("inventory.allJobs")}</SelectItem>
                   {jobsForFilter.map((job) => (
                     <SelectItem key={job.job_id} value={job.job_id}>
                       {job.job_id} -{" "}
-                      {job.description?.substring(0, 30) || "No desc"}
+                      {job.description?.substring(0, 30) || t("inventory.noDescription")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1144,13 +1162,13 @@ export default function InventoryPage() {
                 }}
               >
                 <SelectTrigger className="h-11 w-full rounded-lg sm:w-[180px]" aria-label="Filter by preventive maintenance">
-                  <SelectValue placeholder="All PMs" />
+                  <SelectValue placeholder={t("inventory.allPms")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All PMs</SelectItem>
+                  <SelectItem value="all">{t("inventory.allPms")}</SelectItem>
                   {pmsForFilter.map((pm) => (
                     <SelectItem key={pm.pm_id} value={pm.pm_id}>
-                      {pm.pm_id} - {pm.pmtitle?.substring(0, 30) || "No title"}
+                      {pm.pm_id} - {pm.pmtitle?.substring(0, 30) || t("inventory.noTitle")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1209,7 +1227,7 @@ export default function InventoryPage() {
           role="status"
           aria-live="polite"
         >
-          Updating inventory…
+          {t("common.loading")}
         </div>
       ) : null}
 
@@ -1296,19 +1314,19 @@ export default function InventoryPage() {
               </CardHeader>
               <CardContent className="flex flex-1 flex-col gap-3">
                 <div className="rounded-xl border border-border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current quantity</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("inventory.currentQuantity")}</p>
                   <p className="mt-1 break-words text-2xl font-bold tabular-nums text-foreground">
                     {item.quantity} <span className="text-sm font-semibold text-muted-foreground">{item.unit}</span>
                   </p>
                   {item.min_quantity > 0 && (
-                    <p className="mt-1 text-xs text-muted-foreground">Minimum: {item.min_quantity} {item.unit}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("inventory.minimum")}: {item.min_quantity} {item.unit}</p>
                   )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   {getStatusBadge(item.status)}
                   <Badge variant="secondary" className="max-w-full whitespace-normal break-words text-left text-xs">
-                    {item.category_display || item.category}
+                    {getCategoryLabel(item.category, item.category_display)}
                   </Badge>
                 </div>
 
@@ -1323,13 +1341,13 @@ export default function InventoryPage() {
 
                 {item.room_name && (
                   <div className="break-words text-xs text-muted-foreground">
-                    Room: {item.room_name}
+                    {t("inventory.room")}: {item.room_name}
                   </div>
                 )}
 
                 {item.last_job_by_user && (
                   <div className="break-words rounded-lg border border-info/20 bg-info/10 p-2 text-xs text-info">
-                    <span className="font-semibold">Last job:</span>{" "}
+                    <span className="font-semibold">{t("inventory.lastJob")}:</span>{" "}
                     {item.last_job_by_user.job_id} -{" "}
                     {item.last_job_by_user.description}
                   </div>
@@ -1337,7 +1355,7 @@ export default function InventoryPage() {
 
                 {item.last_pm_by_user && (
                   <div className="break-words rounded-lg border border-primary/20 bg-primary/10 p-2 text-xs text-primary">
-                    <span className="font-semibold">Last PM:</span>{" "}
+                    <span className="font-semibold">{t("inventory.lastPm")}:</span>{" "}
                     {item.last_pm_by_user.pm_id} - {item.last_pm_by_user.title}
                   </div>
                 )}
@@ -1353,7 +1371,7 @@ export default function InventoryPage() {
                     }}
                   >
                     <ShoppingCart className="mr-1 h-4 w-4" aria-hidden="true" />
-                    Restock
+                    {t("inventory.restock")}
                   </Button>
                   <Button
                     variant="outline"
@@ -1365,7 +1383,7 @@ export default function InventoryPage() {
                     }}
                     disabled={item.quantity === 0}
                   >
-                    Use
+                    {t("inventory.use")}
                   </Button>
                 </div>
               </CardContent>
@@ -1409,7 +1427,7 @@ export default function InventoryPage() {
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <Badge variant="secondary" className="max-w-full whitespace-normal break-words text-left text-xs">
-                          {item.category_display || item.category}
+                          {getCategoryLabel(item.category, item.category_display)}
                         </Badge>
                         {item.location ? (
                           <Badge variant="outline" className="max-w-full whitespace-normal break-words text-left text-xs">
@@ -1421,7 +1439,7 @@ export default function InventoryPage() {
                   </div>
                   <div className="mt-3 grid gap-2 border-t border-border pt-3 text-sm">
                     <div className="flex items-end justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2">
-                      <span className="text-muted-foreground">Quantity</span>
+                      <span className="text-muted-foreground">{t("inventory.quantity")}</span>
                       <strong className="break-words text-right text-xl tabular-nums text-foreground">
                         {item.quantity} <span className="text-xs font-semibold text-muted-foreground">{item.unit}</span>
                       </strong>
@@ -1455,7 +1473,7 @@ export default function InventoryPage() {
                           setShowRestockDialog(true);
                         }}
                       >
-                        Restock
+                        {t("inventory.restock")}
                       </Button>
                       <Button
                         variant="outline"
@@ -1466,7 +1484,7 @@ export default function InventoryPage() {
                         }}
                         disabled={item.quantity === 0}
                       >
-                        Use
+                        {t("inventory.use")}
                       </Button>
                     </div>
                   </div>
@@ -1478,25 +1496,25 @@ export default function InventoryPage() {
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Item
+                      {t("inventory.item")}
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Category
+                      {t("inventory.category")}
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Quantity
+                      {t("inventory.quantity")}
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Status
+                      {t("inventory.status")}
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Location
+                      {t("inventory.location")}
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Last Job/PM
+                      {t("inventory.lastJobPm")}
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Actions
+                      {t("inventory.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -1547,7 +1565,7 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-5 py-4">
                         <Badge variant="secondary" className="max-w-44 whitespace-normal break-words text-left text-xs">
-                          {item.category_display || item.category}
+                          {getCategoryLabel(item.category, item.category_display)}
                         </Badge>
                       </td>
                       <td className="whitespace-nowrap px-5 py-4">
@@ -1560,7 +1578,7 @@ export default function InventoryPage() {
                           </span>
                           {item.min_quantity > 0 && (
                             <div className="text-xs text-muted-foreground">
-                              Min: {item.min_quantity}
+                              {t("inventory.minimum")}: {item.min_quantity}
                             </div>
                           )}
                         </div>
@@ -1619,7 +1637,7 @@ export default function InventoryPage() {
                               setShowRestockDialog(true);
                             }}
                           >
-                            Restock
+                            {t("inventory.restock")}
                           </Button>
                           <Button
                             variant="outline"
@@ -1630,7 +1648,7 @@ export default function InventoryPage() {
                             }}
                             disabled={item.quantity === 0}
                           >
-                            Use
+                            {t("inventory.use")}
                           </Button>
                         </div>
                       </td>
@@ -1653,9 +1671,9 @@ export default function InventoryPage() {
       >
         <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-lg sm:p-6">
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold">Restock Item</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{t("inventory.restockTitle")}</DialogTitle>
             <DialogDescription>
-              Add quantity to {selectedItem?.name}
+              {t("inventory.addQuantityTo", { name: selectedItem?.name || "" })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1665,20 +1683,20 @@ export default function InventoryPage() {
               </p>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor="restock-quantity" className="font-semibold">Quantity to Add</Label>
+              <Label htmlFor="restock-quantity" className="font-semibold">{t("inventory.quantityToAdd")}</Label>
               <Input
                 id="restock-quantity"
                 type="number"
                 min="1"
                 value={restockQuantity}
                 onChange={(e) => setRestockQuantity(e.target.value)}
-                placeholder="Enter quantity"
+                placeholder={t("inventory.enterQuantity")}
                 className="h-12 rounded-xl text-lg font-bold tabular-nums"
               />
             </div>
             {selectedItem && (
               <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                <span className="font-medium">Current:</span> {selectedItem.quantity} {selectedItem.unit}
+                <span className="font-medium">{t("inventory.current")}:</span> {selectedItem.quantity} {selectedItem.unit}
                 {restockQuantity && (
                   <span className="ml-2 font-semibold tabular-nums text-foreground">
                     → {selectedItem.quantity + parseInt(restockQuantity) || 0}{" "}
@@ -1698,7 +1716,7 @@ export default function InventoryPage() {
                 setSelectedItem(null);
               }}
             >
-              Cancel
+              {t("action.cancel")}
             </Button>
             <Button
               onClick={handleRestock}
@@ -1709,7 +1727,7 @@ export default function InventoryPage() {
                 parseInt(restockQuantity) <= 0
               }
             >
-              {stockMutationPending ? "Restocking…" : "Restock"}
+              {stockMutationPending ? t("inventory.restocking") : t("inventory.restock")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1731,9 +1749,9 @@ export default function InventoryPage() {
       >
         <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] gap-0 overflow-y-auto p-4 sm:max-w-lg sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Use Item</DialogTitle>
+            <DialogTitle className="text-xl font-bold">{t("inventory.useTitle")}</DialogTitle>
             <DialogDescription>
-              Record inventory used for a maintenance job.
+              {t("inventory.useDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -1755,7 +1773,7 @@ export default function InventoryPage() {
                   {selectedItem.quantity}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {selectedItem.unit} available
+                  {t("inventory.available", { unit: selectedItem.unit })}
                 </p>
               </div>
             </div>
@@ -1769,7 +1787,7 @@ export default function InventoryPage() {
             ) : null}
             <div className="space-y-2">
               <Label htmlFor="use-quantity" className="text-sm font-semibold">
-                Quantity to use
+                {t("inventory.quantityToUse")}
               </Label>
               <div className="grid grid-cols-[3rem_1fr_3rem] items-center gap-2">
                 <Button
@@ -1825,7 +1843,7 @@ export default function InventoryPage() {
                       : "border border-success/30 bg-success/10 text-success"
                   }`}
                 >
-                  <span>Remaining stock</span>
+                  <span>{t("inventory.remainingStock")}</span>
                   <span>
                     {remainingQuantity} {selectedItem.unit}
                   </span>
@@ -1835,10 +1853,10 @@ export default function InventoryPage() {
 
             {/* Job Selection */}
             <div>
-              <Label htmlFor="use-job">Link to Job (Optional)</Label>
+              <Label htmlFor="use-job">{t("inventory.linkJob")}</Label>
               {loadingJobsPMs ? (
                 <div className="text-sm text-muted-foreground py-2">
-                  Loading jobs...
+                  {t("inventory.loadingJobs")}
                 </div>
               ) : (
                 <Select
@@ -1846,7 +1864,7 @@ export default function InventoryPage() {
                   onValueChange={(value) => setSelectedJobId(value || "")}
                 >
                   <SelectTrigger id="use-job" className="h-12 rounded-xl">
-                    <SelectValue placeholder="Select a job (optional)" />
+                    <SelectValue placeholder={t("inventory.selectJob")} />
                   </SelectTrigger>
                   <SelectContent className="max-h-[45vh]">
                     {userJobs.length > 0 ? (
@@ -1854,12 +1872,12 @@ export default function InventoryPage() {
                         <SelectItem key={job.job_id} value={job.job_id}>
                           {job.job_id} -{" "}
                           {job.description?.substring(0, 50) ||
-                            "No description"}
+                            t("inventory.noDescription")}
                         </SelectItem>
                       ))
                     ) : (
                       <SelectItem value="no-jobs" disabled>
-                        No jobs available
+                        {t("inventory.noJobs")}
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -1867,7 +1885,7 @@ export default function InventoryPage() {
               )}
               {selectedItem?.last_job_by_user && !selectedJobId && (
                 <div className="mt-1 text-xs text-info">
-                  Last used: {selectedItem.last_job_by_user.job_id}
+                  {t("inventory.lastUsed", { id: selectedItem.last_job_by_user.job_id })}
                 </div>
               )}
             </div>
@@ -1875,11 +1893,11 @@ export default function InventoryPage() {
             {/* PM Selection */}
             <div>
               <Label htmlFor="use-pm">
-                Link to Preventive Maintenance (Optional)
+                {t("inventory.linkPm")}
               </Label>
               {loadingJobsPMs ? (
                 <div className="text-sm text-muted-foreground py-2">
-                  Loading PMs...
+                  {t("inventory.loadingPms")}
                 </div>
               ) : (
                 <Select
@@ -1887,19 +1905,19 @@ export default function InventoryPage() {
                   onValueChange={(value) => setSelectedPmId(value || "")}
                 >
                   <SelectTrigger id="use-pm" className="h-12 rounded-xl">
-                    <SelectValue placeholder="Select a PM (optional)" />
+                    <SelectValue placeholder={t("inventory.selectPm")} />
                   </SelectTrigger>
                   <SelectContent className="max-h-[45vh]">
                     {userPMs.length > 0 ? (
                       userPMs.map((pm) => (
                         <SelectItem key={pm.pm_id} value={pm.pm_id}>
                           {pm.pm_id} -{" "}
-                          {pm.pmtitle?.substring(0, 50) || "No title"}
+                          {pm.pmtitle?.substring(0, 50) || t("inventory.noTitle")}
                         </SelectItem>
                       ))
                     ) : (
                       <SelectItem value="no-pms" disabled>
-                        No PMs available
+                        {t("inventory.noPms")}
                       </SelectItem>
                     )}
                   </SelectContent>
@@ -1907,14 +1925,13 @@ export default function InventoryPage() {
               )}
               {selectedItem?.last_pm_by_user && !selectedPmId && (
                 <div className="mt-1 text-xs text-primary">
-                  Last used: {selectedItem.last_pm_by_user.pm_id}
+                  {t("inventory.lastUsed", { id: selectedItem.last_pm_by_user.pm_id })}
                 </div>
               )}
             </div>
 
             <div className="border-t border-border pt-2 text-xs leading-5 text-muted-foreground">
-              Note: You can link this inventory usage to a job or PM to track
-              what it was used for.
+              {t("inventory.usageNote")}
             </div>
           </div>
           <DialogFooter className="!grid grid-cols-2 gap-2 sm:!flex">
@@ -1929,14 +1946,14 @@ export default function InventoryPage() {
                 setSelectedItem(null);
               }}
             >
-              Cancel
+              {t("action.cancel")}
             </Button>
             <Button
               onClick={handleUse}
               className="h-12 w-full rounded-xl"
               disabled={stockMutationPending || invalidUseQuantity}
             >
-              {stockMutationPending ? "Saving…" : "Use"}
+              {stockMutationPending ? t("inventory.saving") : t("inventory.use")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1948,8 +1965,7 @@ export default function InventoryPage() {
           <CardContent className="p-4 md:p-5">
             <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
               <div className="text-center text-sm text-muted-foreground sm:text-left">
-                Showing {(page - 1) * pageSize + 1} to{" "}
-                {Math.min(page * pageSize, totalCount)} of {totalCount} items
+                {t("inventory.showing", { from: (page - 1) * pageSize + 1, to: Math.min(page * pageSize, totalCount), total: totalCount })}
               </div>
 
               <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 sm:flex sm:w-auto">
@@ -1960,7 +1976,7 @@ export default function InventoryPage() {
                   disabled={loading || page <= 1}
                 >
                   <ChevronLeft className="h-4 w-4 sm:mr-1" aria-hidden="true" />
-                  <span className="hidden sm:inline">Previous</span>
+                  <span className="hidden sm:inline">{t("action.previous")}</span>
                 </Button>
 
                 <span className="text-center text-sm font-bold text-foreground sm:hidden">
@@ -2001,14 +2017,14 @@ export default function InventoryPage() {
                   onClick={() => setPage(page + 1)}
                   disabled={loading || page >= totalPages}
                 >
-                  <span className="hidden sm:inline">Next</span>
+                  <span className="hidden sm:inline">{t("action.next")}</span>
                   <ChevronRight className="h-4 w-4 sm:ml-1" aria-hidden="true" />
                 </Button>
               </div>
 
               <div className="flex w-full items-center justify-center gap-2 sm:w-auto">
                 <label htmlFor="inventory-page-size" className="text-sm text-muted-foreground">
-                  Per page:
+                  {t("inventory.perPage")}
                 </label>
                 <select
                   id="inventory-page-size"

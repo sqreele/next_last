@@ -1,8 +1,8 @@
 import { PreventiveMaintenance, determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
 
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string, locale: 'en' | 'th' = 'en'): string {
   if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString(locale === 'th' ? 'th-TH-u-ca-gregory' : 'en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'

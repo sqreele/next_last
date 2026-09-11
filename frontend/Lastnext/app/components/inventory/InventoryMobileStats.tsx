@@ -9,6 +9,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
 
 interface InventoryItemLike {
   status?: string;
@@ -33,6 +34,7 @@ export function InventoryMobileStats({
   onToggleLowStock,
   className,
 }: InventoryMobileStatsProps) {
+  const { locale, t } = useLocale();
   const inStock = items.filter(
     (i) => i.status === "available" || i.status === "in_stock",
   ).length;
@@ -58,19 +60,19 @@ export function InventoryMobileStats({
     active?: boolean;
   }> = [
     {
-      label: "Total",
+      label: t("inventory.total"),
       value: total,
       icon: Package,
       tone: "primary",
     },
     {
-      label: "In stock",
+      label: t("inventory.inStock"),
       value: inStock,
       icon: CheckCircle2,
       tone: "success",
     },
     {
-      label: "Low stock",
+      label: t("inventory.status.lowStock"),
       value: lowStock,
       icon: AlertTriangle,
       tone: "warning",
@@ -78,13 +80,13 @@ export function InventoryMobileStats({
       active: lowStockOnly,
     },
     {
-      label: "Out of stock",
+      label: t("inventory.outOfStock"),
       value: outOfStock,
       icon: XCircle,
       tone: "danger",
     },
     {
-      label: "Ordered",
+      label: t("inventory.ordered"),
       value: orderedCount,
       icon: ShoppingCart,
       tone: "info",
@@ -121,7 +123,7 @@ export function InventoryMobileStats({
 
   return (
     <section
-      aria-label="Inventory summary"
+      aria-label={t("inventory.summary")}
       className={cn("space-y-2", className)}
     >
       <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
@@ -149,7 +151,7 @@ export function InventoryMobileStats({
                 </span>
                 {tile.active && (
                   <span className="rounded-full bg-warning px-2 py-0.5 text-[10px] font-semibold text-warning-foreground">
-                    ON
+                    {t("inventory.enabled")}
                   </span>
                 )}
               </div>
@@ -180,9 +182,9 @@ export function InventoryMobileStats({
       </div>
       {inventoryValue > 0 && (
         <p className="px-1 text-xs font-medium text-muted-foreground">
-          Approx. on-hand value:{" "}
+          {t("inventory.approxValue")}{" "}
           <span className="text-foreground">
-            {inventoryValue.toLocaleString("en-US", {
+            {inventoryValue.toLocaleString(locale === "th" ? "th-TH-u-ca-gregory" : "en-US", {
               style: "currency",
               currency: "USD",
             })}

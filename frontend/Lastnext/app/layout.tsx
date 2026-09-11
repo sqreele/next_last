@@ -11,6 +11,8 @@ import { InstallPrompt } from '@/app/components/pwa/InstallPrompt';
 import { NetworkStatusBanner } from '@/app/components/pwa/NetworkStatusBanner';
 import { ThemeProvider } from '@/app/components/theme/ThemeProvider';
 import { LocaleProvider } from '@/app/lib/i18n/LocaleProvider';
+import { cookies } from 'next/headers';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/app/lib/i18n/dictionary';
 import { PropertyAccessGuard } from '@/app/components/auth/PropertyAccessGuard';
 import './globals.css';
 // Bilingual UI font (Thai + English)
@@ -115,9 +117,15 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const cookieStore = await cookies();
+  const savedLocale = cookieStore.get('pcms-locale')?.value;
+  const initialLocale = (SUPPORTED_LOCALES as readonly string[]).includes(savedLocale || '')
+    ? (savedLocale as Locale)
+    : DEFAULT_LOCALE;
+
   return (
-    <html lang="th" suppressHydrationWarning>
+    <html lang={initialLocale} suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -144,7 +152,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         </a>
         <SWRProvider>
           <ThemeProvider>
-          <LocaleProvider>
+          <LocaleProvider initialLocale={initialLocale}>
           <AuthProvider>
             <StoreProvider>
               <Suspense fallback={null}>

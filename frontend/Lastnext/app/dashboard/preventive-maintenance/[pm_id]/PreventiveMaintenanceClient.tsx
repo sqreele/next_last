@@ -39,6 +39,7 @@ import { MaintenanceImage } from "@/app/components/ui/UniversalImage";
 import { getDisplayName, getUserEmail } from "@/app/lib/utils/display-name";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import { useMainStore } from "@/app/lib/stores/mainStore";
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
 
 interface PreventiveMaintenanceClientProps {
   maintenanceData: PreventiveMaintenance;
@@ -47,6 +48,8 @@ interface PreventiveMaintenanceClientProps {
 export default function PreventiveMaintenanceClient({
   maintenanceData: initialMaintenanceData,
 }: PreventiveMaintenanceClientProps) {
+  const { locale, t } = useLocale();
+  const dateLocale = locale === "th" ? "th-TH-u-ca-gregory" : "en-US";
   const router = useRouter();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const [maintenanceData, setMaintenanceData] = useState(initialMaintenanceData);
@@ -137,7 +140,7 @@ export default function PreventiveMaintenanceClient({
   const handleDelete = async () => {
     if (
       !window.confirm(
-        "Are you sure you want to delete this maintenance record?",
+        t("pmDetail.confirmDelete"),
       )
     ) {
       return;
@@ -158,12 +161,12 @@ export default function PreventiveMaintenanceClient({
         router.refresh();
       } else {
         throw new Error(
-          response.message || "Failed to delete maintenance record",
+          response.message || t("pmDetail.deleteFailed"),
         );
       }
     } catch (err: any) {
       console.error("Error deleting maintenance:", err);
-      setError(err.message || "An error occurred while deleting");
+      setError(err.message || t("pmDetail.deleteError"));
     } finally {
       clearLoadingAfterMinTime(loaderGeneration);
     }
@@ -172,12 +175,12 @@ export default function PreventiveMaintenanceClient({
   // Function to mark maintenance as complete
   const handleMarkComplete = async () => {
     if (!canComplete || !selectedPropertyId) {
-      setError("This maintenance task cannot be completed in its current status.");
+      setError(t("pmDetail.cannotComplete"));
       return;
     }
     const requestPropertyId = selectedPropertyId;
 
-    if (!window.confirm("Mark this maintenance task as completed?")) {
+    if (!window.confirm(t("pmDetail.confirmComplete"))) {
       return;
     }
 
@@ -198,15 +201,13 @@ export default function PreventiveMaintenanceClient({
         );
 
         if (daysDiff < -15 || daysDiff > 15) {
-          const scheduledDateStr = scheduledDate.toLocaleDateString();
-          const completedDateStr = completedDate.toLocaleDateString();
-          const proceed = window.confirm(
-            `This task is outside the recommended 15-day window.\n\n` +
-              `Scheduled: ${scheduledDateStr}\n` +
-              `Completion: ${completedDateStr}\n` +
-              `Difference: ${Math.abs(daysDiff)} days\n\n` +
-              `Do you still want to mark it complete?`,
-          );
+          const scheduledDateStr = scheduledDate.toLocaleDateString(dateLocale);
+          const completedDateStr = completedDate.toLocaleDateString(dateLocale);
+          const proceed = window.confirm(t("pmDetail.outsideWindow", {
+            scheduled: scheduledDateStr,
+            completed: completedDateStr,
+            days: Math.abs(daysDiff),
+          }));
 
           if (!proceed) {
             setIsCompleting(false);
@@ -237,7 +238,7 @@ export default function PreventiveMaintenanceClient({
         // Show success message with next scheduled date
         if (nextScheduledDate) {
           const nextDate = new Date(nextScheduledDate);
-          const formattedDate = nextDate.toLocaleDateString("en-US", {
+          const formattedDate = nextDate.toLocaleDateString(dateLocale, {
             year: "numeric",
             month: "long",
             day: "numeric",
@@ -247,21 +248,21 @@ export default function PreventiveMaintenanceClient({
 
           // Show success message
           alert(
-            `✅ Maintenance task completed successfully!\n\nNext scheduled maintenance: ${formattedDate}`,
+            `✅ ${t("pmDetail.completedSuccess")}\n\n${t("pmDetail.nextScheduled", { date: formattedDate })}`,
           );
         } else {
-          alert("✅ Maintenance task completed successfully!");
+          alert(`✅ ${t("pmDetail.completedSuccess")}`);
         }
 
         router.refresh();
       } else {
         throw new Error(
-          response.message || "Failed to complete maintenance record",
+          response.message || t("pmDetail.completeFailed"),
         );
       }
     } catch (err: any) {
       console.error("Error completing maintenance:", err);
-      setError(err.message || "An error occurred while marking as complete");
+      setError(err.message || t("pmDetail.completeError"));
     } finally {
       setIsCompleting(false);
     }
@@ -322,7 +323,7 @@ export default function PreventiveMaintenanceClient({
     setImageMessage(null);
     if (files.length === 0) return;
     if (selectedImages.length + files.length > imageCounts.remaining) {
-      setImageMessage(`You can select up to ${imageCounts.remaining} more image${imageCounts.remaining === 1 ? "" : "s"}.`);
+      setImageMessage(t("pmDetail.tooManyImages", { count: imageCounts.remaining }));
       event.target.value = "";
       return;
     }
@@ -363,14 +364,14 @@ export default function PreventiveMaintenanceClient({
         propertyId,
       );
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Unable to upload images.");
+        throw new Error(response.message || t("pmDetail.uploadError"));
       }
       if (useMainStore.getState().selectedPropertyId !== propertyId) return;
       setMaintenanceData(response.data);
       clearSelectedImages();
-      setImageMessage("Images uploaded and optimized successfully.");
+      setImageMessage(t("pmDetail.uploadSuccess"));
     } catch (uploadError: unknown) {
-      setImageMessage(uploadError instanceof Error ? uploadError.message : "Unable to upload images.");
+      setImageMessage(uploadError instanceof Error ? uploadError.message : t("pmDetail.uploadError"));
     } finally {
       setIsUploadingImages(false);
     }
@@ -378,7 +379,7 @@ export default function PreventiveMaintenanceClient({
 
   const handleDeleteImage = async (imageId: number | string) => {
     const propertyId = selectedPropertyId;
-    if (!canOperate || !propertyId || !window.confirm("Delete this maintenance image?")) return;
+    if (!canOperate || !propertyId || !window.confirm(t("pmDetail.confirmDeleteImage"))) return;
     setDeletingImageId(imageId);
     setImageMessage(null);
     try {
@@ -388,13 +389,13 @@ export default function PreventiveMaintenanceClient({
         propertyId,
       );
       if (!response.success || !response.data) {
-        throw new Error(response.message || "Unable to delete this image.");
+        throw new Error(response.message || t("pmDetail.deleteImageError"));
       }
       if (useMainStore.getState().selectedPropertyId !== propertyId) return;
       setMaintenanceData(response.data);
-      setImageMessage("Image deleted.");
+      setImageMessage(t("pmDetail.imageDeleted"));
     } catch (deleteError: unknown) {
-      setImageMessage(deleteError instanceof Error ? deleteError.message : "Unable to delete this image.");
+      setImageMessage(deleteError instanceof Error ? deleteError.message : t("pmDetail.deleteImageError"));
     } finally {
       setDeletingImageId(null);
     }
@@ -485,7 +486,7 @@ export default function PreventiveMaintenanceClient({
 
     const pdfContent = document.getElementById("pdf-content");
     if (!pdfContent) {
-      setError("PDF content not found.");
+      setError(t("pmDetail.pdfContentMissing"));
       setIsExportingPdf(false);
       return;
     }
@@ -547,7 +548,7 @@ export default function PreventiveMaintenanceClient({
 
           const context = pageCanvas.getContext("2d");
           if (!context) {
-            throw new Error("Failed to create canvas context for PDF export.");
+            throw new Error(t("pmDetail.pdfCanvasFailed"));
           }
           context.fillStyle = "#ffffff";
           context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
@@ -588,7 +589,7 @@ export default function PreventiveMaintenanceClient({
       );
     } catch (err: any) {
       console.error("Error exporting PDF:", err);
-      setError(err?.message || "Failed to export PDF.");
+      setError(err?.message || t("pmDetail.pdfExportFailed"));
     } finally {
       pdfContent.style.display = originalDisplay;
       pdfContent.style.position = originalPosition;
@@ -607,8 +608,8 @@ export default function PreventiveMaintenanceClient({
   const assignedUserInfo = useMemo(() => {
     if (maintenanceData.assigned_to_details) {
       const details = maintenanceData.assigned_to_details;
-      const display = getDisplayName(details, "Unknown Technician");
-      if (display !== "Unknown Technician") {
+      const display = getDisplayName(details, t("pmDetail.unknownTechnician"));
+      if (display !== t("pmDetail.unknownTechnician")) {
         return {
           display,
           email: details.email,
@@ -630,7 +631,7 @@ export default function PreventiveMaintenanceClient({
     const assignee = maintenanceData.assigned_to as any;
     if (assignee && typeof assignee === "object") {
       return {
-        display: getDisplayName(assignee, "Unknown Technician"),
+        display: getDisplayName(assignee, t("pmDetail.unknownTechnician")),
         email: assignee.email,
       };
     }
@@ -642,7 +643,7 @@ export default function PreventiveMaintenanceClient({
       return {
         display: getDisplayName(
           maintenanceData.assigned_to,
-          "Unknown Technician",
+          t("pmDetail.unknownTechnician"),
         ),
         email: undefined,
       };
@@ -654,6 +655,7 @@ export default function PreventiveMaintenanceClient({
     maintenanceData.assigned_to_details,
     maintenanceData.assigned_to_name,
     maintenanceData.technician_name,
+    t,
   ]);
 
   // Debug logging in useEffect to avoid hydration issues
@@ -667,94 +669,35 @@ export default function PreventiveMaintenanceClient({
 
   // Helper function to format dates
   const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t("common.notAvailable");
 
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Invalid Date";
-
-      // Use a completely locale-independent format to avoid hydration issues
-      const year = date.getFullYear();
-      const monthNames = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-      ];
-      const month = monthNames[date.getMonth()];
-      const day = date.getDate();
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const ampm = hours >= 12 ? "PM" : "AM";
-      const displayHours = hours % 12 || 12;
-      const displayMinutes = minutes.toString().padStart(2, "0");
-
-      return `${month} ${day}, ${year} at ${displayHours}:${displayMinutes} ${ampm}`;
+      if (isNaN(date.getTime())) return t("pmDetail.invalidDate");
+      return date.toLocaleString(dateLocale, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
     } catch (error) {
       console.error("Error formatting date:", error);
-      return "Invalid Date";
+      return t("pmDetail.invalidDate");
     }
   };
 
-  // Helper function to format current date/time for reports (locale-independent)
+  // Helper functions use the selected UI locale and the app's Gregorian Thai convention.
   const formatCurrentDateTime = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-    const month = monthNames[now.getMonth()];
-    const day = now.getDate();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const displayHours = hours % 12 || 12;
-    const displayMinutes = minutes.toString().padStart(2, "0");
-
-    return `${month} ${day}, ${year} at ${displayHours}:${displayMinutes} ${ampm}`;
+    return new Date().toLocaleString(dateLocale, {
+      year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
   };
 
-  // Helper function to format current date for reports (locale-independent)
   const formatCurrentDate = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    const month = monthNames[now.getMonth()];
-    const day = now.getDate();
-
-    return `${month} ${day}, ${year}`;
+    return new Date().toLocaleDateString(dateLocale, {
+      year: "numeric", month: "short", day: "numeric",
+    });
   };
 
   // Status functions - use useState/useEffect to avoid hydration issues with Date.now()
@@ -791,19 +734,17 @@ export default function PreventiveMaintenanceClient({
         <div className="text-center py-8">
           <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
           <p className="text-muted-foreground font-medium">
-            No machines assigned
+            {t("pmDetail.noMachines")}
           </p>
           <p className="text-muted-foreground text-sm mb-4">
-            This maintenance task is not associated with any specific machines.
-            Machines are optional but help track which equipment this
-            maintenance applies to.
+            {t("pmDetail.noMachinesHint")}
           </p>
           <Link
             href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           >
             <Settings className="h-4 w-4" />
-            Add Machines to This Task
+            {t("pmDetail.addMachines")}
           </Link>
         </div>
       );
@@ -830,17 +771,17 @@ export default function PreventiveMaintenanceClient({
                     onClick={() =>
                       openImageModal(
                         machineImageUrl,
-                        `${machineName || "Machine"} image`,
+                        t("pmDetail.machineImage", { name: machineName || t("pm.machine") }),
                       )
                     }
                     className="group relative h-20 w-20 flex-none overflow-hidden rounded-xl border border-border bg-muted shadow-soft focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    aria-label={`Open image for ${machineName || machineId || "machine"}`}
+                    aria-label={t("pmDetail.openMachineImage", { name: machineName || machineId || t("pm.machine") })}
                   >
                     <img
                       loading="lazy"
                       decoding="async"
                       src={machineImageUrl}
-                      alt={machineName ? `${machineName} machine` : "Machine"}
+                      alt={t("pmDetail.machineImage", { name: machineName || t("pm.machine") })}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(event) => {
                         event.currentTarget.style.display = "none";
@@ -857,7 +798,7 @@ export default function PreventiveMaintenanceClient({
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="break-words font-semibold text-foreground">
-                    {machineName || "Unnamed Machine"}
+                    {machineName || t("pmDetail.unnamedMachine")}
                   </p>
                   <p className="break-all font-mono text-xs text-muted-foreground sm:text-sm">
                     {machineId}
@@ -867,7 +808,7 @@ export default function PreventiveMaintenanceClient({
                       href={`/dashboard/machines/${encodeURIComponent(String(machineId))}`}
                       className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
                     >
-                      View machine
+                      {t("pmDetail.viewMachine")}
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </Link>
                   )}
@@ -882,7 +823,7 @@ export default function PreventiveMaintenanceClient({
 
   const getMachinesString = () => {
     if (!maintenanceData.machines || maintenanceData.machines.length === 0) {
-      return "No machines assigned";
+      return t("pmDetail.noMachines");
     }
 
     return maintenanceData.machines
@@ -938,8 +879,8 @@ export default function PreventiveMaintenanceClient({
   ) {
     return (
       <PageLoader
-        label="Checking preventive maintenance scope"
-        description="Hiding the previous property while the active scope changes."
+        label={t("pmDetail.checkingScope")}
+        description={t("pmDetail.hidingPreviousProperty")}
       />
     );
   }
@@ -948,10 +889,10 @@ export default function PreventiveMaintenanceClient({
     <>
       <nav
         className="mb-5 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-4"
-        aria-label="Easy preventive maintenance menu"
+        aria-label={t("pmDetail.menu")}
       >
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Record actions
+          {t("pmDetail.recordActions")}
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Link
@@ -962,7 +903,7 @@ export default function PreventiveMaintenanceClient({
               className="h-4 w-4 rotate-180"
               aria-hidden="true"
             />
-            PM List
+            {t("pmDetail.pmList")}
           </Link>
 
           {canOperate && (
@@ -971,7 +912,7 @@ export default function PreventiveMaintenanceClient({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
-              Edit
+              {t("action.edit")}
             </Link>
           )}
 
@@ -982,7 +923,7 @@ export default function PreventiveMaintenanceClient({
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
-            {isExportingPdf ? "Generating..." : "PDF"}
+            {isExportingPdf ? t("pmDetail.generating") : "PDF"}
           </button>
 
           {canComplete && (
@@ -993,7 +934,7 @@ export default function PreventiveMaintenanceClient({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm font-semibold text-success shadow-soft transition-colors hover:bg-success/15 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCircle className="h-4 w-4" aria-hidden="true" />
-              {isCompleting ? "Completing..." : "Complete"}
+              {isCompleting ? t("pmDetail.completing") : t("pmDetail.complete")}
             </button>
           )}
         </div>
@@ -1009,10 +950,10 @@ export default function PreventiveMaintenanceClient({
               </div>
               <div className="min-w-0">
                 <h1 className="break-words text-xl font-bold leading-tight tracking-tight text-foreground sm:text-2xl lg:text-3xl">
-                  {maintenanceData.pmtitle || "Preventive Maintenance"}
+                  {maintenanceData.pmtitle || t("pmDetail.defaultTitle")}
                 </h1>
                 <p className="mt-1 break-all font-mono text-xs text-muted-foreground sm:text-sm">
-                  ID: {maintenanceData.pm_id}
+                  {t("pmDetail.maintenanceId")}: {maintenanceData.pm_id}
                 </p>
               </div>
             </div>
@@ -1031,7 +972,7 @@ export default function PreventiveMaintenanceClient({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Maintenance ID
+                    {t("pmDetail.maintenanceId")}
                   </p>
                   <p className="break-all font-mono text-base font-semibold text-foreground sm:text-lg">
                     {maintenanceData.pm_id}
@@ -1053,7 +994,7 @@ export default function PreventiveMaintenanceClient({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-muted-foreground">
-                    Maintenance Task Template
+                    {t("pmDetail.taskTemplate")}
                   </p>
                   {maintenanceData.procedure_template_id ||
                   maintenanceData.procedure_template ? (
@@ -1075,16 +1016,16 @@ export default function PreventiveMaintenanceClient({
                   ) : (
                     <>
                       <p className="text-sm text-muted-foreground italic">
-                        No template linked
+                        {t("pmDetail.noTemplateLinked")}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         <Link
                           href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
                           className="text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          Edit this record
+                          {t("pmDetail.editRecord")}
                         </Link>{" "}
-                        to link a task template
+                        {t("pmDetail.toLinkTemplate")}
                       </p>
                     </>
                   )}
@@ -1100,7 +1041,7 @@ export default function PreventiveMaintenanceClient({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-muted-foreground">
-                      Property ID
+                      {t("pmDetail.propertyId")}
                     </p>
                     <p className="break-all text-base font-semibold text-foreground sm:text-lg">
                       {Array.isArray(maintenanceData.property_id)
@@ -1120,7 +1061,7 @@ export default function PreventiveMaintenanceClient({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-muted-foreground">
-                      Assigned To
+                      {t("pmDetail.assignedTo")}
                     </p>
                     <p className="break-words text-base font-semibold text-foreground sm:text-lg">
                       {assignedUserInfo.display}
@@ -1142,7 +1083,7 @@ export default function PreventiveMaintenanceClient({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Scheduled
+                    {t("pmDetail.scheduled")}
                   </p>
                   <p className="text-lg font-semibold text-foreground">
                     {formatDate(maintenanceData.scheduled_date)}
@@ -1159,12 +1100,12 @@ export default function PreventiveMaintenanceClient({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Completed
+                      {t("pmDetail.completed")}
                     </p>
                     <p className="text-lg font-semibold text-foreground">
                       {maintenanceData.completed_date
                         ? formatDate(maintenanceData.completed_date)
-                        : "Completion date not set"}
+                        : t("pmDetail.completionDateNotSet")}
                     </p>
                   </div>
                 </div>
@@ -1179,7 +1120,7 @@ export default function PreventiveMaintenanceClient({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Next Due
+                      {t("pm.nextDue")}
                     </p>
                     <p className="text-lg font-semibold text-foreground">
                       {formatDate(maintenanceData.next_due_date)}
@@ -1203,11 +1144,11 @@ export default function PreventiveMaintenanceClient({
                     <FileText className="h-5 w-5 text-blue-600" />
                   </div>
                   <h4 className="text-lg font-semibold text-foreground">
-                    Maintenance Title
+                    {t("pmDetail.title")}
                   </h4>
                 </div>
                 <p className="break-words text-base font-medium leading-relaxed text-foreground sm:text-xl">
-                  {maintenanceData.pmtitle || "No title provided"}
+                  {maintenanceData.pmtitle || t("pmDetail.noTitle")}
                 </p>
               </div>
 
@@ -1219,7 +1160,7 @@ export default function PreventiveMaintenanceClient({
                       <Clipboard className="h-5 w-5 text-green-600" />
                     </div>
                     <h4 className="text-lg font-semibold text-foreground">
-                      Procedure
+                      {t("pmDetail.procedure")}
                     </h4>
                   </div>
                   <div className="bg-card/60 p-4 rounded-xl">
@@ -1238,7 +1179,7 @@ export default function PreventiveMaintenanceClient({
                       <FileText className="h-5 w-5 text-purple-600" />
                     </div>
                     <h4 className="text-lg font-semibold text-foreground">
-                      Notes
+                      {t("pmDetail.notes")}
                     </h4>
                   </div>
                   <div className="bg-card/60 p-4 rounded-xl">
@@ -1263,7 +1204,7 @@ export default function PreventiveMaintenanceClient({
                 <Wrench className="h-6 w-6 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-semibold text-foreground">
-                Associated Machines
+                {t("pmDetail.associatedMachines")}
               </h3>
             </div>
             <div className="rounded-xl bg-card/80 p-0 sm:p-4">
@@ -1281,19 +1222,19 @@ export default function PreventiveMaintenanceClient({
                   <Camera className="h-6 w-6 text-amber-700" aria-hidden="true" />
                 </div>
                 <div>
-                  <h2 id="pm-images-title" className="text-xl font-semibold text-foreground">Work evidence</h2>
-                  <p className="text-sm text-muted-foreground">Before: {imageCounts.before} · After: {imageCounts.after}</p>
+                  <h2 id="pm-images-title" className="text-xl font-semibold text-foreground">{t("pmDetail.workEvidence")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("pmDetail.before")}: {imageCounts.before} · {t("pmDetail.after")}: {imageCounts.after}</p>
                 </div>
               </div>
-              <p className="rounded-full bg-muted px-3 py-1.5 text-sm font-semibold text-foreground" aria-label={`${imageCounts.total} of ${imageCounts.limit} images used`}>
-                {imageCounts.total} / {imageCounts.limit} images
+              <p className="rounded-full bg-muted px-3 py-1.5 text-sm font-semibold text-foreground" aria-label={t("pmDetail.imagesUsed", { count: imageCounts.total, limit: imageCounts.limit })}>
+                {t("pmDetail.imageCount", { count: imageCounts.total, limit: imageCounts.limit })}
               </p>
             </div>
 
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
               {([
-                { type: "before" as const, title: "Before Work", images: beforeImages, accent: "bg-blue-500" },
-                { type: "after" as const, title: "After Work", images: afterImages, accent: "bg-green-500" },
+                { type: "before" as const, title: t("pmDetail.beforeWork"), images: beforeImages, accent: "bg-blue-500" },
+                { type: "after" as const, title: t("pmDetail.afterWork"), images: afterImages, accent: "bg-green-500" },
               ]).map((group) => (
                 <div key={group.type} className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
@@ -1306,14 +1247,17 @@ export default function PreventiveMaintenanceClient({
                   {group.images.length ? (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
                       {group.images.map((image, index) => {
-                        const alt = `${group.type === "before" ? "Before" : "After"} maintenance image ${index + 1}`;
+                        const alt = t("pmDetail.imageAlt", {
+                          type: group.type === "before" ? t("pmDetail.before") : t("pmDetail.after"),
+                          number: index + 1,
+                        });
                         return (
                           <div key={String(image.id)} className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted">
                             <button
                               type="button"
                               onClick={() => openImageModal(image.image_url || null, alt)}
                               className="h-full w-full focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-inset"
-                              aria-label={`Open ${alt.toLowerCase()}`}
+                              aria-label={t("pmDetail.openImage", { description: alt })}
                             >
                               <img loading="lazy" decoding="async" src={image.image_url || ""} alt={alt} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                               <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/20 group-hover:opacity-100" aria-hidden="true">
@@ -1326,7 +1270,7 @@ export default function PreventiveMaintenanceClient({
                                 onClick={() => void handleDeleteImage(image.id!)}
                                 disabled={deletingImageId === image.id}
                                 className="absolute right-1.5 top-1.5 grid h-11 w-11 place-items-center rounded-full bg-red-700 text-white shadow-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white disabled:opacity-60"
-                                aria-label={`Delete ${alt.toLowerCase()}`}
+                                aria-label={t("pmDetail.deleteImage", { description: alt })}
                               >
                                 <Trash2 className="h-4 w-4" aria-hidden="true" />
                               </button>
@@ -1339,7 +1283,7 @@ export default function PreventiveMaintenanceClient({
                     <div className="grid min-h-36 place-items-center rounded-lg border-2 border-dashed border-border bg-card px-4 text-center">
                       <div>
                         <ImagePlus className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
-                        <p className="mt-2 text-sm font-medium text-muted-foreground">No {group.type} images yet</p>
+                        <p className="mt-2 text-sm font-medium text-muted-foreground">{t("pmDetail.noImages", { type: group.type === "before" ? t("pmDetail.before") : t("pmDetail.after") })}</p>
                       </div>
                     </div>
                   )}
@@ -1352,15 +1296,15 @@ export default function PreventiveMaintenanceClient({
                 <div className="flex items-start gap-3">
                   <Upload className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
                   <div>
-                    <h3 className="font-semibold text-foreground">Add work images</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Choose Before or After. Images are automatically optimized before storage.</p>
+                    <h3 className="font-semibold text-foreground">{t("pmDetail.addImages")}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("pmDetail.addImagesHint")}</p>
                   </div>
                 </div>
 
                 {imageCounts.remaining > 0 ? (
                   <>
                     <fieldset className="mt-4">
-                      <legend className="text-sm font-semibold text-foreground">Image type</legend>
+                      <legend className="text-sm font-semibold text-foreground">{t("pmDetail.imageType")}</legend>
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:max-w-sm">
                         {(["before", "after"] as const).map((type) => (
                           <button
@@ -1370,13 +1314,13 @@ export default function PreventiveMaintenanceClient({
                             aria-pressed={uploadType === type}
                             className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold capitalize focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600 ${uploadType === type ? "border-blue-700 bg-blue-700 text-white" : "border-border bg-card text-foreground"}`}
                           >
-                            {type}
+                            {type === "before" ? t("pmDetail.before") : t("pmDetail.after")}
                           </button>
                         ))}
                       </div>
                     </fieldset>
                     <label className="mt-4 block text-sm font-semibold text-foreground" htmlFor="pm-evidence-images">
-                      Select images <span className="font-normal text-muted-foreground">({imageCounts.remaining} remaining)</span>
+                      {t("pmDetail.selectImages")} <span className="font-normal text-muted-foreground">({t("pmDetail.remaining", { count: imageCounts.remaining })})</span>
                     </label>
                     <input
                       ref={imageInputRef}
@@ -1390,17 +1334,17 @@ export default function PreventiveMaintenanceClient({
                     />
                   </>
                 ) : (
-                  <p className="mt-4 rounded-lg bg-amber-100 px-4 py-3 text-sm font-medium text-amber-950">The 10-image limit has been reached. Delete an image to add another.</p>
+                  <p className="mt-4 rounded-lg bg-amber-100 px-4 py-3 text-sm font-medium text-amber-950">{t("pmDetail.imageLimit")}</p>
                 )}
 
                 {selectedImages.length > 0 && (
                   <div className="mt-4">
-                    <p className="text-sm font-semibold text-foreground">Selected: {selectedImages.length}</p>
+                    <p className="text-sm font-semibold text-foreground">{t("pmDetail.selectedImages", { count: selectedImages.length })}</p>
                     <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
                       {selectedImages.map(({ file, previewUrl, key }, index) => (
                         <div key={key} className="relative aspect-square overflow-hidden rounded-lg border border-border bg-muted">
-                          <img src={previewUrl} alt={`Selected image ${index + 1}: ${file.name}`} className="h-full w-full object-cover" />
-                          <button type="button" onClick={() => removeSelectedImage(key)} className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-black/75 text-white focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white" aria-label={`Remove ${file.name} from upload`}>
+                          <img src={previewUrl} alt={t("pmDetail.selectedImage", { number: index + 1, name: file.name })} className="h-full w-full object-cover" />
+                          <button type="button" onClick={() => removeSelectedImage(key)} className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-black/75 text-white focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white" aria-label={t("pmDetail.removeUpload", { name: file.name })}>
                             <X className="h-4 w-4" aria-hidden="true" />
                           </button>
                         </div>
@@ -1413,7 +1357,7 @@ export default function PreventiveMaintenanceClient({
                       className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
                       <Upload className="h-4 w-4" aria-hidden="true" />
-                      {isUploadingImages ? "Uploading and optimizing…" : `Upload ${selectedImages.length} ${uploadType} image${selectedImages.length === 1 ? "" : "s"}`}
+                      {isUploadingImages ? t("pmDetail.uploading") : t("pmDetail.uploadImages", { count: selectedImages.length, type: uploadType === "before" ? t("pmDetail.before") : t("pmDetail.after") })}
                     </button>
                   </div>
                 )}
@@ -1439,7 +1383,7 @@ export default function PreventiveMaintenanceClient({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-center text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <ArrowUpRight className="h-4 w-4 rotate-180" aria-hidden="true" />
-              Back to List
+              {t("pmDetail.backToPm")}
             </Link>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:flex-wrap xl:justify-end">
@@ -1451,7 +1395,7 @@ export default function PreventiveMaintenanceClient({
                 }`}
               >
                 <Download className="h-4 w-4" aria-hidden="true" />
-                {isExportingPdf ? "Generating PDF report..." : "Generate PDF"}
+                {isExportingPdf ? t("pmDetail.generatingPdf") : t("pmDetail.generatePdf")}
               </button>
 
               {canComplete && (
@@ -1463,7 +1407,7 @@ export default function PreventiveMaintenanceClient({
                   }`}
                 >
                   <CheckCircle className="h-4 w-4" aria-hidden="true" />
-                  {isCompleting ? "Completing..." : "Mark Complete"}
+                  {isCompleting ? t("pmDetail.completing") : t("pmDetail.markComplete")}
                 </button>
               )}
 
@@ -1473,7 +1417,7 @@ export default function PreventiveMaintenanceClient({
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <Settings className="h-4 w-4" aria-hidden="true" />
-                  Edit
+                  {t("action.edit")}
                 </Link>
               )}
 
@@ -1486,7 +1430,7 @@ export default function PreventiveMaintenanceClient({
                   }`}
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
-                  {isLoading ? "Deleting..." : "Delete"}
+                  {isLoading ? t("pmDetail.deleting") : t("action.delete")}
                 </button>
               )}
             </div>
@@ -1510,14 +1454,14 @@ export default function PreventiveMaintenanceClient({
           {/* Header */}
           <div className="header text-center mb-4 border-b-2 border-border pb-4">
             <h1 className="text-2xl font-bold text-foreground mb-1">
-              Maintenance Record Report
+              {t("pmDetail.reportTitle")}
             </h1>
             <p className="text-muted-foreground">
-              Generated on {formatCurrentDateTime()}
+              {t("pmDetail.generatedOn", { date: formatCurrentDateTime() })}
             </p>
             <div className="flex justify-center items-center mt-2 text-xs text-muted-foreground">
               <Building className="h-4 w-4 mr-2" />
-              Facility Management System
+              {t("pmDetail.facilitySystem")}
             </div>
           </div>
 
@@ -1526,10 +1470,10 @@ export default function PreventiveMaintenanceClient({
             <div className="flex justify-between items-start mb-3">
               <div>
                 <h2 className="text-xl font-semibold text-foreground">
-                  {maintenanceData.pmtitle || "Maintenance Task"}
+                  {maintenanceData.pmtitle || t("pmDetail.defaultTitle")}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  ID: {maintenanceData.pm_id}
+                  {t("pmDetail.maintenanceId")}: {maintenanceData.pm_id}
                 </p>
               </div>
               <StatusBadge status={getTaskStatus} />
@@ -1538,7 +1482,7 @@ export default function PreventiveMaintenanceClient({
             {(maintenanceData as any).job_description && (
               <div className="mb-4">
                 <span className="font-medium text-muted-foreground">
-                  Description:
+                  {t("inventory.description")}:
                 </span>
                 <p className="text-muted-foreground mt-1">
                   {(maintenanceData as any).job_description}
@@ -1549,7 +1493,7 @@ export default function PreventiveMaintenanceClient({
             {maintenanceData.notes && (
               <div className="mb-4">
                 <span className="font-medium text-muted-foreground">
-                  Notes:
+                  {t("pmDetail.notes")}:
                 </span>
                 <p className="text-muted-foreground mt-1">
                   {maintenanceData.notes}
@@ -1560,7 +1504,7 @@ export default function PreventiveMaintenanceClient({
             {maintenanceData.procedure && (
               <div className="mb-4">
                 <span className="font-medium text-muted-foreground">
-                  Procedure:
+                  {t("pmDetail.procedure")}:
                 </span>
                 <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
                   {maintenanceData.procedure}
@@ -1571,7 +1515,7 @@ export default function PreventiveMaintenanceClient({
             <div className="grid grid-cols-2 gap-3 text-xs mb-3">
               <div>
                 <span className="font-medium text-muted-foreground">
-                  Scheduled:
+                  {t("pmDetail.scheduled")}:
                 </span>
                 <p>{formatDate(maintenanceData.scheduled_date)}</p>
               </div>
@@ -1579,19 +1523,19 @@ export default function PreventiveMaintenanceClient({
               {/* Topics removed from display */}
               <div>
                 <span className="font-medium text-muted-foreground">
-                  Next Due:
+                  {t("pm.nextDue")}:
                 </span>
                 <p>
                   {maintenanceData.next_due_date
                     ? formatDate(maintenanceData.next_due_date)
-                    : "N/A"}
+                    : t("common.notAvailable")}
                 </p>
               </div>
             </div>
 
             <div className="mb-4">
               <span className="font-medium text-muted-foreground">
-                Machines:
+                {t("pmDetail.machines")}:
               </span>
               <p className="text-muted-foreground mt-1">
                 {getMachinesString()}
@@ -1601,7 +1545,7 @@ export default function PreventiveMaintenanceClient({
             {machinesWithImages.length > 0 && (
               <div className="mb-4">
                 <span className="font-medium text-muted-foreground">
-                  Equipment Images:
+                  {t("pmDetail.equipmentImages")}:
                 </span>
                 <div className="pdf-image-grid grid grid-cols-2 gap-3 mt-2">
                   {machinesWithImages.map(({ machine, imageUrl }, index) => (
@@ -1612,12 +1556,12 @@ export default function PreventiveMaintenanceClient({
                       <p className="text-xs font-medium text-muted-foreground mb-1">
                         {machine.name ||
                           machine.machine_id ||
-                          `Equipment ${index + 1}`}
+                          t("pmDetail.equipmentNumber", { number: index + 1 })}
                       </p>
                       {imageUrl && (
                         <img
                           src={getPdfImageSrc(imageUrl)}
-                          alt={`${machine.name || machine.machine_id || "Equipment"} image`}
+                          alt={t("pmDetail.machineImage", { name: machine.name || machine.machine_id || t("pmDetail.plan.equipment") })}
                           className="pdf-equipment-image w-full h-32 object-contain rounded-md border border-border"
                         />
                       )}
@@ -1630,7 +1574,7 @@ export default function PreventiveMaintenanceClient({
             {maintenanceData.property_id && (
               <div className="mb-4">
                 <span className="font-medium text-muted-foreground">
-                  Property ID:
+                  {t("pmDetail.propertyId")}:
                 </span>
                 <p className="text-muted-foreground mt-1">
                   {maintenanceData.property_id}
@@ -1641,7 +1585,7 @@ export default function PreventiveMaintenanceClient({
             {assignedUserInfo && (
               <div className="mb-4">
                 <span className="font-medium text-muted-foreground">
-                  Assigned To:
+                  {t("pmDetail.assignedTo")}:
                 </span>
                 <p className="text-muted-foreground mt-1">
                   {assignedUserInfo.display}
@@ -1653,7 +1597,7 @@ export default function PreventiveMaintenanceClient({
             {maintenanceData.completed_date && (
               <div className="mt-4 pt-4 border-t border-border">
                 <span className="font-medium text-green-600">
-                  Completed on: {formatDate(maintenanceData.completed_date)}
+                  {t("pmDetail.completedOn", { date: formatDate(maintenanceData.completed_date) })}
                 </span>
               </div>
             )}
@@ -1665,30 +1609,29 @@ export default function PreventiveMaintenanceClient({
             <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
               <div className="text-left">
                 <p>
-                  <strong>Report Generated:</strong>
+                  <strong>{t("pmDetail.reportGenerated")}:</strong>
                 </p>
                 <p>{formatCurrentDate()}</p>
               </div>
               <div className="text-center">
                 <p>
-                  <strong>Maintenance ID:</strong>
+                  <strong>{t("pmDetail.maintenanceId")}:</strong>
                 </p>
                 <p className="font-mono">{maintenanceData.pm_id}</p>
               </div>
               <div className="text-right">
                 <p>
-                  <strong>Page:</strong>
+                  <strong>{t("pmDetail.page")}:</strong>
                 </p>
-                <p>1 of {pdfEvidence.items.length > 0 ? 2 : 1}</p>
+                <p>{t("pmDetail.pageOf", { page: 1, total: pdfEvidence.items.length > 0 ? 2 : 1 })}</p>
               </div>
             </div>
             <div className="mt-4 text-center text-muted-foreground">
               <p className="text-sm">
-                This report was automatically generated by the Facility
-                Management System
+                {t("pmDetail.reportFooter")}
               </p>
               <p className="text-xs mt-1">
-                © 2025 - Confidential and Proprietary Information
+                © 2025 - {t("pmDetail.confidential")}
               </p>
             </div>
           </div>
@@ -1703,15 +1646,15 @@ export default function PreventiveMaintenanceClient({
               <div className="mb-1 flex items-center justify-center gap-2">
                 <Camera className="h-5 w-5 text-blue-700" aria-hidden="true" />
                 <h2 className="text-xl font-bold text-foreground">
-                  Maintenance Evidence
+                  {t("pmDetail.evidenceTitle")}
                 </h2>
               </div>
               <p className="text-xs text-muted-foreground">
-                PM {maintenanceData.pm_id} · Before and After Work
+                {t("pmDetail.evidenceSubtitle", { id: maintenanceData.pm_id })}
               </p>
               {pdfEvidence.truncated && (
                 <p className="mt-1 text-xs font-semibold text-amber-700">
-                  Showing {pdfEvidence.items.length} of {pdfEvidence.total} images
+                  {t("pmDetail.showingImages", { shown: pdfEvidence.items.length, total: pdfEvidence.total })}
                 </p>
               )}
             </div>
@@ -1719,16 +1662,16 @@ export default function PreventiveMaintenanceClient({
             <div className="pdf-evidence-grid">
               {pdfEvidence.items.map((image) => (
                 <div key={image.key} className="pdf-evidence-card">
-                  <p className="pdf-evidence-label">{image.label}</p>
+                  <p className="pdf-evidence-label">{image.label.replace("Before", t("pmDetail.before")).replace("After", t("pmDetail.after"))}</p>
                   {pdfFailedImageUrls.has(image.imageUrl) ? (
                     <div className="pdf-evidence-placeholder">
-                      Image unavailable
+                      {t("pmDetail.imageUnavailable")}
                     </div>
                   ) : (
                     <>
                       <img
                         src={getPdfImageSrc(image.imageUrl)}
-                        alt={`${image.label} maintenance evidence`}
+                        alt={image.label.replace("Before", t("pmDetail.before")).replace("After", t("pmDetail.after"))}
                         className="pdf-evidence-image"
                         onError={(event) => {
                           event.currentTarget.style.display = "none";
@@ -1738,7 +1681,7 @@ export default function PreventiveMaintenanceClient({
                         }}
                       />
                       <div className="pdf-evidence-placeholder hidden">
-                        Image unavailable
+                        {t("pmDetail.imageUnavailable")}
                       </div>
                     </>
                   )}
@@ -1747,8 +1690,8 @@ export default function PreventiveMaintenanceClient({
             </div>
 
             <div className="pdf-evidence-footer">
-              <span>Maintenance ID: {maintenanceData.pm_id}</span>
-              <span>Page 2 of 2</span>
+              <span>{t("pmDetail.maintenanceId")}: {maintenanceData.pm_id}</span>
+              <span>{t("pmDetail.pageOf", { page: 2, total: 2 })}</span>
             </div>
           </div>
         )}
@@ -1761,7 +1704,7 @@ export default function PreventiveMaintenanceClient({
           onClick={closeImageModal}
           role="dialog"
           aria-modal="true"
-          aria-label={currentImageAlt || "Maintenance image preview"}
+          aria-label={currentImageAlt || t("pmDetail.imagePreview")}
         >
           <div className="relative max-w-4xl max-h-screen w-full h-full flex items-center justify-center">
             <button
@@ -1771,7 +1714,7 @@ export default function PreventiveMaintenanceClient({
                 e.stopPropagation();
                 closeImageModal();
               }}
-              aria-label="Close image preview"
+              aria-label={t("pmDetail.closeImagePreview")}
             >
               <X className="h-5 w-5" />
             </button>

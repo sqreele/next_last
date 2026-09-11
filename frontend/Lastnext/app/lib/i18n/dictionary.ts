@@ -20,6 +20,24 @@ const en = {
   'app.title': 'StayMaint',
   'app.tagline': 'Hotel maintenance management',
 
+  // Public contact page
+  'contact.language': 'Language',
+  'contact.eyebrow': 'StayMaint support',
+  'contact.title': 'Contact StayMaint',
+  'contact.subtitle': 'Hotel Maintenance Management Support',
+  'contact.intro': 'Choose the path that best matches your question. Account and property support starts securely through your StayMaint account and property administrator.',
+  'contact.general.title': 'General Inquiry',
+  'contact.general.description': 'For questions about property access or invitations, contact the StayMaint administrator at your property.',
+  'contact.general.action': 'Return home',
+  'contact.technical.title': 'Technical Support',
+  'contact.technical.description': 'Sign in first so your property administrator can help with the correct account and property context.',
+  'contact.technical.action': 'Sign in',
+  'contact.sales.title': 'Sales / SaaS Inquiry',
+  'contact.sales.description': 'Create a StayMaint account to start setting up your hotel maintenance workspace.',
+  'contact.sales.action': 'Get started',
+  'contact.notice': 'StayMaint does not publish a public email address or phone number in this application. Never share passwords or sensitive property data outside the secure service.',
+  'contact.footer': 'Secure hotel maintenance operations',
+
   // Navigation
   'nav.dashboard': 'Dashboard',
   'nav.jobs': 'Jobs',
@@ -805,6 +823,23 @@ type DictKey = keyof typeof en;
 const th: Record<DictKey, string> = {
   'app.title': 'StayMaint',
   'app.tagline': 'ระบบจัดการงานซ่อมบำรุงโรงแรม',
+
+  'contact.language': 'ภาษา',
+  'contact.eyebrow': 'ฝ่ายสนับสนุน StayMaint',
+  'contact.title': 'ติดต่อ StayMaint',
+  'contact.subtitle': 'การสนับสนุนระบบจัดการงานซ่อมบำรุงโรงแรม',
+  'contact.intro': 'เลือกช่องทางที่ตรงกับคำถามของคุณ การช่วยเหลือเกี่ยวกับบัญชีและโรงแรมจะเริ่มต้นอย่างปลอดภัยผ่านบัญชี StayMaint และผู้ดูแลระบบของโรงแรม',
+  'contact.general.title': 'สอบถามทั่วไป',
+  'contact.general.description': 'หากมีคำถามเกี่ยวกับการเข้าถึงโรงแรมหรือคำเชิญ กรุณาติดต่อผู้ดูแลระบบ StayMaint ของโรงแรมคุณ',
+  'contact.general.action': 'กลับหน้าหลัก',
+  'contact.technical.title': 'ฝ่ายสนับสนุนด้านเทคนิค',
+  'contact.technical.description': 'กรุณาเข้าสู่ระบบก่อน เพื่อให้ผู้ดูแลระบบของโรงแรมช่วยเหลือโดยอ้างอิงบัญชีและข้อมูลโรงแรมที่ถูกต้อง',
+  'contact.technical.action': 'เข้าสู่ระบบ',
+  'contact.sales.title': 'สอบถามบริการ SaaS',
+  'contact.sales.description': 'สร้างบัญชี StayMaint เพื่อเริ่มตั้งค่าพื้นที่จัดการงานซ่อมบำรุงสำหรับโรงแรมของคุณ',
+  'contact.sales.action': 'เริ่มใช้งาน',
+  'contact.notice': 'StayMaint ไม่มีการเผยแพร่อีเมลหรือหมายเลขโทรศัพท์สาธารณะในแอปพลิเคชันนี้ โปรดอย่าเปิดเผยรหัสผ่านหรือข้อมูลสำคัญของโรงแรมนอกบริการที่ปลอดภัย',
+  'contact.footer': 'ระบบงานซ่อมบำรุงโรงแรมที่ปลอดภัย',
 
   'nav.dashboard': 'แดชบอร์ด',
   'nav.jobs': 'งานทั้งหมด',

@@ -1,39 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
+import { beginHardenedAuth0Login } from '@/app/lib/auth0/login-flow';
 import { clearSessionCookie, parseSessionReference, sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
 import { getSessionFromRequest } from '@/app/lib/auth0/server-session';
 import { deleteServerSession } from '@/app/lib/auth0/session-store';
-
-function resolveAudience(raw?: string | null): string {
-  const fallback = 'https://api.hotelcarepro.com';
-  if (!raw) {
-    return fallback;
-  }
-  const trimmed = raw.trim().replace(/\/$/, '');
-  // Explicit fixes for common misconfigurations
-  if (
-    trimmed === 'https://api.hotelcarepro.com/api' ||
-    trimmed === 'https://hotelcarepro.com' ||
-    trimmed === 'http://hotelcarepro.com' ||
-    trimmed === 'https://www.hotelcarepro.com' ||
-    trimmed === 'https://hotelcarepro.com/api'
-  ) {
-    return 'https://api.hotelcarepro.com';
-  }
-  if (trimmed.endsWith('/api')) {
-    return trimmed;
-  }
-  // If value is our domain without path, append /api
-  try {
-    const u = new URL(trimmed);
-    if (u.hostname.endsWith('hotelcarepro.com') && u.pathname === '') {
-      return `${trimmed}/api`;
-    }
-  } catch {
-    // ignore URL parse errors and return as-is
-  }
-  return trimmed;
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,36 +11,8 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'login':
-        // Start interactive login - redirect to Auth0
         try {
-          // Use server-side environment variables for sensitive data
-          const domain = process.env.AUTH0_DOMAIN;
-          const clientId = process.env.AUTH0_CLIENT_ID;
-          const baseUrl =
-            process.env.AUTH0_BASE_URL ||
-            process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
-            process.env.APP_BASE_URL ||
-            request.nextUrl.origin;
-          const scope = 'openid profile email offline_access';
-          const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
-          const state = randomUUID();
-
-          if (!domain || !clientId) {
-            console.error('Missing required Auth0 environment variables');
-            return NextResponse.redirect(`${baseUrl}/login?error=config_error`);
-          }
-
-          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${baseUrl}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}&state=${encodeURIComponent(state)}`;
-
-          const response = NextResponse.redirect(loginUrl);
-          response.cookies.set('auth0_login_state', state, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 10 * 60,
-          });
-          return response;
+          return beginHardenedAuth0Login(request);
         } catch (loginError) {
           console.error('Auth0 login error:', loginError);
           const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';

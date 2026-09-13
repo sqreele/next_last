@@ -1,26 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { beginHardenedAuth0Login } from '@/app/lib/auth0/login-flow';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const redirect = searchParams.get('redirect');
-    const screenHint = searchParams.get('screen_hint');
-
-    // Prefer delegating to unified /api/auth?action=login handler
-    const baseUrl =
-      process.env.AUTH0_BASE_URL ||
-      process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
-      process.env.APP_BASE_URL ||
-      request.nextUrl.origin;
-
-    const base = new URL('/api/auth', baseUrl);
-    base.searchParams.set('action', 'login');
-    if (redirect) base.searchParams.set('redirect', redirect);
-    if (screenHint === 'signup') {
-      base.searchParams.set('screen_hint', 'signup');
-    }
-
-    return NextResponse.redirect(base);
+    return beginHardenedAuth0Login(request);
   } catch (error) {
     console.error('Error in /api/auth/login route:', error);
     const baseUrl =

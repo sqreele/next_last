@@ -4,6 +4,7 @@ import {
   localAppUrl,
   OAUTH_TRANSACTION_COOKIES,
   sanitizeLocalPath,
+  validateOAuthCallbackTransaction,
   verifyAuth0IdToken,
 } from '@/app/lib/auth0/auth-security.mjs';
 import {
@@ -76,15 +77,29 @@ export async function GET(request: NextRequest) {
     '/dashboard',
   );
 
+  const transactionFoundForState = !!state && !!expectedState && state === expectedState;
+  console.info('auth0_callback_transaction', {
+    callback_state_present: state ? 'yes' : 'no',
+    transaction_state_present: expectedState ? 'yes' : 'no',
+    transaction_cookie_present:
+      expectedState && expectedNonce && codeVerifier ? 'yes' : 'no',
+    transaction_found_for_state: transactionFoundForState ? 'yes' : 'no',
+    expected_nonce_present: expectedNonce ? 'yes' : 'no',
+    expected_nonce_length: expectedNonce?.length ?? 0,
+    pkce_verifier_present: codeVerifier ? 'yes' : 'no',
+  });
+
   if (request.nextUrl.searchParams.has('error')) {
     return callbackFailure(baseUrl, 'provider_error');
   }
   if (!code) return callbackFailure(baseUrl, 'no_code');
-  if (!state || !expectedState || state !== expectedState) {
-    return callbackFailure(baseUrl, 'invalid_state');
-  }
-  if (!expectedNonce) return callbackFailure(baseUrl, 'invalid_nonce');
-  if (!codeVerifier) return callbackFailure(baseUrl, 'pkce_required');
+  const transactionFailure = validateOAuthCallbackTransaction({
+    callbackState: state,
+    expectedState,
+    expectedNonce,
+    codeVerifier,
+  });
+  if (transactionFailure) return callbackFailure(baseUrl, transactionFailure);
 
   const domain = process.env.AUTH0_DOMAIN;
   const clientId = process.env.AUTH0_CLIENT_ID;

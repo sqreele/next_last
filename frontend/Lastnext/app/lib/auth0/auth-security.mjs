@@ -18,6 +18,47 @@ export function createPkcePair() {
   return { verifier, challenge };
 }
 
+export function createAuth0AuthorizationTransaction({
+  domain,
+  clientId,
+  baseUrl,
+  audience,
+  redirectPath = '/dashboard',
+  screenHint,
+}) {
+  const state = randomUrlSafeValue();
+  const nonce = randomUrlSafeValue();
+  const { verifier, challenge } = createPkcePair();
+  const authorizeUrl = new URL(`https://${domain}/authorize`);
+  authorizeUrl.search = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: localAppUrl(baseUrl, '/api/auth/callback'),
+    scope: 'openid profile email offline_access',
+    audience,
+    state,
+    nonce,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    ...(screenHint === 'signup' ? { screen_hint: 'signup' } : {}),
+  }).toString();
+  return { authorizeUrl, state, nonce, verifier, redirectPath };
+}
+
+export function validateOAuthCallbackTransaction({
+  callbackState,
+  expectedState,
+  expectedNonce,
+  codeVerifier,
+}) {
+  if (!callbackState || !expectedState || callbackState !== expectedState) {
+    return 'invalid_state';
+  }
+  if (!expectedNonce) return 'invalid_nonce';
+  if (!codeVerifier) return 'pkce_required';
+  return null;
+}
+
 export function sanitizeLocalPath(value, fallback = '/') {
   if (typeof value !== 'string' || !value) return fallback;
 
@@ -96,7 +137,11 @@ export async function verifyAuth0IdToken(idToken, options) {
     typeof claims !== 'object' ||
     typeof claims.sub !== 'string' ||
     typeof claims.exp !== 'number' ||
-    typeof claims.iat !== 'number'
+    typeof claims.iat !== 'number' ||
+    typeof options.nonce !== 'string' ||
+    !options.nonce ||
+    typeof claims.nonce !== 'string' ||
+    claims.nonce !== options.nonce
   ) {
     throw new Error('invalid_id_token_claims');
   }

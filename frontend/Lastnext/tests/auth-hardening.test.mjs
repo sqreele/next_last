@@ -156,3 +156,32 @@ test('legacy frontend password recovery proxies are retired', async () => {
     assert.doesNotMatch(source, /api\/v1\/auth\/password/);
   }
 });
+
+test('frontend Compose environment is an explicit auth and Redis allowlist', async () => {
+  const compose = await readFile(new URL('../../../docker-compose.yml', import.meta.url), 'utf8');
+  const frontend = compose.match(/^  frontend:\n([\s\S]*?)(?=^  redis:\n)/m)?.[1];
+  assert.ok(frontend, 'frontend service must exist before the redis service');
+
+  assert.doesNotMatch(frontend, /^    env_file:/m);
+  assert.match(frontend, /^      REDIS_URL: \$\{REDIS_URL:-redis:\/\/:\$\{REDIS_PASSWORD:[^}]+\}@redis:6379\/0\}$/m);
+  assert.match(frontend, /^      AUTH0_SECRET:/m);
+  assert.match(frontend, /^      AUTH0_BASE_URL:/m);
+  assert.match(frontend, /^      AUTH0_ISSUER_BASE_URL:/m);
+  assert.match(frontend, /^      AUTH0_CLIENT_ID:/m);
+  assert.match(frontend, /^      AUTH0_CLIENT_SECRET:/m);
+  assert.match(frontend, /^      AUTH0_CLAIM_NAMESPACE:/m);
+  assert.match(frontend, /^      redis:\n        condition: service_healthy$/m);
+  assert.match(frontend, /^      redis-network:$/m);
+
+  for (const backendOnlySecret of [
+    'LINE_CHANNEL_ACCESS_TOKEN',
+    'LINE_CHANNEL_SECRET',
+    'GMAIL_CLIENT_SECRET',
+    'GMAIL_REFRESH_TOKEN',
+    'DATABASE_URL',
+    'POSTGRES_PASSWORD',
+    'DJANGO_SECRET_KEY',
+  ]) {
+    assert.doesNotMatch(frontend, new RegExp(`^      ${backendOnlySecret}:`, 'm'));
+  }
+});

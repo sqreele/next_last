@@ -6,7 +6,16 @@ import {
   sanitizeLocalPath,
   verifyAuth0IdToken,
 } from '@/app/lib/auth0/auth-security.mjs';
-import { setSessionCookie } from '@/app/lib/auth0/session-cookie';
+import {
+  createSessionReference,
+  setSessionReferenceCookie,
+} from '@/app/lib/auth0/session-cookie';
+import {
+  createServerSession,
+  SERVER_SESSION_MAX_AGE_SECONDS,
+} from '@/app/lib/auth0/session-store';
+
+export const runtime = 'nodejs';
 
 const RAW_AUTH_ID_PATTERN = /^(google-oauth2_|auth0_)/i;
 const RAW_AUTH_PIPE_PATTERN = /^(google-oauth2|auth0)\|/i;
@@ -201,11 +210,20 @@ export async function GET(request: NextRequest) {
       ? requestedRedirect
       : '/auth/access-pending';
     const response = NextResponse.redirect(localAppUrl(baseUrl, destination));
-    await setSessionCookie(
-      response,
-      sessionData,
-      refreshToken ? 60 * 24 * 60 * 60 : Math.max(expiresIn, 24 * 60 * 60),
+    const maxAge = Math.min(
+      refreshToken
+        ? SERVER_SESSION_MAX_AGE_SECONDS
+        : Math.max(expiresIn, 24 * 60 * 60),
+      SERVER_SESSION_MAX_AGE_SECONDS,
     );
+    const sessionReference = createSessionReference();
+    // Persist first: a Redis failure must never issue a broken session cookie.
+    await createServerSession(sessionReference, sessionData, maxAge);
+    const sessionCookieBytes = setSessionReferenceCookie(response, sessionReference, maxAge);
+    console.info('auth_callback_success', {
+      session_cookie_bytes: sessionCookieBytes,
+      set_cookie: response.cookies.has('auth0_session') ? 'yes' : 'no',
+    });
     return clearTransaction(response);
   } catch {
     return callbackFailure(baseUrl, 'callback_error');

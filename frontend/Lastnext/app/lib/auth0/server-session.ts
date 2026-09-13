@@ -1,36 +1,51 @@
 // Simplified server session that doesn't depend on problematic imports
-import type { CompatUser, CompatSession } from './session-compat';
+import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { openSessionCookie } from './session-cookie';
+import type { CompatUser, CompatSession } from './session-compat';
+import { AUTH0_SESSION_COOKIE, parseSessionReference } from './session-cookie';
+import { logSessionDiagnostic } from './session-diagnostics.mjs';
+import { readServerSession } from './session-store';
+import { isUsableServerSession } from './session-validity.mjs';
 
-export async function getCompatServerSession(): Promise<CompatSession | null> {
+async function openSessionReference(
+  cookieValue?: string,
+): Promise<CompatSession | null> {
+  const reference = parseSessionReference(cookieValue);
+  if (!reference) {
+    logSessionDiagnostic(cookieValue, null, { lookup: 'not_attempted' });
+    return null;
+  }
+  const session = await readServerSession(reference);
+  logSessionDiagnostic(cookieValue, session, { lookup: 'success' });
+  return isUsableServerSession(session) ? session : null;
+}
+
+async function openSessionFailClosed(cookieValue?: string): Promise<CompatSession | null> {
+  if (!cookieValue) {
+    logSessionDiagnostic(cookieValue, null);
+    return null;
+  }
   try {
-    // Production mode: Always use real session data
-    
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('auth0_session');
-    if (!sessionCookie?.value) {
-      // Only log in development - this happens frequently for unauthenticated requests
-      if (process.env.NODE_ENV === 'development') {
-      }
-      return null;
-    }
-
-    const parsed = await openSessionCookie(sessionCookie.value);
-    if (!parsed?.user || !parsed.user.accessToken) {
-      return null;
-    }
-
-    if (parsed.user.accessTokenExpires && Date.now() > parsed.user.accessTokenExpires) {
-      return null;
-    }
-
-    return parsed;
-    
-  } catch (error) {
-    console.error('❌ Error in getCompatServerSession:', error);
+    return await openSessionReference(cookieValue);
+  } catch {
+    logSessionDiagnostic(cookieValue, null, { lookup: 'failed' });
+    console.error('auth_server_session_unavailable', { reason: 'store_unavailable' });
     return { user: undefined, error: 'session_error' };
   }
+}
+
+export async function getSessionFromRequest(request: NextRequest): Promise<CompatSession | null> {
+  return openSessionFailClosed(request.cookies.get(AUTH0_SESSION_COOKIE)?.value);
+}
+
+export async function getCompatServerSession(): Promise<CompatSession | null> {
+  const cookieStore = await cookies();
+  return openSessionFailClosed(cookieStore.get(AUTH0_SESSION_COOKIE)?.value);
+}
+
+export async function requireServerAccessToken(): Promise<string | null> {
+  const session = await getCompatServerSession();
+  return session?.user?.accessToken || null;
 }
 
 export async function getUserProfile(userId: string): Promise<CompatUser | null> {

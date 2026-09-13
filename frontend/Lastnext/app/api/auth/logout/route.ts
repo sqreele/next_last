@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clearSessionCookie } from '@/app/lib/auth0/session-cookie';
+import {
+  clearSessionCookie,
+  parseSessionReference,
+} from '@/app/lib/auth0/session-cookie';
+import { deleteServerSession } from '@/app/lib/auth0/session-store';
 import {
   localAppUrl,
   OAUTH_TRANSACTION_COOKIES,
@@ -13,6 +17,17 @@ function clearLocalAuthCookies(response: NextResponse) {
 
 export async function GET(request: NextRequest) {
   try {
+    const sessionReference = parseSessionReference(
+      request.cookies.get('auth0_session')?.value,
+    );
+    if (sessionReference) {
+      try {
+        await deleteServerSession(sessionReference);
+      } catch {
+        // Logout remains idempotent and still clears the browser reference.
+        console.error('auth_server_session_delete_failed', { reason: 'store_unavailable' });
+      }
+    }
     const { searchParams } = new URL(request.url);
     const returnTo = sanitizeLogoutPath(searchParams.get('returnTo'), '/');
     

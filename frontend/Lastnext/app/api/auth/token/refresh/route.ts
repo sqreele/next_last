@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromRequest, setSessionCookie } from '@/app/lib/auth0/session-cookie';
+import { parseSessionReference } from '@/app/lib/auth0/session-cookie';
+import { readServerSession, updateServerSession } from '@/app/lib/auth0/session-store';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
-  const session = await getSessionFromRequest(request);
+  const sessionReference = parseSessionReference(
+    request.cookies.get('auth0_session')?.value,
+  );
+  let session;
+  try {
+    session = sessionReference ? await readServerSession(sessionReference) : null;
+  } catch {
+    console.error('auth_server_session_unavailable', { reason: 'store_unavailable' });
+    return NextResponse.json({ error: 'Session store unavailable' }, { status: 503 });
+  }
   const refreshToken = session?.user?.refreshToken;
-  if (!session?.user || !refreshToken) {
+  if (!sessionReference || !session?.user || !refreshToken) {
     return NextResponse.json({ error: 'Refresh token unavailable' }, { status: 401 });
   }
 
@@ -47,22 +57,26 @@ export async function POST(request: NextRequest) {
     }
 
     const accessTokenExpires = Date.now() + expiresIn * 1000;
-    const response = NextResponse.json({ access, expires_in: expiresIn });
-    await setSessionCookie(
-      response,
-      {
-        ...session,
-        user: {
-          ...session.user,
-          accessToken: access,
-          refreshToken: rotatedRefresh,
-          accessTokenExpires,
+    try {
+      await updateServerSession(
+        sessionReference,
+        {
+          ...session,
+          user: {
+            ...session.user,
+            accessToken: access,
+            refreshToken: rotatedRefresh,
+            accessTokenExpires,
+          },
+          expires: accessTokenExpires,
         },
-        expires: accessTokenExpires,
-      },
-      60 * 24 * 60 * 60,
-    );
-    return response;
+      );
+    } catch {
+      console.error('auth_server_session_unavailable', { reason: 'store_unavailable' });
+      return NextResponse.json({ error: 'Session store unavailable' }, { status: 503 });
+    }
+    // Tokens stay server-side; the browser receives expiry metadata only.
+    return NextResponse.json({ expires_in: expiresIn });
   } catch {
     console.error('auth0_refresh_failed', { reason: 'network_error' });
     return NextResponse.json({ error: 'Token refresh failed' }, { status: 502 });

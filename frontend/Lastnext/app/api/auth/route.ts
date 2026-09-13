@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import { clearSessionCookie, getSessionFromRequest, sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
+import { clearSessionCookie, parseSessionReference, sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
+import { getSessionFromRequest } from '@/app/lib/auth0/server-session';
+import { deleteServerSession } from '@/app/lib/auth0/session-store';
 
 function resolveAudience(raw?: string | null): string {
   const fallback = 'https://api.hotelcarepro.com';
@@ -105,6 +107,14 @@ export async function GET(request: NextRequest) {
           
           const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent(baseUrl)}`;
           
+          const reference = parseSessionReference(request.cookies.get('auth0_session')?.value);
+          if (reference) {
+            try {
+              await deleteServerSession(reference);
+            } catch {
+              console.error('auth_server_session_delete_failed', { reason: 'store_unavailable' });
+            }
+          }
           const response = NextResponse.redirect(logoutUrl);
           // Clear any session cookies
           clearSessionCookie(response);

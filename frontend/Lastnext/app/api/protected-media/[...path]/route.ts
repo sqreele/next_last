@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/app/lib/config';
-import { getSessionFromRequest } from '@/app/lib/auth0/session-cookie';
+import { getSessionFromRequest } from '@/app/lib/auth0/server-session';
 
 export const runtime = 'nodejs';
 

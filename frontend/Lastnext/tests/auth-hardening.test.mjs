@@ -122,26 +122,50 @@ test('invitation acceptance preserves Auth0 return flow without logging tokens',
   assert.doesNotMatch(settingsPage, /token_hash|plaintext token/i);
 });
 
-test('sessions are sealed and logout clears the session cookie', async () => {
-  const session = await readFile(new URL('app/lib/auth0/session-cookie.ts', root), 'utf8');
+test('sessions use opaque Redis references and logout invalidates the server session', async () => {
+  const cookie = await readFile(new URL('app/lib/auth0/session-cookie.ts', root), 'utf8');
+  const reference = await readFile(new URL('app/lib/auth0/session-reference.mjs', root), 'utf8');
+  const store = await readFile(new URL('app/lib/auth0/session-store-core.mjs', root), 'utf8');
+  const callback = await readFile(new URL('app/api/auth/callback/route.ts', root), 'utf8');
   const middleware = await readFile(new URL('middleware.ts', root), 'utf8');
   const logout = await readFile(new URL('app/api/auth/logout/route.ts', root), 'utf8');
-  assert.match(session, /aes-256-gcm/);
-  assert.match(session, /httpOnly: true/);
-  assert.match(session, /secure: process\.env\.NODE_ENV === 'production'/);
-  assert.match(session, /sameSite: 'lax'/);
-  assert.match(session, /ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION/);
-  assert.match(middleware, /Plain JSON is rejected in production/);
+  assert.match(reference, /`v2\.\$\{randomBytes\(32\)\.toString\('base64url'\)\}`/);
+  assert.match(reference, /\^v2\\\./);
+  assert.match(cookie, /httpOnly: true/);
+  assert.match(cookie, /secure: true/);
+  assert.match(cookie, /sameSite: 'lax'/);
+  assert.match(cookie, /delete safeUser\.accessToken/);
+  assert.match(cookie, /delete safeUser\.refreshToken/);
+  assert.match(store, /auth:session:/);
+  assert.match(store, /aes-256-gcm/);
+  assert.match(store, /'EX'/);
+  assert.match(store, /'NX'/);
+  assert.match(store, /'XX'/);
+  assert.match(callback, /await createServerSession[\s\S]*setSessionReferenceCookie/);
+  assert.match(callback, /auth_callback_success/);
+  assert.doesNotMatch(callback, /console\.(log|info|warn|error)\([^\n]*(accessToken|refreshToken|sessionReference)/);
+  assert.doesNotMatch(cookie, /accessToken.*response\.cookies\.set/s);
+  assert.match(middleware, /Only an opaque v2 reference is accepted/);
+  assert.doesNotMatch(middleware, /openSealedSessionCookie|ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION/);
+  assert.match(logout, /await deleteServerSession\(sessionReference\)/);
   assert.match(logout, /clearSessionCookie\(response\)/);
+
+  const serverSession = await readFile(new URL('app/lib/auth0/server-session.ts', root), 'utf8');
+  assert.match(serverSession, /lookup: 'failed'/);
+  assert.match(serverSession, /auth_server_session_unavailable/);
+  assert.match(serverSession, /reason: 'store_unavailable'/);
+  assert.match(serverSession, /return \{ user: undefined, error: 'session_error' \}/);
 });
 
-test('legacy token proxy is retired and refresh uses only the sealed Auth0 session', async () => {
+test('legacy token proxy is retired and refresh updates only the Redis session', async () => {
   const issue = await readFile(new URL('app/api/auth/token/route.ts', root), 'utf8');
   const refresh = await readFile(new URL('app/api/auth/token/refresh/route.ts', root), 'utf8');
   assert.match(issue, /status: 410/);
   assert.doesNotMatch(issue, /api\/v1\/token/);
-  assert.match(refresh, /session\?\.user\?\.refreshToken/);
+  assert.match(refresh, /await readServerSession\(sessionReference\)/);
+  assert.match(refresh, /await updateServerSession/);
   assert.match(refresh, /https:\/\/\$\{domain\}\/oauth\/token/);
+  assert.doesNotMatch(refresh, /return NextResponse\.json\(\{ access/);
   assert.doesNotMatch(refresh, /request\.json/);
   assert.doesNotMatch(refresh, /api\/v1\/token\/refresh/);
 });

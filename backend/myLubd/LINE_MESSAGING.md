@@ -10,10 +10,15 @@ Set both credentials only in the backend deployment environment:
 ```text
 LINE_CHANNEL_ACCESS_TOKEN=<secret>
 LINE_CHANNEL_SECRET=<secret>
+LINE_MONTHLY_MESSAGE_LIMIT=300
 ```
 
 `LINE_MESSAGING_TIMEOUT_SECONDS` is optional and defaults to `3` seconds.
 `LINE_PAIRING_EXPIRY_MINUTES` is optional and defaults to `15` minutes.
+`LINE_MONTHLY_MESSAGE_LIMIT` is backend-only and has no application default.
+The Compose deployment supplies the confirmed production quota of `300` when
+the operator does not override it. It drives diagnostics and once-per-month
+log warnings only; LINE remains authoritative and local counts never block a send.
 Never expose any of these settings through a `NEXT_PUBLIC_*` variable.
 
 ## LINE Developers setup
@@ -63,3 +68,9 @@ synchronously with a short timeout, but is registered with
 `transaction.on_commit` so rolled-back or rejected mutations emit nothing.
 Provider failures are logged without credentials, headers, destination IDs, or
 message payloads and never roll back a successful Job mutation.
+
+Successful messages and provider HTTP attempts are counted in Redis by month,
+Property, and event type, with Property and overall rollups. Keys expire after
+the month ends. Use `python manage.py test_line_notification --property-id P...`
+to inspect local usage; add `--quota` for an explicit provider quota lookup.
+Normal notification sends never poll the provider quota endpoints.

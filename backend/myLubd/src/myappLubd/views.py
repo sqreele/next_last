@@ -8045,16 +8045,20 @@ def public_job_request(request, property_id, room_id):
         remark_lines.append(f'Contact: {guest_contact}')
     remark_lines.append(f'Source IP: {ip}')
 
-    job = Job.objects.create(
-        user=assignee,
-        updated_by=assignee,
-        property=resolve_job_property(explicit_property=property_obj, rooms=[room_obj]),
-        description=description,
-        remarks='\n'.join(remark_lines),
-        status='pending',
-        priority='medium',
-    )
-    job.rooms.set([room_obj])
+    # Keep the Job row and its canonical location in one transaction.  The
+    # Job post_save receiver registers LINE work with transaction.on_commit,
+    # so it will render the room only after this relationship is durable.
+    with transaction.atomic():
+        job = Job.objects.create(
+            user=assignee,
+            updated_by=assignee,
+            property=resolve_job_property(explicit_property=property_obj, rooms=[room_obj]),
+            description=description,
+            remarks='\n'.join(remark_lines),
+            status='pending',
+            priority='medium',
+        )
+        job.rooms.set([room_obj])
 
     cache.set(bucket_key, count + 1, timeout=60 * 60)
 

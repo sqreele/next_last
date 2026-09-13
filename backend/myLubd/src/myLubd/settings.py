@@ -264,6 +264,24 @@ CACHES = {
     }
 }
 
+# LINE usage needs a cross-process monthly store. Production already provides
+# an AOF-backed Redis service; local/test environments retain a no-setup fallback.
+_redis_url = os.getenv('REDIS_URL', '').strip()
+CACHES['line_usage'] = (
+    {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': _redis_url,
+        'TIMEOUT': None,
+    }
+    if _redis_url
+    else {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'line-usage-cache',
+        'TIMEOUT': None,
+    }
+)
+LINE_USAGE_CACHE_ALIAS = 'line_usage'
+
 # Enable caching
 USE_CACHE = True
 
@@ -505,6 +523,16 @@ LINE_PAIRING_EXPIRY_MINUTES = int(os.getenv('LINE_PAIRING_EXPIRY_MINUTES', '15')
 LINE_MESSAGING_TIMEOUT_SECONDS = float(
     os.getenv('LINE_MESSAGING_TIMEOUT_SECONDS', '3')
 )
+_line_monthly_limit_raw = os.getenv('LINE_MONTHLY_MESSAGE_LIMIT', '').strip()
+try:
+    LINE_MONTHLY_MESSAGE_LIMIT = (
+        int(_line_monthly_limit_raw) if _line_monthly_limit_raw else None
+    )
+    if LINE_MONTHLY_MESSAGE_LIMIT is not None and LINE_MONTHLY_MESSAGE_LIMIT <= 0:
+        raise ValueError
+except ValueError:
+    logger.warning('Invalid LINE_MONTHLY_MESSAGE_LIMIT; reporting quota as UNKNOWN.')
+    LINE_MONTHLY_MESSAGE_LIMIT = None
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'

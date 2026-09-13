@@ -279,6 +279,8 @@ def _deliver_batch(batch: PMLineReminderBatch):
         destination_id=batch.destination_id,
         text=batch.message_text,
         retry_key=str(batch.retry_key),
+        event_type='PM_REMINDER',
+        property_id=current_property.property_id,
     ):
         logger.warning(
             'PM LINE reminder failed type=%s property=%s count=%s destination=%s',

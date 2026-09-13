@@ -1,11 +1,15 @@
 """LINE Messaging API coverage for canonical Property-routed Job events."""
 
+from datetime import datetime, timezone as datetime_timezone
+from io import StringIO
 from unittest.mock import patch
 
 import requests
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.core.management import call_command
 from django.db import transaction
-from django.test import SimpleTestCase, TransactionTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -18,7 +22,15 @@ from .notifications.jobs import (
     _location,
     _status_label,
 )
-from .notifications.line import LINE_PUSH_ENDPOINT, send_text_message
+from .notifications.line import (
+    LINE_PUSH_ENDPOINT,
+    LINE_QUOTA_CONSUMPTION_ENDPOINT,
+    LINE_QUOTA_ENDPOINT,
+    LineSendResult,
+    get_line_usage,
+    record_line_usage,
+    send_text_message,
+)
 
 
 User = get_user_model()
@@ -26,16 +38,24 @@ User = get_user_model()
 
 @override_settings(
     LINE_CHANNEL_ACCESS_TOKEN='server-only-test-token',
+    LINE_CHANNEL_SECRET='server-only-test-secret',
     LINE_MESSAGING_TIMEOUT_SECONDS=2.5,
+    LINE_USAGE_CACHE_ALIAS='default',
 )
 class LineTransportTests(SimpleTestCase):
+    def setUp(self):
+        cache.clear()
+
     @patch('myappLubd.notifications.line.requests.post')
     def test_uses_messaging_api_bearer_auth_and_timeout(self, post):
-        post.return_value.raise_for_status.return_value = None
+        response = requests.Response()
+        response.status_code = 200
+        post.return_value = response
 
-        delivered = send_text_message(destination_id='group-1234', text='hello')
+        result = send_text_message(destination_id='group-1234', text='hello')
 
-        self.assertTrue(delivered)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.category, 'success')
         post.assert_called_once_with(
             LINE_PUSH_ENDPOINT,
             headers={
@@ -52,7 +72,130 @@ class LineTransportTests(SimpleTestCase):
     @patch('myappLubd.notifications.line.requests.post')
     def test_provider_failure_is_contained(self, post):
         post.side_effect = requests.Timeout('provider unavailable')
-        self.assertFalse(send_text_message(destination_id='group-1234', text='hello'))
+        result = send_text_message(destination_id='group-1234', text='hello')
+        self.assertFalse(result.ok)
+        self.assertEqual(result.category, 'network_error')
+        self.assertTrue(result.retryable)
+
+    def test_missing_token_and_destination_are_logged_without_secrets(self):
+        with self.settings(LINE_CHANNEL_ACCESS_TOKEN=''):
+            with self.assertLogs('myappLubd.notifications.line', 'WARNING') as logs:
+                self.assertFalse(send_text_message(destination_id='group-1234', text='hello'))
+        self.assertIn('category=missing_token', '\n'.join(logs.output))
+        self.assertNotIn('server-only-test-token', '\n'.join(logs.output))
+
+        with self.assertLogs('myappLubd.notifications.line', 'WARNING') as logs:
+            self.assertFalse(send_text_message(destination_id='', text='hello'))
+        self.assertIn('missing_destination', '\n'.join(logs.output))
+
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_provider_http_errors_are_classified_and_safe(self, post):
+        for status_code, category, retryable in (
+            (400, 'bad_request', False), (401, 'unauthorized', False),
+            (403, 'forbidden', False), (429, 'rate_limited', True),
+            (503, 'provider_error', True),
+        ):
+            with self.subTest(status_code=status_code):
+                cache.clear()
+                response = requests.Response()
+                response.status_code = status_code
+                response._content = (
+                    b'{"message":"safe provider error server-only-test-token '
+                    b'server-only-test-secret group-1234"}'
+                )
+                post.return_value = response
+                with self.assertLogs('myappLubd.notifications.line', 'WARNING') as logs:
+                    result = send_text_message(destination_id='group-1234', text='hello')
+                output = '\n'.join(logs.output)
+                self.assertIn(f'status={status_code}', output)
+                self.assertEqual(result.category, category)
+                self.assertEqual(result.retryable, retryable)
+                self.assertIn(f'category={category}', output)
+                self.assertIn('safe provider error', output)
+                self.assertIn('[REDACTED]', output)
+                self.assertNotIn('server-only-test-token', output)
+                self.assertNotIn('server-only-test-secret', output)
+                self.assertNotIn('group-1234', output)
+
+    @patch('myappLubd.notifications.line.time.sleep')
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_429_retry_after_one_second_retries_once(self, post, sleep):
+        limited = requests.Response()
+        limited.status_code = 429
+        limited.headers['Retry-After'] = '1'
+        accepted = requests.Response()
+        accepted.status_code = 200
+        post.side_effect = [limited, accepted]
+
+        result = send_text_message(destination_id='group-1234', text='hello')
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.attempts, 2)
+        sleep.assert_called_once_with(1)
+        self.assertEqual(post.call_count, 2)
+
+    @patch('myappLubd.notifications.line.time.sleep')
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_monthly_quota_exhaustion_is_not_retried(self, post, sleep):
+        limited = requests.Response()
+        limited.status_code = 429
+        limited.headers['Retry-After'] = '1'
+        limited._content = b'{"message": "  YOU have reached your monthly limit.  "}'
+        post.return_value = limited
+
+        with self.assertLogs('myappLubd.notifications.line', 'WARNING') as logs:
+            result = send_text_message(
+                destination_id='group-1234', text='hello',
+                property_id='P-SIAM', event_type='JOB_CREATED',
+            )
+
+        self.assertEqual(result.category, 'monthly_quota_exhausted')
+        self.assertFalse(result.retryable)
+        self.assertEqual(result.attempts, 1)
+        self.assertEqual(post.call_count, 1)
+        sleep.assert_not_called()
+        usage = get_line_usage(property_id='P-SIAM', event_type='JOB_CREATED')
+        self.assertEqual(usage['provider_attempts'], 1)
+        self.assertEqual(usage['failed'], 1)
+        self.assertEqual(usage['quota_exhausted'], 1)
+        self.assertEqual(usage['rate_limited'], 0)
+        self.assertIn('LINE monthly quota exhausted', '\n'.join(logs.output))
+
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_malformed_monthly_quota_response_falls_back_to_generic_429(self, post):
+        limited = requests.Response()
+        limited.status_code = 429
+        limited._content = b'not-json You have reached your monthly limit.'
+        post.return_value = limited
+
+        result = send_text_message(destination_id='group-1234', text='hello')
+
+        self.assertEqual(result.category, 'rate_limited')
+        self.assertTrue(result.retryable)
+
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_429_without_retry_after_is_suppressed_without_replay(self, post):
+        limited = requests.Response()
+        limited.status_code = 429
+        limited._content = b'{"message":"quota response"}'
+        post.return_value = limited
+
+        first = send_text_message(destination_id='group-1234', text='hello')
+        second = send_text_message(destination_id='group-1234', text='hello')
+
+        self.assertEqual(post.call_count, 1)
+        self.assertEqual(first.status_code, 429)
+        self.assertEqual(second.attempts, 0)
+        self.assertEqual(second.message, 'cooldown active')
+
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_response_body_is_bounded(self, post):
+        response = requests.Response()
+        response.status_code = 400
+        response._content = b'x' * 900
+        post.return_value = response
+        result = send_text_message(destination_id='group-1234', text='hello')
+        self.assertEqual(len(result.message), 500)
 
     @patch('myappLubd.notifications.line.requests.post')
     def test_retry_key_is_sent_and_already_accepted_response_succeeds(self, post):
@@ -65,6 +208,8 @@ class LineTransportTests(SimpleTestCase):
             destination_id='group-1234',
             text='hello',
             retry_key='123e4567-e89b-12d3-a456-426614174000',
+            property_id='P-A',
+            event_type='PM_REMINDER',
         )
 
         self.assertTrue(delivered)
@@ -72,6 +217,9 @@ class LineTransportTests(SimpleTestCase):
             post.call_args.kwargs['headers']['X-Line-Retry-Key'],
             '123e4567-e89b-12d3-a456-426614174000',
         )
+        usage = get_line_usage(property_id='P-A', event_type='PM_REMINDER')
+        self.assertEqual(usage['provider_attempts'], 1)
+        self.assertEqual(usage['successful_messages'], 0)
 
     @patch('myappLubd.notifications.line.requests.post')
     def test_arbitrary_keyed_409_remains_an_error(self, post):
@@ -98,11 +246,205 @@ class LineTransportTests(SimpleTestCase):
         ))
         post.assert_not_called()
 
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_success_and_permanent_failure_counters(self, post):
+        success = requests.Response()
+        success.status_code = 200
+        failure = requests.Response()
+        failure.status_code = 400
+        post.side_effect = [success, failure]
+
+        send_text_message(
+            destination_id='group-a', text='one', property_id='P-A', event_type='JOB_CREATED',
+        )
+        send_text_message(
+            destination_id='group-a', text='two', property_id='P-A', event_type='JOB_CREATED',
+        )
+
+        usage = get_line_usage(property_id='P-A', event_type='JOB_CREATED')
+        self.assertEqual(usage['provider_attempts'], 2)
+        self.assertEqual(usage['successful_messages'], 1)
+        self.assertEqual(usage['failed'], 1)
+
+    @patch('myappLubd.notifications.line.time.sleep')
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_retry_counts_each_provider_attempt_and_one_success(self, post, sleep):
+        limited = requests.Response()
+        limited.status_code = 429
+        limited.headers['Retry-After'] = '1'
+        accepted = requests.Response()
+        accepted.status_code = 200
+        post.side_effect = [limited, accepted]
+
+        send_text_message(
+            destination_id='group-a', text='one', property_id='P-A', event_type='JOB_CREATED',
+        )
+
+        usage = get_line_usage(property_id='P-A', event_type='JOB_CREATED')
+        self.assertEqual(usage['provider_attempts'], 2)
+        self.assertEqual(usage['successful_messages'], 1)
+        self.assertEqual(usage['failed'], 0)
+        self.assertEqual(usage['rate_limited'], 1)
+
+    def test_property_scope_and_month_rollover(self):
+        august = datetime(2026, 8, 15, 12, tzinfo=datetime_timezone.utc)
+        september = datetime(2026, 9, 15, 12, tzinfo=datetime_timezone.utc)
+        record_line_usage(
+            'successful_messages', property_id='P-A', event_type='JOB_CREATED', now=august,
+        )
+        record_line_usage(
+            'successful_messages', property_id='P-B', event_type='JOB_CREATED', now=september,
+        )
+
+        self.assertEqual(get_line_usage(property_id='P-A', now=august)['successful_messages'], 1)
+        self.assertEqual(get_line_usage(property_id='P-A', now=september)['successful_messages'], 0)
+        self.assertEqual(get_line_usage(property_id='P-B', now=september)['successful_messages'], 1)
+        self.assertEqual(get_line_usage(now=september)['successful_messages'], 1)
+
+    @patch('myappLubd.notifications.line.cache.add', side_effect=RuntimeError('cache unavailable'))
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_counter_failure_does_not_break_send(self, post, cache_add):
+        response = requests.Response()
+        response.status_code = 200
+        post.return_value = response
+
+        result = send_text_message(
+            destination_id='group-a', text='one', property_id='P-A', event_type='JOB_CREATED',
+        )
+
+        self.assertTrue(result.ok)
+        post.assert_called_once()
+
+    @override_settings(LINE_MONTHLY_MESSAGE_LIMIT=10)
+    @patch('myappLubd.notifications.line.logger.warning')
+    def test_threshold_warning_is_once_per_threshold_per_month(self, warning):
+        record_line_usage(
+            'successful_messages', property_id='P-A', event_type='JOB_CREATED', amount=8,
+        )
+        record_line_usage(
+            'successful_messages', property_id='P-B', event_type='JOB_CREATED', amount=0,
+        )
+
+        threshold_calls = [
+            call for call in warning.call_args_list
+            if call.args and str(call.args[0]).startswith('LINE monthly usage reached')
+        ]
+        self.assertEqual(len(threshold_calls), 1)
+        self.assertEqual(threshold_calls[0].args[1], 80)
+
+
+@override_settings(
+    LINE_CHANNEL_ACCESS_TOKEN='diagnostic-secret-token',
+    LINE_MESSAGING_TIMEOUT_SECONDS=2,
+    LINE_MONTHLY_MESSAGE_LIMIT=300,
+    LINE_USAGE_CACHE_ALIAS='default',
+)
+class LineDiagnosticCommandTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        tenant = Tenant.objects.create(name='Diagnostic Tenant')
+        self.property = Property.objects.create(
+            name='Lub d Bangkok Siam', tenant=tenant,
+            line_notifications_enabled=True, line_destination_id='secret-group-destination',
+        )
+        record_line_usage(
+            'provider_attempts', property_id=self.property.property_id,
+            event_type='JOB_CREATED', amount=3,
+        )
+        record_line_usage(
+            'successful_messages', property_id=self.property.property_id,
+            event_type='JOB_CREATED', amount=2,
+        )
+        record_line_usage(
+            'failed', property_id=self.property.property_id,
+            event_type='JOB_CREATED', amount=1,
+        )
+        record_line_usage(
+            'quota_exhausted', property_id=self.property.property_id,
+            event_type='JOB_CREATED', amount=1,
+        )
+        record_line_usage(
+            'rate_limited', property_id=self.property.property_id,
+            event_type='JOB_CREATED', amount=1,
+        )
+        record_line_usage(
+            'successful_messages', property_id='P-OTHER',
+            event_type='JOB_CREATED', amount=1,
+        )
+
+    @patch(
+        'myappLubd.management.commands.test_line_notification.send_text_message'
+    )
+    def test_read_only_diagnostic_shows_local_quota_without_secrets(self, send):
+        output = StringIO()
+        call_command(
+            'test_line_notification', property_id=self.property.property_id, stdout=output,
+        )
+        rendered = output.getvalue()
+        self.assertIn('Configured monthly quota: 300', rendered)
+        self.assertIn('Local successful count this month: 2', rendered)
+        self.assertIn('Local provider attempts this month: 3', rendered)
+        self.assertIn('Local failed sends this month: 1', rendered)
+        self.assertIn('Local quota-exhausted responses this month: 1', rendered)
+        self.assertIn('Local temporary rate-limited responses this month: 1', rendered)
+        self.assertIn('Estimated remaining local quota: 297', rendered)
+        self.assertIn('Overall local successful count this month: 3', rendered)
+        self.assertNotIn('diagnostic-secret-token', rendered)
+        self.assertNotIn('secret-group-destination', rendered)
+        send.assert_not_called()
+
+    @patch(
+        'myappLubd.management.commands.test_line_notification.send_text_message'
+    )
+    def test_send_flag_sends_exactly_one_test_message(self, send):
+        send.return_value = LineSendResult(True, 200, 'success', False, attempts=1)
+        output = StringIO()
+
+        call_command(
+            'test_line_notification', property_id=self.property.property_id,
+            send=True, message='operator test', stdout=output,
+        )
+
+        send.assert_called_once_with(
+            destination_id='secret-group-destination',
+            text='operator test',
+            event_type='DIAGNOSTIC',
+            property_id=self.property.property_id,
+        )
+        self.assertIn('Result: success', output.getvalue())
+
+    @patch('myappLubd.notifications.line.requests.get')
+    def test_explicit_provider_quota_diagnostic(self, get):
+        quota = requests.Response()
+        quota.status_code = 200
+        quota._content = b'{"type":"limited","value":300}'
+        consumption = requests.Response()
+        consumption.status_code = 200
+        consumption._content = b'{"totalUsage":300}'
+        get.side_effect = [quota, consumption]
+        output = StringIO()
+
+        call_command(
+            'test_line_notification', property_id=self.property.property_id,
+            quota=True, stdout=output,
+        )
+
+        rendered = output.getvalue()
+        self.assertIn('Provider limit: 300', rendered)
+        self.assertIn('Provider usage: 300', rendered)
+        self.assertIn('Provider remaining: 0', rendered)
+        self.assertNotIn('diagnostic-secret-token', rendered)
+        self.assertEqual(
+            [call.args[0] for call in get.call_args_list],
+            [LINE_QUOTA_ENDPOINT, LINE_QUOTA_CONSUMPTION_ENDPOINT],
+        )
+
 
 @override_settings(
     LINE_CHANNEL_ACCESS_TOKEN='server-only-test-token',
     LINE_CHANNEL_SECRET='server-only-test-secret',
     LINE_MESSAGING_TIMEOUT_SECONDS=1,
+    LINE_USAGE_CACHE_ALIAS='default',
     FRONTEND_BASE_URL='https://staymaint.com',
 )
 class JobLineNotificationTests(TransactionTestCase):
@@ -126,6 +468,9 @@ class JobLineNotificationTests(TransactionTestCase):
         )
         self.room = Room.objects.create(
             name='LINE-101', room_type='Standard', property=self.property,
+        )
+        self.other_room = Room.objects.create(
+            name='LINE-OTHER-101', room_type='Standard', property=self.other_property,
         )
         self.area = Area.objects.create(name='LINE Lobby', property=self.property)
         self.manager = User.objects.create_user(
@@ -215,6 +560,30 @@ class JobLineNotificationTests(TransactionTestCase):
         self.assertNotEqual(
             send.call_args.kwargs['destination_id'],
             self.other_property.line_destination_id,
+        )
+
+    @patch('myappLubd.notifications.jobs.send_text_message')
+    def test_two_properties_never_cross_route(self, send):
+        self._enable('line-siam')
+        Job.objects.create(
+            user=self.technician,
+            updated_by=self.manager,
+            property=self.property,
+            description='Siam issue',
+            remarks='',
+        )
+        Job.objects.create(
+            user=self.technician,
+            updated_by=self.manager,
+            property=self.other_property,
+            description='Chinatown issue',
+            remarks='',
+        )
+
+        self.assertEqual(send.call_count, 2)
+        self.assertEqual(
+            [call.kwargs['destination_id'] for call in send.call_args_list],
+            ['line-siam', 'line-chinatown'],
         )
 
     @patch('myappLubd.notifications.line.requests.post')

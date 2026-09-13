@@ -266,4 +266,9 @@ def _send_job_event_notification(
         old_assignee = user_model.objects.filter(pk=old_assignee_id).first()
         message = _compose_reassigned(job, old_assignee)
 
-    return send_text_message(destination_id=destination_id, text=message)
+    return send_text_message(
+        destination_id=destination_id,
+        text=message,
+        event_type=event_type,
+        property_id=property_obj.property_id,
+    )

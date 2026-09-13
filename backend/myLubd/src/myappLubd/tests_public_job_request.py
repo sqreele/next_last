@@ -8,6 +8,8 @@ verify are:
   - Description is required.
   - Per-IP throttle kicks in after the configured limit."""
 
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
@@ -46,6 +48,7 @@ class PublicJobRequestTests(TestCase):
             f'/api/v1/public/job-requests/{property_key}/{room_key}/',
             payload,
             format='json',
+            secure=True,
         )
 
     def test_successful_submission_creates_job(self):
@@ -110,3 +113,21 @@ class PublicJobRequestTests(TestCase):
             description='Numeric lookup works.',
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+
+    @patch('myappLubd.notifications.jobs.send_text_message')
+    def test_line_notification_sees_room_after_public_job_commit(self, send):
+        self.prop.line_notifications_enabled = True
+        self.prop.line_destination_id = 'public-group-target'
+        self.prop.save(update_fields=['line_notifications_enabled', 'line_destination_id'])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self._post(
+                self.prop.property_id,
+                self.room.room_id,
+                description='AC is leaking near the window.',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        send.assert_called_once()
+        self.assertEqual(send.call_args.kwargs['destination_id'], 'public-group-target')
+        self.assertIn('📍 Location: Room 201', send.call_args.kwargs['text'])

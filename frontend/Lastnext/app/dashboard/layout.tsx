@@ -32,13 +32,14 @@ import { PullToRefresh } from "@/app/components/ui/pull-to-refresh";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import {
   navigationGroups,
-  navigationItems,
 } from "@/app/design-system/navigation-config";
 import { isNavigationItemActive } from "@/app/lib/navigation-active.mjs";
 import { useScrollDirection } from "@/app/lib/hooks/useScrollDirection";
 import { NotificationBell } from "@/app/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
+import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
+import { filterBillingNavigationGroups } from "@/app/lib/billing-access.mjs";
 
 export default function DashboardLayout({
   children,
@@ -116,6 +117,15 @@ function DesktopNav({
   toggleCollapse: () => void;
 }) {
   const pathname = usePathname();
+  const { canAccessBilling } = useBillingAccess();
+  const visibleNavigationGroups = React.useMemo(
+    () => filterBillingNavigationGroups(navigationGroups, canAccessBilling),
+    [canAccessBilling],
+  );
+  const visibleNavigationItems = React.useMemo(
+    () => visibleNavigationGroups.flatMap((group) => group.items),
+    [visibleNavigationGroups],
+  );
 
   return (
     <aside
@@ -159,7 +169,7 @@ function DesktopNav({
       </div>
       <div className="flex-1 overflow-auto py-4">
         <nav className="grid gap-5 px-2" aria-label="Primary navigation">
-          {navigationGroups.map((group) => (
+          {visibleNavigationGroups.map((group) => (
             <div key={group.label}>
               {!collapsed ? (
                 <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -171,7 +181,7 @@ function DesktopNav({
                   const isActive = isNavigationItemActive(
                     pathname,
                     item,
-                    navigationItems,
+                    visibleNavigationItems,
                   );
                   return (
                     <Link
@@ -319,6 +329,14 @@ function DesktopHeader() {
 function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
+  const { canAccessBilling } = useBillingAccess();
+  const visibleNavigationItems = React.useMemo(
+    () =>
+      filterBillingNavigationGroups(navigationGroups, canAccessBilling).flatMap(
+        (group) => group.items,
+      ),
+    [canAccessBilling],
+  );
 
   React.useEffect(() => {
     setOpen(false);
@@ -377,13 +395,11 @@ function MobileNav() {
             className="flex-1 space-y-1 overflow-y-auto px-3 py-4 bg-card"
             aria-label="Mobile menu links"
           >
-            {navigationGroups
-              .flatMap((group) => group.items)
-              .map((item) => {
+            {visibleNavigationItems.map((item) => {
                 const isActive = isNavigationItemActive(
                   pathname,
                   item,
-                  navigationItems,
+                  visibleNavigationItems,
                 );
                 return (
                   <Link

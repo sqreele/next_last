@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ClipboardList,
   FileText,
+  CreditCard,
   Home,
   MapPin,
   Package,
@@ -21,6 +22,7 @@ export type NavigationItem = {
   icon: LucideIcon;
   exact?: boolean;
   match?: readonly string[];
+  requiredCapability?: "billing";
 };
 
 export type NavigationGroup = {
@@ -72,6 +74,12 @@ export const navigationGroups: readonly NavigationGroup[] = [
     items: [
       { name: "AI Assistant", href: "/ai-chat", icon: BotMessageSquare },
       { name: "Reports", href: "/dashboard/jobs-report", icon: FileText },
+      {
+        name: "Billing",
+        href: "/dashboard/billing",
+        icon: CreditCard,
+        requiredCapability: "billing",
+      },
       { name: "Settings", shortName: "More", href: "/dashboard/settings/users", icon: Settings },
     ],
   },

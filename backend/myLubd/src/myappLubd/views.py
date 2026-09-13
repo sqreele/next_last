@@ -91,6 +91,7 @@ from .tenancy import (
     ensure_tenant_for_property,
     ensure_tenant_for_user,
     get_accessible_properties,
+    get_billing_tenants,
     get_operable_properties,
     get_property_summary_recipients,
     get_room_manageable_properties,
@@ -99,6 +100,7 @@ from .tenancy import (
     TENANT_WIDE_PROPERTY_ROLES,
     tenant_usage_counts,
     user_can_manage_tenant,
+    user_can_access_billing,
 )
 from .timezones import object_timezone, property_timezone, timezone_options
 
@@ -112,6 +114,15 @@ class IsPlatformSuperuser(BasePermission):
 
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
+
+
+class HasBillingAccess(BasePermission):
+    """Allow only active admin/manager memberships or platform break-glass."""
+
+    message = "You do not have permission to access billing."
+
+    def has_permission(self, request, view):
+        return user_can_access_billing(request.user)
 GEMINI_SYSTEM_INSTRUCTION = """
 คุณคือ AI ผู้ช่วยประจำระบบบริหารจัดการงานช่าง (HotelCare Pro)
 หน้าที่ของคุณคือช่วยตอบคำถามเกี่ยวกับงานแจ้งซ่อมและสถิติของระบบเป็นภาษาไทยที่สุภาพ กระชับ และเข้าใจง่าย
@@ -4867,7 +4878,7 @@ class SubscriptionPlanViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
         'partial_update': [PrivilegedAdminThrottle],
         'destroy': [PrivilegedAdminThrottle],
     }
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasBillingAccess]
     serializer_class = SubscriptionPlanSerializer
     queryset = SubscriptionPlan.objects.all()
 
@@ -5126,37 +5137,42 @@ class TenantSubscriptionViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
         'partial_update': [PrivilegedAdminThrottle],
         'destroy': [PrivilegedAdminThrottle],
     }
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasBillingAccess]
     serializer_class = TenantSubscriptionSerializer
 
     def get_queryset(self):
         qs = TenantSubscription.objects.select_related('tenant', 'plan')
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(tenant__in=get_user_tenants(self.request.user))
+        return qs.filter(tenant__in=get_billing_tenants(self.request.user))
 
     def perform_create(self, serializer):
         tenant = serializer.validated_data.get('tenant')
-        if not user_can_manage_tenant(self.request.user, tenant):
+        if not user_can_access_billing(self.request.user, tenant):
             raise PermissionDenied("You do not have permission to manage this subscription.")
         serializer.save()
 
     def perform_update(self, serializer):
         instance = self.get_object()
-        if not user_can_manage_tenant(self.request.user, instance.tenant):
+        if not user_can_access_billing(self.request.user, instance.tenant):
             raise PermissionDenied("You do not have permission to manage this subscription.")
         serializer.save()
 
+    def perform_destroy(self, instance):
+        if not user_can_access_billing(self.request.user, instance.tenant):
+            raise PermissionDenied("You do not have permission to manage this subscription.")
+        instance.delete()
+
 
 class UsageMetricViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasBillingAccess]
     serializer_class = UsageMetricSerializer
 
     def get_queryset(self):
         qs = UsageMetric.objects.select_related('tenant')
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(tenant__in=get_user_tenants(self.request.user))
+        return qs.filter(tenant__in=get_billing_tenants(self.request.user))
 
 
 class AreaViewSet(viewsets.ModelViewSet):

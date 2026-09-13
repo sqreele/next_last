@@ -10,10 +10,17 @@ import { MobileNav as BottomNav } from "@/app/components/ui/mobile-nav";
 import { dashboardNavigationItems } from "@/app/lib/navigation";
 import { cn } from "@/app/lib/utils/cn";
 import { isNavigationItemActive } from "@/app/lib/navigation-active.mjs";
+import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
+import { filterBillingNavigationItems } from "@/app/lib/billing-access.mjs";
 
 export default function AiChatMobileMenu() {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
+  const { canAccessBilling } = useBillingAccess();
+  const visibleNavigationItems = filterBillingNavigationItems(
+    dashboardNavigationItems,
+    canAccessBilling,
+  );
 
   React.useEffect(() => {
     setOpen(false);
@@ -65,11 +72,11 @@ export default function AiChatMobileMenu() {
                     className="flex-1 space-y-1 overflow-y-auto px-3 py-4"
                     aria-label="AI chat mobile menu links"
                   >
-                    {dashboardNavigationItems.map((item) => {
+                    {visibleNavigationItems.map((item) => {
                       const isActive = isNavigationItemActive(
                         pathname,
                         item,
-                        dashboardNavigationItems,
+                        visibleNavigationItems,
                       );
                       return (
                         <Link

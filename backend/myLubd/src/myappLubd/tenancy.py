@@ -20,6 +20,7 @@ from .models import (
 
 TENANT_ADMIN_ROLES = {'owner', 'admin', 'billing'}
 TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'}
+BILLING_ACCESS_ROLES = {'admin', 'manager'}
 MEMBERSHIP_PROPERTY_GRANT_ADMIN_ROLES = {'owner', 'admin'}
 TENANT_MASTER_DATA_ADMIN_ROLES = {'owner', 'admin'}
 PROPERTY_MASTER_DATA_ADMIN_ROLES = {'owner', 'admin'}
@@ -46,6 +47,34 @@ def get_user_tenants(user):
     if user.is_superuser:
         return Tenant.objects.all()
     return Tenant.objects.filter(memberships__user=user, memberships__is_active=True).distinct()
+
+
+def get_billing_tenants(user):
+    """Return tenants whose billing data ``user`` may read or mutate.
+
+    Billing authorization is deliberately independent from general tenant
+    administration. In particular, the owner and billing-named application
+    roles do not imply access to billing data.
+    """
+    if not getattr(user, 'is_authenticated', False):
+        return Tenant.objects.none()
+    if user.is_superuser:
+        return Tenant.objects.all()
+    return Tenant.objects.filter(
+        memberships__user=user,
+        memberships__is_active=True,
+        memberships__role__in=BILLING_ACCESS_ROLES,
+    ).distinct()
+
+
+def user_can_access_billing(user, tenant=None):
+    """Authorize billing through active TenantMembership, with break-glass."""
+    if not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser:
+        return True
+    tenants = get_billing_tenants(user)
+    return tenants.filter(pk=tenant.pk).exists() if tenant is not None else tenants.exists()
 
 
 def get_active_membership(user, tenant):

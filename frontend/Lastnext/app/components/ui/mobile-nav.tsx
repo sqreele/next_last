@@ -17,6 +17,8 @@ import {
 import { triggerHaptic } from "@/app/lib/hooks/useHaptic";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import type { DictKey } from "@/app/lib/i18n/dictionary";
+import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
+import { filterBillingNavigationItems } from "@/app/lib/billing-access.mjs";
 import {
   Sheet,
   SheetContent,
@@ -49,9 +51,14 @@ interface MobileNavProps {
 export function MobileNav({ className, hidden = false }: MobileNavProps) {
   const pathname = usePathname();
   const t = useT();
+  const { canAccessBilling } = useBillingAccess();
+  const visibleSecondaryNavigation = React.useMemo(
+    () => filterBillingNavigationItems(mobileSecondaryNavigation, canAccessBilling),
+    [canAccessBilling],
+  );
   const [moreOpen, setMoreOpen] = React.useState(false);
   const hasActiveSecondaryItem = Boolean(
-    getActiveNavigationItem(pathname, mobileSecondaryNavigation),
+    getActiveNavigationItem(pathname, visibleSecondaryNavigation),
   );
 
   return (
@@ -152,12 +159,12 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
               <SheetTitle>More tools</SheetTitle>
             </SheetHeader>
             <div className="mt-4 grid grid-cols-2 gap-2 overflow-y-auto">
-              {mobileSecondaryNavigation.map((item) => {
+              {visibleSecondaryNavigation.map((item) => {
                 const Icon = item.icon;
                 const isActive = isNavigationItemActive(
                   pathname,
                   item,
-                  mobileSecondaryNavigation,
+                  visibleSecondaryNavigation,
                 );
                 return (
                   <Link

@@ -22,7 +22,9 @@ User = get_user_model()
 
 class MasterDataActionRBACContractTests(APITestCase):
     tenant_roles = ('owner', 'admin', 'manager', 'supervisor', 'technician', 'viewer', 'billing')
-    tenant_writers = {'owner', 'admin'}
+    # The matrix request below includes billing fields. The strict billing
+    # contract narrows that combined mutation to application admins only.
+    tenant_writers = {'admin'}
     property_writers = {'owner', 'admin'}
     room_writers = {'owner', 'admin', 'manager', 'supervisor'}
 
@@ -170,6 +172,21 @@ class MasterDataActionRBACContractTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
         self.assertEqual(self.client.delete(url).status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_owner_retains_non_billing_tenant_metadata_update(self):
+        self.authenticate(self.users['owner'])
+        url = reverse('myappLubd:tenant-detail', kwargs={'pk': self.tenant_a.pk})
+
+        response = self.client.patch(
+            url,
+            {'name': 'Owner-managed tenant name', 'timezone': 'UTC', 'metadata': {'region': 'test'}},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.tenant_a.refresh_from_db()
+        self.assertEqual(self.tenant_a.name, 'Owner-managed tenant name')
+        self.assertEqual(self.tenant_a.timezone, 'UTC')
 
     def test_tenant_create_contract_and_cross_tenant_update_isolation(self):
         unaffiliated = User.objects.create_user(username='a2-unaffiliated', password='pw12345!')

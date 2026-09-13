@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 from .models import (
     Room, Topic, JobImage, Job, Property, UserProfile, Session,
     PreventiveMaintenance, PMMasterPlan, Machine, MaintenanceProcedure,
@@ -32,6 +33,7 @@ from .tenancy import (
     get_accessible_properties,
     get_operable_properties,
     get_user_tenant_memberships,
+    user_can_access_billing,
 )
 from .job_property import (
     resolve_external_property_reference,
@@ -206,6 +208,8 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
 
 
 class TenantSubscriptionSerializer(serializers.ModelSerializer):
+    tenant_name = serializers.CharField(source='tenant.name', read_only=True)
+    tenant_public_id = serializers.CharField(source='tenant.tenant_id', read_only=True)
     plan = SubscriptionPlanSerializer(read_only=True)
     plan_id = serializers.PrimaryKeyRelatedField(
         queryset=SubscriptionPlan.objects.filter(is_active=True),
@@ -217,12 +221,28 @@ class TenantSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TenantSubscription
         fields = [
-            'id', 'tenant', 'plan', 'plan_id', 'status', 'current_period_start',
+            'id', 'tenant', 'tenant_name', 'tenant_public_id', 'plan', 'plan_id',
+            'status', 'current_period_start',
             'current_period_end', 'trial_ends_at', 'external_customer_id',
             'external_subscription_id', 'cancel_at_period_end', 'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'external_customer_id', 'external_subscription_id',
+            'created_at', 'updated_at',
+        ]
+
+    def validate(self, attrs):
+        requested_tenant = attrs.get('tenant')
+        if (
+            self.instance is not None
+            and requested_tenant is not None
+            and requested_tenant.pk != self.instance.tenant_id
+        ):
+            raise serializers.ValidationError({
+                'tenant': 'TenantSubscription.tenant is immutable after creation.',
+            })
+        return attrs
 
 
 class TenantMembershipSerializer(serializers.ModelSerializer):
@@ -259,7 +279,7 @@ class UsageMetricSerializer(serializers.ModelSerializer):
 
 
 class TenantSerializer(serializers.ModelSerializer):
-    subscription = TenantSubscriptionSerializer(read_only=True)
+    subscription = serializers.SerializerMethodField()
     property_count = serializers.IntegerField(read_only=True)
     active_user_count = serializers.IntegerField(read_only=True)
 
@@ -277,7 +297,30 @@ class TenantSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'owner': 'Tenant.owner cannot be changed through the generic Tenant API.',
             })
+        billing_fields = {'billing_email', 'status'} & set(attrs)
+        if billing_fields and self.instance is not None:
+            request = self.context.get('request')
+            if not user_can_access_billing(getattr(request, 'user', None), self.instance):
+                raise PermissionDenied('You do not have permission to update tenant billing fields.')
         return attrs
+
+    def get_subscription(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user_can_access_billing(user, obj):
+            return None
+        try:
+            subscription = obj.subscription
+        except TenantSubscription.DoesNotExist:
+            return None
+        return TenantSubscriptionSerializer(subscription, context=self.context).data
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        request = self.context.get('request')
+        if not user_can_access_billing(getattr(request, 'user', None), instance):
+            representation['billing_email'] = None
+        return representation
 
     def validate_timezone(self, value):
         if not is_valid_timezone(value):

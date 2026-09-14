@@ -189,7 +189,8 @@ class PlatformSubscriptionsView(PlatformReadView):
             item = _subscription_summary(subscription)
             if request.query_params.get('entitlement') and item['entitlement_level'] != request.query_params['entitlement']:
                 continue
-            item.update({'tenant_id': subscription.tenant.tenant_id, 'tenant_name': subscription.tenant.name})
+            item.update({'tenant_id': subscription.tenant.tenant_id, 'tenant_name': subscription.tenant.name,
+                         'tenant_timezone': subscription.tenant.timezone})
             rows.append(item)
         return paginator.get_paginated_response(rows) if page is not None else Response(rows)
 
@@ -252,6 +253,18 @@ class PlatformSummaryView(PlatformReadView):
         today = timezone.localdate()
         soon = today + timedelta(days=14)
         summaries = [_subscription_summary(subscription) for subscription in subscriptions]
+        attention_subscriptions = []
+        for subscription, summary in zip(subscriptions, summaries):
+            deadline = (
+                summary['trial_ends_at'].date() if summary['status'] == 'trialing' and summary['trial_ends_at'] else
+                summary['grace_period_ends_at'].date() if summary['status'] == 'past_due' and summary['grace_period_ends_at'] else
+                summary['current_period_end'] if summary['status'] in ('active', 'cancelled') else None
+            )
+            if deadline and today <= deadline <= soon:
+                attention_subscriptions.append({
+                    'tenant_id': subscription.tenant.tenant_id, 'tenant_name': subscription.tenant.name,
+                    'tenant_timezone': subscription.tenant.timezone, **summary,
+                })
         return Response({
             'total_tenants': Tenant.objects.count(), 'active_tenants': Tenant.objects.filter(status='active').count(),
             'trialing_subscriptions': sum(row['status'] == 'trialing' for row in summaries),
@@ -266,4 +279,5 @@ class PlatformSummaryView(PlatformReadView):
             ).count(),
             'provider_mode': _provider_mode(),
             'test_mode_warning_count': TenantSubscription.objects.count() if _provider_mode() == 'test' else 0,
+            'attention_subscriptions': attention_subscriptions,
         })

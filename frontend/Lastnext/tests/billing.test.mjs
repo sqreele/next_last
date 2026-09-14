@@ -4,7 +4,9 @@ import test from 'node:test';
 
 import {
   billingStatusLabel,
+  formatBillingDateTime,
   getBillingLifecycleMessage,
+  getLifecycleDisplay,
   isSafeStripeHostedUrl,
   redirectToStripe,
   rows,
@@ -41,28 +43,28 @@ test('plan selection normalizes paginated API results', () => {
 });
 
 test('billing lifecycle wording covers renewal, cancellation, trials, and payment failure', () => {
-  assert.match(getBillingLifecycleMessage(billing).message, /^Renews on /);
+  assert.match(getBillingLifecycleMessage(billing).message, /^Renews /);
   assert.match(getBillingLifecycleMessage({ ...billing, cancel_at_period_end: true }).message, /^Access until /);
   assert.match(getBillingLifecycleMessage({
     ...billing,
     status: 'trialing',
     reason_code: 'trial_active',
     trial_ends_at: '2026-10-01T00:00:00Z',
-  }).message, /^Trial ends /);
+  }).message, /^Trial expires /);
   assert.match(getBillingLifecycleMessage({
     ...billing,
     status: 'trialing',
     entitlement_level: 'READ_ONLY',
     reason_code: 'trial_end_missing',
     current_period_end: null,
-  }).message, /Trial end is unavailable/);
+  }).message, /Expiry date unavailable/);
   assert.match(getBillingLifecycleMessage({
     ...billing,
     status: 'past_due',
     entitlement_level: 'GRACE',
     reason_code: 'past_due_within_grace_period',
     grace_period_ends_at: '2026-10-01T00:00:00Z',
-  }).message, /^Payment failed — update billing by /);
+  }).message, /^Grace until /);
 });
 
 test('billing lifecycle wording covers stale and ended periods', () => {
@@ -76,7 +78,19 @@ test('billing lifecycle wording covers stale and ended periods', () => {
     status: 'cancelled',
     entitlement_level: 'READ_ONLY',
     reason_code: 'cancelled_period_ended',
-  }).message, /^Access ended after /);
+  }).message, /^Access ended /);
+});
+
+test('platform lifecycle labels use one explicit deadline and never fabricate missing dates', () => {
+  const trial = { ...billing, status: 'trialing', trial_ends_at: '2026-12-31T16:59:00Z' };
+  assert.equal(getLifecycleDisplay(trial, 'Asia/Bangkok').message, 'Trial expires 31 Dec 2026, 23:59');
+  assert.equal(formatBillingDateTime('2026-12-31T16:59:00Z', 'Asia/Bangkok'), '31 Dec 2026, 23:59');
+  assert.match(getLifecycleDisplay(billing).message, /^Renews 1 Oct 2026$/);
+  assert.match(getLifecycleDisplay({ ...billing, cancel_at_period_end: true }).message, /^Access until /);
+  assert.match(getLifecycleDisplay({ ...billing, status: 'past_due', grace_period_ends_at: '2026-12-31T16:59:00Z' }, 'Asia/Bangkok').message, /^Grace until /);
+  assert.match(getLifecycleDisplay({ ...billing, status: 'cancelled', current_period_end: '2026-12-31' }, 'UTC', new Date('2026-09-14T00:00:00Z')).message, /^Access until /);
+  assert.match(getLifecycleDisplay({ ...billing, status: 'cancelled', current_period_end: '2026-01-01' }, 'UTC', new Date('2026-09-14T00:00:00Z')).message, /^Access ended /);
+  assert.equal(getLifecycleDisplay({ ...billing, status: 'trialing', trial_ends_at: null }).message, 'Expiry date unavailable');
 });
 
 test('billing pages use internal plans, role visibility, and waiting-for-webhook copy', () => {

@@ -12,6 +12,7 @@ import { SettingsPageSkeleton } from "@/app/components/ui/loading";
 import {
   billingStatusLabel,
   formatBillingDate,
+  getBillingLifecycleMessage,
   redirectToStripe,
   rows,
 } from "@/app/lib/billing-ui.mjs";
@@ -23,6 +24,7 @@ type BillingState = {
   plan: { id: number; code: string; name: string } | null;
   status: string;
   entitlement_level: string;
+  reason_code: string;
   current_period_end: string | null;
   trial_ends_at: string | null;
   grace_period_ends_at: string | null;
@@ -48,6 +50,7 @@ export default function BillingSettingsClient() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [action, setAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const lifecycle = getBillingLifecycleMessage(billing);
 
   const load = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -125,9 +128,13 @@ export default function BillingSettingsClient() {
           <div><p className="text-xs text-muted-foreground">Status</p><Badge variant={billing?.status === "past_due" ? "destructive" : "secondary"}>{billingStatusLabel(billing?.status || "missing")}</Badge></div>
           <div><p className="text-xs text-muted-foreground">Current period end</p><p className="font-medium">{formatBillingDate(billing?.current_period_end)}</p></div>
           <div><p className="text-xs text-muted-foreground">Entitlement</p><p className="font-medium">{billing?.entitlement_level || "—"}</p></div>
-          {billing?.trial_ends_at && <div><p className="text-xs text-muted-foreground">Trial ends</p><p className="font-medium">{formatBillingDate(billing.trial_ends_at)}</p></div>}
-          {billing?.grace_period_ends_at && <div><p className="text-xs text-muted-foreground">Grace deadline</p><p className="font-medium">{formatBillingDate(billing.grace_period_ends_at)}</p></div>}
-          {billing?.cancel_at_period_end && <div className="sm:col-span-2"><p className="text-sm text-amber-700">Cancellation is scheduled at the end of the paid period.</p></div>}
+          {lifecycle && (
+            <div className="sm:col-span-2 lg:col-span-4">
+              <p className={lifecycle.tone === "attention" ? "text-sm text-destructive" : lifecycle.tone === "warning" ? "text-sm text-amber-700" : "text-sm text-muted-foreground"}>
+                {lifecycle.message}
+              </p>
+            </div>
+          )}
           {billing?.can_manage_billing && (
             <div className="sm:col-span-2 lg:col-span-4">
               <Button onClick={() => void hostedAction("portal")} disabled={action !== null}>

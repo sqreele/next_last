@@ -10,6 +10,9 @@ export interface SubscriptionEntitlement {
   reason_code: string;
   grace_ends_at: string | null;
   current_period_end: string | null;
+  trial_ends_at: string | null;
+  grace_period_ends_at: string | null;
+  cancel_at_period_end: boolean;
   enforcement_mode: "off" | "observe" | "enforce";
 }
 

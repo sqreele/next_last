@@ -59,9 +59,10 @@ def _effective_local_date(tenant, at: datetime):
 def get_tenant_entitlement(tenant, at=None) -> TenantEntitlement:
     """Return the effective billing entitlement for exactly ``tenant``.
 
-    ``current_period_end`` is a DateField. A cancelled subscription remains
-    FULL through the end of that calendar day in the Tenant's configured
-    timezone, and becomes READ_ONLY on the following local day.
+    ``current_period_end`` is a DateField. Active and cancelled subscriptions
+    remain FULL through the end of that calendar day in the Tenant's
+    configured timezone, and become READ_ONLY on the following local day.
+    Trials use their exact, timezone-aware ``trial_ends_at`` deadline.
     """
     at = at or timezone.now()
     if timezone.is_naive(at):
@@ -77,9 +78,31 @@ def get_tenant_entitlement(tenant, at=None) -> TenantEntitlement:
 
     status = subscription.status
     if status == 'trialing':
-        return _result(EntitlementLevel.FULL, 'subscription_trialing')
+        trial_end = subscription.trial_ends_at
+        if trial_end is None:
+            return _result(EntitlementLevel.READ_ONLY, 'trial_end_missing')
+        if timezone.is_naive(trial_end):
+            return _result(EntitlementLevel.READ_ONLY, 'trial_end_invalid')
+        if trial_end > at:
+            return _result(EntitlementLevel.FULL, 'trial_active')
+        return _result(EntitlementLevel.READ_ONLY, 'trial_expired')
     if status == 'active':
-        return _result(EntitlementLevel.FULL, 'subscription_active')
+        period_end = subscription.current_period_end
+        if period_end is None:
+            return _result(
+                EntitlementLevel.READ_ONLY,
+                'active_missing_period_end',
+            )
+        try:
+            local_date = _effective_local_date(tenant, at)
+        except (ZoneInfoNotFoundError, ValueError):
+            return _result(
+                EntitlementLevel.READ_ONLY,
+                'active_invalid_tenant_timezone',
+            )
+        if local_date <= period_end:
+            return _result(EntitlementLevel.FULL, 'subscription_active')
+        return _result(EntitlementLevel.READ_ONLY, 'active_period_expired')
     if status == 'past_due':
         grace_ends_at = subscription.grace_period_ends_at
         if grace_ends_at is None:

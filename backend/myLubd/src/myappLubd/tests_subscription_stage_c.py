@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -54,7 +55,10 @@ class SubscriptionStageCOperationalTests(APITestCase):
             external_subscription_id='subscription-secret',
         )
         TenantSubscription.objects.create(
-            tenant=self.active_tenant, plan=self.plan, status='active'
+            tenant=self.active_tenant,
+            plan=self.plan,
+            status='active',
+            current_period_end=timezone.now().date() + timedelta(days=1),
         )
         self.suspended_room = Room.objects.create(
             name='S-101', room_type='Standard', property=self.suspended_property

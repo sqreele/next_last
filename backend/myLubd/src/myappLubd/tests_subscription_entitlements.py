@@ -66,18 +66,66 @@ class TenantEntitlementTests(TestCase):
             **fields,
         )
 
-    def test_active_is_full(self):
-        self.make_subscription('active')
-        result = get_tenant_entitlement(self.tenant)
+    def test_active_with_future_period_end_is_full(self):
+        at = timezone.now()
+        local_date = timezone.localtime(at, timezone.get_fixed_timezone(420)).date()
+        self.make_subscription(
+            'active', current_period_end=local_date + timedelta(days=1),
+        )
+        result = get_tenant_entitlement(self.tenant, at=at)
         self.assertEqual(result.level, EntitlementLevel.FULL)
+        self.assertEqual(result.reason_code, 'subscription_active')
         self.assertTrue(result.can_write)
 
-    def test_trialing_is_full(self):
-        self.make_subscription('trialing')
-        self.assertEqual(
-            get_tenant_entitlement(self.tenant).level,
-            EntitlementLevel.FULL,
+    def test_active_is_full_through_tenant_local_period_end_day(self):
+        at = timezone.now()
+        local_date = timezone.localtime(at, timezone.get_fixed_timezone(420)).date()
+        self.make_subscription('active', current_period_end=local_date)
+        self.assertEqual(get_tenant_entitlement(self.tenant, at=at).level, EntitlementLevel.FULL)
+
+    def test_active_after_period_end_is_read_only(self):
+        at = timezone.now()
+        local_date = timezone.localtime(at, timezone.get_fixed_timezone(420)).date()
+        self.make_subscription(
+            'active', current_period_end=local_date - timedelta(days=1),
         )
+        result = get_tenant_entitlement(self.tenant, at=at)
+        self.assertEqual(result.level, EntitlementLevel.READ_ONLY)
+        self.assertEqual(result.reason_code, 'active_period_expired')
+
+    def test_active_without_period_end_is_read_only(self):
+        self.make_subscription('active')
+        result = get_tenant_entitlement(self.tenant)
+        self.assertEqual(result.level, EntitlementLevel.READ_ONLY)
+        self.assertEqual(result.reason_code, 'active_missing_period_end')
+
+    def test_trialing_with_future_trial_end_is_full(self):
+        at = timezone.now()
+        self.make_subscription('trialing', trial_ends_at=at + timedelta(seconds=1))
+        result = get_tenant_entitlement(self.tenant, at=at)
+        self.assertEqual(result.level, EntitlementLevel.FULL)
+        self.assertEqual(result.reason_code, 'trial_active')
+
+    def test_trialing_at_trial_end_is_read_only(self):
+        at = timezone.now()
+        self.make_subscription('trialing', trial_ends_at=at)
+        result = get_tenant_entitlement(self.tenant, at=at)
+        self.assertEqual(result.level, EntitlementLevel.READ_ONLY)
+        self.assertEqual(result.reason_code, 'trial_expired')
+
+    def test_trialing_after_trial_end_is_read_only(self):
+        at = timezone.now()
+        self.make_subscription('trialing', trial_ends_at=at - timedelta(seconds=1))
+        self.assertEqual(
+            get_tenant_entitlement(self.tenant, at=at).level,
+            EntitlementLevel.READ_ONLY,
+        )
+
+    def test_trialing_without_trial_end_is_read_only(self):
+        self.make_subscription('trialing')
+        result = get_tenant_entitlement(self.tenant)
+        self.assertEqual(result.level, EntitlementLevel.READ_ONLY)
+        self.assertEqual(result.reason_code, 'trial_end_missing')
 
     def test_past_due_within_grace_is_grace(self):
         grace_end = timezone.now() + timedelta(days=1)
@@ -135,6 +183,12 @@ class TenantEntitlementTests(TestCase):
             EntitlementLevel.READ_ONLY,
         )
 
+    def test_cancelled_without_period_end_is_read_only(self):
+        self.make_subscription('cancelled')
+        result = get_tenant_entitlement(self.tenant)
+        self.assertEqual(result.level, EntitlementLevel.READ_ONLY)
+        self.assertEqual(result.reason_code, 'cancelled_missing_period_end')
+
     def test_cancelled_with_invalid_tenant_timezone_fails_closed(self):
         self.tenant.timezone = 'Not/A-Timezone'
         self.make_subscription(
@@ -172,6 +226,7 @@ class TenantEntitlementTests(TestCase):
             tenant=active_tenant,
             plan=self.plan,
             status='active',
+            current_period_end=timezone.now().date() + timedelta(days=1),
         )
 
         self.assertEqual(
@@ -236,7 +291,9 @@ class TenantEntitlementTests(TestCase):
         self.assertFalse(TenantSubscription.objects.filter(tenant=self.tenant).exists())
 
     def test_existing_active_plan_limit_still_applies(self):
-        self.make_subscription('active')
+        self.make_subscription(
+            'active', current_period_end=timezone.now().date() + timedelta(days=1),
+        )
         Property.objects.create(name='Existing Plan Property', tenant=self.tenant)
         with self.assertRaises(ValidationError):
             enforce_subscription_limit(self.tenant, 'max_properties')

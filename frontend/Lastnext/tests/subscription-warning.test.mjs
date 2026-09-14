@@ -12,6 +12,9 @@ const base = {
   reason_code: "subscription_active",
   grace_ends_at: null,
   current_period_end: null,
+  trial_ends_at: null,
+  grace_period_ends_at: null,
+  cancel_at_period_end: false,
   enforcement_mode: "observe",
 };
 
@@ -38,7 +41,25 @@ test("READ_ONLY observe copy does not falsely claim writes are blocked", () => {
     status: "suspended",
     can_write: false,
   });
-  assert.match(warning.message, /restrictions may apply/);
+  assert.match(warning.message, /observe mode/);
   assert.doesNotMatch(warning.message, /currently read-only/);
   assert.match(warning.contact, /administrator/);
+});
+
+test("READ_ONLY warning explains hardened expiry reasons", () => {
+  const cases = [
+    ["trial_expired", /trial has ended/],
+    ["active_period_expired", /paid subscription period has ended/],
+    ["cancelled_period_ended", /cancelled subscription period has ended/],
+    ["trial_end_missing", /trial end could not be verified/],
+  ];
+  for (const [reason_code, expected] of cases) {
+    const warning = getSubscriptionWarning({
+      ...base,
+      entitlement_level: "READ_ONLY",
+      reason_code,
+      can_write: false,
+    });
+    assert.match(warning.message, expected);
+  }
 });

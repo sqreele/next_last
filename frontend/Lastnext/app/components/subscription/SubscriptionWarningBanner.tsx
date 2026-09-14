@@ -7,6 +7,7 @@ import {
   getSubscriptionWarning,
   type SubscriptionEntitlement,
 } from "@/app/lib/subscription-warning.mjs";
+import { formatBillingDateTime } from "@/app/lib/billing-ui.mjs";
 
 export function SubscriptionWarningBanner() {
   const propertyId = useMainStore((state) => state.selectedPropertyId);
@@ -39,10 +40,7 @@ export function SubscriptionWarningBanner() {
 
   const graceDateLabel = React.useMemo(() => {
     if (!entitlement?.grace_ends_at) return undefined;
-    const date = new Date(entitlement.grace_ends_at);
-    return Number.isNaN(date.getTime())
-      ? entitlement.grace_ends_at
-      : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+    return formatBillingDateTime(entitlement.grace_ends_at);
   }, [entitlement?.grace_ends_at]);
   const warning = getSubscriptionWarning(entitlement, graceDateLabel);
   if (!warning) return null;

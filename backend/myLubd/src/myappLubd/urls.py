@@ -18,6 +18,11 @@ from .invitations import (
 )
 from .billing.views import StripeCheckoutView, StripePortalView, StripeWebhookView
 from .line_integration import LineWebhookView
+from .platform_api import (
+    PlatformSummaryView, PlatformTenantDetailView, PlatformTenantsView,
+    PlatformSubscriptionDetailView, PlatformSubscriptionsView, PlatformUsageView,
+    PlatformWebhookEventsView,
+)
 
 # Set the app name
 app_name = 'myappLubd'
@@ -60,6 +65,16 @@ urlpatterns = [
     path('api/v1/billing/portal/', StripePortalView.as_view(), name='stripe-portal'),
     path('api/v1/billing/webhooks/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'),
     path('api/v1/integrations/line/webhook/', LineWebhookView.as_view(), name='line-webhook'),
+
+    # Internal platform operations APIs. These intentionally remain outside
+    # tenant-scoped routers and implement GET only.
+    path('api/v1/platform/summary/', PlatformSummaryView.as_view(), name='platform-summary'),
+    path('api/v1/platform/tenants/', PlatformTenantsView.as_view(), name='platform-tenants'),
+    path('api/v1/platform/tenants/<str:tenant_id>/', PlatformTenantDetailView.as_view(), name='platform-tenant-detail'),
+    path('api/v1/platform/subscriptions/', PlatformSubscriptionsView.as_view(), name='platform-subscriptions'),
+    path('api/v1/platform/subscriptions/<int:pk>/', PlatformSubscriptionDetailView.as_view(), name='platform-subscription-detail'),
+    path('api/v1/platform/usage/', PlatformUsageView.as_view(), name='platform-usage'),
+    path('api/v1/platform/webhook-events/', PlatformWebhookEventsView.as_view(), name='platform-webhook-events'),
     
     # Preventive maintenance endpoints (MUST come before router to avoid conflicts)
     path('api/v1/preventive-maintenance/jobs/', views.get_preventive_maintenance_jobs, name='preventive_maintenance_jobs'),

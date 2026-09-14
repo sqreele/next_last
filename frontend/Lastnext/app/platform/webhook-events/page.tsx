@@ -1,0 +1,4 @@
+import { PlatformPage } from "@/app/components/platform/PlatformPage";
+import { platformGet } from "@/app/lib/platform-dashboard.server";
+import { requirePlatformAccess } from "@/app/lib/platform-access.server";
+export default async function PlatformWebhookEventsPage() { await requirePlatformAccess("platform.billing.diagnostics.read"); const data = await platformGet("/api/v1/platform/webhook-events/"); const rows = (data.results ?? []) as Array<Record<string, unknown>>; return <PlatformPage title="Webhook Events"><div className="space-y-3">{rows.map((row, index) => <article key={`${row.received_at}-${index}`} className="rounded-lg border p-4"><b>{String(row.event_type)}</b><p>{String(row.provider)} · {String(row.status)}</p><p className="text-sm text-muted-foreground">Received: {String(row.received_at)} · Error: {String(row.error_code ?? "—")}</p></article>)}</div></PlatformPage>; }

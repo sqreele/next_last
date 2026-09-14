@@ -133,7 +133,7 @@ class PlatformAuthorizationTests(TestCase):
         UserProfile.objects.get_or_create(user=self.billing_admin)
         client = APIClient()
         client.force_authenticate(user=self.billing_admin)
-        response = client.get('/api/v1/user-profiles/me/')
+        response = client.get('/api/v1/user-profiles/me/', secure=True, HTTP_HOST='localhost')
         self.assertEqual(response.status_code, 200, response.content)
         payload = response.data
         self.assertEqual(payload['platform_roles'], [PlatformMembership.ROLE_PLATFORM_BILLING_ADMIN])

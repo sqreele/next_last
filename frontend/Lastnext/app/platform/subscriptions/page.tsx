@@ -1,0 +1,4 @@
+import { PlatformPage } from "@/app/components/platform/PlatformPage";
+import { platformGet } from "@/app/lib/platform-dashboard.server";
+import { requirePlatformAccess } from "@/app/lib/platform-access.server";
+export default async function PlatformSubscriptionsPage() { await requirePlatformAccess("platform.billing.read"); const data = await platformGet("/api/v1/platform/subscriptions/"); const rows = (data.results ?? []) as Array<Record<string, unknown>>; return <PlatformPage title="Subscriptions"><div className="space-y-3">{rows.map((row) => <article key={String(row.id)} className="rounded-lg border p-4"><b>{String(row.tenant_name)}</b><p>{String((row.plan as Record<string, unknown>)?.name ?? "—")} · {String(row.status)} · {String(row.entitlement_level)}</p><p className="text-sm text-muted-foreground">Trial: {String(row.trial_ends_at ?? "—")} · Provider: {String(row.provider_mode)} · Bound: {String(row.subscription_bound)}</p></article>)}</div></PlatformPage>; }

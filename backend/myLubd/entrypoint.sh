@@ -76,6 +76,7 @@ names = (
     'FRONTEND_BASE_URL',
     'LINE_CHANNEL_ACCESS_TOKEN',
     'LINE_MESSAGING_TIMEOUT_SECONDS',
+    'LINE_MONTHLY_MESSAGE_LIMIT',
 )
 
 flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
@@ -89,6 +90,8 @@ with os.fdopen(fd, 'w', encoding='utf-8') as env_file:
         value = os.environ.get(name, '')
         if name == 'LINE_MESSAGING_TIMEOUT_SECONDS' and not value:
             value = '3'
+        if name == 'LINE_MONTHLY_MESSAGE_LIMIT' and not value:
+            value = '300'
         env_file.write(f'export {name}={shlex.quote(value)}\n')
 PY
 

@@ -120,6 +120,26 @@ class CronEntrypointTests(unittest.TestCase):
         loaded = self.load_selected_environment(path, ('LINE_CHANNEL_ACCESS_TOKEN',))
         self.assertEqual(loaded['LINE_CHANNEL_ACCESS_TOKEN'], fake_token)
 
+    def test_line_monthly_limit_defaults_to_300_and_is_propagated(self):
+        cases = (
+            ('unset', {}, ('LINE_MONTHLY_MESSAGE_LIMIT',), '300'),
+            ('empty', {'LINE_MONTHLY_MESSAGE_LIMIT': ''}, (), '300'),
+            ('configured', {'LINE_MONTHLY_MESSAGE_LIMIT': '450'}, (), '450'),
+        )
+        for label, values, unset, expected in cases:
+            with self.subTest(label=label):
+                directory, path = self.generate_cron_environment(values, unset=unset)
+                self.addCleanup(directory.cleanup)
+                loaded = self.load_selected_environment(path, ('LINE_MONTHLY_MESSAGE_LIMIT',))
+                self.assertEqual(loaded['LINE_MONTHLY_MESSAGE_LIMIT'], expected)
+
+    def test_frontend_compose_service_has_no_line_secrets_or_broad_env_file(self):
+        compose = (ENTRYPOINT.parents[2] / 'docker-compose.yml').read_text(encoding='utf-8')
+        frontend = compose.split('  frontend:', 1)[1].split('\n  redis:', 1)[0]
+        self.assertNotIn('env_file:', frontend)
+        self.assertNotIn('LINE_CHANNEL_ACCESS_TOKEN', frontend)
+        self.assertNotIn('LINE_CHANNEL_SECRET', frontend)
+
     def test_malformed_nonempty_line_timeout_remains_fail_fast(self):
         directory, path = self.generate_cron_environment({
             'LINE_MESSAGING_TIMEOUT_SECONDS': 'abc',

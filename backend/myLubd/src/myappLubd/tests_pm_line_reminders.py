@@ -35,7 +35,10 @@ from .notifications.pm_reminders import (
 User = get_user_model()
 
 
-@override_settings(LINE_CHANNEL_ACCESS_TOKEN='test-token')
+@override_settings(
+    LINE_CHANNEL_ACCESS_TOKEN='test-token',
+    LINE_USAGE_CACHE_ALIAS='default',
+)
 class PMLineReminderTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='pm-line-user')
@@ -238,6 +241,20 @@ class PMLineReminderTests(TestCase):
         results = send_due_pm_reminders(now=self._now())
         self.assertEqual(results[0]['status'], 'failed')
         self.assertFalse(PMLineReminderDelivery.objects.exists())
+
+    @patch('myappLubd.notifications.pm_reminders.send_text_message')
+    def test_unexpected_transport_failure_does_not_abort_later_property_batch(self, send):
+        self._make_pm(self.chinatown)
+        self._make_pm(self.siam)
+        send.side_effect = [RuntimeError('sensitive transport detail'), True]
+
+        with self.assertLogs('myappLubd.notifications.pm_reminders', 'ERROR') as logs:
+            results = send_due_pm_reminders(now=self._now())
+
+        self.assertEqual([result['status'] for result in results], ['failed', 'sent'])
+        self.assertEqual(send.call_count, 2)
+        self.assertEqual(PMLineReminderDelivery.objects.count(), 1)
+        self.assertNotIn('sensitive transport detail', '\n'.join(logs.output))
 
     @patch('myappLubd.notifications.pm_reminders.send_text_message', return_value=True)
     def test_success_records_one_delivery_per_pm(self, send):
@@ -558,7 +575,10 @@ class PMLineReminderTests(TestCase):
         self.assertIn('more tasks', message)
 
 
-@override_settings(LINE_CHANNEL_ACCESS_TOKEN='test-token')
+@override_settings(
+    LINE_CHANNEL_ACCESS_TOKEN='test-token',
+    LINE_USAGE_CACHE_ALIAS='default',
+)
 class PMLineReminderConcurrencyTests(TransactionTestCase):
     reset_sequences = True
 

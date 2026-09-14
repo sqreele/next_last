@@ -27,8 +27,12 @@ from .notifications.line import (
     LINE_QUOTA_CONSUMPTION_ENDPOINT,
     LINE_QUOTA_ENDPOINT,
     LineSendResult,
+    _retry_after_seconds,
+    _usage_month,
+    _usage_timeout,
     get_line_usage,
     record_line_usage,
+    send_line_message,
     send_text_message,
 )
 
@@ -68,6 +72,27 @@ class LineTransportTests(SimpleTestCase):
             },
             timeout=2.5,
         )
+
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_multiple_message_objects_count_as_one_successful_push_request(self, post):
+        response = requests.Response()
+        response.status_code = 200
+        post.return_value = response
+
+        result = send_line_message(
+            'group-1234',
+            [
+                {'type': 'text', 'text': 'first'},
+                {'type': 'text', 'text': 'second'},
+            ],
+            property_id='P-A',
+            event_type='JOB_CREATED',
+        )
+
+        self.assertTrue(result.ok)
+        usage = get_line_usage(property_id='P-A', event_type='JOB_CREATED')
+        self.assertEqual(usage['provider_attempts'], 1)
+        self.assertEqual(usage['successful_messages'], 1)
 
     @patch('myappLubd.notifications.line.requests.post')
     def test_provider_failure_is_contained(self, post):
@@ -188,6 +213,17 @@ class LineTransportTests(SimpleTestCase):
         self.assertEqual(second.attempts, 0)
         self.assertEqual(second.message, 'cooldown active')
 
+    def test_retry_after_is_bounded_and_invalid_values_are_ignored(self):
+        response = requests.Response()
+        response.status_code = 429
+        response.headers['Retry-After'] = '9999'
+        self.assertEqual(_retry_after_seconds(response), 60)
+
+        for value in ('-1', 'not-a-number'):
+            with self.subTest(value=value):
+                response.headers['Retry-After'] = value
+                self.assertIsNone(_retry_after_seconds(response))
+
     @patch('myappLubd.notifications.line.requests.post')
     def test_response_body_is_bounded(self, post):
         response = requests.Response()
@@ -286,6 +322,30 @@ class LineTransportTests(SimpleTestCase):
         self.assertEqual(usage['failed'], 0)
         self.assertEqual(usage['rate_limited'], 1)
 
+    @patch('myappLubd.notifications.line.time.sleep')
+    @patch('myappLubd.notifications.line.requests.post')
+    def test_final_failure_after_retry_is_counted_exactly_once(self, post, sleep):
+        first = requests.Response()
+        first.status_code = 429
+        first.headers['Retry-After'] = '1'
+        final = requests.Response()
+        final.status_code = 429
+        final.headers['Retry-After'] = '1'
+        post.side_effect = [first, final]
+
+        result = send_text_message(
+            destination_id='group-a', text='one',
+            property_id='P-A', event_type='JOB_CREATED',
+        )
+
+        self.assertFalse(result.ok)
+        self.assertEqual(result.attempts, 2)
+        usage = get_line_usage(property_id='P-A', event_type='JOB_CREATED')
+        self.assertEqual(usage['provider_attempts'], 2)
+        self.assertEqual(usage['rate_limited'], 2)
+        self.assertEqual(usage['failed'], 1)
+        sleep.assert_called_once_with(1)
+
     def test_property_scope_and_month_rollover(self):
         august = datetime(2026, 8, 15, 12, tzinfo=datetime_timezone.utc)
         september = datetime(2026, 9, 15, 12, tzinfo=datetime_timezone.utc)
@@ -301,6 +361,45 @@ class LineTransportTests(SimpleTestCase):
         self.assertEqual(get_line_usage(property_id='P-B', now=september)['successful_messages'], 1)
         self.assertEqual(get_line_usage(now=september)['successful_messages'], 1)
 
+    def test_property_event_and_bangkok_month_scoping(self):
+        before_bangkok_midnight = datetime(
+            2026, 8, 31, 16, 59, tzinfo=datetime_timezone.utc,
+        )
+        after_bangkok_midnight = datetime(
+            2026, 8, 31, 17, 1, tzinfo=datetime_timezone.utc,
+        )
+        record_line_usage(
+            'successful_messages', property_id='P-A', event_type='JOB_CREATED',
+            now=before_bangkok_midnight,
+        )
+        record_line_usage(
+            'successful_messages', property_id='P-A', event_type='PM_REMINDER',
+            now=after_bangkok_midnight,
+        )
+
+        self.assertEqual(_usage_month(before_bangkok_midnight), '2026-08')
+        self.assertEqual(_usage_month(after_bangkok_midnight), '2026-09')
+        self.assertEqual(get_line_usage(
+            property_id='P-A', event_type='JOB_CREATED', now=before_bangkok_midnight,
+        )['successful_messages'], 1)
+        self.assertEqual(get_line_usage(
+            property_id='P-A', event_type='PM_REMINDER', now=before_bangkok_midnight,
+        )['successful_messages'], 0)
+        self.assertEqual(get_line_usage(
+            property_id='P-A', event_type='PM_REMINDER', now=after_bangkok_midnight,
+        )['successful_messages'], 1)
+
+    def test_usage_ttl_is_seven_days_after_bangkok_month_end(self):
+        one_minute_before_month_end = datetime(
+            2026, 9, 30, 16, 59, tzinfo=datetime_timezone.utc,
+        )
+        one_minute_before_year_end = datetime(
+            2026, 12, 31, 16, 59, tzinfo=datetime_timezone.utc,
+        )
+
+        self.assertEqual(_usage_timeout(one_minute_before_month_end), 7 * 86400 + 60)
+        self.assertEqual(_usage_timeout(one_minute_before_year_end), 7 * 86400 + 60)
+
     @patch('myappLubd.notifications.line.cache.add', side_effect=RuntimeError('cache unavailable'))
     @patch('myappLubd.notifications.line.requests.post')
     def test_counter_failure_does_not_break_send(self, post, cache_add):
@@ -315,22 +414,23 @@ class LineTransportTests(SimpleTestCase):
         self.assertTrue(result.ok)
         post.assert_called_once()
 
-    @override_settings(LINE_MONTHLY_MESSAGE_LIMIT=10)
+    @override_settings(LINE_MONTHLY_MESSAGE_LIMIT=300)
     @patch('myappLubd.notifications.line.logger.warning')
-    def test_threshold_warning_is_once_per_threshold_per_month(self, warning):
-        record_line_usage(
-            'successful_messages', property_id='P-A', event_type='JOB_CREATED', amount=8,
-        )
-        record_line_usage(
-            'successful_messages', property_id='P-B', event_type='JOB_CREATED', amount=0,
-        )
+    def test_80_90_95_100_threshold_warnings_are_each_once_per_month(self, warning):
+        for amount in (240, 0, 30, 0, 15, 0, 15, 0):
+            record_line_usage(
+                'successful_messages', property_id='P-A', event_type='JOB_CREATED',
+                amount=amount,
+            )
 
         threshold_calls = [
             call for call in warning.call_args_list
-            if call.args and str(call.args[0]).startswith('LINE monthly usage reached')
+            if call.args and str(call.args[0]).startswith(
+                'LINE local successful push request count reached'
+            )
         ]
-        self.assertEqual(len(threshold_calls), 1)
-        self.assertEqual(threshold_calls[0].args[1], 80)
+        self.assertEqual([call.args[1] for call in threshold_calls], [80, 90, 95, 100])
+        self.assertEqual([call.args[2] for call in threshold_calls], [240, 270, 285, 300])
 
 
 @override_settings(
@@ -372,26 +472,29 @@ class LineDiagnosticCommandTests(TestCase):
             event_type='JOB_CREATED', amount=1,
         )
 
-    @patch(
-        'myappLubd.management.commands.test_line_notification.send_text_message'
-    )
-    def test_read_only_diagnostic_shows_local_quota_without_secrets(self, send):
+    @patch('myappLubd.management.commands.test_line_notification.get_provider_quota')
+    @patch('myappLubd.management.commands.test_line_notification.send_text_message')
+    def test_read_only_diagnostic_shows_local_counts_without_secrets(
+        self, send, provider_quota,
+    ):
         output = StringIO()
         call_command(
             'test_line_notification', property_id=self.property.property_id, stdout=output,
         )
         rendered = output.getvalue()
-        self.assertIn('Configured monthly quota: 300', rendered)
-        self.assertIn('Local successful count this month: 2', rendered)
+        self.assertIn('Configured provider monthly limit: 300', rendered)
+        self.assertIn('Local successful push requests this month (Property): 2', rendered)
         self.assertIn('Local provider attempts this month: 3', rendered)
         self.assertIn('Local failed sends this month: 1', rendered)
         self.assertIn('Local quota-exhausted responses this month: 1', rendered)
         self.assertIn('Local temporary rate-limited responses this month: 1', rendered)
-        self.assertIn('Estimated remaining local quota: 297', rendered)
-        self.assertIn('Overall local successful count this month: 3', rendered)
+        self.assertIn('Local successful push requests this month (overall): 3', rendered)
+        self.assertIn('they are not provider quota usage', rendered)
+        self.assertNotIn('Estimated remaining local quota', rendered)
         self.assertNotIn('diagnostic-secret-token', rendered)
         self.assertNotIn('secret-group-destination', rendered)
         send.assert_not_called()
+        provider_quota.assert_not_called()
 
     @patch(
         'myappLubd.management.commands.test_line_notification.send_text_message'

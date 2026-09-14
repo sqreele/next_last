@@ -275,13 +275,26 @@ def _deliver_batch(batch: PMLineReminderBatch):
         )
         return _safe_result(batch, status='routing_changed')
 
-    if not send_text_message(
-        destination_id=batch.destination_id,
-        text=batch.message_text,
-        retry_key=str(batch.retry_key),
-        event_type='PM_REMINDER',
-        property_id=current_property.property_id,
-    ):
+    try:
+        delivered = send_text_message(
+            destination_id=batch.destination_id,
+            text=batch.message_text,
+            retry_key=str(batch.retry_key),
+            event_type='PM_REMINDER',
+            property_id=current_property.property_id,
+        )
+    except Exception as exc:  # transport/counter faults must not abort later Property batches
+        logger.error(
+            'Unexpected PM LINE reminder transport failure type=%s property=%s '
+            'count=%s error=%s',
+            batch.reminder_type,
+            current_property.property_id,
+            batch.items.count(),
+            type(exc).__name__,
+        )
+        return _safe_result(batch, status='failed')
+
+    if not delivered:
         logger.warning(
             'PM LINE reminder failed type=%s property=%s count=%s destination=%s',
             batch.reminder_type,

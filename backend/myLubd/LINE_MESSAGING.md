@@ -69,8 +69,16 @@ synchronously with a short timeout, but is registered with
 Provider failures are logged without credentials, headers, destination IDs, or
 message payloads and never roll back a successful Job mutation.
 
-Successful messages and provider HTTP attempts are counted in Redis by month,
-Property, and event type, with Property and overall rollups. Keys expire after
-the month ends. Use `python manage.py test_line_notification --property-id P...`
-to inspect local usage; add `--quota` for an explicit provider quota lookup.
-Normal notification sends never poll the provider quota endpoints.
+Successful push requests and provider HTTP attempts are counted in Redis by
+Bangkok calendar month, Property, and event type, with Property and overall
+rollups. Keys expire seven days after month-end. The historical Redis metric
+name is `successful_messages`, but its value is a local accepted-request count,
+not authoritative provider consumption. LINE counts a push by deliverable
+recipients, so a group request can consume more than one quota unit; multiple
+message objects in the same request do not increase that recipient count.
+
+Use `python manage.py test_line_notification --property-id P...` to inspect
+local request counts; add `--quota` for an explicit authoritative provider
+quota lookup. Provider usage can be 300/300 while local Redis is zero or much
+lower when counters were introduced after earlier monthly sends. Normal
+notification sends never poll the provider quota endpoints.

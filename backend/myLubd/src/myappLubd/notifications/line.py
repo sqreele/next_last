@@ -139,9 +139,15 @@ def _usage_month(now=None) -> str:
 def _usage_timeout(now=None) -> int:
     current = timezone.localtime(now or timezone.now())
     if current.month == 12:
-        following_month = current.replace(year=current.year + 1, month=1, day=1)
+        following_month = current.replace(
+            year=current.year + 1, month=1, day=1,
+            hour=0, minute=0, second=0, microsecond=0,
+        )
     else:
-        following_month = current.replace(month=current.month + 1, day=1)
+        following_month = current.replace(
+            month=current.month + 1, day=1,
+            hour=0, minute=0, second=0, microsecond=0,
+        )
     return max(int((following_month + timedelta(days=7) - current).total_seconds()), 1)
 
 
@@ -198,7 +204,8 @@ def _warn_for_usage_thresholds(*, month: str, successful_count: int, timeout: in
             return
         if first_warning:
             logger.warning(
-                'LINE monthly usage reached %s%% (%s/%s) month=%s',
+                'LINE local successful push request count reached %s%% of configured '
+                'provider limit (%s/%s) month=%s; query provider quota for authoritative usage',
                 percentage, successful_count, limit, month,
             )
 

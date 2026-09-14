@@ -215,11 +215,12 @@ def send_job_event_notification(
             old_status=old_status,
             old_assignee_id=old_assignee_id,
         )
-    except Exception:
-        logger.exception(
-            'Unexpected Job LINE notification failure event=%s job=%s',
+    except Exception as exc:
+        logger.error(
+            'Unexpected Job LINE notification failure event=%s job=%s error=%s',
             event_type,
             job_id,
+            type(exc).__name__,
         )
         return False
 

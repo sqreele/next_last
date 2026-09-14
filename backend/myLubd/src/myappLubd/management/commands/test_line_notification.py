@@ -44,13 +44,10 @@ class Command(BaseCommand):
         property_usage = get_line_usage(property_id=property_obj.property_id)
         overall_usage = get_line_usage()
         configured_display = configured_limit if configured_limit is not None else 'UNKNOWN'
-        remaining = (
-            max(configured_limit - overall_usage['successful_messages'], 0)
-            if configured_limit is not None else 'UNKNOWN'
-        )
-        self.stdout.write(f'Configured monthly quota: {configured_display}')
+        self.stdout.write(f'Configured provider monthly limit: {configured_display}')
         self.stdout.write(
-            f"Local successful count this month: {property_usage['successful_messages']}"
+            f"Local successful push requests this month (Property): "
+            f"{property_usage['successful_messages']}"
         )
         self.stdout.write(
             f"Local provider attempts this month: {property_usage['provider_attempts']}"
@@ -62,12 +59,16 @@ class Command(BaseCommand):
         self.stdout.write(
             f"Local temporary rate-limited responses this month: {property_usage['rate_limited']}"
         )
-        self.stdout.write(f'Estimated remaining local quota: {remaining}')
         self.stdout.write(
-            f"Overall local successful count this month: {overall_usage['successful_messages']}"
+            f"Local successful push requests this month (overall): "
+            f"{overall_usage['successful_messages']}"
         )
         self.stdout.write(
             f"Overall local provider attempts this month: {overall_usage['provider_attempts']}"
+        )
+        self.stdout.write(
+            'Local Redis counts cover only sends observed since counters were deployed and '
+            'count accepted push requests, not group recipients; they are not provider quota usage.'
         )
         if options['quota']:
             provider = get_provider_quota()

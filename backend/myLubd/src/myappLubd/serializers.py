@@ -36,6 +36,11 @@ from .tenancy import (
     get_user_tenant_memberships,
     user_can_access_billing,
 )
+from .platform_authorization import (
+    get_platform_capabilities,
+    get_platform_roles,
+    is_platform_user,
+)
 from .job_property import (
     resolve_external_property_reference,
     resolve_job_property,
@@ -571,6 +576,11 @@ class CurrentUserProfileSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
     properties = serializers.SerializerMethodField()
     memberships = serializers.SerializerMethodField()
+    platform_roles = serializers.SerializerMethodField()
+    platform_capabilities = serializers.SerializerMethodField()
+    is_platform_user = serializers.SerializerMethodField()
+    # Compatibility alias only. This is Django break-glass status, not a
+    # PlatformMembership role.
     is_platform_superuser = serializers.BooleanField(source='user.is_superuser', read_only=True)
 
     class Meta:
@@ -587,6 +597,9 @@ class CurrentUserProfileSerializer(serializers.ModelSerializer):
             'email_notifications_enabled',
             'properties',
             'memberships',
+            'platform_roles',
+            'platform_capabilities',
+            'is_platform_user',
             'is_platform_superuser',
         ]
         read_only_fields = fields
@@ -637,6 +650,15 @@ class CurrentUserProfileSerializer(serializers.ModelSerializer):
                 'properties': self._property_summary(properties),
             })
         return result
+
+    def get_platform_roles(self, obj):
+        return sorted(get_platform_roles(obj.user))
+
+    def get_platform_capabilities(self, obj):
+        return sorted(get_platform_capabilities(obj.user))
+
+    def get_is_platform_user(self, obj):
+        return is_platform_user(obj.user)
 
 
 class CurrentUserProfileUpdateSerializer(serializers.Serializer):

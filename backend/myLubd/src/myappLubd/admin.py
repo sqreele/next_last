@@ -75,6 +75,7 @@ from .models import (
     JobComment,
     Tenant,
     TenantMembership,
+    PlatformMembership,
     SubscriptionPlan,
     TenantSubscription,
     TenantInvitation,
@@ -6613,6 +6614,39 @@ class TenantMembershipAdmin(admin.ModelAdmin):
                     raise ValidationError(str(exc.detail['detail'])) from exc
             obj.tenant = locked_tenant
             super().save_model(request, obj, form, change)
+
+
+@admin.register(PlatformMembership)
+class PlatformMembershipAdmin(admin.ModelAdmin):
+    """Break-glass-only role management until a dedicated platform UI exists."""
+
+    list_per_page = 25
+    list_display = ['user', 'role', 'is_active', 'granted_by', 'created_at', 'updated_at']
+    list_filter = ['role', 'is_active']
+    search_fields = ['user__username', 'user__email', 'granted_by__username']
+    list_select_related = ['user', 'granted_by']
+    autocomplete_fields = ['user']
+    readonly_fields = ['granted_by', 'created_at', 'updated_at']
+
+    def has_module_permission(self, request):
+        return bool(request.user.is_superuser)
+
+    def has_view_permission(self, request, obj=None):
+        return bool(request.user.is_superuser)
+
+    def has_add_permission(self, request):
+        return bool(request.user.is_superuser)
+
+    def has_change_permission(self, request, obj=None):
+        return bool(request.user.is_superuser)
+
+    def has_delete_permission(self, request, obj=None):
+        return bool(request.user.is_superuser)
+
+    def save_model(self, request, obj, form, change):
+        if not change and obj.granted_by_id is None:
+            obj.granted_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(SubscriptionPlan)

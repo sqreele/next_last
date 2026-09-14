@@ -23,6 +23,10 @@ export type CurrentUserProfile = {
   email_notifications_enabled: boolean;
   properties: ProfileProperty[];
   memberships: ProfileMembership[];
+  platform_roles: string[];
+  platform_capabilities: string[];
+  is_platform_user: boolean;
+  /** Django is_superuser break-glass alias, not a platform role. */
   is_platform_superuser: boolean;
 };
 

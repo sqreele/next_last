@@ -312,6 +312,51 @@ class TenantMembership(models.Model):
         return self.role in {'owner', 'admin', 'billing'}
 
 
+class PlatformMembership(models.Model):
+    """An internal StayMaint role, deliberately independent of tenant access."""
+
+    ROLE_PLATFORM_SUPER_ADMIN = 'platform_super_admin'
+    ROLE_PLATFORM_BILLING_ADMIN = 'platform_billing_admin'
+    ROLE_PLATFORM_SUPPORT = 'platform_support'
+    ROLE_CHOICES = [
+        (ROLE_PLATFORM_SUPER_ADMIN, 'Platform super admin'),
+        (ROLE_PLATFORM_BILLING_ADMIN, 'Platform billing admin'),
+        (ROLE_PLATFORM_SUPPORT, 'Platform support'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='platform_memberships',
+    )
+    role = models.CharField(max_length=32, choices=ROLE_CHOICES)
+    is_active = models.BooleanField(default=True, db_index=True)
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='granted_platform_memberships',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['user__username', 'role']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'role'],
+                name='unique_user_platform_membership_role',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user', 'is_active'], name='platform_member_active_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.user} ({self.role})'
+
+
 class TenantInvitation(models.Model):
     """Time-limited, hash-only invitation to one tenant membership."""
 

@@ -11,7 +11,7 @@ type RouteContext = {
 };
 
 const GET_ACTIONS: Record<string, string> = {
-  tenants: "/api/v1/tenants/",
+  tenants: "/api/v1/tenants/billing/",
   plans: "/api/v1/subscription-plans/",
   status: "/api/v1/tenant-subscriptions/entitlement/",
 };

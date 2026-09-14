@@ -23,6 +23,7 @@ from .models import (
 
 TENANT_ADMIN_ROLES = {'owner', 'admin', 'billing'}
 TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'}
+BILLING_ACCESS_ROLES = {'admin', 'manager'}
 CAN_REASSIGN_JOB_ROLES = {'owner', 'admin', 'manager', 'supervisor'}
 # These are the existing roles which intentionally see every property in a
 # tenant.  Keep this decision here rather than duplicating role checks in API
@@ -81,6 +82,31 @@ def get_user_tenants(user):
     if user.is_superuser:
         return Tenant.objects.all()
     return Tenant.objects.filter(memberships__user=user, memberships__is_active=True).distinct()
+
+
+def get_billing_tenants(user):
+    """Return tenants where the user has canonical Billing access."""
+    if not getattr(user, 'is_authenticated', False):
+        return Tenant.objects.none()
+    if user.is_superuser:
+        return Tenant.objects.all()
+    return Tenant.objects.filter(
+        memberships__user=user,
+        memberships__is_active=True,
+        memberships__role__in=BILLING_ACCESS_ROLES,
+    ).distinct()
+
+
+def user_can_access_billing(user, tenant=None):
+    """Authorize Billing via active TenantMembership, with platform break-glass."""
+    if not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser:
+        return True
+    tenants = get_billing_tenants(user)
+    if tenant is None:
+        return tenants.exists()
+    return tenants.filter(pk=tenant.pk).exists()
 
 
 def get_active_membership(user, tenant):

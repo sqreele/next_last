@@ -30,8 +30,8 @@ test('plan selection normalizes paginated API results', () => {
 });
 
 test('billing pages use internal plans, role visibility, and waiting-for-webhook copy', () => {
-  const page = readFileSync(new URL('../app/dashboard/settings/billing/page.tsx', import.meta.url), 'utf8');
-  const success = readFileSync(new URL('../app/dashboard/settings/billing/success/page.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../app/dashboard/settings/billing/BillingSettingsClient.tsx', import.meta.url), 'utf8');
+  const success = readFileSync(new URL('../app/dashboard/settings/billing/success/BillingSuccessClient.tsx', import.meta.url), 'utf8');
   assert.match(page, /can_manage_billing/);
   assert.match(page, /can_start_checkout \? "checkout" : "portal"/);
   assert.match(page, /plan: plan\.id/);
@@ -44,14 +44,14 @@ test('billing pages use internal plans, role visibility, and waiting-for-webhook
 });
 
 test('billing browser calls use the authenticated billing BFF', () => {
-  const page = readFileSync(new URL('../app/dashboard/settings/billing/page.tsx', import.meta.url), 'utf8');
-  const success = readFileSync(new URL('../app/dashboard/settings/billing/success/page.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../app/dashboard/settings/billing/BillingSettingsClient.tsx', import.meta.url), 'utf8');
+  const success = readFileSync(new URL('../app/dashboard/settings/billing/success/BillingSuccessClient.tsx', import.meta.url), 'utf8');
   const route = readFileSync(new URL('../app/api/billing/[action]/route.ts', import.meta.url), 'utf8');
   assert.match(page, /fetch\(`\/api\/billing\/\$\{path\}`/);
   assert.match(page, /path: "checkout" \| "portal"/);
   assert.match(page, /\/api\/billing\/status/);
   assert.match(success, /\/api\/billing\/status/);
-  assert.match(route, /getSessionFromRequest/);
+  assert.match(route, /getCompatServerSession/);
   assert.match(route, /Authorization: `Bearer \$\{accessToken\}`/);
   assert.doesNotMatch(route, /webhooks/);
 });

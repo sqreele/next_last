@@ -10,9 +10,16 @@ import { dashboardNavigationItems } from "@/app/lib/navigation";
 import { cn } from "@/app/lib/utils/cn";
 import { isNavigationItemActive } from "@/app/lib/navigation-active.mjs";
 import { Logo } from "@/app/components/branding/Logo";
+import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
+import { filterBillingNavigationItems } from "@/app/lib/billing-access.mjs";
 
 export default function AiChatDesktopNav() {
   const pathname = usePathname();
+  const { canAccessBilling } = useBillingAccess();
+  const visibleNavigationItems = filterBillingNavigationItems(
+    dashboardNavigationItems,
+    canAccessBilling,
+  );
 
   return (
     <aside className="hidden desktop:flex desktop:w-[244px] desktop:flex-col desktop:border-r desktop:border-[var(--pcms-border)] desktop:bg-card/92 desktop:shadow-[var(--pcms-shadow-soft)] desktop:backdrop-blur-xl">
@@ -31,11 +38,11 @@ export default function AiChatDesktopNav() {
         aria-label="AI chat desktop navigation"
       >
         <div className="grid gap-1">
-          {dashboardNavigationItems.map((item) => {
+          {visibleNavigationItems.map((item) => {
             const isActive = isNavigationItemActive(
               pathname,
               item,
-              dashboardNavigationItems,
+              visibleNavigationItems,
             );
             return (
               <Link

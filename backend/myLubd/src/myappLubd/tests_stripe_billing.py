@@ -47,7 +47,7 @@ class StripeBillingTests(APITestCase):
         self.subscription = TenantSubscription.objects.create(
             tenant=self.tenant, plan=self.plan, status='trialing'
         )
-        TenantMembership.objects.create(tenant=self.tenant, user=self.owner, role='owner')
+        TenantMembership.objects.create(tenant=self.tenant, user=self.owner, role='admin')
         self.now = int(datetime(2026, 9, 1, 12, tzinfo=UTC).timestamp())
 
     def authenticate(self, user):
@@ -95,10 +95,10 @@ class StripeBillingTests(APITestCase):
 
     @patch('myappLubd.billing.stripe_service.stripe.checkout.Session.create')
     @patch('myappLubd.billing.stripe_service.stripe.Customer.create')
-    def test_owner_admin_and_billing_can_create_checkout(self, customer_create, checkout_create):
+    def test_admin_and_manager_can_create_checkout(self, customer_create, checkout_create):
         customer_create.return_value = {'id': 'cus_test'}
         checkout_create.return_value = {'url': 'https://checkout.stripe.com/test'}
-        for role, user in [('owner', self.owner), ('admin', self.make_user('admin')), ('billing', self.make_user('billing'))]:
+        for role, user in [('admin', self.owner), ('manager', self.make_user('manager'))]:
             with self.subTest(role=role):
                 self.subscription.external_customer_id = None
                 self.subscription.save(update_fields=['external_customer_id'])
@@ -109,12 +109,14 @@ class StripeBillingTests(APITestCase):
                 }, format='json')
                 self.assertEqual(response.status_code, 200)
 
-    def test_manager_cannot_create_checkout(self):
-        self.authenticate(self.make_user('manager'))
-        response = self.client.post('/api/v1/billing/checkout/', {
-            'tenant_id': self.tenant.tenant_id, 'plan': self.plan.id,
-        }, format='json')
-        self.assertEqual(response.status_code, 403)
+    def test_other_application_roles_cannot_create_checkout(self):
+        for role in ('owner', 'supervisor', 'technician', 'viewer', 'billing'):
+            with self.subTest(role=role):
+                self.authenticate(self.make_user(role))
+                response = self.client.post('/api/v1/billing/checkout/', {
+                    'tenant_id': self.tenant.tenant_id, 'plan': self.plan.id,
+                }, format='json')
+                self.assertEqual(response.status_code, 403)
 
     def test_browser_cannot_submit_arbitrary_price_id(self):
         self.authenticate(self.owner)

@@ -87,9 +87,12 @@ from .tenancy import (
     SubscriptionUserLimitReached,
     enforce_tenant_user_limit,
     get_accessible_properties,
+    get_billing_tenants,
     get_property_summary_recipients,
     get_tenant_user_capacity,
+    get_user_tenants,
     lock_tenants_for_membership_change,
+    user_can_access_billing,
 )
 from .notifications.line_webhook import (
     generate_pairing_code,
@@ -6435,6 +6438,36 @@ class TenantAdmin(admin.ModelAdmin):
     autocomplete_fields = ['owner']
     list_select_related = ['owner']
 
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(pk__in=get_user_tenants(request.user))
+
+    def get_list_display(self, request):
+        fields = list(super().get_list_display(request))
+        if not user_can_access_billing(request.user):
+            fields = [field for field in fields if field not in {'status', 'billing_email'}]
+        return fields
+
+    def get_list_filter(self, request):
+        fields = list(super().get_list_filter(request))
+        if not user_can_access_billing(request.user):
+            fields = [field for field in fields if field != 'status']
+        return fields
+
+    def get_search_fields(self, request):
+        fields = list(super().get_search_fields(request))
+        if not user_can_access_billing(request.user):
+            fields = [field for field in fields if field != 'billing_email']
+        return fields
+
+    def get_exclude(self, request, obj=None):
+        fields = list(super().get_exclude(request, obj) or [])
+        if not user_can_access_billing(request.user):
+            fields.extend(['status', 'billing_email'])
+        return fields
+
 
 @admin.register(AuthIdentity)
 class AuthIdentityAdmin(admin.ModelAdmin):
@@ -6589,6 +6622,21 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
     list_filter = ['is_active', 'billing_interval', 'allow_offline_mode', 'allow_advanced_analytics']
     search_fields = ['code', 'name', 'description']
 
+    def has_module_permission(self, request):
+        return super().has_module_permission(request) and user_can_access_billing(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return super().has_view_permission(request, obj) and user_can_access_billing(request.user)
+
+    def has_add_permission(self, request):
+        return super().has_add_permission(request) and request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) and request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) and request.user.is_superuser
+
 
 @admin.register(TenantSubscription)
 class TenantSubscriptionAdmin(admin.ModelAdmin):
@@ -6623,8 +6671,20 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
         }),
     )
 
+    def has_module_permission(self, request):
+        return super().has_module_permission(request) and user_can_access_billing(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        tenant = getattr(obj, 'tenant', None) if obj is not None else None
+        return super().has_view_permission(request, obj) and user_can_access_billing(
+            request.user, tenant
+        )
+
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('tenant', 'plan').annotate(
+        queryset = super().get_queryset(request).select_related('tenant', 'plan')
+        if not request.user.is_superuser:
+            queryset = queryset.filter(tenant__in=get_billing_tenants(request.user))
+        return queryset.annotate(
             active_user_count=Count(
                 'tenant__memberships',
                 filter=Q(tenant__memberships__is_active=True),
@@ -6819,6 +6879,12 @@ class BillingWebhookEventAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    def has_module_permission(self, request):
+        return super().has_module_permission(request) and request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return super().has_view_permission(request, obj) and request.user.is_superuser
+
     def has_change_permission(self, request, obj=None):
         return False
 
@@ -6832,5 +6898,29 @@ class UsageMetricAdmin(admin.ModelAdmin):
     list_display = ['tenant', 'period_start', 'period_end', 'property_count', 'active_user_count', 'work_order_count']
     list_filter = ['period_start', 'period_end']
     search_fields = ['tenant__name', 'tenant__tenant_id']
-    readonly_fields = ['calculated_at']
+    readonly_fields = [field.name for field in UsageMetric._meta.fields]
     autocomplete_fields = ['tenant']
+
+    def has_module_permission(self, request):
+        return super().has_module_permission(request) and user_can_access_billing(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        tenant = getattr(obj, 'tenant', None) if obj is not None else None
+        return super().has_view_permission(request, obj) and user_can_access_billing(
+            request.user, tenant
+        )
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request).select_related('tenant')
+        if request.user.is_superuser:
+            return queryset
+        return queryset.filter(tenant__in=get_billing_tenants(request.user))
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

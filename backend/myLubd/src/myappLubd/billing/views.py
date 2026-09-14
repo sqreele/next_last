@@ -4,13 +4,14 @@ import stripe
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..models import SubscriptionPlan, Tenant
-from ..tenancy import get_active_membership, get_user_tenants
+from ..tenancy import get_billing_tenants
+from .permissions import HasBillingAccess
 from .stripe_service import (
     StripeBillingError,
     construct_webhook_event,
@@ -21,25 +22,19 @@ from .stripe_service import (
 
 
 logger = logging.getLogger('billing.stripe')
-ALLOWED_BILLING_ROLES = {'owner', 'admin', 'billing'}
 
 
 def _billing_tenant(request, tenant_ref):
     tenant_ref = str(tenant_ref or '').strip()
     if not tenant_ref:
         raise ValidationError({'tenant_id': 'This field is required.'})
-    queryset = Tenant.objects.filter(tenant_id=tenant_ref)
-    if not request.user.is_superuser:
-        queryset = queryset.filter(pk__in=get_user_tenants(request.user).values('pk'))
+    queryset = get_billing_tenants(request.user).filter(tenant_id=tenant_ref)
     try:
-        tenant = queryset.get()
+        return queryset.get()
     except Tenant.DoesNotExist as exc:
-        raise PermissionDenied('Billing tenant is unavailable.') from exc
-    if not request.user.is_superuser:
-        membership = get_active_membership(request.user, tenant)
-        if not membership or membership.role not in ALLOWED_BILLING_ROLES:
-            raise PermissionDenied('Your tenant role cannot manage billing.')
-    return tenant
+        from django.http import Http404
+
+        raise Http404('Billing tenant is unavailable.') from exc
 
 
 def _service_error(exc):
@@ -52,7 +47,7 @@ def _service_error(exc):
 
 
 class StripeCheckoutView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasBillingAccess]
 
     def post(self, request):
         allowed_fields = {'tenant_id', 'plan'}
@@ -83,7 +78,7 @@ class StripeCheckoutView(APIView):
 
 
 class StripePortalView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasBillingAccess]
 
     def post(self, request):
         unexpected = sorted(set(request.data.keys()) - {'tenant_id'})

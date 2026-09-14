@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 from .models import (
     Room, Topic, JobImage, Job, Property, UserProfile, Session,
     PreventiveMaintenance, PMMasterPlan, Machine, MaintenanceProcedure,
@@ -33,6 +34,7 @@ from .tenancy import (
     get_job_reassignable_properties,
     get_operable_properties,
     get_user_tenant_memberships,
+    user_can_access_billing,
 )
 from .job_property import (
     resolve_external_property_reference,
@@ -279,7 +281,7 @@ class UsageMetricSerializer(serializers.ModelSerializer):
 
 
 class TenantSerializer(serializers.ModelSerializer):
-    subscription = TenantSubscriptionSerializer(read_only=True)
+    subscription = serializers.SerializerMethodField()
     property_count = serializers.IntegerField(read_only=True)
     active_user_count = serializers.IntegerField(read_only=True)
 
@@ -291,6 +293,40 @@ class TenantSerializer(serializers.ModelSerializer):
             'property_count', 'active_user_count', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'tenant_id', 'slug', 'owner', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        billing_fields = {'billing_email', 'status'} & set(attrs)
+        if billing_fields:
+            request = self.context.get('request')
+            user = getattr(request, 'user', None)
+            allowed = (
+                user_can_access_billing(user, self.instance)
+                if self.instance is not None
+                else bool(getattr(user, 'is_superuser', False))
+            )
+            if not allowed:
+                raise PermissionDenied(
+                    'You do not have permission to update tenant billing fields.'
+                )
+        return attrs
+
+    def get_subscription(self, obj):
+        request = self.context.get('request')
+        if not user_can_access_billing(getattr(request, 'user', None), obj):
+            return None
+        try:
+            subscription = obj.subscription
+        except TenantSubscription.DoesNotExist:
+            return None
+        return TenantSubscriptionSerializer(subscription, context=self.context).data
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        request = self.context.get('request')
+        if not user_can_access_billing(getattr(request, 'user', None), instance):
+            for field in ('billing_email', 'status', 'subscription'):
+                representation.pop(field, None)
+        return representation
 
     def validate_timezone(self, value):
         if not is_valid_timezone(value):

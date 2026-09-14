@@ -24,6 +24,7 @@ export type NavigationItem = {
   icon: LucideIcon;
   exact?: boolean;
   match?: readonly string[];
+  requiredCapability?: "billing";
 };
 
 export type NavigationGroup = {
@@ -83,7 +84,13 @@ export const navigationGroups: readonly NavigationGroup[] = [
       { name: "AI Assistant", labelKey: "nav.aiAssistant", href: "/ai-chat", icon: BotMessageSquare },
       { name: "Reports", labelKey: "nav.reports", href: "/dashboard/jobs-report", icon: FileText },
       { name: "Settings", labelKey: "nav.settings", shortName: "More", href: "/dashboard/settings/users", icon: Settings },
-      { name: "Billing", labelKey: "nav.billing", href: "/dashboard/settings/billing", icon: CreditCard },
+      {
+        name: "Billing",
+        labelKey: "nav.billing",
+        href: "/dashboard/settings/billing",
+        icon: CreditCard,
+        requiredCapability: "billing",
+      },
     ],
   },
 ];

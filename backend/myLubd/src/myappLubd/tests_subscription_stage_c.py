@@ -44,7 +44,7 @@ class SubscriptionStageCOperationalTests(APITestCase):
         )
         for tenant in (self.suspended_tenant, self.active_tenant):
             TenantMembership.objects.create(
-                tenant=tenant, user=self.user, role='owner'
+                tenant=tenant, user=self.user, role='manager'
             )
         TenantSubscription.objects.create(
             tenant=self.suspended_tenant,
@@ -260,8 +260,7 @@ class SubscriptionStageCOperationalTests(APITestCase):
             '/api/v1/tenant-subscriptions/entitlement/',
             {'property_id': self.active_property.property_id},
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(response.data['can_manage_billing'])
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @override_settings(SUBSCRIPTION_ENFORCEMENT_MODE='off')
     def test_off_mode_does_not_observe_or_block(self):

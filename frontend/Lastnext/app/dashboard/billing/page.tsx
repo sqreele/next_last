@@ -1,9 +1,9 @@
+import { redirect } from "next/navigation";
 import { requireBillingAccess } from "@/app/lib/billing-access.server";
-import BillingSuccessClient from "./BillingSuccessClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function BillingSuccessPage() {
+export default async function BillingPage() {
   await requireBillingAccess();
-  return <BillingSuccessClient />;
+  redirect("/dashboard/settings/billing");
 }

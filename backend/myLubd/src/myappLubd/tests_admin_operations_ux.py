@@ -416,7 +416,7 @@ class AdminOperationsDisplayTests(TestCase):
                 )
                 self.assertQuerySetEqual(result, [invitation], transform=lambda item: item)
 
-    def test_diagnostic_details_are_viewable_without_mutation_permissions(self):
+    def test_diagnostic_details_require_platform_authority(self):
         viewer = User.objects.create_user(username='diagnostic-viewer', is_staff=True)
         viewer.user_permissions.add(
             Permission.objects.get(codename='view_tenantinvitation'),
@@ -451,8 +451,8 @@ class AdminOperationsDisplayTests(TestCase):
         self.assertContains(invitation_response, 'diagnostic@example.com')
         self.assertNotContains(invitation_response, invitation.token_hash)
         self.assertNotContains(invitation_response, raw_token)
-        self.assertEqual(event_response.status_code, 200)
-        self.assertContains(event_response, 'evt_diagnostic')
+        self.assertEqual(event_response.status_code, 403)
+        self.assertNotContains(event_response, 'evt_diagnostic', status_code=403)
 
 
 class TenantSubscriptionPermissionRegressionTests(SimpleTestCase):

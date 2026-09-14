@@ -7,16 +7,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "./sheet";
 import { primaryNavigationItems } from "@/app/lib/navigation";
+import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
+import { filterBillingNavigationItems } from "@/app/lib/billing-access.mjs";
 
 interface TabletNavProps {
   className?: string;
 }
 
-const navigationItems = primaryNavigationItems;
-
 export function TabletNav({ className }: TabletNavProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = React.useState(false);
+  const { canAccessBilling } = useBillingAccess();
+  const navigationItems = filterBillingNavigationItems(
+    primaryNavigationItems,
+    canAccessBilling,
+  );
 
   return (
     <nav

@@ -251,7 +251,7 @@ class TenantSubscriptionApiHardeningTests(TestCase):
         )
         plan = SubscriptionPlan.objects.create(code='api-plan', name='API Plan')
         tenant = Tenant.objects.create(name='API Subscription Tenant', owner=self.user)
-        TenantMembership.objects.create(tenant=tenant, user=self.user, role='owner')
+        TenantMembership.objects.create(tenant=tenant, user=self.user, role='admin')
         self.subscription = TenantSubscription.objects.create(
             tenant=tenant,
             plan=plan,

@@ -74,6 +74,7 @@ from .tenancy import (
     ensure_tenant_for_property,
     ensure_tenant_for_user,
     get_accessible_properties,
+    get_billing_tenants,
     lock_tenants_for_membership_change,
     get_active_membership,
     get_job_reassignable_properties,
@@ -85,6 +86,7 @@ from .tenancy import (
     tenant_usage_counts,
     user_can_manage_tenant,
 )
+from .billing.permissions import HasBillingAccess
 from .timezones import object_timezone, property_timezone, timezone_options
 from .entitlements import get_tenant_entitlement
 from .subscription_permissions import (
@@ -4938,10 +4940,26 @@ class TenantViewSet(viewsets.ModelViewSet):
                 status='trialing',
             )
 
-    @action(detail=True, methods=['get'])
+    @action(
+        detail=True,
+        methods=['get'],
+        permission_classes=[IsAuthenticated, HasBillingAccess],
+    )
     def usage(self, request, pk=None):
-        tenant = self.get_object()
+        tenant = get_object_or_404(get_billing_tenants(request.user), pk=pk)
         return Response(tenant_usage_counts(tenant))
+
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='billing',
+        permission_classes=[IsAuthenticated, HasBillingAccess],
+    )
+    def billing(self, request):
+        """Return only tenants for which the caller may access Billing."""
+        tenants = get_billing_tenants(request.user).order_by('name')
+        serializer = self.get_serializer(tenants, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='timezones')
     def timezones(self, request):
@@ -4949,7 +4967,7 @@ class TenantViewSet(viewsets.ModelViewSet):
 
 
 class SubscriptionPlanViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasBillingAccess]
     serializer_class = SubscriptionPlanSerializer
     queryset = SubscriptionPlan.objects.all()
 
@@ -5078,14 +5096,14 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     Subscription lifecycle changes and deletion are platform-authority
     operations, not customer API operations.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasBillingAccess]
     serializer_class = TenantSubscriptionSerializer
 
     def get_queryset(self):
         qs = TenantSubscription.objects.select_related('tenant', 'plan')
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(tenant__in=get_user_tenants(self.request.user))
+        return qs.filter(tenant__in=get_billing_tenants(self.request.user))
 
     @action(detail=False, methods=['get'], url_path='entitlement')
     def entitlement(self, request):
@@ -5100,15 +5118,12 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         if property_ref:
             properties = Property.objects.select_related('tenant').filter(
                 property_id=property_ref,
+                tenant__in=get_billing_tenants(request.user),
             )
-            if not request.user.is_superuser:
-                properties = properties.filter(
-                    pk__in=get_accessible_properties(request.user).values('pk')
-                )
             property_obj = get_object_or_404(properties)
             tenant = property_obj.tenant
         else:
-            tenants = get_user_tenants(request.user)
+            tenants = get_billing_tenants(request.user)
             tenant = get_object_or_404(tenants, tenant_id=tenant_ref)
 
         entitlement = get_tenant_entitlement(tenant)
@@ -5117,14 +5132,7 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         except TenantSubscription.DoesNotExist:
             subscription = None
 
-        membership = None if request.user.is_superuser else get_active_membership(
-            request.user,
-            tenant,
-        )
-        can_manage_billing = bool(
-            request.user.is_superuser
-            or (membership and membership.role in {'owner', 'admin', 'billing'})
-        )
+        can_manage_billing = True
 
         return Response({
             'tenant_id': tenant.tenant_id,
@@ -5167,14 +5175,14 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 class UsageMetricViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasBillingAccess]
     serializer_class = UsageMetricSerializer
 
     def get_queryset(self):
         qs = UsageMetric.objects.select_related('tenant')
         if self.request.user.is_superuser:
             return qs
-        return qs.filter(tenant__in=get_user_tenants(self.request.user))
+        return qs.filter(tenant__in=get_billing_tenants(self.request.user))
 
 
 class AreaViewSet(viewsets.ModelViewSet):

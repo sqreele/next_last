@@ -24,7 +24,7 @@ class PMMasterPlanAuthorizationTests(APITestCase):
         membership_a = TenantMembership.objects.create(
             user=self.operator_a,
             tenant=self.tenant,
-            role='technician',
+            role='manager',
         )
         membership_a.properties.add(self.property_a)
 
@@ -32,7 +32,7 @@ class PMMasterPlanAuthorizationTests(APITestCase):
         membership_all = TenantMembership.objects.create(
             user=self.operator_all,
             tenant=self.tenant,
-            role='technician',
+            role='manager',
         )
         membership_all.properties.add(self.property_a, self.property_b)
 
@@ -350,3 +350,113 @@ class PMMasterPlanAuthorizationTests(APITestCase):
             leap_day,
         )
         self.assertEqual(next_due.date().isoformat(), '2025-02-28')
+
+
+class PMMasterPlanManagementRoleMatrixTests(APITestCase):
+    """Exact PM-master write matrix, independent of ordinary PM operators."""
+
+    allowed_roles = ('owner', 'admin', 'manager')
+    denied_roles = ('supervisor', 'technician', 'viewer', 'billing')
+
+    def setUp(self):
+        self.tenant = Tenant.objects.create(name='PM master role tenant')
+        self.property = Property.objects.create(name='PM master property', tenant=self.tenant)
+        self.machine = Machine.objects.create(
+            machine_id='PM-MANAGE-MACHINE', name='PM manage machine', property=self.property,
+        )
+        self.topic = Topic.objects.create(title='PM manage topic')
+        self.users = {}
+        for role in (*self.allowed_roles, *self.denied_roles):
+            user = User.objects.create_user(username=f'pm-master-{role}', password='pw12345!')
+            membership = TenantMembership.objects.create(user=user, tenant=self.tenant, role=role)
+            if role not in self.allowed_roles:
+                membership.properties.add(self.property)
+            self.users[role] = user
+        self.superuser = User.objects.create_superuser('pm-master-root', 'root@example.com', 'pw12345!')
+        self.inactive = User.objects.create_user(username='pm-master-inactive', password='pw12345!')
+        inactive_membership = TenantMembership.objects.create(
+            user=self.inactive, tenant=self.tenant, role='manager', is_active=False,
+        )
+        inactive_membership.properties.add(self.property)
+        self.other_tenant = Tenant.objects.create(name='Other PM master tenant')
+        self.other_property = Property.objects.create(name='Other PM master property', tenant=self.other_tenant)
+        self.other_machine = Machine.objects.create(
+            machine_id='PM-OTHER-MACHINE', name='Other PM machine', property=self.other_property,
+        )
+
+    @property
+    def collection_url(self):
+        return f'/api/v1/preventive-maintenance/plans/?property_id={self.property.property_id}'
+
+    def _detail_url(self, plan, property_obj=None):
+        property_obj = property_obj or self.property
+        return f'/api/v1/preventive-maintenance/plans/{plan.plan_id}/?property_id={property_obj.property_id}'
+
+    def _payload(self, machine_id=None):
+        return {
+            'title': 'Managed plan', 'machine_ids': [machine_id or self.machine.machine_id],
+            'topic_ids': [self.topic.pk], 'start_date': (timezone.now() + timedelta(days=1)).isoformat(),
+            'frequency': 'monthly', 'lead_time_days': 7,
+        }
+
+    def _plan(self):
+        plan = PMMasterPlan.objects.create(
+            title='Existing managed plan', start_date=timezone.now() + timedelta(days=1),
+            frequency='monthly', created_by=self.users['manager'],
+        )
+        plan.machines.add(self.machine)
+        return plan
+
+    def test_exact_create_update_delete_role_matrix(self):
+        for role, user in self.users.items():
+            plan = self._plan()
+            with self.subTest(operation='ui_capability_contract', role=role):
+                self.client.force_authenticate(user)
+                response = self.client.get(self._detail_url(plan), secure=True)
+                self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+                self.assertEqual(response.data['can_manage_pm_master'], role in self.allowed_roles)
+
+            with self.subTest(operation='create', role=role):
+                self.client.force_authenticate(user)
+                response = self.client.post(self.collection_url, self._payload(), format='json', secure=True)
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED if role in self.allowed_roles else status.HTTP_403_FORBIDDEN, response.content)
+
+            plan = self._plan()
+            with self.subTest(operation='update', role=role):
+                self.client.force_authenticate(user)
+                response = self.client.patch(self._detail_url(plan), {'title': f'{role} edit'}, format='json', secure=True)
+                self.assertEqual(response.status_code, status.HTTP_200_OK if role in self.allowed_roles else status.HTTP_403_FORBIDDEN, response.content)
+
+            plan = self._plan()
+            with self.subTest(operation='delete', role=role):
+                self.client.force_authenticate(user)
+                response = self.client.delete(self._detail_url(plan), secure=True)
+                self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT if role in self.allowed_roles else status.HTTP_403_FORBIDDEN, response.content)
+
+    def test_cross_tenant_inactive_unauthenticated_and_superuser_behavior(self):
+        self.client.force_authenticate(self.users['manager'])
+        cross_create = self.client.post(
+            self.collection_url, self._payload(self.other_machine.machine_id), format='json', secure=True,
+        )
+        self.assertEqual(cross_create.status_code, status.HTTP_400_BAD_REQUEST)
+
+        foreign_plan = PMMasterPlan.objects.create(
+            title='Foreign plan', start_date=timezone.now() + timedelta(days=1),
+            frequency='monthly', created_by=self.superuser,
+        )
+        foreign_plan.machines.add(self.other_machine)
+        self.assertEqual(self.client.patch(
+            self._detail_url(foreign_plan, self.other_property), {'title': 'nope'}, format='json', secure=True,
+        ).status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(self.client.delete(
+            self._detail_url(foreign_plan, self.other_property), secure=True,
+        ).status_code, status.HTTP_404_NOT_FOUND)
+
+        self.client.force_authenticate(self.inactive)
+        self.assertEqual(self.client.post(self.collection_url, self._payload(), format='json', secure=True).status_code, status.HTTP_404_NOT_FOUND)
+
+        self.client.force_authenticate(user=None)
+        self.assertEqual(self.client.post(self.collection_url, self._payload(), format='json', secure=True).status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(self.superuser)
+        self.assertEqual(self.client.post(self.collection_url, self._payload(), format='json', secure=True).status_code, status.HTTP_201_CREATED)

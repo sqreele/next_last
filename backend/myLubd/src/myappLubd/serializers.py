@@ -1808,6 +1808,7 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
     created_by_details = UserSummarySerializer(source='created_by', read_only=True)
     property_id = serializers.SerializerMethodField()
     can_operate = serializers.SerializerMethodField()
+    can_manage_pm_master = serializers.SerializerMethodField()
     generated_pm_id = serializers.SerializerMethodField()
     generated_pm_status = serializers.SerializerMethodField()
 
@@ -1815,7 +1816,7 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
         model = PMMasterPlan
         fields = [
             'plan_id', 'title', 'topics', 'topic_ids', 'machines', 'machine_ids',
-            'property_id', 'can_operate', 'procedure_template', 'procedure_template_name', 'frequency',
+            'property_id', 'can_operate', 'can_manage_pm_master', 'procedure_template', 'procedure_template_name', 'frequency',
             'custom_days', 'start_date', 'lead_time_days', 'assigned_to',
             'assigned_to_details', 'created_by_details', 'active', 'last_completed_date',
             'next_due_date', 'notes', 'procedure', 'remarks', 'created_at', 'updated_at',
@@ -1856,6 +1857,14 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
                 get_operable_properties(request.user).values_list('pk', flat=True)
             )
         return property_ids.issubset(self._operable_property_ids)
+
+    def get_can_manage_pm_master(self, obj):
+        request = self.context.get('request')
+        if request is None:
+            return False
+        from .tenancy import user_can_manage_pm_master
+        machines = list(obj.machines.select_related('property'))
+        return bool(machines) and user_can_manage_pm_master(request.user, machines[0].property)
 
     def _get_current_generated_pm(self, obj):
         cache_key = '_serializer_current_generated_pm'

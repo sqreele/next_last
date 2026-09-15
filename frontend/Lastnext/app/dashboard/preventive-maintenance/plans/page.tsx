@@ -34,7 +34,7 @@ export default function PMMasterPlansPage() {
   const requestedPropertyRef = useRef<string | null>(null);
   const [plans, setPlans] = useState<PMMasterPlan[]>([]);
   const [projection, setProjection] = useState<PMMasterPlanProjection | null>(null);
-  const [canOperate, setCanOperate] = useState(false);
+  const [canManagePMMaster, setCanManagePMMaster] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -53,7 +53,7 @@ export default function PMMasterPlansPage() {
     if (propertyChanged) {
       setPlans([]);
       setProjection(null);
-      setCanOperate(false);
+      setCanManagePMMaster(false);
       setLoadedPropertyId(null);
     }
     setDeletePlan(null);
@@ -78,7 +78,7 @@ export default function PMMasterPlansPage() {
         if (requestId !== requestRef.current) return;
         setPlans(plansResponse.success && Array.isArray(plansResponse.data) ? plansResponse.data : []);
         setProjection(projectionResponse.data || null);
-        setCanOperate(statsResponse?.data?.can_operate === true);
+        setCanManagePMMaster(statsResponse?.data?.can_manage_pm_master === true);
         setLoadedPropertyId(selectedPropertyId);
       })
       .catch((requestError: unknown) => {
@@ -197,7 +197,7 @@ export default function PMMasterPlansPage() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Link href="/dashboard/preventive-maintenance/schedule" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-card px-4 py-2 font-semibold"><CalendarClock className="mr-2 h-4 w-4" aria-hidden />Schedule</Link>
-            {canOperate && <Link href="/dashboard/preventive-maintenance/plans/create" className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-4 py-2 font-semibold text-white"><Plus className="mr-2 h-4 w-4" aria-hidden />Create plan</Link>}
+            {canManagePMMaster && <Link href="/dashboard/preventive-maintenance/plans/create" className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-4 py-2 font-semibold text-white"><Plus className="mr-2 h-4 w-4" aria-hidden />Create plan</Link>}
           </div>
         </header>
 
@@ -210,7 +210,7 @@ export default function PMMasterPlansPage() {
               <h2 id="projection-heading" className="font-bold">Next 30 days</h2>
               <p className="text-sm text-muted-foreground">{scopedProjection ? `${scopedProjection.total} projected or generated occurrences` : loading ? "Loading projection…" : "Projection unavailable"}</p>
             </div>
-            {canOperate && <button type="button" onClick={() => void reviewMaterialization()} disabled={materializing} className="inline-flex min-h-11 items-center justify-center rounded-md border border-purple-300 px-4 py-2 font-semibold text-purple-800 disabled:opacity-60"><RefreshCw className={`mr-2 h-4 w-4 ${materializing ? "animate-spin" : ""}`} aria-hidden />Review generation</button>}
+            {canManagePMMaster && <button type="button" onClick={() => void reviewMaterialization()} disabled={materializing} className="inline-flex min-h-11 items-center justify-center rounded-md border border-purple-300 px-4 py-2 font-semibold text-purple-800 disabled:opacity-60"><RefreshCw className={`mr-2 h-4 w-4 ${materializing ? "animate-spin" : ""}`} aria-hidden />Review generation</button>}
           </div>
           {materializationPreview && (
             <div className="mt-4 rounded-lg border border-purple-300 bg-purple-50 p-4" role="alertdialog" aria-labelledby="materialize-confirm-title">
@@ -230,7 +230,7 @@ export default function PMMasterPlansPage() {
           <div className="rounded-xl border border-border bg-card p-10 text-center">
             <h2 className="text-lg font-bold">No PM master plans configured</h2>
             <p className="mt-2 text-muted-foreground">Create a recurring rule for one or more machines at this property.</p>
-            {canOperate && <Link href="/dashboard/preventive-maintenance/plans/create" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-blue-600 px-4 py-2 font-semibold text-white">Create first plan</Link>}
+            {canManagePMMaster && <Link href="/dashboard/preventive-maintenance/plans/create" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-blue-600 px-4 py-2 font-semibold text-white">Create first plan</Link>}
           </div>
         ) : (
           <section aria-label="PM master plans" className="grid gap-4 lg:grid-cols-2">
@@ -251,8 +251,8 @@ export default function PMMasterPlansPage() {
                   <p className="mt-4 line-clamp-2 text-sm text-muted-foreground">{plan.machines?.map((machine) => machine.name || machine.machine_id).join(", ")}</p>
                   <div className="mt-5 grid grid-cols-2 gap-2 sm:flex">
                     <Link href={`/dashboard/preventive-maintenance/${plan.plan_id}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 py-2 font-semibold text-blue-700">View</Link>
-                    {canOperate && <Link href={`/dashboard/preventive-maintenance/plans/${plan.plan_id}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 py-2 font-semibold"><Pencil className="mr-2 h-4 w-4" aria-hidden />Edit</Link>}
-                    {canOperate && <button type="button" onClick={() => setDeletePlan(plan)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-md border border-red-300 px-3 py-2 font-semibold text-red-700"><Trash2 className="mr-2 h-4 w-4" aria-hidden />Delete</button>}
+                    {canManagePMMaster && <Link href={`/dashboard/preventive-maintenance/plans/${plan.plan_id}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 py-2 font-semibold"><Pencil className="mr-2 h-4 w-4" aria-hidden />Edit</Link>}
+                    {canManagePMMaster && <button type="button" onClick={() => setDeletePlan(plan)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-md border border-red-300 px-3 py-2 font-semibold text-red-700"><Trash2 className="mr-2 h-4 w-4" aria-hidden />Delete</button>}
                   </div>
                 </article>
               );

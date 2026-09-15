@@ -81,7 +81,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [procedures, setProcedures] = useState<MaintenanceProcedureTemplate[]>([]);
-  const [canOperate, setCanOperate] = useState(false);
+  const [canManagePMMaster, setCanManagePMMaster] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     setTopics([]);
     setProcedures([]);
     setError(null);
-    setCanOperate(false);
+    setCanManagePMMaster(false);
 
     if (status !== "authenticated" || !selectedPropertyId) {
       setLoading(false);
@@ -118,7 +118,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
         setMachines(machineResponse.success && Array.isArray(machineResponse.data) ? machineResponse.data : []);
         setTopics(topicResponse.success && Array.isArray(topicResponse.data) ? topicResponse.data : []);
         setProcedures(Array.isArray(procedureResponse) ? procedureResponse : []);
-        setCanOperate(statsResponse.data?.can_operate === true);
+        setCanManagePMMaster(statsResponse.data?.can_manage_pm_master === true);
 
         const plan = planResponse?.data as PMMasterPlan | undefined;
         if (plan) {
@@ -236,7 +236,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     return <div className="rounded-xl border border-border bg-card p-8 text-center" role="status">Loading PM master plan…</div>;
   }
 
-  if (!canOperate) {
+  if (!canManagePMMaster) {
     return (
       <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 text-amber-950" role="alert">
         Your role can view PM master plans but cannot create or edit them.

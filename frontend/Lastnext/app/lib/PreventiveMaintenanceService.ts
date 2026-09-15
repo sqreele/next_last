@@ -43,6 +43,8 @@ export interface CompletePreventiveMaintenanceData {
 
 export interface DashboardStats {
   can_operate?: boolean;
+  /** Server-authorized PM master-plan configuration capability. */
+  can_manage_pm_master?: boolean;
   timezone?: string | null;
   avg_completion_times: Record<string, number>;
   counts: {
@@ -82,6 +84,7 @@ export interface PMMasterPlan {
   remarks?: string | null;
   property_id?: string | null;
   can_operate?: boolean;
+  can_manage_pm_master?: boolean;
   machines?: Array<{ machine_id: string; name?: string }>;
   topics?: Array<{ id: number; title?: string }>;
   procedure_template_name?: string | null;

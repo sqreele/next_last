@@ -84,6 +84,7 @@ from .tenancy import (
     TENANT_OPERATOR_ROLES,
     TENANT_WIDE_PROPERTY_ROLES,
     tenant_usage_counts,
+    user_can_manage_pm_master,
     user_can_manage_tenant,
 )
 from .billing.permissions import HasBillingAccess
@@ -2166,6 +2167,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             'can_operate': request.user.is_superuser or get_operable_properties(request.user).filter(
                 property_id=property_ref
             ).exists(),
+            # PM master plans have a narrower management capability than
+            # ordinary PM work.  This server-derived value is the UI guard.
+            'can_manage_pm_master': user_can_manage_pm_master(request.user, stats_property),
             'timezone': str(property_timezone(stats_property)) if stats_property else None,
             'counts': {
                 'total': total,
@@ -2195,6 +2199,16 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
         if not request.user.is_superuser and not request.query_params.get('property_id'):
             raise ValidationError({'property_id': 'An active property is required.'})
+        requested_property = None
+        property_ref = request.query_params.get('property_id')
+        if property_ref:
+            # Scope before authorizing so a forged cross-tenant property ID is
+            # concealed rather than revealing that it exists.
+            requested_property = get_object_or_404(
+                get_accessible_properties(request.user), property_id=property_ref
+            )
+            if not user_can_manage_pm_master(request.user, requested_property):
+                raise PermissionDenied('Your role cannot modify PM master plans')
         serializer = PMMasterPlanSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         machine_ids = serializer.validated_data.get('machine_ids') or []
@@ -2205,6 +2219,14 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             .first()
         )
         target_property = Property.objects.select_related('tenant').filter(pk=target_property).first()
+        if requested_property is not None and (
+            target_property is None or target_property.pk != requested_property.pk
+        ):
+            raise ValidationError({'machine_ids': 'Machines must belong to the active property.'})
+        if not user_can_manage_pm_master(request.user, target_property):
+            # A target outside the caller's scope is already rejected by the
+            # serializer; this handles malformed/superuser-free edge paths.
+            raise PermissionDenied('Your role cannot modify PM master plans')
         require_subscription_write(
             request,
             resolve_tenant_from_target(target_property),
@@ -2228,18 +2250,13 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         if request.method.lower() == 'get':
             return Response(PMMasterPlanSerializer(plan, context={'request': request}).data)
 
-        if not request.user.is_superuser:
-            plan_property_ids = set(plan.machines.values_list('property_id', flat=True))
-            operable_property_ids = set(
-                get_operable_properties(request.user)
-                .filter(pk__in=plan_property_ids)
-                .values_list('pk', flat=True)
-            )
-            if not plan_property_ids or operable_property_ids != plan_property_ids:
-                raise PermissionDenied("Your role cannot modify this PM master plan")
+        plan_machine = plan.machines.select_related('property__tenant').first()
+        if not user_can_manage_pm_master(
+            request.user, plan_machine.property if plan_machine else None
+        ):
+            raise PermissionDenied("Your role cannot modify this PM master plan")
 
         if request.method.lower() == 'delete':
-            plan_machine = plan.machines.select_related('property__tenant').first()
             require_subscription_write(
                 request,
                 resolve_tenant_from_target(
@@ -2267,6 +2284,10 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             )
         else:
             target_machine = plan.machines.select_related('property__tenant').first()
+        if not user_can_manage_pm_master(
+            request.user, target_machine.property if target_machine else None
+        ):
+            raise PermissionDenied("Your role cannot modify PM master plans for this property")
         require_subscription_write(
             request,
             resolve_tenant_from_target(

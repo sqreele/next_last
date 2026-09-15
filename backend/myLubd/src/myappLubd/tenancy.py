@@ -30,6 +30,10 @@ CAN_REASSIGN_JOB_ROLES = {'owner', 'admin', 'manager', 'supervisor'}
 # views.
 TENANT_WIDE_PROPERTY_ROLES = {'owner', 'admin', 'manager'}
 TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES = {'owner', 'admin', 'manager'}
+# PM master plans are configuration, rather than day-to-day operational work.
+# Keep this capability separate from TENANT_OPERATOR_ROLES: supervisors and
+# technicians can operate assigned work, but cannot change recurring rules.
+PM_MASTER_MANAGE_ROLES = {'owner', 'admin', 'manager'}
 
 
 @dataclass(frozen=True)
@@ -167,6 +171,25 @@ def can_manage_membership_property_grants(user, tenant):
         is_active=True,
         role__in=TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES,
     ).exists()
+
+
+def user_can_manage_pm_master(user, property_obj):
+    """Return whether ``user`` may change PM master plans for one Property.
+
+    The decision is deliberately derived from the active membership that
+    belongs to the property's tenant.  ``is_staff`` and client role claims
+    are not inputs; Django superuser retains the established break-glass path.
+    """
+    if not getattr(user, 'is_authenticated', False) or property_obj is None:
+        return False
+    if user.is_superuser:
+        return True
+    return TenantMembership.objects.filter(
+        tenant_id=property_obj.tenant_id,
+        user=user,
+        is_active=True,
+        role__in=PM_MASTER_MANAGE_ROLES,
+    ).exists() and get_accessible_properties(user).filter(pk=property_obj.pk).exists()
 
 
 def get_accessible_properties(user, tenant=None):

@@ -38,7 +38,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
   const [masterPlan, setMasterPlan] = useState<PMMasterPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [canOperate, setCanOperate] = useState(false);
+  const [canManagePMMaster, setCanManagePMMaster] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -54,7 +54,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     if (!selectedPropertyId) {
       setMaintenance(null);
       setMasterPlan(null);
-      setCanOperate(false);
+      setCanManagePMMaster(false);
       setLoading(false);
       return;
     }
@@ -62,7 +62,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     let active = true;
     setLoading(true);
     setError(null);
-    setCanOperate(false);
+    setCanManagePMMaster(false);
     setMasterPlan(null);
     setMaintenance(null);
     const service = createPreventiveMaintenanceService();
@@ -78,7 +78,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
         }
         if (isMasterPlanId) {
           const plan = response.data as PMMasterPlan;
-          setCanOperate(plan.can_operate === true);
+          setCanManagePMMaster(plan.can_manage_pm_master === true);
           setMasterPlan(plan);
         } else {
           const record = response.data as PreventiveMaintenance;
@@ -171,8 +171,8 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:shrink-0">
             <Button asChild variant="outline"><Link href="/dashboard/preventive-maintenance/plans">{t('pmDetail.plan.all')}</Link></Button>
             <Button asChild variant="outline"><Link href="/dashboard/preventive-maintenance/schedule">{t('pmDetail.plan.viewSchedule')}</Link></Button>
-            {canOperate && <Button asChild><Link href={`/dashboard/preventive-maintenance/plans/${masterPlan.plan_id}/edit`}>{t('pmDetail.plan.edit')}</Link></Button>}
-            {canOperate && <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>{t('action.delete')}</Button>}
+            {canManagePMMaster && <Button asChild><Link href={`/dashboard/preventive-maintenance/plans/${masterPlan.plan_id}/edit`}>{t('pmDetail.plan.edit')}</Link></Button>}
+            {canManagePMMaster && <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>{t('action.delete')}</Button>}
           </div>
         </header>
         <div className="grid gap-4 md:grid-cols-3">

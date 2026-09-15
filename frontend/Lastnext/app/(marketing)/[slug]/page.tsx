@@ -8,6 +8,9 @@ export function generateStaticParams() {
   return Object.keys(englishMarketingPages).map((slug) => ({ slug }));
 }
 
+// Marketing pages are a closed, static set. Unknown slugs must be real 404s.
+export const dynamicParams = false;
+
 export async function generateMetadata({
   params,
 }: {
@@ -16,7 +19,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const page = englishMarketingPages[slug];
   if (!page) return {};
-  const url = `${seoConfig.siteUrl}/${page.slug}`;
+  const url = `${seoConfig.siteUrl}/${page.slug}/`;
   return {
     title: page.metaTitle,
     description: page.description,

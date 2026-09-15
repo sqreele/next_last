@@ -24,6 +24,7 @@ import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface InventoryCsvImportProps {
   currentPropertyId?: string | null;
+  canManageStock: boolean;
   onImported?: () => void;
   className?: string;
 }
@@ -37,6 +38,7 @@ interface ImportResult {
 
 export function InventoryCsvImport({
   currentPropertyId,
+  canManageStock,
   onImported,
   className,
 }: InventoryCsvImportProps) {
@@ -47,6 +49,8 @@ export function InventoryCsvImport({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  if (!canManageStock) return null;
 
   const reset = () => {
     setFile(null);

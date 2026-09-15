@@ -3306,6 +3306,8 @@ class InventorySerializer(serializers.ModelSerializer):
     jobs_detail = serializers.SerializerMethodField()
     preventive_maintenances_detail = serializers.SerializerMethodField()
     usage_records = InventoryUsageSerializer(many=True, read_only=True)
+    can_manage_inventory_stock = serializers.SerializerMethodField()
+    can_consume_inventory = serializers.SerializerMethodField()
     
     class Meta:
         model = Inventory
@@ -3346,7 +3348,9 @@ class InventorySerializer(serializers.ModelSerializer):
             'updated_at',
             'created_by',
             'created_by_username',
-            'created_by_name'
+            'created_by_name',
+            'can_manage_inventory_stock',
+            'can_consume_inventory',
         ]
         read_only_fields = ['id', 'item_id', 'created_at', 'updated_at']
 
@@ -3409,6 +3413,11 @@ class InventorySerializer(serializers.ModelSerializer):
         room = data.get('room') if 'room' in data else getattr(self.instance, 'room', None)
         _validate_request_property_access(self, property_obj)
         _validate_room_belongs_to_property(room, property_obj)
+        request = self.context.get('request')
+        if self.instance is None or 'quantity' in data:
+            from .tenancy import user_can_manage_inventory_stock
+            if request is not None and not user_can_manage_inventory_stock(request.user, property_obj):
+                raise PermissionDenied('Your role cannot manage inventory stock for this property.')
         submitted_category = data.get('category')
         if submitted_category is not None:
             data['category'] = _resolve_inventory_category(submitted_category, property_obj)
@@ -3438,6 +3447,20 @@ class InventorySerializer(serializers.ModelSerializer):
     def get_created_by_name(self, obj):
         return get_user_display_name(obj.created_by)
 
+    def get_can_manage_inventory_stock(self, obj):
+        request = self.context.get('request')
+        if request is None:
+            return False
+        from .tenancy import user_can_manage_inventory_stock
+        return user_can_manage_inventory_stock(request.user, obj.property)
+
+    def get_can_consume_inventory(self, obj):
+        request = self.context.get('request')
+        if request is None:
+            return False
+        from .tenancy import user_can_consume_inventory
+        return user_can_consume_inventory(request.user, obj.property)
+
 
 class InventoryListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing inventory items"""
@@ -3458,6 +3481,8 @@ class InventoryListSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     last_job_by_user = serializers.SerializerMethodField()
     last_pm_by_user = serializers.SerializerMethodField()
+    can_manage_inventory_stock = serializers.SerializerMethodField()
+    can_consume_inventory = serializers.SerializerMethodField()
     
     class Meta:
         model = Inventory
@@ -3487,6 +3512,8 @@ class InventoryListSerializer(serializers.ModelSerializer):
             'image_url',
             'last_job_by_user',
             'last_pm_by_user',
+            'can_manage_inventory_stock',
+            'can_consume_inventory',
             'created_at',
             'updated_at'
         ]
@@ -3601,3 +3628,17 @@ class InventoryListSerializer(serializers.ModelSerializer):
             }
         
         return None
+
+    def get_can_manage_inventory_stock(self, obj):
+        request = self.context.get('request')
+        if request is None:
+            return False
+        from .tenancy import user_can_manage_inventory_stock
+        return user_can_manage_inventory_stock(request.user, obj.property)
+
+    def get_can_consume_inventory(self, obj):
+        request = self.context.get('request')
+        if request is None:
+            return False
+        from .tenancy import user_can_consume_inventory
+        return user_can_consume_inventory(request.user, obj.property)

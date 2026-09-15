@@ -84,6 +84,8 @@ from .tenancy import (
     TENANT_OPERATOR_ROLES,
     TENANT_WIDE_PROPERTY_ROLES,
     tenant_usage_counts,
+    user_can_consume_inventory,
+    user_can_manage_inventory_stock,
     user_can_manage_pm_master,
     user_can_manage_tenant,
 )
@@ -1654,6 +1656,8 @@ def consume_inventory_items(*, user, items, job=None, preventive_maintenance=Non
                 raise ValidationError({'inventory_usage': f'Inventory item {inventory.item_id} is not assigned to a property.'})
 
             _ensure_user_can_use_property(user, inventory.property)
+            if not user_can_consume_inventory(user, inventory.property):
+                raise PermissionDenied('Your role cannot consume inventory for this property.')
             job_property_ids = _job_property_ids(job) if job is not None else set()
             pm_property_ids = _pm_property_ids(preventive_maintenance) if preventive_maintenance is not None else set()
 
@@ -7245,12 +7249,27 @@ class InventoryViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+    @action(detail=False, methods=['get'])
+    def capabilities(self, request):
+        """Return server-authoritative inventory actions for the active property."""
+        property_ref = request.query_params.get('property_id')
+        if not property_ref:
+            raise ValidationError({'property_id': 'An active property is required.'})
+        property_obj = get_object_or_404(
+            get_accessible_properties(request.user), property_id=property_ref,
+        )
+        return Response({
+            'property_id': property_obj.property_id,
+            'can_manage_inventory_stock': user_can_manage_inventory_stock(request.user, property_obj),
+            'can_consume_inventory': user_can_consume_inventory(request.user, property_obj),
+        })
     
     def perform_create(self, serializer):
         """Add the current user as the creator when creating an inventory item"""
-        _ensure_user_can_operate_property(
-            self.request.user, serializer.validated_data.get('property')
-        )
+        property_obj = serializer.validated_data.get('property')
+        if not user_can_manage_inventory_stock(self.request.user, property_obj):
+            raise PermissionDenied('Your role cannot manage inventory stock for this property.')
         require_subscription_write(
             self.request,
             serializer.validated_data['property'].tenant,
@@ -7264,6 +7283,10 @@ class InventoryViewSet(viewsets.ModelViewSet):
         _ensure_user_can_operate_property(self.request.user, instance.property)
         target_property = serializer.validated_data.get('property', instance.property)
         _ensure_user_can_operate_property(self.request.user, target_property)
+        if 'quantity' in serializer.validated_data and not user_can_manage_inventory_stock(
+            self.request.user, target_property
+        ):
+            raise PermissionDenied('Your role cannot adjust inventory stock for this property.')
         require_subscription_write(
             self.request,
             target_property.tenant,
@@ -7273,7 +7296,8 @@ class InventoryViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_destroy(self, instance):
-        _ensure_user_can_operate_property(self.request.user, instance.property)
+        if not user_can_manage_inventory_stock(self.request.user, instance.property):
+            raise PermissionDenied('Your role cannot manage inventory stock for this property.')
         require_subscription_write(
             self.request,
             instance.property.tenant,
@@ -7286,6 +7310,8 @@ class InventoryViewSet(viewsets.ModelViewSet):
     def consume(self, request, item_id=None):
         """Consume this inventory item against a job, PM, or manual adjustment."""
         inventory = self.get_object()
+        if not user_can_consume_inventory(request.user, inventory.property):
+            raise PermissionDenied('Your role cannot consume inventory for this property.')
         job = None
         pm = None
         source = request.data.get('source') or 'manual'
@@ -7370,7 +7396,8 @@ class InventoryViewSet(viewsets.ModelViewSet):
         Expects: {'quantity': <number>}
         """
         inventory = self.get_object()
-        _ensure_user_can_operate_property(request.user, inventory.property)
+        if not user_can_manage_inventory_stock(request.user, inventory.property):
+            raise PermissionDenied('Your role cannot manage inventory stock for this property.')
         quantity_to_add = request.data.get('quantity', 0)
         
         try:
@@ -7410,7 +7437,8 @@ class InventoryViewSet(viewsets.ModelViewSet):
         Job/PM identifiers will be added to the item's relationship history.
         """
         inventory = self.get_object()
-        _ensure_user_can_operate_property(request.user, inventory.property)
+        if not user_can_consume_inventory(request.user, inventory.property):
+            raise PermissionDenied('Your role cannot consume inventory for this property.')
         quantity_to_use = request.data.get('quantity', 0)
         job_id = request.data.get('job_id')
         pm_id = request.data.get('pm_id')
@@ -7579,7 +7607,10 @@ class InventoryViewSet(viewsets.ModelViewSet):
             )
 
         # Resolve property scope: which properties this user can write to.
-        accessible_props = list(get_operable_properties(request.user))
+        accessible_props = [
+            property_obj for property_obj in get_accessible_properties(request.user)
+            if user_can_manage_inventory_stock(request.user, property_obj)
+        ]
         if not accessible_props:
             return Response(
                 {'error': 'You have no property access — cannot import inventory.'},

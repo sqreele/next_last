@@ -133,6 +133,8 @@ export default function InventoryPage() {
   const t = useT();
   const { selectedPropertyId: selectedProperty } = useUser();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [canManageStock, setCanManageStock] = useState(false);
+  const [canConsumeInventory, setCanConsumeInventory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -210,6 +212,8 @@ export default function InventoryPage() {
 
   useEffect(() => {
     setInventory([]);
+    setCanManageStock(false);
+    setCanConsumeInventory(false);
     setRooms([]);
     setJobsForFilter([]);
     setPmsForFilter([]);
@@ -267,6 +271,24 @@ export default function InventoryPage() {
     selectedPmFilter,
     debouncedSearchTerm,
   ]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !selectedProperty) return;
+    let active = true;
+    apiClient.get("/api/v1/inventory/capabilities/", {
+      params: { property_id: selectedProperty },
+    }).then((response) => {
+      if (!active) return;
+      setCanManageStock(response.data?.can_manage_inventory_stock === true);
+      setCanConsumeInventory(response.data?.can_consume_inventory === true);
+    }).catch(() => {
+      if (active) {
+        setCanManageStock(false);
+        setCanConsumeInventory(false);
+      }
+    });
+    return () => { active = false; };
+  }, [selectedProperty, status]);
 
   // Fetch filter options (categories, statuses) from backend
   useEffect(() => {
@@ -569,7 +591,7 @@ export default function InventoryPage() {
   const filteredInventory = inventory;
 
   const handleRestock = async () => {
-    if (!selectedItem || !restockQuantity || stockMutationPending) return;
+    if (!canManageStock || !selectedItem || !restockQuantity || stockMutationPending) return;
 
     setStockMutationPending(true);
     setStockMutationError(null);
@@ -605,7 +627,7 @@ export default function InventoryPage() {
   };
 
   const handleUse = async () => {
-    if (!selectedItem || !useQuantity || stockMutationPending) return;
+    if (!canConsumeInventory || !selectedItem || !useQuantity || stockMutationPending) return;
 
     setStockMutationPending(true);
     setStockMutationError(null);
@@ -650,7 +672,7 @@ export default function InventoryPage() {
   };
 
   const handleAddItem = async () => {
-    if (!selectedProperty || !newItem.name.trim() || addPending) return;
+    if (!canManageStock || !selectedProperty || !newItem.name.trim() || addPending) return;
     setAddPending(true);
     const mutationProperty = selectedProperty;
     try {
@@ -816,9 +838,10 @@ export default function InventoryPage() {
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap sm:items-center">
           <InventoryCsvImport
             currentPropertyId={selectedProperty}
+            canManageStock={canManageStock}
             onImported={() => void fetchInventory()}
           />
-          <Dialog
+          {canManageStock && <Dialog
             open={showAddDialog}
             onOpenChange={(open) => {
               setShowAddDialog(open);
@@ -985,7 +1008,7 @@ export default function InventoryPage() {
                 </Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
       </header>
 
@@ -1361,7 +1384,7 @@ export default function InventoryPage() {
                 )}
 
                 <div className="mt-auto grid grid-cols-2 gap-2 border-t border-border pt-3">
-                  <Button
+                  {canManageStock && <Button
                     variant="outline"
                     size="sm"
                     className="w-full"
@@ -1372,8 +1395,8 @@ export default function InventoryPage() {
                   >
                     <ShoppingCart className="mr-1 h-4 w-4" aria-hidden="true" />
                     {t("inventory.restock")}
-                  </Button>
-                  <Button
+                  </Button>}
+                  {canConsumeInventory && <Button
                     variant="outline"
                     size="sm"
                     className="w-full"
@@ -1384,7 +1407,7 @@ export default function InventoryPage() {
                     disabled={item.quantity === 0}
                   >
                     {t("inventory.use")}
-                  </Button>
+                  </Button>}
                 </div>
               </CardContent>
             </Card>
@@ -1465,7 +1488,7 @@ export default function InventoryPage() {
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-2 pt-1">
-                      <Button
+                      {canManageStock && <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
@@ -1474,8 +1497,8 @@ export default function InventoryPage() {
                         }}
                       >
                         {t("inventory.restock")}
-                      </Button>
-                      <Button
+                      </Button>}
+                      {canConsumeInventory && <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
@@ -1485,7 +1508,7 @@ export default function InventoryPage() {
                         disabled={item.quantity === 0}
                       >
                         {t("inventory.use")}
-                      </Button>
+                      </Button>}
                     </div>
                   </div>
                 </article>
@@ -1629,7 +1652,7 @@ export default function InventoryPage() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-4">
                         <div className="flex gap-2">
-                          <Button
+                          {canManageStock && <Button
                             variant="outline"
                             size="sm"
                             onClick={() => {
@@ -1638,8 +1661,8 @@ export default function InventoryPage() {
                             }}
                           >
                             {t("inventory.restock")}
-                          </Button>
-                          <Button
+                          </Button>}
+                          {canConsumeInventory && <Button
                             variant="outline"
                             size="sm"
                             onClick={() => {
@@ -1649,7 +1672,7 @@ export default function InventoryPage() {
                             disabled={item.quantity === 0}
                           >
                             {t("inventory.use")}
-                          </Button>
+                          </Button>}
                         </div>
                       </td>
                     </tr>

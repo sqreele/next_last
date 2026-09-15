@@ -34,6 +34,8 @@ TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES = {'owner', 'admin', 'manager'}
 # Keep this capability separate from TENANT_OPERATOR_ROLES: supervisors and
 # technicians can operate assigned work, but cannot change recurring rules.
 PM_MASTER_MANAGE_ROLES = {'owner', 'admin', 'manager'}
+INVENTORY_STOCK_MANAGE_ROLES = {'owner', 'admin', 'manager'}
+INVENTORY_CONSUME_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'}
 
 
 @dataclass(frozen=True)
@@ -190,6 +192,29 @@ def user_can_manage_pm_master(user, property_obj):
         is_active=True,
         role__in=PM_MASTER_MANAGE_ROLES,
     ).exists() and get_accessible_properties(user).filter(pk=property_obj.pk).exists()
+
+
+def _user_has_inventory_capability(user, property_obj, roles):
+    if not getattr(user, 'is_authenticated', False) or property_obj is None:
+        return False
+    if user.is_superuser:
+        return True
+    return TenantMembership.objects.filter(
+        tenant_id=property_obj.tenant_id,
+        user=user,
+        is_active=True,
+        role__in=roles,
+    ).exists() and get_accessible_properties(user).filter(pk=property_obj.pk).exists()
+
+
+def user_can_manage_inventory_stock(user, property_obj):
+    """Authorize inventory creation, stock increases, adjustments, and deletion."""
+    return _user_has_inventory_capability(user, property_obj, INVENTORY_STOCK_MANAGE_ROLES)
+
+
+def user_can_consume_inventory(user, property_obj):
+    """Authorize a positive, property-scoped inventory consumption."""
+    return _user_has_inventory_capability(user, property_obj, INVENTORY_CONSUME_ROLES)
 
 
 def get_accessible_properties(user, tenant=None):

@@ -129,10 +129,18 @@ class PlatformTenantDetailView(PlatformReadView):
         )
         subscription = tenant.subscription
         memberships = [{
-            'user': membership.user.get_username(), 'role': membership.role,
+            # Presentation-safe identity fields for the already-authorized operator view.
+            'user': membership.user.get_username(),
+            'display_name': membership.user.get_full_name().strip() or None,
+            'email': membership.user.email or None,
+            'role': membership.role,
             'is_active': membership.is_active,
-            'property_scope': {'all_tenant_properties': not membership.properties.exists(),
-                               'assigned_property_count': membership.properties.count()},
+            'property_scope': {
+                'all_tenant_properties': not membership.properties.exists(),
+                'assigned_property_count': membership.properties.count(),
+                'properties': [{'name': prop.name, 'property_id': prop.property_id}
+                               for prop in membership.properties.all()],
+            },
         } for membership in tenant.memberships.all()]
         latest_usage = tenant.usage_metrics.all()[:1]
         events = BillingWebhookEvent.objects.aggregate(

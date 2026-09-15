@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from .models import BillingWebhookEvent, PlatformMembership, SubscriptionPlan, Tenant, TenantMembership, TenantSubscription, UsageMetric
+from .models import BillingWebhookEvent, PlatformMembership, Property, SubscriptionPlan, Tenant, TenantMembership, TenantSubscription, UsageMetric
 
 
 User = get_user_model()
@@ -26,8 +26,13 @@ class PlatformDashboardApiTests(TestCase):
             property_count=1, active_user_count=2, storage_mb=12,
         )
         BillingWebhookEvent.objects.create(provider='stripe', event_id='evt_safe', event_type='invoice.paid', status='processed')
-        self.tenant_admin = User.objects.create_user(username='platform-api-tenant-admin')
-        TenantMembership.objects.create(tenant=self.tenant, user=self.tenant_admin, role='admin')
+        self.tenant_admin = User.objects.create_user(
+            username='google-oauth2_very_long_subject', first_name='Platform', last_name='Admin',
+            email='admin@example.test',
+        )
+        self.membership = TenantMembership.objects.create(tenant=self.tenant, user=self.tenant_admin, role='admin')
+        self.property = Property.objects.create(tenant=self.tenant, name='Platform API Property')
+        self.membership.properties.add(self.property)
         self.staff = User.objects.create_user(username='platform-api-staff', is_staff=True)
         self.support = User.objects.create_user(username='platform-api-support')
         self.billing = User.objects.create_user(username='platform-api-billing')
@@ -77,3 +82,12 @@ class PlatformDashboardApiTests(TestCase):
         self.assertEqual(response.data['tenant_id'], self.tenant.tenant_id)
         self.assertFalse(response.data['webhook_summary']['tenant_association_available'])
         self.assertEqual(self.get_as(self.super_admin, '/api/v1/platform/tenants/TDOESNOTEXIST/').status_code, 404)
+
+    def test_detail_projects_safe_human_membership_identity(self):
+        response = self.get_as(self.super_admin, f'/api/v1/platform/tenants/{self.tenant.tenant_id}/')
+        membership = response.data['memberships'][0]
+        self.assertEqual(membership['display_name'], 'Platform Admin')
+        self.assertEqual(membership['email'], 'admin@example.test')
+        self.assertEqual(membership['role'], 'admin')
+        self.assertFalse(membership['property_scope']['all_tenant_properties'])
+        self.assertEqual(membership['property_scope']['properties'][0]['name'], 'Platform API Property')

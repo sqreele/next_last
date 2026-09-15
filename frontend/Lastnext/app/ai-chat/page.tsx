@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import AiChatBox from '@/app/components/ai/AiChatBox';
 import AiChatDesktopNav from '@/app/components/ai/AiChatDesktopNav';
 import AiChatMobileMenu from '@/app/components/ai/AiChatMobileMenu';
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default function AiChatPage() {
   return (

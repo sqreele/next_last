@@ -29,6 +29,7 @@ const lineSeed = localFont({
 
 // SEO-Optimized Metadata for HotelCare Pro - Hotel Engineering & Maintenance Management
 export const metadata: Metadata = {
+  metadataBase: new URL('https://staymaint.com'),
   title: {
     default: 'StayMaint - Smart Hotel Maintenance and Engineering Management Software',
     template: '%s | StayMaint',
@@ -75,17 +76,6 @@ export const metadata: Metadata = {
     description: 'StayMaint - Professional hotel engineering and maintenance management. Track and manage hotel maintenance tasks seamlessly.',
     creator: '@StayMaint',
     images: ['https://staymaint.com/twitter-image.jpg'],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
   },
   icons: {
     icon: [

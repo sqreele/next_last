@@ -1,28 +1,27 @@
 import { MetadataRoute } from 'next';
 
-// Robots.txt configuration for HotelCare Pro
+const siteUrl = 'https://staymaint.com';
+
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://staymaint.com';
-  
   return {
     rules: [
       {
         userAgent: '*',
         allow: '/',
         disallow: [
-          '/api/',           // Protect API routes
-          '/auth/callback',  // Protect auth callbacks
-          '/_next/',         // Protect Next.js internals
-          '/private/',       // Protect private routes if any
+          '/api/',
+          '/auth/',
+          '/dashboard/',
+          '/invitations/',
+          '/platform/',
+          '/report/',
+          '/ai-chat/',
+          '/login/',
+          '/offline/',
         ],
       },
-      {
-        userAgent: 'Googlebot',
-        allow: '/',
-        disallow: ['/api/', '/auth/callback'],
-      },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
-    host: baseUrl,
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   };
 }

@@ -9,7 +9,7 @@ import {
   Users,
 } from 'lucide-react';
 
-import RegisterForm from '@/app/components/profile/RegisterForm';
+import RegisterForm, { type RegistrationPlan } from '@/app/components/profile/RegisterForm';
 import { Logo } from '@/app/components/branding/Logo';
 
 const benefits = [
@@ -30,7 +30,13 @@ const benefits = [
   },
 ];
 
-export default function RegisterPage() {
+const validPlans = new Set<RegistrationPlan>(['starter', 'pro', 'enterprise']);
+const planNames: Record<RegistrationPlan, string> = { starter: 'Basic', pro: 'Pro', enterprise: 'Enterprise' };
+
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ plan?: string | string[] }> }) {
+  const { plan: rawPlan } = await searchParams;
+  const candidate = Array.isArray(rawPlan) ? rawPlan[0] : rawPlan;
+  const plan = candidate && validPlans.has(candidate as RegistrationPlan) ? candidate as RegistrationPlan : undefined;
   return (
     <main className="min-h-screen bg-slate-950 lg:grid lg:grid-cols-[minmax(0,1.08fr)_minmax(520px,0.92fr)]">
       <section className="relative hidden min-h-screen overflow-hidden border-r border-white/10 px-12 py-10 text-white lg:flex lg:flex-col xl:px-20 xl:py-14">
@@ -105,6 +111,7 @@ export default function RegisterPage() {
                 Property access is assigned separately by your StayMaint
                 administrator.
               </p>
+              {plan && <p className="mt-4 inline-flex rounded-full bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-800">Selected plan: {planNames[plan]}</p>}
             </div>
 
             <RegisterForm />

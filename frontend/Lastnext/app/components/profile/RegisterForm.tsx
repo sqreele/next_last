@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
+export type RegistrationPlan = "starter" | "pro" | "enterprise";
+
 export default function RegisterForm() {
   const [isRedirecting, setIsRedirecting] = useState(false);
 

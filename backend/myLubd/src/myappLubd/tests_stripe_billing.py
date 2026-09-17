@@ -40,8 +40,8 @@ TEST_SETTINGS = {
 @override_settings(**TEST_SETTINGS)
 class StripeBillingTests(APITestCase):
     def setUp(self):
-        self.plan = SubscriptionPlan.objects.create(code='starter', name='Starter')
-        self.pro = SubscriptionPlan.objects.create(code='pro', name='Pro')
+        self.plan, _ = SubscriptionPlan.objects.get_or_create(code='starter')
+        self.pro, _ = SubscriptionPlan.objects.get_or_create(code='pro')
         self.owner = User.objects.create_user('owner', email='owner@example.test')
         self.tenant = Tenant.objects.create(name='Tenant A', owner=self.owner, timezone='UTC')
         self.subscription = TenantSubscription.objects.create(
@@ -749,7 +749,7 @@ class StripeWebhookConcurrencyTests(TransactionTestCase):
         dispatch.assert_not_called()
 
     def test_concurrent_retry_applies_subscription_state_once(self):
-        plan = SubscriptionPlan.objects.create(code='starter', name='Starter')
+        plan, _ = SubscriptionPlan.objects.get_or_create(code='starter')
         owner = User.objects.create_user('concurrent-owner', email='concurrent@example.test')
         tenant = Tenant.objects.create(name='Concurrent Tenant', owner=owner, timezone='UTC')
         subscription = TenantSubscription.objects.create(

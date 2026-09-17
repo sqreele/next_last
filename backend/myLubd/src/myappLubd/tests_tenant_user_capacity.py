@@ -40,16 +40,17 @@ ISSUER = 'https://tenant.auth0.com/'
 class TenantUserCapacityTests(TestCase):
     def setUp(self):
         self.plans = {
-            'starter': SubscriptionPlan.objects.create(
-                code='starter', name='Starter', max_users=3,
+            'starter': SubscriptionPlan.objects.update_or_create(
+                code='starter', defaults={'max_users': 3},
             ),
-            'pro': SubscriptionPlan.objects.create(
-                code='pro', name='Pro', max_users=5,
+            'pro': SubscriptionPlan.objects.update_or_create(
+                code='pro', defaults={'max_users': 5},
             ),
-            'enterprise': SubscriptionPlan.objects.create(
-                code='enterprise', name='Enterprise', max_users=20,
+            'enterprise': SubscriptionPlan.objects.update_or_create(
+                code='enterprise', defaults={'max_users': 20},
             ),
         }
+        self.plans = {code: plan for code, (plan, _) in self.plans.items()}
         self.sequence = 0
 
     def make_tenant(self, code, active_count=0, inactive_count=0):
@@ -161,14 +162,19 @@ class TenantMembershipCapacityApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.owner = User.objects.create_user(username='capacity-owner')
-        self.plan = SubscriptionPlan.objects.create(
-            code='starter', name='Starter', max_users=3,
+        self.plan, _ = SubscriptionPlan.objects.update_or_create(
+            code='starter', defaults={'max_users': 3},
         )
         self.sequence = 0
 
     def make_tenant(self, name, active_others=0, inactive_others=0):
         tenant = Tenant.objects.create(name=name, owner=self.owner)
-        TenantSubscription.objects.create(tenant=tenant, plan=self.plan, status='active')
+        TenantSubscription.objects.create(
+            tenant=tenant,
+            plan=self.plan,
+            status='active',
+            current_period_end=timezone.localdate() + timedelta(days=30),
+        )
         TenantMembership.objects.create(tenant=tenant, user=self.owner, role='owner')
         active = []
         inactive = []

@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 from django.test import override_settings
@@ -49,10 +52,10 @@ class SaaSFoundationTests(APITestCase):
             '/api/v1/tenants/',
             {
                 'name': 'Acme Hotels',
-                'billing_email': 'billing@example.com',
                 'timezone': 'Asia/Bangkok',
             },
             format='json',
+            secure=True,
         )
 
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
@@ -75,6 +78,7 @@ class SaaSFoundationTests(APITestCase):
             '/api/v1/tenants/',
             {'name': 'Blocked Bootstrap', 'timezone': 'Asia/Bangkok'},
             format='json',
+            secure=True,
         )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, resp.content)
         self.assertFalse(Tenant.objects.filter(name='Blocked Bootstrap').exists())
@@ -88,6 +92,7 @@ class SaaSFoundationTests(APITestCase):
             '/api/v1/tenants/',
             {'name': 'Admin Created', 'timezone': 'Asia/Bangkok'},
             format='json',
+            secure=True,
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
         self.assertEqual(Tenant.objects.get(name='Admin Created').owner, admin)
@@ -98,6 +103,7 @@ class SaaSFoundationTests(APITestCase):
             '/api/v1/tenants/',
             {'name': 'Bad Zone Hotels', 'timezone': 'Bangkok Time'},
             format='json',
+            secure=True,
         )
 
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
@@ -105,7 +111,7 @@ class SaaSFoundationTests(APITestCase):
 
     def test_tenant_timezone_options_endpoint(self):
         _login(self.client, self.owner)
-        resp = self.client.get('/api/v1/tenants/timezones/')
+        resp = self.client.get('/api/v1/tenants/timezones/', secure=True)
 
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         self.assertEqual(resp.data['default'], 'Asia/Bangkok')
@@ -115,13 +121,19 @@ class SaaSFoundationTests(APITestCase):
     def test_property_create_attaches_to_tenant_and_enforces_plan_limit(self):
         tenant = Tenant.objects.create(name='Limit Hotels', owner=self.owner)
         TenantMembership.objects.create(tenant=tenant, user=self.owner, role='owner')
-        TenantSubscription.objects.create(tenant=tenant, plan=self.plan, status='active')
+        TenantSubscription.objects.create(
+            tenant=tenant,
+            plan=self.plan,
+            status='active',
+            current_period_end=timezone.localdate() + timedelta(days=30),
+        )
 
         _login(self.client, self.owner)
         first = self.client.post(
             '/api/v1/properties/',
             {'name': 'Limit Hotel 1', 'tenant': tenant.id},
             format='json',
+            secure=True,
         )
         self.assertEqual(first.status_code, status.HTTP_201_CREATED, first.content)
         self.assertEqual(Property.objects.get(name='Limit Hotel 1').tenant, tenant)
@@ -130,6 +142,7 @@ class SaaSFoundationTests(APITestCase):
             '/api/v1/properties/',
             {'name': 'Limit Hotel 2', 'tenant': tenant.id},
             format='json',
+            secure=True,
         )
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST, second.content)
         self.assertIn('billing_limit', second.data)
@@ -144,7 +157,7 @@ class SaaSFoundationTests(APITestCase):
         hidden = Property.objects.create(name='Hidden Hotel', tenant=hidden_tenant)
 
         _login(self.client, self.owner)
-        resp = self.client.get('/api/v1/properties/all/')
+        resp = self.client.get('/api/v1/properties/all/', secure=True)
 
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         names = {item['name'] for item in resp.data}
@@ -165,6 +178,7 @@ class SaaSFoundationTests(APITestCase):
                 'is_active': True,
             },
             format='json',
+            secure=True,
         )
 
         self.assertEqual(resp.status_code, status.HTTP_409_CONFLICT, resp.content)

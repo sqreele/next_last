@@ -23,6 +23,7 @@ from .models import (
     Topic,
 )
 from .serializers import PreventiveMaintenanceCreateUpdateSerializer
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -42,6 +43,8 @@ class PreventiveMaintenanceCreateContractTests(APITestCase):
 
         self.tenant = Tenant.objects.create(name='PM Create Contract', timezone='Asia/Bangkok')
         self.other_tenant = Tenant.objects.create(name='Other PM Tenant')
+        use_canonical_plan(self.tenant, 'pro')
+        use_canonical_plan(self.other_tenant, 'pro')
         self.property = Property.objects.create(name='Bangkok Hotel', tenant=self.tenant)
         self.other_property = Property.objects.create(name='Other Hotel', tenant=self.other_tenant)
 

@@ -9,6 +9,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .models import Area, Job, Property, Room, Tenant, TenantMembership, Topic
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -17,6 +18,7 @@ User = get_user_model()
 class JobsReportCsvTests(APITestCase):
     def setUp(self):
         self.tenant = Tenant.objects.create(name='Jobs Report tenant')
+        use_canonical_plan(self.tenant, 'pro')
         self.property = Property.objects.create(
             name='Jobs Report Hotel',
             tenant=self.tenant,

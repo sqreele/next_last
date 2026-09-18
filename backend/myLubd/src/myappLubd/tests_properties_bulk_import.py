@@ -11,6 +11,7 @@ from rest_framework.test import APIClient
 
 from .models import Property, SubscriptionPlan, Tenant, TenantMembership, TenantSubscription
 from .tenancy import get_accessible_properties
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -111,6 +112,7 @@ class PropertyExportTests(TestCase):
         self.staff = User.objects.create_user(username='owner', password='pw12345!', is_staff=True)
         self.alice = User.objects.create_user(username='alice', password='pw12345!')
         self.tenant = Tenant.objects.create(name='Export Tenant')
+        use_canonical_plan(self.tenant, 'pro')
         self.prop_a = Property.objects.create(name='Hotel Alice', description='Alice resort', tenant=self.tenant)
         self.prop_b = Property.objects.create(name='Hotel Bob', description='Bob resort', tenant=self.tenant)
         TenantMembership.objects.create(user=self.alice, tenant=self.tenant, role='technician').properties.add(self.prop_a)

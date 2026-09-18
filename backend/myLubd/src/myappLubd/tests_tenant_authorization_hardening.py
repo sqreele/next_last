@@ -19,6 +19,7 @@ from .tenancy import get_accessible_properties, get_property_summary_recipients
 from .management.commands.send_daily_summary import Command as DailySummaryCommand
 from .management.commands.send_pending_jobs_summary import Command as PendingJobsSummaryCommand
 from .management.commands.send_property_jobs_summary import Command as PropertyJobsSummaryCommand
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -31,6 +32,8 @@ class TenantPropertyAuthorizationTests(APITestCase):
         self.other = User.objects.create_user(username='tenant-b-user', password='pw12345!')
         self.tenant_a = Tenant.objects.create(name='Tenant A')
         self.tenant_b = Tenant.objects.create(name='Tenant B')
+        use_canonical_plan(self.tenant_a, 'pro')
+        use_canonical_plan(self.tenant_b, 'pro')
         self.property_a1 = Property.objects.create(name='A1', tenant=self.tenant_a)
         self.property_a2 = Property.objects.create(name='A2', tenant=self.tenant_a)
         self.property_b = Property.objects.create(name='B1', tenant=self.tenant_b)

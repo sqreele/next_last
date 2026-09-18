@@ -9,6 +9,7 @@ from rest_framework.test import APITestCase
 
 from .models import Machine, PMMasterPlan, PreventiveMaintenance, Property, Tenant, TenantMembership, Topic
 from .services import PreventiveMaintenanceService
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -17,6 +18,7 @@ User = get_user_model()
 class PMMasterPlanAuthorizationTests(APITestCase):
     def setUp(self):
         self.tenant = Tenant.objects.create(name='Plan authorization tenant')
+        use_canonical_plan(self.tenant, 'pro')
         self.property_a = Property.objects.create(name='Plan Property A', tenant=self.tenant)
         self.property_b = Property.objects.create(name='Plan Property B', tenant=self.tenant)
 
@@ -360,6 +362,7 @@ class PMMasterPlanManagementRoleMatrixTests(APITestCase):
 
     def setUp(self):
         self.tenant = Tenant.objects.create(name='PM master role tenant')
+        use_canonical_plan(self.tenant, 'pro')
         self.property = Property.objects.create(name='PM master property', tenant=self.tenant)
         self.machine = Machine.objects.create(
             machine_id='PM-MANAGE-MACHINE', name='PM manage machine', property=self.property,
@@ -379,6 +382,12 @@ class PMMasterPlanManagementRoleMatrixTests(APITestCase):
         )
         inactive_membership.properties.add(self.property)
         self.other_tenant = Tenant.objects.create(name='Other PM master tenant')
+        use_canonical_plan(self.other_tenant, 'pro')
+        # Keep a valid paid-plan context while the target-tenant membership is
+        # inactive, so this RBAC test reaches its intended concealed 404 path.
+        TenantMembership.objects.create(
+            user=self.inactive, tenant=self.other_tenant, role='viewer',
+        )
         self.other_property = Property.objects.create(name='Other PM master property', tenant=self.other_tenant)
         self.other_machine = Machine.objects.create(
             machine_id='PM-OTHER-MACHINE', name='Other PM machine', property=self.other_property,

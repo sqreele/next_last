@@ -94,6 +94,11 @@ from .tenancy import (
 from .billing.permissions import HasBillingAccess
 from .timezones import object_timezone, property_timezone, timezone_options
 from .entitlements import get_tenant_entitlement
+from .plan_capabilities import (
+    get_plan_capabilities,
+    require_plan_feature,
+    require_request_feature,
+)
 from .subscription_permissions import (
     get_subscription_enforcement_mode,
     require_subscription_write,
@@ -1799,6 +1804,15 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     ordering_fields = ['scheduled_date', 'created_at', 'frequency']
     ordering = ['-scheduled_date']
     permission_classes = [IsAuthenticated]
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        feature = (
+            'pm_schedules'
+            if self.action in {'plans', 'plan_detail', 'schedule', 'materialize_plans'}
+            else 'preventive_maintenance'
+        )
+        require_request_feature(request, feature)
 
     def check_object_permissions(self, request, obj):
         super().check_object_permissions(request, obj)
@@ -4321,6 +4335,7 @@ class JobViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='report-csv')
     def report_csv(self, request):
         """Stream every authorized Job matching the Jobs Report filters."""
+        require_request_feature(request, 'csv_export')
         property_obj, jobs = self._jobs_report_queryset(request)
 
         class Echo:
@@ -5122,6 +5137,8 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
         if not user_can_manage_tenant(self.request.user, tenant):
             raise PermissionDenied("You do not have permission to manage this tenant.")
         self._validate_membership_properties(tenant, serializer)
+        if serializer.validated_data.get('properties'):
+            require_plan_feature(tenant, 'advanced_property_permissions')
         with transaction.atomic():
             locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
             if serializer.validated_data.get('is_active', True):
@@ -5143,6 +5160,8 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
         if not user_can_manage_tenant(self.request.user, target_tenant):
             raise PermissionDenied("You do not have permission to manage this tenant.")
         self._validate_membership_properties(target_tenant, serializer)
+        if 'properties' in serializer.validated_data:
+            require_plan_feature(target_tenant, 'advanced_property_permissions')
         source_tenant_id = instance.tenant_id
         with transaction.atomic():
             locked_tenants = lock_tenants_for_membership_change(
@@ -5263,6 +5282,7 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
                 subscription and subscription.cancel_at_period_end
             ),
             'enforcement_mode': get_subscription_enforcement_mode(),
+            'features': get_plan_capabilities(subscription) if subscription else get_plan_capabilities(None),
             **snapshot,
         })
 
@@ -5464,6 +5484,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You do not have permission to add properties to this tenant.")
         with transaction.atomic():
             locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+            if Property.objects.filter(tenant=locked_tenant).exists():
+                require_plan_feature(locked_tenant, 'multi_property')
             enforce_subscription_limit(locked_tenant, 'max_properties')
             membership = TenantMembership.objects.select_for_update().filter(
                 tenant=locked_tenant,
@@ -5802,6 +5824,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
         Tenant-scoped: regular users only see their accessible properties;
         staff/superuser see everything."""
+        require_request_feature(request, 'csv_export')
         import csv as _csv
         from io import StringIO
 
@@ -5928,6 +5951,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
                 with transaction.atomic():
                     locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+                    if Property.objects.filter(tenant=locked_tenant).exists():
+                        require_plan_feature(locked_tenant, 'multi_property')
                     enforce_subscription_limit(locked_tenant, 'max_properties')
                     membership = TenantMembership.objects.select_for_update().filter(
                         tenant=locked_tenant,
@@ -5999,6 +6024,10 @@ class PreventiveMaintenanceImageUploadView(APIView):
     permission_classes = [IsAuthenticated]
 
     MAX_IMAGES_PER_PM = 10
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        require_request_feature(request, 'preventive_maintenance')
 
     def _prepare_image(self, image_file):
         from .job_image_processing import PMImageValidationError, validate_and_optimize_pm_image
@@ -6537,6 +6566,7 @@ def get_preventive_maintenance_data(request):
     """
     Get aggregated preventive maintenance data for all properties the user has access to.
     """
+    require_request_feature(request, 'preventive_maintenance')
     logger.info(f"get_preventive_maintenance_data called by user: {request.user.username}")
     try:
         # Get properties accessible to the current user
@@ -6582,6 +6612,7 @@ def get_preventive_maintenance_data(request):
 @permission_classes([IsAuthenticated])
 def get_preventive_maintenance_jobs(request):
     """Get jobs marked for preventive maintenance"""
+    require_request_feature(request, 'preventive_maintenance')
     # Get query parameters
     property_id = request.query_params.get('property_id')
     status_param = request.query_params.get('status')
@@ -6640,6 +6671,7 @@ def get_preventive_maintenance_jobs(request):
 @permission_classes([IsAuthenticated])
 def get_preventive_maintenance_rooms(request):
     """Get rooms with preventive maintenance jobs"""
+    require_request_feature(request, 'preventive_maintenance')
     
     # Get property_id from query params
     property_id = request.query_params.get('property_id')
@@ -6679,6 +6711,7 @@ def get_preventive_maintenance_rooms(request):
 @permission_classes([IsAuthenticated])
 def get_preventive_maintenance_topics(request):
     """Get topics used in preventive maintenance jobs"""
+    require_request_feature(request, 'preventive_maintenance')
     
     # Get user's properties
     user_properties = get_accessible_properties(request.user)
@@ -6698,6 +6731,7 @@ def get_preventive_maintenance_topics(request):
 @permission_classes([IsAuthenticated])
 def property_is_preventivemaintenance(request, property_id):
     """Check if a property has preventive maintenance jobs"""
+    require_request_feature(request, 'preventive_maintenance', property_id=property_id)
     
     # Get the property
     property_instance = get_object_or_404(Property, property_id=property_id)
@@ -6729,6 +6763,7 @@ def property_is_preventivemaintenance(request, property_id):
 @permission_classes([IsAuthenticated])
 def get_dashboard_summary(request):
     """Return aggregated job analytics for the chart dashboard."""
+    require_request_feature(request, 'advanced_reports')
     user = request.user
     month_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -6957,6 +6992,7 @@ def generate_maintenance_pdf_report(request):
     Generate a clean and compact maintenance PDF report
     Supports filtering and different report formats
     """
+    require_request_feature(request, 'advanced_reports')
     try:
         from .pdf_utils import MaintenanceReportGenerator
         from .timezones import localtime_for, object_timezone

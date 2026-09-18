@@ -5137,7 +5137,7 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
         if not user_can_manage_tenant(self.request.user, tenant):
             raise PermissionDenied("You do not have permission to manage this tenant.")
         self._validate_membership_properties(tenant, serializer)
-        if serializer.validated_data.get('properties'):
+        if len(serializer.validated_data.get('properties') or []) > 1:
             require_plan_feature(tenant, 'advanced_property_permissions')
         with transaction.atomic():
             locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
@@ -5160,7 +5160,7 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
         if not user_can_manage_tenant(self.request.user, target_tenant):
             raise PermissionDenied("You do not have permission to manage this tenant.")
         self._validate_membership_properties(target_tenant, serializer)
-        if 'properties' in serializer.validated_data:
+        if len(serializer.validated_data.get('properties') or []) > 1:
             require_plan_feature(target_tenant, 'advanced_property_permissions')
         source_tenant_id = instance.tenant_id
         with transaction.atomic():

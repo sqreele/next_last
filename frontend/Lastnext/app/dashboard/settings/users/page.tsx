@@ -38,6 +38,8 @@ import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
 import { SettingsPageSkeleton, SkeletonTable } from "@/app/components/ui/loading";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import type { DictKey } from "@/app/lib/i18n/dictionary";
+import { usePlanCapabilities } from "@/app/lib/hooks/usePlanCapabilities";
+import { useMainStore } from "@/app/lib/stores/mainStore";
 
 type Tenant = { id: number; tenant_id: string; name: string };
 type Property = { id: number; property_id: string; name: string; tenant: number };
@@ -116,6 +118,9 @@ function statusVariant(status: InvitationStatus): "default" | "secondary" | "des
 }
 
 export default function TenantUsersSettingsPage() {
+  const { canUseFeature } = usePlanCapabilities();
+  const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
+  const canManageAdvancedGrants = canUseFeature("advanced_property_permissions");
   const t = useT();
   const localizedRoleLabel = (value: string) => ROLE_LABEL_KEYS[value] ? t(ROLE_LABEL_KEYS[value]) : roleLabel(value);
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ requireAuth: true });
@@ -246,6 +251,12 @@ export default function TenantUsersSettingsPage() {
     setError(null);
     setFeedback(null);
     try {
+      const defaultProperty = tenantProperties.find(
+        (property) => property.property_id === selectedPropertyId,
+      ) || tenantProperties[0];
+      const invitationPropertyIds = canManageAdvancedGrants
+        ? propertyIds
+        : (defaultProperty ? [defaultProperty.id] : []);
       const response = await fetch("/api/invitations/manage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -253,7 +264,7 @@ export default function TenantUsersSettingsPage() {
           tenant: Number(tenantId),
           email,
           role,
-          properties: propertyIds,
+          properties: invitationPropertyIds,
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -368,7 +379,7 @@ export default function TenantUsersSettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {!tenantWideRoles.has(role) ? (
+              {!tenantWideRoles.has(role) && canManageAdvancedGrants ? (
                 <div className="space-y-2">
                   <Label>Property access {propertyRequiredRoles.has(role) ? "(required)" : "(optional)"}</Label>
                   <div className="max-h-52 space-y-2 overflow-y-auto rounded-xl border p-3">
@@ -388,15 +399,17 @@ export default function TenantUsersSettingsPage() {
                     }) : <p className="text-sm text-muted-foreground">No properties are available in this tenant.</p>}
                   </div>
                 </div>
-              ) : (
+              ) : tenantWideRoles.has(role) ? (
                 <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">This role has tenant-wide property access; explicit grants are not stored.</p>
+              ) : (
+                <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">This user will receive access to the current property. Multi-property grant controls require Enterprise.</p>
               )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>Cancel</Button>
               <Button
                 onClick={() => void createInvitation()}
-                disabled={!email.trim() || submitting || (propertyRequiredRoles.has(role) && propertyIds.length === 0)}
+                disabled={!email.trim() || submitting || (canManageAdvancedGrants && propertyRequiredRoles.has(role) && propertyIds.length === 0)}
               >
                 {submitting ? "Sending…" : "Send invitation"}
               </Button>

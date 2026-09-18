@@ -15,11 +15,13 @@ import {
   MarketingPage,
   relatedMarketingLinks,
 } from "@/app/lib/marketing-pages";
+import { getDictionary } from "@/app/lib/i18n/dictionary";
 
 const benefitIcons = [Clock3, ShieldCheck, BarChart3];
 
 export function SeoLandingPage({ page }: { page: MarketingPage }) {
   const isThai = page.locale === "th";
+  const pricingLabel = getDictionary(page.locale)["nav.pricing"];
   const path = `${isThai ? "/th/" : "/"}${page.slug}`;
   const faqSchema = {
     "@context": "https://schema.org",
@@ -43,6 +45,9 @@ export function SeoLandingPage({ page }: { page: MarketingPage }) {
             <Logo variant="horizontal" markClassName="size-9" />
           </Link>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/pricing/">{pricingLabel}</Link>
+            </Button>
             <Button
               variant="ghost"
               size="sm"

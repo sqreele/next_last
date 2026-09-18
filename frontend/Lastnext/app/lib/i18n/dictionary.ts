@@ -39,6 +39,7 @@ const en = {
   'contact.footer': 'Secure hotel maintenance operations',
 
   // Navigation
+  'nav.pricing': 'Pricing',
   'nav.dashboard': 'Dashboard',
   'nav.jobs': 'Jobs',
   'nav.myJobs': 'My Jobs',
@@ -841,6 +842,7 @@ const th: Record<DictKey, string> = {
   'contact.notice': 'StayMaint ไม่มีการเผยแพร่อีเมลหรือหมายเลขโทรศัพท์สาธารณะในแอปพลิเคชันนี้ โปรดอย่าเปิดเผยรหัสผ่านหรือข้อมูลสำคัญของโรงแรมนอกบริการที่ปลอดภัย',
   'contact.footer': 'ระบบงานซ่อมบำรุงโรงแรมที่ปลอดภัย',
 
+  'nav.pricing': 'ราคา',
   'nav.dashboard': 'แดชบอร์ด',
   'nav.jobs': 'งานทั้งหมด',
   'nav.myJobs': 'งานของฉัน',

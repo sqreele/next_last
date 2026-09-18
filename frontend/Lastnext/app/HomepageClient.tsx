@@ -25,6 +25,7 @@ import {
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import { relatedMarketingLinks } from "@/app/lib/marketing-pages";
 import { Logo } from "@/app/components/branding/Logo";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 const features = [
   {
@@ -80,6 +81,7 @@ const benefits = [
 ];
 
 export default function HomepageClient() {
+  const t = useT();
   const { isAuthenticated, user } = useSessionGuard({
     requireAuth: false,
     showToast: false,
@@ -98,6 +100,9 @@ export default function HomepageClient() {
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/pricing/">{t("nav.pricing")}</Link>
+            </Button>
             {isAuthenticated ? (
               <>
                 <span className="hidden text-sm text-slate-600 sm:block">
@@ -376,7 +381,7 @@ export default function HomepageClient() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/auth/register" className="hover:text-white">
+                  <Link href="/pricing/" className="hover:text-white">
                     Pricing
                   </Link>
                 </li>

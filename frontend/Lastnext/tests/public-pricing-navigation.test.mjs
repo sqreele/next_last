@@ -40,11 +40,13 @@ test('English and Thai pricing labels use the existing dictionary architecture',
   assert.match(marketing, /getDictionary\(page\.locale\)\["nav\.pricing"\]/);
 });
 
-test('homepage footer Pricing link uses the canonical route', () => {
+test('homepage Product footer uses localized Pricing and preserves existing links', () => {
   assert.match(
     homepage,
-    /<Link href="\/pricing\/" className="hover:text-white">\s*Pricing\s*<\/Link>/,
+    /<Link href="\/pricing\/" className="hover:text-white">\s*\{t\("nav\.pricing"\)\}\s*<\/Link>/,
   );
+  assert.match(homepage, /<Link href="#features" className="hover:text-white">\s*Features\s*<\/Link>/);
+  assert.match(homepage, /<Link href="#demo" className="hover:text-white">\s*Demo\s*<\/Link>/);
 });
 
 test('existing public Home, Contact, Sign in, and Register routes remain present', () => {

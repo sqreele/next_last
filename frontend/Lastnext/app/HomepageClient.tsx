@@ -382,7 +382,7 @@ export default function HomepageClient() {
                 </li>
                 <li>
                   <Link href="/pricing/" className="hover:text-white">
-                    Pricing
+                    {t("nav.pricing")}
                   </Link>
                 </li>
                 <li>

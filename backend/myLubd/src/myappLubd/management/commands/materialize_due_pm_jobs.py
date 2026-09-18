@@ -23,6 +23,7 @@ from django.utils import timezone
 from myappLubd.models import Job, PreventiveMaintenance
 from myappLubd.job_property import resolve_job_property
 from myappLubd.push import send_push_to_user
+from myappLubd.tenancy import enforce_subscription_limit, lock_tenants_for_membership_change
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +151,11 @@ class Command(BaseCommand):
                     if locked_pm.job_id is not None:
                         skipped += 1
                         continue
+
+                    locked_tenant = lock_tenants_for_membership_change(
+                        resolved_property.tenant,
+                    )[resolved_property.tenant_id]
+                    enforce_subscription_limit(locked_tenant, 'max_monthly_work_orders')
 
                     job = Job.objects.create(
                         user=owner,

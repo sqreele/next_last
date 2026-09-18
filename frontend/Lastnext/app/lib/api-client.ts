@@ -315,8 +315,21 @@ export const handleApiError = (error: unknown): ApiError => {
 
     if (errorData) {
         if (typeof errorData === 'object' && errorData !== null) {
-            if (typeof errorData.detail === 'string') {
-                message = errorData.detail;
+            const detailPayload = (errorData as any).detail;
+            if (typeof detailPayload === 'string') {
+                message = detailPayload;
+            } else if (
+                errorData.code === 'subscription_limit_reached'
+                || (typeof detailPayload === 'object' && detailPayload?.code === 'subscription_limit_reached')
+            ) {
+                const limitKey = String(errorData.limit || detailPayload?.limit || 'usage');
+                const labels: Record<string, string> = {
+                    max_monthly_work_orders: 'monthly work-order',
+                    max_pm_schedules: 'PM schedule',
+                    max_assets: 'asset',
+                    max_storage_mb: 'storage',
+                };
+                message = `Your plan's ${labels[limitKey] || 'usage'} limit has been reached.`;
             }
             details = { ...errorData };
             

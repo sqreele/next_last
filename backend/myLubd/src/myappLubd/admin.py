@@ -5,6 +5,7 @@ from django.utils.html import format_html, format_html_join
 from django.utils import timezone
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 User = get_user_model()
 
@@ -5567,6 +5568,35 @@ CompletedDateMonthFilter = create_month_filter('completed_date', 'Completed Mont
 @admin.register(WorkspaceReport)
 class WorkspaceReportAdmin(admin.ModelAdmin):
     """Admin interface for managing Workspace Reports with PDF export functionality"""
+
+    def save_model(self, request, obj, form, change):
+        """Apply the tenant storage quota before Django writes report media."""
+        tenant = getattr(getattr(obj, 'property', None), 'tenant', None)
+        incoming_bytes = 0
+        old_obj = type(obj).objects.filter(pk=obj.pk).first() if obj.pk else None
+        for field_name in (f'image_{index}' for index in range(1, 16)):
+            new_file = getattr(obj, field_name, None)
+            old_file = getattr(old_obj, field_name, None) if old_obj else None
+            if not new_file:
+                continue
+            changed = old_file is None or new_file.name != old_file.name or not getattr(new_file, '_committed', True)
+            if changed:
+                try:
+                    incoming_bytes += int(new_file.size or 0)
+                    if old_file:
+                        incoming_bytes -= int(old_file.size or 0)
+                except (OSError, ValueError):
+                    continue
+        if tenant is not None and incoming_bytes > 0:
+            from .tenancy import enforce_storage_limit, lock_tenants_for_membership_change
+
+            with transaction.atomic():
+                locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+                enforce_storage_limit(locked_tenant, incoming_bytes)
+                super().save_model(request, obj, form, change)
+            return
+        super().save_model(request, obj, form, change)
+
     list_per_page = 25
     list_display = [
         'report_id',

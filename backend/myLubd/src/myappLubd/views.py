@@ -70,6 +70,7 @@ from .tenancy import (
     SubscriptionUserLimitReached,
     accessible_property_ids,
     enforce_subscription_limit,
+    enforce_storage_limit,
     enforce_tenant_user_limit,
     ensure_tenant_for_property,
     ensure_tenant_for_user,
@@ -84,6 +85,7 @@ from .tenancy import (
     TENANT_OPERATOR_ROLES,
     TENANT_WIDE_PROPERTY_ROLES,
     tenant_usage_counts,
+    tenant_limit_snapshot,
     user_can_consume_inventory,
     user_can_manage_inventory_stock,
     user_can_manage_pm_master,
@@ -2062,13 +2064,24 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """Add the current user as the updater when updating a record, logging machine associations"""
         self._log_machine_id_state(action="update_start")
-        require_subscription_write(
-            self.request,
-            serializer._validated_property.tenant,
-            operation='update',
-            resource_type='preventive_maintenance',
-        )
-        instance = serializer.save(updated_by=self.request.user)
+        tenant = serializer._validated_property.tenant
+        incoming_files = [
+            item for field in ('before_image', 'after_image')
+            for item in self.request.FILES.getlist(field)
+        ]
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+            enforce_storage_limit(
+                locked_tenant,
+                sum(int(getattr(item, 'size', 0) or 0) for item in incoming_files),
+            )
+            require_subscription_write(
+                self.request,
+                locked_tenant,
+                operation='update',
+                resource_type='preventive_maintenance',
+            )
+            instance = serializer.save(updated_by=self.request.user)
         self._log_machine_id_state(action="update_complete", instance=instance)
         return instance
 
@@ -2231,13 +2244,17 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             # A target outside the caller's scope is already rejected by the
             # serializer; this handles malformed/superuser-free edge paths.
             raise PermissionDenied('Your role cannot modify PM master plans')
-        require_subscription_write(
-            request,
-            resolve_tenant_from_target(target_property),
-            operation='create',
-            resource_type='pm_master_plan',
-        )
-        plan = serializer.save(created_by=request.user)
+        target_tenant = resolve_tenant_from_target(target_property)
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(target_tenant)[target_tenant.pk]
+            enforce_subscription_limit(locked_tenant, 'max_pm_schedules')
+            require_subscription_write(
+                request,
+                locked_tenant,
+                operation='create',
+                resource_type='pm_master_plan',
+            )
+            plan = serializer.save(created_by=request.user)
         return Response(PMMasterPlanSerializer(plan, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     @action(
@@ -2679,6 +2696,14 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                     pk=scoped_instance.pk,
                 )
                 self.check_object_permissions(request, instance)
+                tenant = resolve_tenant_from_target(instance)
+                locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+                require_subscription_write(
+                    request,
+                    locked_tenant,
+                    operation='complete',
+                    resource_type='preventive_maintenance',
+                )
                 if instance.status == 'completed' or instance.completed_date:
                     raise ValidationError({'detail': 'This maintenance task is already completed.'})
                 if instance.status == 'cancelled':
@@ -2705,6 +2730,11 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                         checksum=prepared_after_image['checksum'],
                     ).exists():
                         raise ValidationError({'after_image': 'Duplicate images are not allowed.'})
+
+                    enforce_storage_limit(
+                        locked_tenant,
+                        len(prepared_after_image['payload']),
+                    )
 
                 for raw_item in checklist_updates:
                     item_text = (raw_item.get('item') or raw_item.get('title') or '').strip()
@@ -3181,17 +3211,43 @@ class MachineViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
-        _ensure_user_can_operate_property(
-            self.request.user, serializer.validated_data.get('property')
-        )
-        serializer.save()
+        property_obj = serializer.validated_data.get('property')
+        _ensure_user_can_operate_property(self.request.user, property_obj)
+        incoming = serializer.validated_data.get('image')
+        incoming_bytes = int(getattr(incoming, 'size', 0) or 0)
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(property_obj.tenant)[property_obj.tenant_id]
+            enforce_subscription_limit(locked_tenant, 'max_assets')
+            enforce_storage_limit(locked_tenant, incoming_bytes)
+            require_subscription_write(
+                self.request,
+                locked_tenant,
+                operation='create',
+                resource_type='machine',
+            )
+            serializer.save()
 
     def perform_update(self, serializer):
         instance = self.get_object()
         _ensure_user_can_operate_property(self.request.user, instance.property)
         target_property = serializer.validated_data.get('property', instance.property)
         _ensure_user_can_operate_property(self.request.user, target_property)
-        serializer.save()
+        incoming = serializer.validated_data.get('image')
+        old_size = int(instance.image.size or 0) if instance.image else 0
+        incoming_size = int(getattr(incoming, 'size', 0) or 0) if incoming else old_size
+        if target_property.tenant_id != instance.property.tenant_id and not incoming:
+            incoming_size = old_size
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(target_property.tenant)[target_property.tenant_id]
+            storage_delta = incoming_size if target_property.tenant_id != instance.property.tenant_id else max(0, incoming_size - old_size)
+            enforce_storage_limit(locked_tenant, storage_delta)
+            require_subscription_write(
+                self.request,
+                locked_tenant,
+                operation='update',
+                resource_type='machine',
+            )
+            serializer.save()
 
     def perform_destroy(self, instance):
         _ensure_user_can_operate_property(self.request.user, instance.property)
@@ -4609,13 +4665,20 @@ class JobViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             self._validate_operable_scope(serializer)
-            require_subscription_write(
-                self.request,
-                serializer.validated_data['_resolved_property'].tenant,
-                operation='create',
-                resource_type='job',
-            )
-            serializer.save(user=self.request.user, updated_by=self.request.user)
+            tenant = serializer.validated_data['_resolved_property'].tenant
+            incoming_files = self.request.FILES.getlist('images')
+            incoming_bytes = sum(int(getattr(item, 'size', 0) or 0) for item in incoming_files)
+            with transaction.atomic():
+                locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
+                enforce_subscription_limit(locked_tenant, 'max_monthly_work_orders')
+                enforce_storage_limit(locked_tenant, incoming_bytes)
+                require_subscription_write(
+                    self.request,
+                    locked_tenant,
+                    operation='create',
+                    resource_type='job',
+                )
+                serializer.save(user=self.request.user, updated_by=self.request.user)
         else:
             serializer.save()
 
@@ -4972,7 +5035,9 @@ class TenantViewSet(viewsets.ModelViewSet):
     )
     def usage(self, request, pk=None):
         tenant = get_object_or_404(get_billing_tenants(request.user), pk=pk)
-        return Response(tenant_usage_counts(tenant))
+        counts = tenant_usage_counts(tenant)
+        snapshot = tenant_limit_snapshot(tenant, usage_counts=counts)
+        return Response({**counts, **snapshot})
 
     @action(
         detail=False,
@@ -5158,6 +5223,7 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
             subscription = None
 
         can_manage_billing = True
+        snapshot = tenant_limit_snapshot(tenant)
 
         return Response({
             'tenant_id': tenant.tenant_id,
@@ -5197,6 +5263,7 @@ class TenantSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
                 subscription and subscription.cancel_at_period_end
             ),
             'enforcement_mode': get_subscription_enforcement_mode(),
+            **snapshot,
         })
 
 class UsageMetricViewSet(viewsets.ReadOnlyModelViewSet):
@@ -6006,11 +6073,17 @@ class PreventiveMaintenanceImageUploadView(APIView):
         try:
             with transaction.atomic():
                 pm = self._lock_scoped_pm(request, pm_id, property_id)
+                tenant = resolve_tenant_from_target(pm)
+                locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
                 require_subscription_write(
                     request,
-                    resolve_tenant_from_target(pm),
+                    locked_tenant,
                     operation='image_upload',
                     resource_type='preventive_maintenance_image',
+                )
+                enforce_storage_limit(
+                    locked_tenant,
+                    sum(len(item['payload']) for item in prepared),
                 )
                 existing_count = (
                     pm.images.count()
@@ -7270,13 +7343,18 @@ class InventoryViewSet(viewsets.ModelViewSet):
         property_obj = serializer.validated_data.get('property')
         if not user_can_manage_inventory_stock(self.request.user, property_obj):
             raise PermissionDenied('Your role cannot manage inventory stock for this property.')
-        require_subscription_write(
-            self.request,
-            serializer.validated_data['property'].tenant,
-            operation='create',
-            resource_type='inventory',
-        )
-        serializer.save(created_by=self.request.user)
+        incoming = serializer.validated_data.get('image')
+        incoming_bytes = int(getattr(incoming, 'size', 0) or 0)
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(property_obj.tenant)[property_obj.tenant_id]
+            enforce_storage_limit(locked_tenant, incoming_bytes)
+            require_subscription_write(
+                self.request,
+                locked_tenant,
+                operation='create',
+                resource_type='inventory',
+            )
+            serializer.save(created_by=self.request.user)
 
     def perform_update(self, serializer):
         instance = self.get_object()
@@ -7287,13 +7365,22 @@ class InventoryViewSet(viewsets.ModelViewSet):
             self.request.user, target_property
         ):
             raise PermissionDenied('Your role cannot adjust inventory stock for this property.')
-        require_subscription_write(
-            self.request,
-            target_property.tenant,
-            operation='update',
-            resource_type='inventory',
-        )
-        serializer.save()
+        incoming = serializer.validated_data.get('image')
+        old_size = int(instance.image.size or 0) if instance.image else 0
+        incoming_size = int(getattr(incoming, 'size', 0) or 0) if incoming else old_size
+        if target_property.tenant_id != instance.property.tenant_id and not incoming:
+            incoming_size = old_size
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(target_property.tenant)[target_property.tenant_id]
+            storage_delta = incoming_size if target_property.tenant_id != instance.property.tenant_id else max(0, incoming_size - old_size)
+            enforce_storage_limit(locked_tenant, storage_delta)
+            require_subscription_write(
+                self.request,
+                locked_tenant,
+                operation='update',
+                resource_type='inventory',
+            )
+            serializer.save()
 
     def perform_destroy(self, instance):
         if not user_can_manage_inventory_stock(self.request.user, instance.property):
@@ -8109,6 +8196,8 @@ def public_job_request(request, property_id, room_id):
     # Job post_save receiver registers LINE work with transaction.on_commit,
     # so it will render the room only after this relationship is durable.
     with transaction.atomic():
+        locked_tenant = lock_tenants_for_membership_change(property_obj.tenant)[property_obj.tenant_id]
+        enforce_subscription_limit(locked_tenant, 'max_monthly_work_orders')
         job = Job.objects.create(
             user=assignee,
             updated_by=assignee,

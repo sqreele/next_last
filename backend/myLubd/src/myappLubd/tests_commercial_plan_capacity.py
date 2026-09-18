@@ -65,6 +65,24 @@ class CommercialPlanCapacityTests(TestCase):
             },
         )
 
+    def test_quantitative_usage_limits_remain_canonical(self):
+        self.assertEqual(
+            {
+                code: (
+                    plan.max_monthly_work_orders,
+                    plan.max_pm_schedules,
+                    plan.max_assets,
+                    plan.max_storage_mb,
+                )
+                for code, plan in self.plans.items()
+            },
+            {
+                'starter': (500, 100, 250, 10240),
+                'pro': (500, 100, 250, 10240),
+                'enterprise': (500, 100, 250, 10240),
+            },
+        )
+
     def test_starter_and_pro_second_property_are_blocked(self):
         for code in ('starter', 'pro'):
             with self.subTest(plan=code):

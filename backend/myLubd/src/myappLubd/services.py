@@ -73,6 +73,16 @@ class JobService:
                     area=area,
                     rooms=[room],
                 )
+
+                from .tenancy import enforce_storage_limit, enforce_subscription_limit, lock_tenants_for_membership_change
+                locked_tenant = lock_tenants_for_membership_change(
+                    resolved_property.tenant,
+                )[resolved_property.tenant_id]
+                enforce_subscription_limit(locked_tenant, 'max_monthly_work_orders')
+                enforce_storage_limit(
+                    locked_tenant,
+                    sum(int(getattr(image, 'size', 0) or 0) for image in images),
+                )
                 
                 # Create job
                 job = Job.objects.create(
@@ -447,8 +457,22 @@ class MachineService:
             if property_id:
                 property_obj = PropertyService.get_property_by_id(property_id, user)
                 machine_data['property'] = property_obj
-            
-            machine = Machine.objects.create(**machine_data)
+
+            from .tenancy import (
+                enforce_storage_limit,
+                enforce_subscription_limit,
+                lock_tenants_for_membership_change,
+            )
+            with transaction.atomic():
+                locked_tenant = lock_tenants_for_membership_change(
+                    machine_data['property'].tenant,
+                )[machine_data['property'].tenant_id]
+                enforce_subscription_limit(locked_tenant, 'max_assets')
+                enforce_storage_limit(
+                    locked_tenant,
+                    int(getattr(machine_data.get('image'), 'size', 0) or 0),
+                )
+                machine = Machine.objects.create(**machine_data)
             
             # Invalidate cache
             cache_invalidation.invalidate_property_related_cache(property_id)

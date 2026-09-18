@@ -1,6 +1,8 @@
 """Tenant and billing helpers for SaaS-scoped access control."""
 
 from dataclasses import dataclass
+from datetime import timezone as datetime_timezone
+from zoneinfo import ZoneInfo
 
 from django.core.exceptions import PermissionDenied
 from django.db import models, transaction
@@ -12,6 +14,9 @@ from rest_framework.exceptions import APIException, ValidationError
 from .models import (
     Job,
     Machine,
+    Inventory,
+    JobImage,
+    PMMasterPlan,
     PreventiveMaintenance,
     Property,
     SubscriptionPlan,
@@ -69,6 +74,23 @@ class SubscriptionUserLimitReached(APIException):
             'code': self.default_code,
             'detail': message,
             'limit': int(capacity.limit),
+        }
+
+
+class SubscriptionLimitReached(APIException):
+    """Stable API error for quantitative commercial usage limits."""
+
+    status_code = status.HTTP_409_CONFLICT
+    default_code = 'subscription_limit_reached'
+
+    def __init__(self, limit_key, current, limit, detail=None):
+        super().__init__(detail=detail or f'Subscription limit reached for {limit_key}.', code=self.default_code)
+        self.detail = {
+            'code': self.default_code,
+            'limit': limit_key,
+            'current': current,
+            'limit_value': limit,
+            'detail': detail or f'Subscription limit reached for {limit_key}.',
         }
 
 
@@ -422,21 +444,155 @@ def ensure_tenant_for_property(property_obj, user=None):
     return locked_tenant
 
 
-def tenant_usage_counts(tenant):
-    start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+def _tenant_month_bounds(tenant, at=None):
+    """Return the current tenant-local month as UTC-aware bounds."""
+    at = at or timezone.now()
+    tzinfo = ZoneInfo(str(getattr(tenant, 'timezone', '') or 'UTC'))
+    local_at = timezone.localtime(at, tzinfo)
+    start_local = local_at.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if start_local.month == 12:
+        next_local = start_local.replace(year=start_local.year + 1, month=1)
+    else:
+        next_local = start_local.replace(month=start_local.month + 1)
+    return start_local.astimezone(datetime_timezone.utc), next_local.astimezone(datetime_timezone.utc)
+
+
+def get_monthly_job_usage(tenant, at=None):
+    start, end = _tenant_month_bounds(tenant, at=at)
+    return Job.objects.filter(
+        property__tenant=tenant,
+        created_at__gte=start,
+        created_at__lt=end,
+    ).count()
+
+
+def get_pm_schedule_usage(tenant):
+    """Count recurring/master PM schedules, not generated occurrences."""
+    return PMMasterPlan.objects.filter(
+        machines__property__tenant=tenant,
+    ).distinct().count()
+
+
+def get_asset_usage(tenant):
+    return Machine.objects.filter(property__tenant=tenant).count()
+
+
+def _tenant_file_records(tenant):
+    """Yield (field file, tenant) for every tenant-owned media family."""
+    for image in JobImage.objects.filter(job__property__tenant=tenant).select_related('job__property__tenant'):
+        if image.image:
+            yield image.image
+
+    pm_qs = PreventiveMaintenance.objects.filter(
+        Q(job__property__tenant=tenant) | Q(machines__property__tenant=tenant),
+    ).distinct().prefetch_related('machines__property')
+    for pm in pm_qs:
+        if pm.before_image:
+            yield pm.before_image
+        if pm.after_image:
+            yield pm.after_image
+        for image in pm.images.all():
+            if image.image:
+                yield image.image
+
+    for machine in Machine.objects.filter(property__tenant=tenant):
+        if machine.image:
+            yield machine.image
+
+    for item in Inventory.objects.filter(property__tenant=tenant):
+        if item.image:
+            yield item.image
+
+    # Workspace reports are property-linked tenant media. They are currently
+    # admin-oriented, but must remain part of authoritative accounting.
+    from .models import WorkspaceReport
+    report_fields = [f'image_{index}' for index in range(1, 16)]
+    for report in WorkspaceReport.objects.filter(property__tenant=tenant):
+        for field_name in report_fields:
+            field_file = getattr(report, field_name, None)
+            if field_file:
+                yield field_file
+
+
+def get_tenant_storage_usage_bytes(tenant):
+    total = 0
+    for field_file in _tenant_file_records(tenant):
+        try:
+            total += int(field_file.size or 0)
+        except (OSError, ValueError):
+            # A missing external object contributes no stored bytes; the DB
+            # record remains visible and can be repaired independently.
+            continue
+    return total
+
+
+def enforce_storage_limit(tenant, additional_bytes):
+    if tenant is None or not additional_bytes:
+        return
+    try:
+        subscription = tenant.subscription
+    except TenantSubscription.DoesNotExist:
+        # Legacy/unprovisioned tenants are handled by the existing lifecycle
+        # gate; quantitative limits apply once a commercial subscription row
+        # exists, preserving read/write compatibility for bootstrap flows.
+        return
+    from .entitlements import get_tenant_entitlement
+
+    if not get_tenant_entitlement(tenant).can_write:
+        raise PermissionDenied("This tenant's subscription is not active.")
+    limit_mb = subscription.plan.max_storage_mb
+    if limit_mb is None:
+        return
+    current = get_tenant_storage_usage_bytes(tenant)
+    limit_bytes = int(limit_mb) * 1024 * 1024
+    if current + int(additional_bytes) > limit_bytes:
+        raise SubscriptionLimitReached(
+            'max_storage_mb',
+            current,
+            limit_mb,
+            detail=f'Subscription storage limit reached: {current + int(additional_bytes)} bytes exceeds {limit_mb} MB.',
+        )
+
+
+def tenant_usage_counts(tenant, at=None):
+    storage_bytes = get_tenant_storage_usage_bytes(tenant)
     properties = Property.objects.filter(tenant=tenant)
     return {
         'max_properties': properties.count(),
         'max_users': TenantMembership.objects.filter(tenant=tenant, is_active=True).count(),
-        'max_monthly_work_orders': Job.objects.filter(
-            property__tenant=tenant,
-            created_at__gte=start,
-        ).distinct().count(),
-        'max_assets': Machine.objects.filter(property__tenant=tenant).count(),
-        'max_pm_schedules': PreventiveMaintenance.objects.filter(
-            Q(job__property__tenant=tenant) | Q(machines__property__tenant=tenant)
-        ).distinct().count(),
+        'max_monthly_work_orders': get_monthly_job_usage(tenant, at=at),
+        'max_assets': get_asset_usage(tenant),
+        'max_pm_schedules': get_pm_schedule_usage(tenant),
+        'max_storage_mb': round(storage_bytes / (1024 * 1024), 2),
+        'storage_bytes': storage_bytes,
     }
+
+
+def tenant_limit_snapshot(tenant, at=None, usage_counts=None):
+    """Return provider-safe quantitative limits, usage, and remaining values."""
+    try:
+        subscription = tenant.subscription
+    except TenantSubscription.DoesNotExist:
+        subscription = None
+    plan = getattr(subscription, 'plan', None)
+    usage_counts = usage_counts or tenant_usage_counts(tenant, at=at)
+    usage = {
+        'monthly_work_orders': usage_counts['max_monthly_work_orders'],
+        'pm_schedules': usage_counts['max_pm_schedules'],
+        'assets': usage_counts['max_assets'],
+        'storage_mb': usage_counts['max_storage_mb'],
+    }
+    limits = {
+        'monthly_work_orders': getattr(plan, 'max_monthly_work_orders', None),
+        'pm_schedules': getattr(plan, 'max_pm_schedules', None),
+        'assets': getattr(plan, 'max_assets', None),
+        'storage_mb': getattr(plan, 'max_storage_mb', None),
+    }
+    remaining = {
+        key: None if value is None else max(value - usage[key], 0)
+        for key, value in limits.items()
+    }
+    return {'limits': limits, 'usage': usage, 'remaining': remaining}
 
 
 def get_tenant_user_capacity(tenant, increment=1):
@@ -507,6 +663,8 @@ def enforce_subscription_limit(tenant, limit_key, increment=1):
     try:
         subscription = tenant.subscription
     except TenantSubscription.DoesNotExist:
+        if limit_key in {'max_monthly_work_orders', 'max_pm_schedules', 'max_assets', 'max_storage_mb'}:
+            return
         # Runtime authorization must never provision paid authority. Tenant
         # bootstrap paths explicitly create their subscription instead.
         raise PermissionDenied("This tenant does not have a subscription.")
@@ -516,9 +674,23 @@ def enforce_subscription_limit(tenant, limit_key, increment=1):
     if not get_tenant_entitlement(tenant).can_write:
         raise PermissionDenied("This tenant's subscription is not active.")
 
-    usage = tenant_usage_counts(tenant)
-    current = usage.get(limit_key, 0)
+    if limit_key == 'max_storage_mb':
+        return enforce_storage_limit(tenant, increment)
+    usage_helpers = {
+        'max_properties': lambda: Property.objects.filter(tenant=tenant).count(),
+        'max_monthly_work_orders': lambda: get_monthly_job_usage(tenant),
+        'max_pm_schedules': lambda: get_pm_schedule_usage(tenant),
+        'max_assets': lambda: get_asset_usage(tenant),
+    }
+    current = usage_helpers.get(limit_key, lambda: tenant_usage_counts(tenant).get(limit_key, 0))()
     allowed, limit = subscription.check_limit(limit_key, current, increment=increment)
+    if not allowed and limit_key in {'max_monthly_work_orders', 'max_pm_schedules', 'max_assets'}:
+        raise SubscriptionLimitReached(
+            limit_key,
+            current,
+            limit,
+            detail=f'Subscription limit reached for {limit_key}: {current}/{limit}.',
+        )
     if not allowed:
         raise ValidationError({
             'billing_limit': f"Subscription limit reached for {limit_key}: {current}/{limit}.",

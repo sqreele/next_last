@@ -4,6 +4,8 @@ from io import BytesIO
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
+from datetime import timedelta
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -37,14 +39,19 @@ class PropertyBulkImportTests(TestCase):
         plan = SubscriptionPlan.objects.create(
             code='import-test', name='Import Test', max_properties=10,
         )
-        TenantSubscription.objects.create(tenant=self.tenant, plan=plan, status='active')
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=plan,
+            status='active',
+            current_period_end=timezone.localdate() + timedelta(days=30),
+        )
 
     def _post(self, payload, **extra):
-        return self.client.post('/api/v1/properties/bulk-import/', payload, **extra)
+        return self.client.post('/api/v1/properties/bulk-import/', payload, secure=True, **extra)
 
     def test_template_returns_csv_header(self):
         self.client.force_authenticate(user=self.staff)
-        resp = self.client.get('/api/v1/properties/import-template/')
+        resp = self.client.get('/api/v1/properties/import-template/', secure=True)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         body = resp.content.decode('utf-8')
         header = body.split('\n', 1)[0]
@@ -111,7 +118,7 @@ class PropertyExportTests(TestCase):
 
     def test_regular_user_only_sees_their_properties(self):
         self.client.force_authenticate(user=self.alice)
-        resp = self.client.get('/api/v1/properties/export/')
+        resp = self.client.get('/api/v1/properties/export/', secure=True)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         body = resp.content.decode('utf-8')
         # Header + one data row for Alice's property; Bob's must NOT appear.
@@ -122,7 +129,7 @@ class PropertyExportTests(TestCase):
 
     def test_staff_admin_membership_sees_tenant_properties(self):
         self.client.force_authenticate(user=self.staff)
-        resp = self.client.get('/api/v1/properties/export/')
+        resp = self.client.get('/api/v1/properties/export/', secure=True)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         body = resp.content.decode('utf-8')
         self.assertIn('Hotel Alice', body)
@@ -130,7 +137,7 @@ class PropertyExportTests(TestCase):
 
     def test_export_header_matches_import_schema(self):
         self.client.force_authenticate(user=self.staff)
-        resp = self.client.get('/api/v1/properties/export/')
+        resp = self.client.get('/api/v1/properties/export/', secure=True)
         header = resp.content.decode('utf-8').split('\n', 1)[0]
         # The first three columns must match what bulk_import accepts so a
         # round-trip is trivial (room_count/user_count/created_at are extra
@@ -139,5 +146,5 @@ class PropertyExportTests(TestCase):
             self.assertIn(field, header)
 
     def test_unauthenticated_request_is_rejected(self):
-        resp = self.client.get('/api/v1/properties/export/')
+        resp = self.client.get('/api/v1/properties/export/', secure=True)
         self.assertIn(resp.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))

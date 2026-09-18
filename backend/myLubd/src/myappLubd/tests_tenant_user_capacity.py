@@ -41,13 +41,13 @@ class TenantUserCapacityTests(TestCase):
     def setUp(self):
         self.plans = {
             'starter': SubscriptionPlan.objects.update_or_create(
-                code='starter', defaults={'max_users': 3},
+                code='starter', defaults={'max_users': 4},
             ),
             'pro': SubscriptionPlan.objects.update_or_create(
-                code='pro', defaults={'max_users': 5},
+                code='pro', defaults={'max_users': 10},
             ),
             'enterprise': SubscriptionPlan.objects.update_or_create(
-                code='enterprise', defaults={'max_users': 20},
+                code='enterprise', defaults={'max_users': 50},
             ),
         }
         self.plans = {code: plan for code, (plan, _) in self.plans.items()}
@@ -73,14 +73,14 @@ class TenantUserCapacityTests(TestCase):
 
     def test_commercial_plan_capacity_boundaries(self):
         cases = (
-            ('starter', 0, True, 3),
-            ('starter', 2, True, 1),
-            ('starter', 3, False, 0),
+            ('starter', 0, True, 4),
+            ('starter', 3, True, 1),
             ('starter', 4, False, 0),
-            ('pro', 4, True, 1),
-            ('pro', 5, False, 0),
-            ('enterprise', 19, True, 1),
-            ('enterprise', 20, False, 0),
+            ('starter', 5, False, 0),
+            ('pro', 9, True, 1),
+            ('pro', 10, False, 0),
+            ('enterprise', 49, True, 1),
+            ('enterprise', 50, False, 0),
         )
         for code, count, expected, remaining in cases:
             with self.subTest(plan=code, count=count):
@@ -150,7 +150,7 @@ class TenantUserCapacityTests(TestCase):
         self.assertFalse(capacity.can_add)
 
     def test_exact_tenant_isolation(self):
-        full = self.make_tenant('starter', active_count=3)
+        full = self.make_tenant('starter', active_count=4)
         available = self.make_tenant('starter', active_count=2)
 
         self.assertFalse(get_tenant_user_capacity(full).can_add)
@@ -163,7 +163,7 @@ class TenantMembershipCapacityApiTests(TestCase):
         self.client = APIClient()
         self.owner = User.objects.create_user(username='capacity-owner')
         self.plan, _ = SubscriptionPlan.objects.update_or_create(
-            code='starter', defaults={'max_users': 3},
+            code='starter', defaults={'max_users': 4},
         )
         self.sequence = 0
 
@@ -204,7 +204,7 @@ class TenantMembershipCapacityApiTests(TestCase):
     def test_direct_post_below_limit_succeeds_and_at_limit_fails(self):
         self.client.force_authenticate(self.owner)
         available, _, _ = self.make_tenant('Available', active_others=1)
-        full, _, _ = self.make_tenant('Full', active_others=2)
+        full, _, _ = self.make_tenant('Full', active_others=3)
         allowed_user = User.objects.create_user(username='allowed-post-user')
         blocked_user = User.objects.create_user(username='blocked-post-user')
 
@@ -215,8 +215,8 @@ class TenantMembershipCapacityApiTests(TestCase):
         self.assertEqual(blocked.status_code, status.HTTP_409_CONFLICT, blocked.data)
         self.assertEqual(blocked.data, {
             'code': 'subscription_user_limit_reached',
-            'detail': 'Your current plan allows up to 3 users.',
-            'limit': 3,
+            'detail': 'Your current plan allows up to 4 users.',
+            'limit': 4,
         })
         self.assertIsInstance(blocked.data['limit'], int)
 
@@ -225,7 +225,7 @@ class TenantMembershipCapacityApiTests(TestCase):
             username='capacity-platform-user', password='test-password',
         )
         self.client.force_authenticate(platform_user)
-        full, _, _ = self.make_tenant('Superuser full', active_others=2)
+        full, _, _ = self.make_tenant('Superuser full', active_others=3)
         incoming = User.objects.create_user(username='superuser-blocked-user')
 
         response = self.post_membership(full, incoming)
@@ -240,7 +240,7 @@ class TenantMembershipCapacityApiTests(TestCase):
             username='property-capacity-platform', password='test-password',
         )
         self.client.force_authenticate(platform_user)
-        full, _, _ = self.make_tenant('Property membership full', active_others=2)
+        full, _, _ = self.make_tenant('Property membership full', active_others=3)
 
         response = self.client.post('/api/v1/properties/', {
             'name': 'Must not be created',
@@ -258,7 +258,7 @@ class TenantMembershipCapacityApiTests(TestCase):
             username='bulk-capacity-platform', password='test-password',
         )
         self.client.force_authenticate(platform_user)
-        full, _, _ = self.make_tenant('Bulk membership full', active_others=2)
+        full, _, _ = self.make_tenant('Bulk membership full', active_others=3)
         full.owner = platform_user
         full.save(update_fields=['owner'])
 
@@ -269,8 +269,8 @@ class TenantMembershipCapacityApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
         self.assertEqual(response.data, {
             'code': 'subscription_user_limit_reached',
-            'detail': 'Your current plan allows up to 3 users.',
-            'limit': 3,
+            'detail': 'Your current plan allows up to 4 users.',
+            'limit': 4,
         })
         self.assertFalse(Property.objects.filter(name='Must not import').exists())
         self.assertFalse(TenantMembership.objects.filter(
@@ -283,7 +283,7 @@ class TenantMembershipCapacityApiTests(TestCase):
             'Reactivation available', active_others=1, inactive_others=1,
         )
         full, _, full_inactive = self.make_tenant(
-            'Reactivation full', active_others=2, inactive_others=1,
+            'Reactivation full', active_others=3, inactive_others=1,
         )
 
         allowed = self.client.patch(
@@ -303,7 +303,7 @@ class TenantMembershipCapacityApiTests(TestCase):
     def test_put_reactivation_at_limit_fails(self):
         self.client.force_authenticate(self.owner)
         full, _, inactive = self.make_tenant(
-            'PUT reactivation full', active_others=2, inactive_others=1,
+            'PUT reactivation full', active_others=3, inactive_others=1,
         )
         membership = inactive[0]
 
@@ -326,7 +326,7 @@ class TenantMembershipCapacityApiTests(TestCase):
     def test_move_into_full_tenant_fails_without_corrupting_source(self):
         self.client.force_authenticate(self.owner)
         source, source_members, _ = self.make_tenant('Move source', active_others=1)
-        destination, _, _ = self.make_tenant('Move destination', active_others=2)
+        destination, _, _ = self.make_tenant('Move destination', active_others=3)
         moving = source_members[0]
 
         response = self.client.patch(

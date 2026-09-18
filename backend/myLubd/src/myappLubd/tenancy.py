@@ -359,7 +359,7 @@ def ensure_default_plan():
             'description': 'For small hotel teams that need a simple and reliable way to manage daily maintenance work.',
             'monthly_price': '15.00',
             'max_properties': 1,
-            'max_users': 3,
+            'max_users': 4,
             'max_monthly_work_orders': 500,
             'max_assets': 250,
             'max_storage_mb': 10240,

@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .entitlements import get_tenant_entitlement
-from .models import BillingWebhookEvent, Tenant, TenantSubscription, UsageMetric
+from .models import BillingWebhookEvent, SubscriptionPlan, Tenant, TenantSubscription, UsageMetric
 from .pagination import StandardResultsSetPagination
 from .platform_authorization import PlatformCapability
 from .platform_permissions import HasPlatformCapability
@@ -54,10 +54,27 @@ def _entitlement(tenant):
     }
 
 
+def _plan_summary(plan):
+    """Project commercial plan data without provider identifiers or secrets."""
+    return {
+        'code': plan.code,
+        'name': plan.name,
+        'monthly_price': str(plan.monthly_price),
+        'billing_interval': plan.billing_interval,
+        'max_properties': plan.max_properties,
+        'max_users': plan.max_users,
+        'max_monthly_work_orders': plan.max_monthly_work_orders,
+        'max_pm_schedules': plan.max_pm_schedules,
+        'max_assets': plan.max_assets,
+        'max_storage_mb': plan.max_storage_mb,
+        'features': plan.features,
+    }
+
+
 def _subscription_summary(subscription, include_reason=True):
     data = {
         'id': subscription.pk,
-        'plan': {'code': subscription.plan.code, 'name': subscription.plan.name},
+        'plan': _plan_summary(subscription.plan),
         'status': subscription.status,
         'current_period_start': subscription.current_period_start,
         'current_period_end': subscription.current_period_end,
@@ -83,7 +100,7 @@ class PlatformTenantsView(PlatformReadView):
     platform_capability = PlatformCapability.TENANTS_READ
 
     def get(self, request):
-        qs = Tenant.objects.select_related('subscription__plan').annotate(
+        qs = Tenant.objects.select_related('subscription__plan').prefetch_related('usage_metrics').annotate(
             property_count=Count('properties', distinct=True),
             active_membership_count=Count(
                 'memberships', filter=Q(memberships__is_active=True), distinct=True,
@@ -105,6 +122,7 @@ class PlatformTenantsView(PlatformReadView):
             subscription = getattr(tenant, 'subscription', None)
             if not subscription:
                 continue
+            usage_metrics = list(tenant.usage_metrics.all())
             summary = _subscription_summary(subscription)
             entitlement_filter = str(request.query_params.get('entitlement', '')).strip()
             if entitlement_filter and summary['entitlement_level'] != entitlement_filter:
@@ -114,6 +132,7 @@ class PlatformTenantsView(PlatformReadView):
                 'timezone': tenant.timezone, 'created_at': tenant.created_at, 'updated_at': tenant.updated_at,
                 'property_count': tenant.property_count, 'active_membership_count': tenant.active_membership_count,
                 'subscription': summary,
+                'latest_usage': _usage_summary(usage_metrics[0]) if usage_metrics else None,
             })
         return paginator.get_paginated_response(results) if page is not None else Response(results)
 
@@ -288,4 +307,9 @@ class PlatformSummaryView(PlatformReadView):
             'provider_mode': _provider_mode(),
             'test_mode_warning_count': TenantSubscription.objects.count() if _provider_mode() == 'test' else 0,
             'attention_subscriptions': attention_subscriptions,
+            'commercial_plans': [
+                _plan_summary(plan) for plan in SubscriptionPlan.objects.filter(
+                    code__in=('starter', 'pro', 'enterprise'), is_active=True,
+                ).order_by('sort_order', 'monthly_price')
+            ],
         })

@@ -14,7 +14,12 @@ User = get_user_model()
 class PlatformDashboardApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.plan = SubscriptionPlan.objects.create(code='platform-api', name='Platform API')
+        self.plan = SubscriptionPlan.objects.create(
+            code='platform-api', name='Platform API', monthly_price='30.00',
+            max_properties=1, max_users=10, max_monthly_work_orders=500,
+            max_pm_schedules=100, max_assets=250, max_storage_mb=10240,
+            features={'preventive_maintenance': True, 'portfolio_dashboard': False},
+        )
         self.tenant = Tenant.objects.create(name='Platform API Tenant', timezone='UTC')
         self.subscription = TenantSubscription.objects.create(
             tenant=self.tenant, plan=self.plan, status='trialing',
@@ -91,3 +96,45 @@ class PlatformDashboardApiTests(TestCase):
         self.assertEqual(membership['role'], 'admin')
         self.assertFalse(membership['property_scope']['all_tenant_properties'])
         self.assertEqual(membership['property_scope']['properties'][0]['name'], 'Platform API Property')
+
+    def test_plan_projection_exposes_safe_limits_features_and_latest_usage(self):
+        response = self.get_as(self.super_admin, '/api/v1/platform/tenants/')
+        row = response.data['results'][0]
+        plan = row['subscription']['plan']
+        self.assertEqual(plan['code'], 'platform-api')
+        self.assertEqual(plan['monthly_price'], '30.00')
+        self.assertEqual(plan['max_users'], 10)
+        self.assertEqual(plan['max_properties'], 1)
+        self.assertEqual(plan['max_monthly_work_orders'], 500)
+        self.assertEqual(plan['max_pm_schedules'], 100)
+        self.assertEqual(plan['max_assets'], 250)
+        self.assertEqual(plan['max_storage_mb'], 10240)
+        self.assertTrue(plan['features']['preventive_maintenance'])
+        self.assertFalse(plan['features']['portfolio_dashboard'])
+        self.assertEqual(row['latest_usage']['active_user_count'], 2)
+        self.assertNotIn('external_customer_id', plan)
+        self.assertNotIn('external_subscription_id', plan)
+
+    def test_summary_returns_canonical_commercial_catalog(self):
+        matrix = {
+            'starter': ('Basic', '15.00', 4, 1),
+            'pro': ('Pro', '30.00', 10, 1),
+            'enterprise': ('Enterprise', '60.00', 50, 5),
+        }
+        for sort_order, (code, (name, price, users, properties)) in enumerate(matrix.items(), 1):
+            SubscriptionPlan.objects.update_or_create(
+                code=code,
+                defaults={
+                    'name': name, 'monthly_price': price, 'max_users': users,
+                    'max_properties': properties, 'max_monthly_work_orders': 500,
+                    'max_pm_schedules': 100, 'max_assets': 250, 'max_storage_mb': 10240,
+                    'sort_order': sort_order, 'features': {'portfolio_dashboard': False},
+                },
+            )
+        response = self.get_as(self.super_admin, '/api/v1/platform/summary/')
+        self.assertEqual(response.status_code, 200)
+        plans = response.data['commercial_plans']
+        self.assertEqual([plan['code'] for plan in plans], ['starter', 'pro', 'enterprise'])
+        self.assertEqual([plan['monthly_price'] for plan in plans], ['15.00', '30.00', '60.00'])
+        self.assertEqual([plan['max_users'] for plan in plans], [4, 10, 50])
+        self.assertEqual([plan['max_properties'] for plan in plans], [1, 1, 5])

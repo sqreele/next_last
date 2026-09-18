@@ -122,3 +122,54 @@ class CommercialPlanCapacityMigrationTests(TransactionTestCase):
         self.assertEqual(Subscription.objects.get(pk=self.subscription.pk).plan_id, self.plan_ids['enterprise'])
         self.assertEqual(Property.objects.count(), self.property_count)
         self.assertTrue(Property.objects.filter(pk=self.property.pk).exists())
+
+
+class PlanFeatureCapabilitiesMigrationTests(TransactionTestCase):
+    migrate_from = ('myappLubd', '0090_update_commercial_plan_capacity')
+    migrate_to = ('myappLubd', '0091_populate_plan_feature_capabilities')
+
+    def setUp(self):
+        super().setUp()
+        executor = MigrationExecutor(connection)
+        executor.migrate([self.migrate_from])
+        old_apps = executor.loader.project_state([self.migrate_from]).apps
+        Plan = old_apps.get_model('myappLubd', 'SubscriptionPlan')
+        Tenant = old_apps.get_model('myappLubd', 'Tenant')
+        Subscription = old_apps.get_model('myappLubd', 'TenantSubscription')
+        self.before = {}
+        for code in ('starter', 'pro', 'enterprise'):
+            plan = Plan.objects.get(code=code)
+            plan.features = {'obsolete': True}
+            plan.save(update_fields=['features'])
+            self.before[code] = (plan.pk, plan.max_users, plan.max_properties)
+        tenant = Tenant.objects.create(name='Feature migration tenant')
+        self.subscription = Subscription.objects.create(
+            tenant=tenant,
+            plan_id=self.before['pro'][0],
+            status='active',
+        )
+        executor = MigrationExecutor(connection)
+        executor.migrate([self.migrate_to])
+        self.apps = executor.loader.project_state([self.migrate_to]).apps
+
+    def tearDown(self):
+        MigrationExecutor(connection).migrate(
+            [MigrationExecutor(connection).loader.graph.leaf_nodes('myappLubd')[0]]
+        )
+        super().tearDown()
+
+    def test_populates_exact_matrix_without_capacity_or_relationship_changes(self):
+        Plan = self.apps.get_model('myappLubd', 'SubscriptionPlan')
+        Subscription = self.apps.get_model('myappLubd', 'TenantSubscription')
+        expected_enabled = {
+            'starter': set(),
+            'pro': {'preventive_maintenance', 'pm_schedules', 'technician_kpi', 'advanced_reports', 'csv_export'},
+            'enterprise': {'preventive_maintenance', 'pm_schedules', 'technician_kpi', 'advanced_reports', 'csv_export', 'multi_property', 'advanced_property_permissions'},
+        }
+        for code, enabled in expected_enabled.items():
+            plan = Plan.objects.get(code=code)
+            self.assertEqual({key for key, value in plan.features.items() if value}, enabled)
+            self.assertFalse(plan.features['portfolio_dashboard'])
+            self.assertEqual((plan.pk, plan.max_users, plan.max_properties), self.before[code])
+        self.assertFalse(Plan.objects.filter(code='basic').exists())
+        self.assertEqual(Subscription.objects.get(pk=self.subscription.pk).plan_id, self.before['pro'][0])

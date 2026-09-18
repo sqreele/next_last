@@ -684,7 +684,7 @@ def enforce_subscription_limit(tenant, limit_key, increment=1):
     }
     current = usage_helpers.get(limit_key, lambda: tenant_usage_counts(tenant).get(limit_key, 0))()
     allowed, limit = subscription.check_limit(limit_key, current, increment=increment)
-    if not allowed and limit_key in {'max_monthly_work_orders', 'max_pm_schedules', 'max_assets'}:
+    if not allowed and limit_key in {'max_properties', 'max_monthly_work_orders', 'max_pm_schedules', 'max_assets'}:
         raise SubscriptionLimitReached(
             limit_key,
             current,

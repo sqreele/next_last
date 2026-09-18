@@ -5,6 +5,7 @@ import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import ActualVsBudgetChart from "./components/ActualVsBudgetChart";
 import BudgetStatusPieChart from "./components/BudgetStatusPieChart";
 import FiltersBar from "./components/FiltersBar";
+import MetricLineChart from "./components/MetricLineChart";
 import SummaryCards from "./components/SummaryCards";
 import UtilityBreakdown from "./components/UtilityBreakdown";
 import UtilityRecordsTable from "./components/UtilityRecordsTable";
@@ -186,6 +187,8 @@ export default function UtilityConsumptionView() {
     if (!primaryYear) return [];
     return buildPrimaryYearSeries(monthFilteredRows, primaryYear);
   }, [monthFilteredRows, primaryYear]);
+  const electricitySeries = primaryYearSeries.map((point) => ({ label: point.label, value: point.totalkwh }));
+  const waterSeries = primaryYearSeries.map((point) => ({ label: point.label, value: point.water }));
 
   const isEmpty = !loading && !error && selectedProperty && rows.length === 0;
 
@@ -273,6 +276,14 @@ export default function UtilityConsumptionView() {
             />
           </div>
 
+          <section aria-labelledby="utility-specific-heading" className="space-y-4">
+            <div><h2 id="utility-specific-heading" className="text-xl font-semibold text-foreground">{t("utility.utilitySpecificConsumption")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("utility.utilitySpecificHint")}</p></div>
+            <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-2">
+              <MetricLineChart data={electricitySeries} title={t("utility.electricityTrend")} subtitle={`${primaryYear ?? "—"} · kWh`} unit="kWh" color="hsl(var(--primary))" />
+              <MetricLineChart data={waterSeries} title={t("utility.waterTrend")} subtitle={`${primaryYear ?? "—"} · m³`} unit="m³" color="hsl(var(--primary))" />
+            </div>
+          </section>
+
           <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-2">
             <UtilityBreakdown summary={summary} />
             <BudgetStatusPieChart
@@ -281,6 +292,7 @@ export default function UtilityConsumptionView() {
             />
           </div>
           <UtilityRecordsTable rows={yearFilteredRows} allRows={rows} />
+          <aside className="rounded-xl border border-dashed border-border bg-muted/30 p-4" aria-label={t("utility.futureEnhancement")}><h2 className="text-sm font-semibold text-foreground">{t("utility.futureEnhancement")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("utility.occupancyEnhancement")}</p></aside>
         </div>
       )}
     </div>

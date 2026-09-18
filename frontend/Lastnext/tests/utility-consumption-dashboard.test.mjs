@@ -9,6 +9,8 @@ const summary = source("../app/dashboard/utility-consumption/components/SummaryC
 const trend = source("../app/dashboard/utility-consumption/components/YoYLineChart.tsx");
 const table = source("../app/dashboard/utility-consumption/components/UtilityRecordsTable.tsx");
 const breakdown = source("../app/dashboard/utility-consumption/components/UtilityBreakdown.tsx");
+const metricChart = source("../app/dashboard/utility-consumption/components/MetricLineChart.tsx");
+const costChart = source("../app/dashboard/utility-consumption/components/ActualVsBudgetChart.tsx");
 const dictionary = source("../app/lib/i18n/dictionary.ts");
 
 test("page renders the professional header and KPI summary", () => {
@@ -42,6 +44,35 @@ test("monthly trend and engineering records table render", () => {
   assert.match(view, /<UtilityRecordsTable/);
   assert.match(table, /utility\.monthlyRecords/);
   assert.match(table, /sticky top-0/);
+});
+
+test("electricity and water consumption use separate unit-specific charts", () => {
+  assert.match(view, /data=\{electricitySeries\}[\s\S]*?unit="kWh"/);
+  assert.match(view, /data=\{waterSeries\}[\s\S]*?unit="m³"/);
+  assert.doesNotMatch(metricChart, /electricitySeries[\s\S]*waterSeries|kWh[\s\S]*m³/);
+  assert.match(metricChart, /unit=\{` \$\{unit\}`\}/);
+});
+
+test("cost comparison uses only the common THB currency", () => {
+  assert.match(costChart, /dataKey="totalelectricity"/);
+  assert.match(costChart, /dataKey="electricity_cost_budget"/);
+  assert.match(costChart, /unit=" THB"/);
+  assert.doesNotMatch(costChart, /kWh|m³/);
+});
+
+test("table headings carry engineering units while cells preserve raw values", () => {
+  assert.match(table, /utility\.totalKwh[\s\S]*\(kWh\)/);
+  assert.match(table, /utility\.water[\s\S]*\(m³\)/);
+  assert.match(table, /utility\.electricityCost[\s\S]*\(THB\)/);
+  assert.match(table, /number\.format\(row\.totalkwh\)/);
+  assert.match(table, /number\.format\(row\.water\)/);
+});
+
+test("unsupported utility types and fabricated occupancy KPIs are absent", () => {
+  const active = `${view}\n${summary}\n${breakdown}\n${table}`;
+  assert.doesNotMatch(active, /Gas|Diesel|LPG|efficiency score|performance rating/i);
+  assert.doesNotMatch(view, /occupiedRoom|roomsSold|costPerRoom|kwhPerRoom/i);
+  assert.match(view, /utility\.futureEnhancement/);
 });
 
 test("loading, empty, property-required, and safe error states render", () => {

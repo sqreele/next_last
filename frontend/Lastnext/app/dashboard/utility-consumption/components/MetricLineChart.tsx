@@ -17,6 +17,7 @@ interface MetricLineChartProps {
   title: string;
   subtitle: string;
   color: string;
+  unit: string;
   yAxisMax?: number;
 }
 
@@ -34,6 +35,7 @@ export default function MetricLineChart({
   title,
   subtitle,
   color,
+  unit,
   yAxisMax,
 }: MetricLineChartProps) {
   const yAxisDomain = yAxisMax === undefined ? ["auto", "auto"] : [0, yAxisMax];
@@ -56,8 +58,9 @@ export default function MetricLineChart({
               stroke="#64748b"
               tick={{ fontSize: 11 }}
               domain={yAxisDomain}
+              unit={` ${unit}`}
             />
-            <Tooltip />
+            <Tooltip formatter={(value) => [`${formatPointLabel(Array.isArray(value) ? value[0] : value)} ${unit}`, title]} />
             <Legend />
             <Line
               type="monotone"

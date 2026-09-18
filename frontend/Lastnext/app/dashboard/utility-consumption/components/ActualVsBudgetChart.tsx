@@ -52,7 +52,7 @@ export default function ActualVsBudgetChart({
             margin={{ left: 8, right: 56, top: 8, bottom: 8 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis type="number" stroke="#64748b" tick={{ fontSize: 11 }} />
+            <XAxis type="number" unit=" THB" stroke="#64748b" tick={{ fontSize: 11 }} />
             <YAxis
               dataKey="label"
               type="category"
@@ -60,12 +60,12 @@ export default function ActualVsBudgetChart({
               stroke="#64748b"
               tick={{ fontSize: 11 }}
             />
-            <Tooltip />
+            <Tooltip formatter={(value) => [`฿${Number(Array.isArray(value) ? value[0] : value).toLocaleString()}`, "THB"]} />
             <Legend />
             <Bar
               dataKey="totalelectricity"
-              name="Actual"
-              fill="#0ea5e9"
+              name={t("utility.actual")}
+              fill="hsl(var(--primary))"
               radius={[0, 4, 4, 0]}
             >
               <LabelList
@@ -77,8 +77,8 @@ export default function ActualVsBudgetChart({
             </Bar>
             <Bar
               dataKey="electricity_cost_budget"
-              name="Budget"
-              fill="#94a3b8"
+              name={t("utility.budget")}
+              fill="hsl(var(--muted-foreground))"
               radius={[0, 4, 4, 0]}
             >
               <LabelList

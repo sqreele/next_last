@@ -50,6 +50,7 @@ import {
   useUser,
 } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
+import { usePlanCapabilities } from "@/app/lib/hooks/usePlanCapabilities";
 import {
   Job,
   TabValue,
@@ -535,6 +536,7 @@ export default function JobsReport({
   jobs = EMPTY_JOBS,
   filter = "all",
 }: JobsReportProps) {
+  const { canUseFeature } = usePlanCapabilities();
   const { data: session, status: sessionStatus } = useSession();
   const { selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
@@ -1599,7 +1601,7 @@ export default function JobsReport({
                   <span className="hidden sm:inline">Export PDF</span>
                   <span className="sm:hidden">PDF</span>
                 </Button>
-                <Button
+                {canUseFeature('csv_export') ? <Button
                   onClick={handleGenerateCSV}
                   disabled={
                     dateRangeInvalid ||
@@ -1616,7 +1618,7 @@ export default function JobsReport({
                 >
                   <ClipboardList className="h-4 w-4" />
                   CSV
-                </Button>
+                </Button> : null}
               </div>
               {exportError ? (
                 <p className="text-sm font-medium text-destructive" role="alert">

@@ -9,6 +9,8 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "./sheet";
 import { primaryNavigationItems } from "@/app/lib/navigation";
 import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
 import { filterBillingNavigationItems } from "@/app/lib/billing-access.mjs";
+import { filterPlanNavigationItems } from "@/app/lib/plan-capabilities.mjs";
+import { usePlanCapabilities } from "@/app/lib/hooks/usePlanCapabilities";
 
 interface TabletNavProps {
   className?: string;
@@ -18,9 +20,10 @@ export function TabletNav({ className }: TabletNavProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = React.useState(false);
   const { canAccessBilling } = useBillingAccess();
-  const navigationItems = filterBillingNavigationItems(
-    primaryNavigationItems,
-    canAccessBilling,
+  const { features } = usePlanCapabilities();
+  const navigationItems = filterPlanNavigationItems(
+    filterBillingNavigationItems(primaryNavigationItems, canAccessBilling),
+    features,
   );
 
   return (

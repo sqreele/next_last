@@ -5,6 +5,7 @@ import { Download } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils/cn';
 import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
+import { usePlanCapabilities } from '@/app/lib/hooks/usePlanCapabilities';
 
 interface PropertyExportButtonProps {
   className?: string;
@@ -12,6 +13,7 @@ interface PropertyExportButtonProps {
 }
 
 export function PropertyExportButton({ className, label }: PropertyExportButtonProps) {
+  const { canUseFeature } = usePlanCapabilities();
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +43,8 @@ export function PropertyExportButton({ className, label }: PropertyExportButtonP
       setDownloading(false);
     }
   };
+
+  if (!canUseFeature('csv_export')) return null;
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>

@@ -39,10 +39,13 @@ import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
 import { Logo, StayMaintMark } from "@/app/components/branding/Logo";
 import { SubscriptionWarningBanner } from "@/app/components/subscription/SubscriptionWarningBanner";
+import { PlanFeatureGate } from "@/app/components/subscription/PlanFeatureGate";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
 import { filterBillingNavigationGroups } from "@/app/lib/billing-access.mjs";
+import { filterPlanNavigationGroups } from "@/app/lib/plan-capabilities.mjs";
+import { usePlanCapabilities } from "@/app/lib/hooks/usePlanCapabilities";
 
 export default function DashboardLayoutClient({
   children,
@@ -102,7 +105,7 @@ export default function DashboardLayoutClient({
             "
           >
             <PageTransition className="w-full min-w-0">
-              {children}
+              <PlanFeatureGate>{children}</PlanFeatureGate>
             </PageTransition>
           </PullToRefresh>
         </main>
@@ -124,9 +127,13 @@ function DesktopNav({
   const pathname = usePathname();
   const t = useT();
   const { canAccessBilling } = useBillingAccess();
+  const { features } = usePlanCapabilities();
   const visibleNavigationGroups = React.useMemo(
-    () => filterBillingNavigationGroups(navigationGroups, canAccessBilling),
-    [canAccessBilling],
+    () => filterPlanNavigationGroups(
+      filterBillingNavigationGroups(navigationGroups, canAccessBilling),
+      features,
+    ),
+    [canAccessBilling, features],
   );
   const visibleNavigationItems = React.useMemo(
     () => visibleNavigationGroups.flatMap((group) => group.items),

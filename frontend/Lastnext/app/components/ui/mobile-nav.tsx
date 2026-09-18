@@ -18,6 +18,8 @@ import { triggerHaptic } from "@/app/lib/hooks/useHaptic";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
 import { filterBillingNavigationItems } from "@/app/lib/billing-access.mjs";
+import { filterPlanNavigationItems } from "@/app/lib/plan-capabilities.mjs";
+import { usePlanCapabilities } from "@/app/lib/hooks/usePlanCapabilities";
 import {
   Sheet,
   SheetContent,
@@ -35,9 +37,13 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
   const pathname = usePathname();
   const t = useT();
   const { canAccessBilling } = useBillingAccess();
+  const { features } = usePlanCapabilities();
   const visibleSecondaryNavigation = React.useMemo(
-    () => filterBillingNavigationItems(mobileSecondaryNavigation, canAccessBilling),
-    [canAccessBilling],
+    () => filterPlanNavigationItems(
+      filterBillingNavigationItems(mobileSecondaryNavigation, canAccessBilling),
+      features,
+    ),
+    [canAccessBilling, features],
   );
   const [moreOpen, setMoreOpen] = React.useState(false);
   const hasActiveSecondaryItem = Boolean(

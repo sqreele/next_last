@@ -44,6 +44,7 @@ import { PageHeader } from '@/app/components/layout/PageHeader';
 import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 import { useLocale } from '@/app/lib/i18n/LocaleProvider';
 import type { DictKey, Locale } from '@/app/lib/i18n/dictionary';
+import { usePlanCapabilities } from '@/app/lib/hooks/usePlanCapabilities';
 
 type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
 
@@ -170,6 +171,7 @@ function DashboardLoading() {
 }
 
 export default function ImprovedDashboard() {
+  const { canUseFeature } = usePlanCapabilities();
   useSessionGuard();
   const { locale, t } = useLocale();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
@@ -686,7 +688,7 @@ export default function ImprovedDashboard() {
 
           {/* Technician performance board — sortable table on desktop, stacked
               cards on phones. Hidden when nobody has any work yet. */}
-          {!loading && (
+          {!loading && canUseFeature('technician_kpi') && (
             <TechnicianKpiBoard jobs={jobs} />
           )}
 

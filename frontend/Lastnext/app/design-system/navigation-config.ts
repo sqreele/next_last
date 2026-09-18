@@ -25,7 +25,18 @@ export type NavigationItem = {
   exact?: boolean;
   match?: readonly string[];
   requiredCapability?: "billing";
+  requiredFeature?: PlanFeature;
 };
+
+export type PlanFeature =
+  | "preventive_maintenance"
+  | "pm_schedules"
+  | "technician_kpi"
+  | "advanced_reports"
+  | "csv_export"
+  | "multi_property"
+  | "advanced_property_permissions"
+  | "portfolio_dashboard";
 
 export type NavigationGroup = {
   label: string;
@@ -62,8 +73,8 @@ export const navigationGroups: readonly NavigationGroup[] = [
         icon: ClipboardList,
       },
       { name: "Create Job", labelKey: "nav.createJob", shortName: "Create", href: "/dashboard/create-job", icon: Plus },
-      { name: "Preventive Maintenance", labelKey: "nav.preventiveMaintenance", shortName: "PM", href: "/dashboard/preventive-maintenance", icon: Wrench },
-      { name: "PM Schedule", labelKey: "nav.pmSchedule", shortName: "Schedule", href: "/dashboard/preventive-maintenance/schedule", icon: CalendarDays },
+      { name: "Preventive Maintenance", labelKey: "nav.preventiveMaintenance", shortName: "PM", href: "/dashboard/preventive-maintenance", icon: Wrench, requiredFeature: "preventive_maintenance" },
+      { name: "PM Schedule", labelKey: "nav.pmSchedule", shortName: "Schedule", href: "/dashboard/preventive-maintenance/schedule", icon: CalendarDays, requiredFeature: "pm_schedules" },
     ],
   },
   {
@@ -82,7 +93,7 @@ export const navigationGroups: readonly NavigationGroup[] = [
     labelKey: "nav.management",
     items: [
       { name: "AI Assistant", labelKey: "nav.aiAssistant", href: "/ai-chat", icon: BotMessageSquare },
-      { name: "Reports", labelKey: "nav.reports", href: "/dashboard/jobs-report", icon: FileText },
+      { name: "Reports", labelKey: "nav.reports", href: "/dashboard/jobs-report", icon: FileText, requiredFeature: "advanced_reports" },
       { name: "Settings", labelKey: "nav.settings", shortName: "More", href: "/dashboard/settings/users", icon: Settings },
       {
         name: "Billing",

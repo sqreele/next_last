@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 const colors = ["#22c55e", "#f97316"];
 
@@ -21,16 +22,18 @@ export default function BudgetStatusPieChart({
   data,
   budgetUnsetForAllMonths = false,
 }: BudgetStatusPieChartProps) {
-  const total = data.reduce((sum, d) => sum + d.value, 0);
+  const t = useT();
+  const localizedData = data.map((entry) => ({ ...entry, name: entry.name === "Within budget" ? t("utility.withinBudget") : t("utility.overBudget") }));
+  const total = localizedData.reduce((sum, d) => sum + d.value, 0);
 
   return (
     <div className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-5">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-foreground">
-          Budget status by month
+          {t("utility.budgetStatus")}
         </h3>
         <p className="text-sm text-muted-foreground">
-          Count of months where actual electricity is within or over budget
+          {t("utility.budgetStatusHint")}
           {total > 0 ? (
             <span className="text-muted-foreground">
               {" "}
@@ -56,7 +59,7 @@ export default function BudgetStatusPieChart({
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
+                data={localizedData}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
@@ -65,7 +68,7 @@ export default function BudgetStatusPieChart({
                 innerRadius={46}
                 paddingAngle={2}
               >
-                {data.map((entry, index) => (
+                {localizedData.map((entry, index) => (
                   <Cell
                     key={`${entry.name}-${index}`}
                     fill={colors[index % colors.length]}

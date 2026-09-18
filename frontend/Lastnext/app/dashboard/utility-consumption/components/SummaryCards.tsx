@@ -4,6 +4,8 @@ import {
   describeRelativeCountChange,
   describeSignedRelativeChange,
 } from "@/app/lib/dashboard/metricsComparison";
+import { useLocale, useT } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
 
 export interface UtilitySummary {
   totalkwh: number;
@@ -26,32 +28,28 @@ interface SummaryCardsProps {
 }
 
 const cards = [
-  { key: "totalKwh", label: "Total kWh", accent: "from-sky-500 to-blue-500" },
+  { key: "totalElectricity", labelKey: "utility.recordedCost", unit: "THB" },
+  { key: "totalKwh", labelKey: "utility.electricityConsumption", unit: "kWh" },
   {
-    key: "totalElectricity",
-    label: "Total Electricity",
-    accent: "from-emerald-500 to-teal-500",
+    key: "water",
+    labelKey: "utility.waterConsumption",
+    unit: "m³",
   },
-  { key: "water", label: "Water", accent: "from-cyan-500 to-indigo-500" },
   {
     key: "variance",
-    label: "Variance",
-    accent: "from-amber-500 to-orange-500",
+    labelKey: "utility.budgetVariance",
+    unit: "THB",
   },
 ] as const;
 
 type CardKey = (typeof cards)[number]["key"];
 
-function formatNumber(value: number) {
+function formatNumber(value: number, locale: string) {
   const n = Number(value);
   if (!Number.isFinite(n)) {
     return "—";
   }
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
-}
-
-function comparisonCaption(mode: UtilityComparisonMode): string {
-  return mode === "year_over_year" ? "vs prior year" : "vs prior month";
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n);
 }
 
 function TrendGlyph({
@@ -100,6 +98,8 @@ function CardComparisonLine({
   vsLabel: string;
   mode: UtilityComparisonMode;
 }) {
+  const t = useT();
+  const comparisonCaption = mode === "year_over_year" ? t("utility.vsPriorYear") : t("utility.vsPriorMonth");
   if (cardKey === "variance") {
     const insight = describeSignedRelativeChange(
       current.variance,
@@ -112,7 +112,7 @@ function CardComparisonLine({
           {insight.headline}
         </span>
         <span className="text-muted-foreground">
-          {comparisonCaption(mode)} ({vsLabel})
+          {comparisonCaption} ({vsLabel})
         </span>
         {insight.detail ? (
           <span className="w-full text-muted-foreground">{insight.detail}</span>
@@ -143,7 +143,7 @@ function CardComparisonLine({
         {insight.headline}
       </span>
       <span className="text-muted-foreground">
-        {comparisonCaption(mode)} ({vsLabel})
+        {comparisonCaption} ({vsLabel})
       </span>
       {insight.detail ? (
         <span className="w-full text-muted-foreground">{insight.detail}</span>
@@ -157,11 +157,13 @@ export default function SummaryCards({
   comparison,
   comparisonScopeNote,
 }: SummaryCardsProps) {
+  const { locale, t } = useLocale();
+  const numberLocale = locale === "th" ? "th-TH" : "en-US";
   const values = {
-    totalKwh: formatNumber(summary.totalkwh),
-    totalElectricity: formatNumber(summary.totalelectricity),
-    water: formatNumber(summary.water),
-    variance: formatNumber(summary.variance),
+    totalKwh: formatNumber(summary.totalkwh, numberLocale),
+    totalElectricity: formatNumber(summary.totalelectricity, numberLocale),
+    water: formatNumber(summary.water, numberLocale),
+    variance: formatNumber(summary.variance, numberLocale),
   } as const;
 
   return (
@@ -178,16 +180,13 @@ export default function SummaryCards({
         {cards.map((card) => (
           <div
             key={card.key}
-            className="rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5"
+            className="rounded-xl border border-border bg-card p-4 shadow-soft"
           >
-            <div
-              className={`h-1.5 w-14 rounded-full bg-gradient-to-r ${card.accent}`}
-            />
-            <p className="mt-3 text-sm font-medium text-muted-foreground sm:mt-4">
-              {card.label}
+            <p className="text-sm font-medium text-muted-foreground">
+              {t(card.labelKey as DictKey)}
             </p>
-            <p className="mt-1.5 text-xl font-bold tabular-nums text-foreground sm:mt-2 sm:text-2xl">
-              {values[card.key]}
+            <p className="mt-2 text-2xl font-bold tabular-nums text-foreground">
+              {values[card.key]} <span className="text-sm font-medium text-muted-foreground">{card.unit}</span>
             </p>
             {comparison ? (
               <CardComparisonLine
@@ -199,7 +198,7 @@ export default function SummaryCards({
               />
             ) : (
               <p className="mt-3 text-xs text-muted-foreground">
-                Add year data to see period comparison.
+                {t("utility.noComparison")}
               </p>
             )}
           </div>

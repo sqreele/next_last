@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface YoYLineChartProps {
   data: Array<Record<string, number | string | null>>;
@@ -48,14 +49,13 @@ export default function YoYLineChart({
   years,
   metricLabel,
 }: YoYLineChartProps) {
+  const t = useT();
   return (
-    <div className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-5">
+    <section aria-labelledby={`utility-trend-${metricLabel.replaceAll(" ", "-")}`} className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-5">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-foreground">
-          YoY multi-line
-        </h3>
+        <h2 id={`utility-trend-${metricLabel.replaceAll(" ", "-")}`} className="text-lg font-semibold text-foreground">{t("utility.monthlyTrend")}</h2>
         <p className="text-sm text-muted-foreground">
-          {metricLabel} comparison by year (tooltip shows YoY %).
+          {t("utility.trendHint", { metric: metricLabel })}
         </p>
       </div>
       <div className="h-64 w-full min-w-0 sm:h-80 sm:min-h-[20rem]">
@@ -103,7 +103,6 @@ export default function YoYLineChart({
                   position="top"
                   formatter={(
                     value: string | number | null | undefined,
-                    _entry: unknown,
                   ) => {
                     const n = typeof value === "number" ? value : Number(value);
                     if (Number.isNaN(n) || n === 0) return "";
@@ -116,6 +115,6 @@ export default function YoYLineChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </section>
   );
 }

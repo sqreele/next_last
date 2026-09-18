@@ -6,6 +6,8 @@ import ActualVsBudgetChart from "./components/ActualVsBudgetChart";
 import BudgetStatusPieChart from "./components/BudgetStatusPieChart";
 import FiltersBar from "./components/FiltersBar";
 import SummaryCards from "./components/SummaryCards";
+import UtilityBreakdown from "./components/UtilityBreakdown";
+import UtilityRecordsTable from "./components/UtilityRecordsTable";
 import YoYLineChart from "./components/YoYLineChart";
 import type { MetricKey, MonthName, UtilityConsumptionRow } from "./types";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -20,6 +22,7 @@ import {
   sortRows,
 } from "./utils/data";
 import { DashboardKpiSkeleton, SkeletonTable } from "@/app/components/ui/loading";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 const metricLabelMap = metricOptions.reduce<Record<MetricKey, string>>(
   (acc, option) => {
@@ -30,6 +33,7 @@ const metricLabelMap = metricOptions.reduce<Record<MetricKey, string>>(
 );
 
 export default function UtilityConsumptionView() {
+  const t = useT();
   const [rows, setRows] = useState<UtilityConsumptionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,28 +187,20 @@ export default function UtilityConsumptionView() {
     return buildPrimaryYearSeries(monthFilteredRows, primaryYear);
   }, [monthFilteredRows, primaryYear]);
 
-  const waterYoYData = useMemo(
-    () => buildYoYSeries(monthFilteredRows, activeYears, "water"),
-    [monthFilteredRows, activeYears],
-  );
-  const nightSaleYoYData = useMemo(
-    () => buildYoYSeries(monthFilteredRows, activeYears, "nightsale"),
-    [monthFilteredRows, activeYears],
-  );
-
   const isEmpty = !loading && !error && selectedProperty && rows.length === 0;
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <header>
+      <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
         <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-          Utility Consumption
+          {t("utility.title")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {selectedProperty
-            ? `Property: ${selectedProperty}`
-            : "Select a property to view utility consumption."}
+          {t("utility.subtitle")}
         </p>
+        </div>
+        {selectedProperty && <p className="text-xs font-medium text-muted-foreground">Property: <span className="font-mono text-foreground">{selectedProperty}</span></p>}
       </header>
 
       {selectedProperty ? (
@@ -222,25 +218,26 @@ export default function UtilityConsumptionView() {
       ) : null}
 
       {loading && (
-        <div className="space-y-4" role="status" aria-busy="true" aria-label="Loading utility consumption">
+        <div className="space-y-4" role="status" aria-busy="true" aria-label={t("utility.loading")}>
           <DashboardKpiSkeleton />
           <SkeletonTable rows={5} columns={4} />
         </div>
       )}
 
       {error && !loading && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-600">
-          {error}
+        <div className="rounded-xl border border-destructive/30 bg-card p-6" role="alert">
+          <h2 className="font-semibold text-destructive">{t("utility.loadError")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("utility.loadErrorHint")}</p>
         </div>
       )}
 
       {!selectedProperty && !loading && !error && (
         <div className="rounded-xl border border-border bg-card p-10 text-center">
           <h2 className="text-lg font-semibold text-foreground">
-            Select a property
+            {t("common.selectProperty")}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Choose a property from the header to load utility consumption data.
+            {t("utility.selectPropertyHint")}
           </p>
         </div>
       )}
@@ -248,10 +245,10 @@ export default function UtilityConsumptionView() {
       {isEmpty && (
         <div className="rounded-xl border border-border bg-card p-10 text-center">
           <h2 className="text-lg font-semibold text-foreground">
-            No data available
+            {t("utility.noData")}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            No utility data found. Adjust filters or check the data source.
+            {t("utility.noDataHint")}
           </p>
         </div>
       )}
@@ -276,22 +273,14 @@ export default function UtilityConsumptionView() {
             />
           </div>
 
-          <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-2">
+            <UtilityBreakdown summary={summary} />
             <BudgetStatusPieChart
               data={budgetStatusPie.data}
               budgetUnsetForAllMonths={budgetStatusPie.budgetUnsetForAllMonths}
             />
-            <YoYLineChart
-              data={waterYoYData}
-              years={activeYears}
-              metricLabel="Water"
-            />
-            <YoYLineChart
-              data={nightSaleYoYData}
-              years={activeYears}
-              metricLabel="Night Sale"
-            />
           </div>
+          <UtilityRecordsTable rows={yearFilteredRows} allRows={rows} />
         </div>
       )}
     </div>

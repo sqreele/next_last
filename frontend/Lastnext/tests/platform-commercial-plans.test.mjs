@@ -56,9 +56,15 @@ test("portfolio dashboard is always presented as coming soon, never enabled", ()
 });
 
 test("usage presentation flags grandfathered over-limit tenants", () => {
+  assert.deepEqual(usageDisplay(10, 10), { value: "10 / 10", overLimit: false });
   assert.deepEqual(usageDisplay(11, 10), { value: "11 / 10", overLimit: true });
   assert.deepEqual(usageDisplay(2, 1), { value: "2 / 1", overLimit: true });
   assert.deepEqual(usageDisplay(1331.2, 10240, { storage: true }), { value: "1.3 GB / 10 GB", overLimit: false });
+});
+
+test("usage presentation keeps unavailable values unavailable", () => {
+  assert.deepEqual(usageDisplay(null, 10), { value: "—", overLimit: false });
+  assert.deepEqual(usageDisplay(10, null), { value: "—", overLimit: false });
 });
 
 test("active platform pages use backend plan projections and retain authorization guards", () => {
@@ -69,4 +75,12 @@ test("active platform pages use backend plan projections and retain authorizatio
   assert.match(overview, /requirePlatformAccess\("platform\.tenants\.read"\)/);
   assert.match(tenants, /requirePlatformAccess\("platform\.tenants\.read"\)/);
   assert.match(detail, /requirePlatformAccess\("platform\.tenants\.read"\)/);
+});
+
+test("public pricing reads the commercial plan projection instead of defining prices or features", () => {
+  const pricing = readFileSync(new URL("../app/pricing/page.tsx", import.meta.url), "utf8");
+  assert.match(pricing, /getCommercialPlans/);
+  assert.match(pricing, /PLATFORM_FEATURES/);
+  assert.doesNotMatch(pricing, /price:\s*(15|30|60)/);
+  assert.doesNotMatch(pricing, /Portfolio dashboard", false, false, true/);
 });

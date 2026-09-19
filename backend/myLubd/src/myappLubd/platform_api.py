@@ -11,7 +11,7 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -69,6 +69,24 @@ def _plan_summary(plan):
         'max_storage_mb': plan.max_storage_mb,
         'features': plan.features,
     }
+
+
+def _commercial_plans():
+    return [
+        _plan_summary(plan) for plan in SubscriptionPlan.objects.filter(
+            code__in=('starter', 'pro', 'enterprise'), is_active=True,
+        ).order_by('sort_order', 'monthly_price')
+    ]
+
+
+class PublicCommercialPlansView(APIView):
+    """Expose the safe, current commercial catalog used by the public pricing page."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response(_commercial_plans())
 
 
 def _subscription_summary(subscription, include_reason=True):
@@ -307,9 +325,5 @@ class PlatformSummaryView(PlatformReadView):
             'provider_mode': _provider_mode(),
             'test_mode_warning_count': TenantSubscription.objects.count() if _provider_mode() == 'test' else 0,
             'attention_subscriptions': attention_subscriptions,
-            'commercial_plans': [
-                _plan_summary(plan) for plan in SubscriptionPlan.objects.filter(
-                    code__in=('starter', 'pro', 'enterprise'), is_active=True,
-                ).order_by('sort_order', 'monthly_price')
-            ],
+            'commercial_plans': _commercial_plans(),
         })

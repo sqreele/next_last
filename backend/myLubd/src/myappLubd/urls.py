@@ -21,7 +21,7 @@ from .line_integration import LineWebhookView
 from .platform_api import (
     PlatformSummaryView, PlatformTenantDetailView, PlatformTenantsView,
     PlatformSubscriptionDetailView, PlatformSubscriptionsView, PlatformUsageView,
-    PlatformWebhookEventsView,
+    PlatformWebhookEventsView, PublicCommercialPlansView,
 )
 
 # Set the app name
@@ -64,6 +64,7 @@ urlpatterns = [
     path('api/v1/billing/checkout/', StripeCheckoutView.as_view(), name='stripe-checkout'),
     path('api/v1/billing/portal/', StripePortalView.as_view(), name='stripe-portal'),
     path('api/v1/billing/webhooks/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'),
+    path('api/v1/commercial-plans/', PublicCommercialPlansView.as_view(), name='commercial-plans'),
     path('api/v1/integrations/line/webhook/', LineWebhookView.as_view(), name='line-webhook'),
 
     # Internal platform operations APIs. These intentionally remain outside

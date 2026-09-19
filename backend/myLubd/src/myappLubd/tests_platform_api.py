@@ -138,3 +138,15 @@ class PlatformDashboardApiTests(TestCase):
         self.assertEqual([plan['monthly_price'] for plan in plans], ['15.00', '30.00', '60.00'])
         self.assertEqual([plan['max_users'] for plan in plans], [4, 10, 50])
         self.assertEqual([plan['max_properties'] for plan in plans], [1, 1, 5])
+
+    def test_public_commercial_catalog_is_safe_and_uses_plan_projection(self):
+        SubscriptionPlan.objects.update_or_create(
+            code='starter', defaults={'name': 'Basic', 'monthly_price': '15.00', 'max_users': 4,
+                                      'max_properties': 1, 'max_monthly_work_orders': 500,
+                                      'max_pm_schedules': 100, 'max_assets': 250, 'max_storage_mb': 10240,
+                                      'features': {'portfolio_dashboard': False}},
+        )
+        response = APIClient().get('/api/v1/commercial-plans/', secure=True, HTTP_HOST='localhost')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data[0]['code'], 'starter')
+        self.assertNotIn('external_customer_id', response.data[0])

@@ -556,6 +556,57 @@ export default function PreventiveMaintenanceClient({
           #pdf-content [class~="dark:text-violet-200"] { color: #ddd6fe !important; }
         `;
         clonedDocument.head.appendChild(style);
+
+        const clonedWindow = clonedDocument.defaultView;
+        const colorContext = clonedDocument.createElement("canvas").getContext("2d");
+        if (!clonedWindow || !colorContext) return;
+
+        const colorProperties = [
+          "color",
+          "background-color",
+          "border-top-color",
+          "border-right-color",
+          "border-bottom-color",
+          "border-left-color",
+          "outline-color",
+          "text-decoration-color",
+          "column-rule-color",
+          "caret-color",
+          "fill",
+          "stroke",
+        ];
+        const unsupportedColor = /(?:oklab|oklch|color-mix)\(/i;
+        const toSrgb = (color: string) => {
+          try {
+            colorContext.clearRect(0, 0, 1, 1);
+            colorContext.fillStyle = color;
+            colorContext.fillRect(0, 0, 1, 1);
+            const [red, green, blue, alpha] = colorContext.getImageData(0, 0, 1, 1).data;
+            return `rgba(${red}, ${green}, ${blue}, ${alpha / 255})`;
+          } catch {
+            return null;
+          }
+        };
+
+        const elements = [
+          ...clonedDocument.querySelectorAll<HTMLElement>("#pdf-content, #pdf-content *"),
+        ];
+        elements.forEach((element) => {
+          const computedStyle = clonedWindow.getComputedStyle(element);
+          colorProperties.forEach((property) => {
+            const color = computedStyle.getPropertyValue(property);
+            if (!unsupportedColor.test(color)) return;
+            const srgbColor = toSrgb(color);
+            if (srgbColor) element.style.setProperty(property, srgbColor, "important");
+          });
+
+          // html2canvas also parses colors embedded in these compound values.
+          ["box-shadow", "text-shadow", "background-image", "filter"].forEach((property) => {
+            if (unsupportedColor.test(computedStyle.getPropertyValue(property))) {
+              element.style.setProperty(property, "none", "important");
+            }
+          });
+        });
       };
 
       const pdf = new jsPDF("p", "mm", "a4");

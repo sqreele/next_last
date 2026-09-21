@@ -515,6 +515,49 @@ export default function PreventiveMaintenanceClient({
         import("jspdf"),
       ]);
 
+      // Tailwind v4 generates opacity utilities with `color-mix(in oklab, …)`.
+      // html2canvas does not support that color space, so use equivalent sRGB
+      // colors only in its cloned PDF document. This does not affect the page
+      // the user is viewing.
+      const applyPdfColorFallbacks = (clonedDocument: Document) => {
+        const style = clonedDocument.createElement("style");
+        style.textContent = `
+          #pdf-content .text-blue-700 { color: #1d4ed8 !important; }
+          #pdf-content .text-green-600 { color: #16a34a !important; }
+          #pdf-content .text-amber-700 { color: #b45309 !important; }
+
+          #pdf-content [class~="border-info/30"] { border-color: #b8e4f4 !important; }
+          #pdf-content [class~="bg-info/10"] { background-color: #e7f6fc !important; }
+          #pdf-content .text-info,
+          #pdf-content .bg-info { color: #0b86ad !important; }
+          #pdf-content .bg-info { background-color: #0b86ad !important; }
+
+          #pdf-content [class~="border-warning/35"] { border-color: #f4d189 !important; }
+          #pdf-content [class~="bg-warning/10"] { background-color: #fff7e6 !important; }
+          #pdf-content .text-warning-emphasis { color: #7c3f0a !important; }
+          #pdf-content .bg-warning { background-color: #f59e0b !important; }
+
+          #pdf-content [class~="border-success/30"] { border-color: #a7e1ce !important; }
+          #pdf-content [class~="bg-success/10"] { background-color: #e8f8f2 !important; }
+          #pdf-content .text-success { color: #0b845c !important; }
+          #pdf-content .bg-success { background-color: #0b845c !important; }
+
+          #pdf-content [class~="border-destructive/30"] { border-color: #f5b5c4 !important; }
+          #pdf-content [class~="bg-destructive/10"] { background-color: #fdecef !important; }
+          #pdf-content .text-destructive { color: #df174d !important; }
+          #pdf-content .bg-destructive { background-color: #df174d !important; }
+
+          #pdf-content .border-violet-300 { border-color: #c4b5fd !important; }
+          #pdf-content .bg-violet-50 { background-color: #f5f3ff !important; }
+          #pdf-content .text-violet-800 { color: #5b21b6 !important; }
+          #pdf-content .bg-violet-500 { background-color: #8b5cf6 !important; }
+          #pdf-content [class~="dark:border-violet-700"] { border-color: #6d28d9 !important; }
+          #pdf-content [class~="dark:bg-violet-950"] { background-color: #2e1065 !important; }
+          #pdf-content [class~="dark:text-violet-200"] { color: #ddd6fe !important; }
+        `;
+        clonedDocument.head.appendChild(style);
+      };
+
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = 210;
       const pageHeight = 297;
@@ -532,6 +575,7 @@ export default function PreventiveMaintenanceClient({
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
+          onclone: applyPdfColorFallbacks,
         });
         const pxPerMm = canvas.width / targetWidth;
         const pageCanvasHeight = Math.floor(targetHeight * pxPerMm);

@@ -1,7 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Building2, LifeBuoy, MessageCircle } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  CircleHelp,
+  FileWarning,
+  LifeBuoy,
+  LockKeyhole,
+  MessageCircle,
+  ShieldCheck,
+} from 'lucide-react';
 import { Logo } from '@/app/components/branding/Logo';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
@@ -36,6 +45,34 @@ const contactOptions: Array<{
     actionKey: 'contact.sales.action',
     href: '/auth/register',
   },
+];
+
+const beforeYouContact: Array<{
+  icon: typeof CircleHelp;
+  titleKey: DictKey;
+  descriptionKey: DictKey;
+}> = [
+  {
+    icon: FileWarning,
+    titleKey: 'contact.before.correction.title',
+    descriptionKey: 'contact.before.correction.description',
+  },
+  {
+    icon: LifeBuoy,
+    titleKey: 'contact.before.technical.title',
+    descriptionKey: 'contact.before.technical.description',
+  },
+  {
+    icon: Building2,
+    titleKey: 'contact.before.partnership.title',
+    descriptionKey: 'contact.before.partnership.description',
+  },
+];
+
+const contactInformation: Array<{ titleKey: DictKey; descriptionKey: DictKey }> = [
+  { titleKey: 'contact.info.general.title', descriptionKey: 'contact.info.general.description' },
+  { titleKey: 'contact.info.corrections.title', descriptionKey: 'contact.info.corrections.description' },
+  { titleKey: 'contact.info.privacy.title', descriptionKey: 'contact.info.privacy.description' },
 ];
 
 export function ContactPageClient() {
@@ -73,52 +110,104 @@ export function ContactPageClient() {
       </header>
 
       <main className="flex-1">
-        <section className="px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-semibold text-primary">{t('contact.eyebrow')}</p>
-            <h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-              {t('contact.title')}
+        <section className="border-b border-border px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <p className="text-sm font-semibold text-primary">{t('contact.hero.eyebrow')}</p>
+            <h1 className="mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+              {t('contact.hero.title')}
             </h1>
-            <p className="mt-4 text-lg font-medium text-foreground">
-              {t('contact.subtitle')}
+            <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+              {t('contact.hero.description')}
             </p>
-            <p className="mx-auto mt-5 max-w-2xl text-balance leading-7 text-muted-foreground">
-              {t('contact.intro')}
-            </p>
+            <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-3 text-sm font-medium text-foreground" aria-label={t('contact.hero.supportLabel')}>
+              {(['contact.hero.general', 'contact.hero.corrections', 'contact.hero.privacy'] as const).map((key) => (
+                <li key={key} className="flex items-center gap-2">
+                  <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
+                  {t(key)}
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
-        <section className="border-y border-border bg-card px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-          <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-3">
-            {contactOptions.map((option) => {
-              const Icon = option.icon;
-              return (
-                <Card key={option.titleKey} className="h-full">
-                  <CardContent className="flex h-full flex-col p-6">
-                    <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
-                      <Icon className="size-5" aria-hidden="true" />
-                    </span>
-                    <h2 className="mt-5 text-xl font-semibold">{t(option.titleKey)}</h2>
-                    <p className="mt-3 flex-1 text-sm leading-6 text-muted-foreground">
-                      {t(option.descriptionKey)}
-                    </p>
-                    <Button asChild variant="outline" className="mt-6 w-full justify-between">
-                      <Link href={option.href}>
-                        {t(option.actionKey)}
-                        <ArrowRight className="size-4" aria-hidden="true" />
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        <section className="px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.85fr)] lg:gap-12">
+            <section aria-labelledby="contact-options-heading">
+              <div className="max-w-2xl">
+                <h2 id="contact-options-heading" className="text-2xl font-semibold tracking-tight">
+                  {t('contact.main.title')}
+                </h2>
+                <p className="mt-2 leading-7 text-muted-foreground">{t('contact.main.description')}</p>
+              </div>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {contactOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <Card key={option.titleKey} className="h-full shadow-none">
+                      <CardContent className="flex h-full flex-col p-5">
+                        <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                          <Icon className="size-5" aria-hidden="true" />
+                        </span>
+                        <h3 className="mt-4 text-lg font-semibold">{t(option.titleKey)}</h3>
+                        <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">
+                          {t(option.descriptionKey)}
+                        </p>
+                        <Button asChild variant="outline" className="mt-5 w-full justify-between">
+                          <Link href={option.href}>
+                            {t(option.actionKey)}
+                            <ArrowRight className="size-4" aria-hidden="true" />
+                          </Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+
+            <aside aria-labelledby="contact-information-heading" className="rounded-lg border border-border bg-muted/40 p-5 sm:p-6">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-card text-primary shadow-soft">
+                <LockKeyhole className="size-5" aria-hidden="true" />
+              </div>
+              <h2 id="contact-information-heading" className="mt-4 text-xl font-semibold">
+                {t('contact.info.title')}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{t('contact.info.intro')}</p>
+              <dl className="mt-6 space-y-5">
+                {contactInformation.map((item) => (
+                  <div key={item.titleKey}>
+                    <dt className="text-sm font-semibold text-foreground">{t(item.titleKey)}</dt>
+                    <dd className="mt-1 text-sm leading-6 text-muted-foreground">{t(item.descriptionKey)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-6 border-t border-border pt-5 text-sm leading-6 text-muted-foreground">
+                {t('contact.info.response')}
+              </p>
+            </aside>
           </div>
         </section>
 
-        <section className="px-4 py-10 sm:px-6 lg:px-8">
-          <p className="mx-auto max-w-3xl rounded-xl border border-border bg-muted/50 px-5 py-4 text-center text-sm leading-6 text-muted-foreground">
-            {t('contact.notice')}
-          </p>
+        <section className="border-t border-border bg-card px-4 py-10 sm:px-6 sm:py-14 lg:px-8" aria-labelledby="contact-before-heading">
+          <div className="mx-auto max-w-6xl">
+            <h2 id="contact-before-heading" className="text-2xl font-semibold tracking-tight">{t('contact.before.title')}</h2>
+            <p className="mt-2 max-w-2xl leading-7 text-muted-foreground">{t('contact.before.description')}</p>
+            <div className="mt-6 grid gap-5 md:grid-cols-3">
+              {beforeYouContact.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.titleKey} className="border-l-2 border-primary/30 pl-4">
+                    <Icon className="size-5 text-primary" aria-hidden="true" />
+                    <h3 className="mt-3 font-semibold">{t(item.titleKey)}</h3>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{t(item.descriptionKey)}</p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-8 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm leading-6 text-muted-foreground sm:px-5">
+              {t('contact.notice')}
+            </p>
+          </div>
         </section>
       </main>
 

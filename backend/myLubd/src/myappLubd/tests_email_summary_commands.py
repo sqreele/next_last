@@ -391,6 +391,7 @@ class TestEmailTransportValidation(SimpleTestCase):
         EMAIL_HOST_USER='sender@example.test',
         EMAIL_HOST_PASSWORD='secret-placeholder',
         DEFAULT_FROM_EMAIL='sender@example.test',
+        MAILERSEND_API_TOKEN='',
     )
     @patch('myappLubd.email_utils._build_gmail_service', return_value=None)
     def test_smtp_fallback_preserves_unicode_and_sends_once(self, _gmail_service):
@@ -416,6 +417,7 @@ class TestEmailTransportValidation(SimpleTestCase):
     @override_settings(
         EMAIL_HOST_USER='configured@example.test',
         EMAIL_HOST_PASSWORD='secret-placeholder',
+        MAILERSEND_API_TOKEN='',
     )
     @patch('django.core.mail.send_mail')
     @patch('myappLubd.email_utils._build_gmail_service')

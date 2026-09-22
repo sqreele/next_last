@@ -18,6 +18,7 @@ from .invitations import (
 )
 from .billing.views import StripeCheckoutView, StripePortalView, StripeWebhookView
 from .line_integration import LineWebhookView
+from .contact import ContactSubmissionView
 from .platform_api import (
     PlatformSummaryView, PlatformTenantDetailView, PlatformTenantsView,
     PlatformSubscriptionDetailView, PlatformSubscriptionsView, PlatformUsageView,
@@ -66,6 +67,7 @@ urlpatterns = [
     path('api/v1/billing/webhooks/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'),
     path('api/v1/commercial-plans/', PublicCommercialPlansView.as_view(), name='commercial-plans'),
     path('api/v1/integrations/line/webhook/', LineWebhookView.as_view(), name='line-webhook'),
+    path('api/v1/public/contact/', ContactSubmissionView.as_view(), name='public-contact'),
 
     # Internal platform operations APIs. These intentionally remain outside
     # tenant-scoped routers and implement GET only.

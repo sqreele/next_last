@@ -2,6 +2,8 @@
 
 from threading import Lock
 
+from django.conf import settings
+from django.core.cache import caches
 from rest_framework.throttling import SimpleRateThrottle
 
 
@@ -65,3 +67,26 @@ class InvitationPreviewThrottle(SafeInvitationThrottle):
 class InvitationAcceptThrottle(SafeInvitationThrottle):
     scope = 'accept'
     rate = '10/minute'
+
+
+class SafeContactThrottle(SafeInvitationThrottle):
+    """IP-only public throttle backed by Redis in production."""
+
+    cache_key_prefix = 'contact'
+    cache = caches[settings.CONTACT_RATE_LIMIT_CACHE_ALIAS]
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {
+            'scope': f'{self.cache_key_prefix}:{self.scope}',
+            'ident': self.get_ident(request),
+        }
+
+
+class ContactBurstThrottle(SafeContactThrottle):
+    scope = 'burst'
+    rate = '3/minute'
+
+
+class ContactHourlyThrottle(SafeContactThrottle):
+    scope = 'hourly'
+    rate = '10/hour'

@@ -282,6 +282,24 @@ CACHES['line_usage'] = (
 )
 LINE_USAGE_CACHE_ALIAS = 'line_usage'
 
+# Public contact submissions need a limiter shared by every backend worker.
+# Production already provides Redis; local and test environments retain a
+# no-setup in-memory fallback.
+CACHES['contact_rate_limit'] = (
+    {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': _redis_url,
+        'TIMEOUT': 60 * 60,
+    }
+    if _redis_url
+    else {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'contact-rate-limit-cache',
+        'TIMEOUT': 60 * 60,
+    }
+)
+CONTACT_RATE_LIMIT_CACHE_ALIAS = 'contact_rate_limit'
+
 # Enable caching
 USE_CACHE = True
 
@@ -507,6 +525,9 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or os.getenv('EMAIL_HOST_USER', 'no-reply@pcms.live')
 SERVER_EMAIL = os.getenv('SERVER_EMAIL') or DEFAULT_FROM_EMAIL
+MAILERSEND_API_TOKEN = os.getenv('MAILERSEND_API_TOKEN', '').strip()
+CONTACT_RECIPIENT_EMAIL = os.getenv('CONTACT_RECIPIENT_EMAIL', '').strip()
+CONTACT_FROM_EMAIL = os.getenv('CONTACT_FROM_EMAIL', '').strip() or DEFAULT_FROM_EMAIL
 # Recipients override for daily summary (comma-separated string)
 DAILY_SUMMARY_RECIPIENTS = os.getenv('DAILY_SUMMARY_RECIPIENTS')
 

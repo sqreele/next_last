@@ -24,17 +24,18 @@ import {
 } from "./utils/data";
 import { DashboardKpiSkeleton, SkeletonTable } from "@/app/components/ui/loading";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
-
-const metricLabelMap = metricOptions.reduce<Record<MetricKey, string>>(
-  (acc, option) => {
-    acc[option.value] = option.label;
-    return acc;
-  },
-  {} as Record<MetricKey, string>,
-);
+import type { DictKey } from "@/app/lib/i18n/dictionary";
 
 export default function UtilityConsumptionView() {
   const t = useT();
+  const metricLabelMap = useMemo(
+    () =>
+      metricOptions.reduce<Record<MetricKey, string>>((acc, option) => {
+        acc[option.value] = t(option.labelKey as DictKey);
+        return acc;
+      }, {} as Record<MetricKey, string>),
+    [t],
+  );
   const [rows, setRows] = useState<UtilityConsumptionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -203,7 +204,6 @@ export default function UtilityConsumptionView() {
           {t("utility.subtitle")}
         </p>
         </div>
-        {selectedProperty && <p className="text-xs font-medium text-muted-foreground">Property: <span className="font-mono text-foreground">{selectedProperty}</span></p>}
       </header>
 
       {selectedProperty ? (
@@ -264,17 +264,23 @@ export default function UtilityConsumptionView() {
             comparisonScopeNote={comparisonScopeNote}
           />
 
-          <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-2">
-            <YoYLineChart
-              data={yoyData}
-              years={activeYears}
-              metricLabel={metricLabelMap[selectedMetric]}
-            />
-            <ActualVsBudgetChart
-              data={primaryYearSeries}
-              yearLabel={primaryYear ? primaryYear.toString() : ""}
-            />
-          </div>
+          <section aria-label={t("utility.trendsOverview")} className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">{t("utility.consumptionTrends")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("utility.consumptionTrendsHint")}</p>
+            </div>
+            <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-2">
+              <YoYLineChart
+                data={yoyData}
+                years={activeYears}
+                metricLabel={metricLabelMap[selectedMetric]}
+              />
+              <ActualVsBudgetChart
+                data={primaryYearSeries}
+                yearLabel={primaryYear ? primaryYear.toString() : ""}
+              />
+            </div>
+          </section>
 
           <section aria-labelledby="utility-specific-heading" className="space-y-4">
             <div><h2 id="utility-specific-heading" className="text-xl font-semibold text-foreground">{t("utility.utilitySpecificConsumption")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("utility.utilitySpecificHint")}</p></div>

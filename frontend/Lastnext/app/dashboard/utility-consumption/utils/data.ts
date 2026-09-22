@@ -61,13 +61,13 @@ export const monthShortLabels = [
   'Dec',
 ];
 
-export const metricOptions: Array<{ label: string; value: MetricKey }> = [
-  { label: 'Total kWh', value: 'totalkwh' },
-  { label: 'On-Peak kWh', value: 'onpeakkwh' },
-  { label: 'Off-Peak kWh', value: 'offpeakkwh' },
-  { label: 'Total Electricity', value: 'totalelectricity' },
-  { label: 'Water', value: 'water' },
-  { label: 'Night Sale', value: 'nightsale' },
+export const metricOptions: Array<{ labelKey: string; value: MetricKey }> = [
+  { labelKey: 'utility.metricTotalKwh', value: 'totalkwh' },
+  { labelKey: 'utility.metricOnPeakKwh', value: 'onpeakkwh' },
+  { labelKey: 'utility.metricOffPeakKwh', value: 'offpeakkwh' },
+  { labelKey: 'utility.metricElectricityCost', value: 'totalelectricity' },
+  { labelKey: 'utility.metricWater', value: 'water' },
+  { labelKey: 'utility.metricNightSale', value: 'nightsale' },
 ];
 
 export function getMonthIndex(month: MonthName) {

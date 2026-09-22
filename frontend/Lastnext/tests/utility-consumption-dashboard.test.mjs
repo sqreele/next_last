@@ -11,12 +11,13 @@ const table = source("../app/dashboard/utility-consumption/components/UtilityRec
 const breakdown = source("../app/dashboard/utility-consumption/components/UtilityBreakdown.tsx");
 const metricChart = source("../app/dashboard/utility-consumption/components/MetricLineChart.tsx");
 const costChart = source("../app/dashboard/utility-consumption/components/ActualVsBudgetChart.tsx");
+const utilityData = source("../app/dashboard/utility-consumption/utils/data.ts");
 const dictionary = source("../app/lib/i18n/dictionary.ts");
 
 test("page renders the professional header and KPI summary", () => {
   assert.match(view, /t\("utility\.title"\)/);
   assert.match(view, /<SummaryCards/);
-  assert.match(summary, /utility\.recordedCost/);
+  assert.match(summary, /utility\.electricityCost/);
   assert.match(summary, /utility\.electricityConsumption/);
   assert.match(summary, /utility\.waterConsumption/);
   assert.match(summary, /utility\.budgetVariance/);
@@ -91,6 +92,15 @@ test("English and Thai utility labels are present", () => {
   assert.match(dictionary, /'utility\.monthlyTrend': 'แนวโน้มรายเดือน'/);
   assert.match(dictionary, /'utility\.noData': 'No utility data available'/);
   assert.match(dictionary, /'utility\.noData': 'ไม่มีข้อมูลสาธารณูปโภค'/);
+  assert.match(dictionary, /'utility\.consumptionTrends': 'Consumption trends'/);
+  assert.match(dictionary, /'utility\.consumptionTrends': 'แนวโน้มการใช้งาน'/);
+});
+
+test("filters and records localize metric and month labels", () => {
+  assert.match(utilityData, /utility\.metricTotalKwh/);
+  assert.match(filters, /utility\.monthJanuary/);
+  assert.match(table, /monthLabelKeys/);
+  assert.match(table, /t\(monthLabelKeys\[row\.month\]\)/);
 });
 
 test("mobile layout keeps filters and records available without accidental overflow", () => {

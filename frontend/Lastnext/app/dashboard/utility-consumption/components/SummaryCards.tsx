@@ -28,8 +28,8 @@ interface SummaryCardsProps {
 }
 
 const cards = [
-  { key: "totalElectricity", labelKey: "utility.recordedCost", unit: "THB" },
   { key: "totalKwh", labelKey: "utility.electricityConsumption", unit: "kWh" },
+  { key: "totalElectricity", labelKey: "utility.electricityCost", unit: "THB" },
   {
     key: "water",
     labelKey: "utility.waterConsumption",

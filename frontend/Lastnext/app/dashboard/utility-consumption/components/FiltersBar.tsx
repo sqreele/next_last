@@ -3,6 +3,22 @@
 import type { MetricKey, MonthName } from "../types";
 import { metricOptions, monthNames } from "../utils/data";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
+
+const monthLabelKeys: Record<MonthName, DictKey> = {
+  January: "utility.monthJanuary",
+  February: "utility.monthFebruary",
+  March: "utility.monthMarch",
+  April: "utility.monthApril",
+  May: "utility.monthMay",
+  June: "utility.monthJune",
+  July: "utility.monthJuly",
+  August: "utility.monthAugust",
+  September: "utility.monthSeptember",
+  October: "utility.monthOctober",
+  November: "utility.monthNovember",
+  December: "utility.monthDecember",
+};
 
 interface FiltersBarProps {
   selectedYears: number[];
@@ -96,10 +112,10 @@ export default function FiltersBar({
               onMonthChange(event.target.value as MonthName | "All")
             }
           >
-            <option value="All">All</option>
+            <option value="All">{t("common.all")}</option>
             {monthNames.map((month) => (
               <option key={month} value={month}>
-                {month}
+                {t(monthLabelKeys[month])}
               </option>
             ))}
           </select>
@@ -117,7 +133,7 @@ export default function FiltersBar({
           >
             {metricOptions.map((metric) => (
               <option key={metric.value} value={metric.value}>
-                {metric.label}
+                {t(metric.labelKey as DictKey)}
               </option>
             ))}
           </select>

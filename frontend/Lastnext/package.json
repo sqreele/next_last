@@ -17,6 +17,7 @@
     "test:subscription-warning": "node --test tests/subscription-warning.test.mjs",
     "test:billing": "node --test tests/billing.test.mjs",
     "test:i18n": "node --test tests/i18n.test.mjs",
+    "test:contact": "node --test tests/contact-page.test.mjs tests/contact-route.test.mjs",
     "test:pm-detail-i18n": "node --test tests/pm-detail-i18n.test.mjs"
   },
   "dependencies": {

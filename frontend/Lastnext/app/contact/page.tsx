@@ -3,7 +3,7 @@ import { ContactPageClient } from './ContactPageClient';
 import { seoConfig } from '@/app/lib/seo-config';
 
 const description =
-  'Contact StayMaint for hotel maintenance management account access, technical support guidance, and SaaS inquiries.';
+  'Contact StayMaint for product questions, technical support, billing, partnerships, or general inquiries.';
 
 export const metadata: Metadata = {
   title: 'Contact StayMaint',

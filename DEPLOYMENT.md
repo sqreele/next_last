@@ -6,10 +6,8 @@ targets, so a missing or recreated application produces a response-time 502 for
 that application rather than preventing Nginx from starting. Do not run the host
 systemd Nginx at the same time.
 
-> This repository currently configures `pcms.live`. If the production checkout
-> has additional `hotelcarepro.com` or `pickora.hotelcarepro.com` files, apply the
-> same variable-based pattern to every service-name `proxy_pass`; do not replace
-> or invent those domain, TLS, redirect, caching, or header settings.
+> This repository serves `staymaint.com`. The retired `hotelcarepro.com` origin
+> is retained only to redirect legacy traffic to the canonical StayMaint domain.
 
 ## First deployment
 
@@ -35,8 +33,7 @@ Nginx `masked`, and host ports 80 and 443 free. Preferred initial order:
 
 1. Create or verify `pcms_network`.
 2. Start database, Redis, backend, and frontend.
-3. Start Pickora from its own Compose project.
-4. Start the central Docker Nginx.
+3. Start the central Docker Nginx.
 
 The order improves the first response, but is not required for Nginx process
 health. For example:
@@ -44,9 +41,6 @@ health. For example:
 ```bash
 cd /root/next_last
 docker compose up -d db redis backend frontend
-cd /root/pickora
-docker compose up -d
-cd /root/next_last
 docker compose up -d nginx
 ```
 
@@ -54,8 +48,6 @@ docker compose up -d nginx
 
 ```bash
 cd /root/next_last
-docker compose config
-cd /root/pickora
 docker compose config
 
 docker run --rm --network pcms_network \
@@ -68,21 +60,16 @@ docker run --rm --network pcms_network \
 The syntax check requires the certificate paths referenced by the configuration
 to contain deploy-time certificates. It does not publish ports.
 
-After applications are running, verify both stable and retained legacy aliases:
+After applications are running, verify the application aliases:
 
 ```bash
 docker run --rm --network pcms_network alpine sh -c '
 getent hosts frontend
 getent hosts backend
-getent hosts pickora-web
 getent hosts nextjs-frontend
 getent hosts django-backend
 '
 ```
-
-The Pickora Compose project must attach its web service to both its default
-network and external `pcms_network`, with the explicit `pickora-web` alias. This
-preserves private access to its analytics API without exposing that API publicly.
 
 ## URI and smoke checks
 
@@ -91,13 +78,12 @@ no URI suffix. Thus `/api/example` remains `/api/example`, matching the old
 no-trailing-slash `proxy_pass` behavior. Validate actual health endpoints:
 
 ```bash
+curl -I https://staymaint.com
+curl -I https://staymaint.com/api/v1/health/
 curl -I https://hotelcarepro.com
-curl -I https://hotelcarepro.com/api/v1/health/
-curl -I https://pickora.hotelcarepro.com
 
 docker exec nginx wget -S --spider http://frontend:3000/api/health
 docker exec nginx wget -S --spider http://backend:8000/api/v1/health/
-docker exec nginx wget -S --spider http://pickora-web:80/health
 ```
 
 ## Manual resilience checks
@@ -105,34 +91,18 @@ docker exec nginx wget -S --spider http://pickora-web:80/health
 These commands intentionally interrupt production traffic and must only be run
 in an approved maintenance window.
 
-### Pickora unavailable
-
-```bash
-docker stop pickora-web
-docker restart nginx
-docker ps --filter name=nginx
-curl -I https://hotelcarepro.com
-curl -I https://pickora.hotelcarepro.com
-docker start pickora-web
-```
-
-Nginx stays Up, HotelCarePro stays available, and Pickora may return 502. Pickora
-recovers after the DNS cache (at most approximately 10 seconds) without an Nginx
-restart.
-
 ### Frontend unavailable
 
 ```bash
 docker stop nextjs-frontend
 docker restart nginx
 docker ps --filter name=nginx
-curl -I https://pickora.hotelcarepro.com
-curl -I https://hotelcarepro.com
+curl -I https://staymaint.com
 docker start nextjs-frontend
 ```
 
-Nginx and Pickora stay available; the HotelCarePro frontend may return 502 and
-then recovers after Docker DNS refresh without restarting Nginx.
+Nginx stays available; the StayMaint frontend may return 502 and then recovers
+after Docker DNS refresh without restarting Nginx.
 
 ### Backend unavailable
 
@@ -140,14 +110,13 @@ then recovers after Docker DNS refresh without restarting Nginx.
 docker stop django-backend
 docker restart nginx
 docker ps --filter name=nginx
-curl -I https://hotelcarepro.com
-curl -I https://hotelcarepro.com/api/v1/health/
-curl -I https://pickora.hotelcarepro.com
+curl -I https://staymaint.com
+curl -I https://staymaint.com/api/v1/health/
 docker start django-backend
 ```
 
-Nginx, static/frontend routes where possible, and Pickora stay available; API
-routes may return 502 and recover after DNS refresh.
+Nginx and static/frontend routes where possible stay available; API routes may
+return 502 and recover after Docker DNS refresh.
 
 ## Rollback
 

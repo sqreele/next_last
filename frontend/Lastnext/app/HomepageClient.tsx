@@ -413,6 +413,11 @@ export default function HomepageClient() {
                 Support
               </h4>
               <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="/contact/" className="hover:text-white">
+                    {t("contact.title")}
+                  </Link>
+                </li>
                 {relatedMarketingLinks.slice(5).map((link) => (
                   <li key={link.href}>
                     <Link href={link.href} className="hover:text-white">

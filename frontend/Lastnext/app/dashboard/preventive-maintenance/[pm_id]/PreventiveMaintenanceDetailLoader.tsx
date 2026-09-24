@@ -143,6 +143,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
           variant="empty"
           title={t('common.selectProperty')}
           description={t('pmDetail.selectPropertyHint')}
+          showRefresh={false}
         />
       </div>
     );

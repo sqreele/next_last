@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Building2,
   ArrowRight,
   Users as UsersIcon,
   DoorOpen,
@@ -10,6 +9,7 @@ import {
 import { fetchProperties } from "@/app/lib/data.server";
 import { Skeleton } from "@/app/components/ui/loading";
 import { PropertiesToolbar } from "./PropertiesToolbar";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 export const dynamic = "force-dynamic";
 
@@ -45,15 +45,10 @@ export default async function PropertiesIndexPage() {
         }
       >
         {properties.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--pcms-border-strong)] bg-[var(--pcms-surface-soft)] p-8 text-center">
-            <Building2 className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-3 text-sm font-bold text-foreground">
-              No properties yet.
-            </p>
-            <p className="text-xs font-medium text-muted-foreground">
-              Use Import CSV (staff only) to onboard your portfolio in one shot.
-            </p>
-          </div>
+          <FeedbackState
+            title="No properties yet"
+            description="Use Import CSV (staff only) to onboard your portfolio in one shot."
+          />
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {properties.map((prop: any) => (

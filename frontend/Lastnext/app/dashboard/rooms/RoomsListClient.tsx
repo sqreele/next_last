@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Building2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Room } from "@/app/lib/types";
 import { useProperties, useUser } from "@/app/lib/stores/mainStore";
 import { filterRoomsByProperty } from "@/app/lib/utils/property-filter";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 export function RoomsListClient({ rooms }: { rooms: Room[] }) {
   const { selectedPropertyId } = useUser();
@@ -17,13 +18,10 @@ export function RoomsListClient({ rooms }: { rooms: Room[] }) {
 
   if (scopedRooms.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--pcms-border-strong)] bg-[var(--pcms-surface-soft)] p-8 text-center">
-        <Building2 className="mx-auto h-8 w-8 text-muted-foreground" />
-        <p className="mt-3 text-sm font-bold text-foreground">No rooms yet.</p>
-        <p className="text-xs font-medium text-muted-foreground">
-          Use Import CSV to onboard a floor plan in one shot.
-        </p>
-      </div>
+      <FeedbackState
+        title="No rooms yet"
+        description="Use Import CSV to onboard a floor plan in one shot."
+      />
     );
   }
 

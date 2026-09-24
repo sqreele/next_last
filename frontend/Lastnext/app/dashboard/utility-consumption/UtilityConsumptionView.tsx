@@ -25,6 +25,7 @@ import {
 import { DashboardKpiSkeleton, SkeletonTable } from "@/app/components/ui/loading";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import type { DictKey } from "@/app/lib/i18n/dictionary";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 export default function UtilityConsumptionView() {
   const t = useT();
@@ -246,14 +247,10 @@ export default function UtilityConsumptionView() {
       )}
 
       {isEmpty && (
-        <div className="rounded-xl border border-border bg-card p-10 text-center">
-          <h2 className="text-lg font-semibold text-foreground">
-            {t("utility.noData")}
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t("utility.noDataHint")}
-          </p>
-        </div>
+        <FeedbackState
+          title={t("utility.noData")}
+          description={t("utility.noDataHint")}
+        />
       )}
 
       {!loading && !error && !isEmpty && (

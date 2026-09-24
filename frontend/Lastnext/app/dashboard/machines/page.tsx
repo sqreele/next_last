@@ -318,6 +318,7 @@ export default function MachinesListPage() {
           variant="empty"
           title="Select a property"
           description="Select a property to view machines."
+          showRefresh={false}
         />
       </PageContainer>
     );

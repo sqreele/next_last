@@ -419,6 +419,7 @@ function PreventiveMaintenanceListPageContent() {
         <FeedbackState
           title={t('common.selectProperty')}
           description={t('pm.manage')}
+          showRefresh={false}
           className="w-full"
         />
       </PageContainer>

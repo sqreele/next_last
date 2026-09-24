@@ -764,6 +764,7 @@ export default function InventoryPage() {
           action={
             <Button onClick={() => void fetchInventory()}>{t("action.tryAgain")}</Button>
           }
+          showRefresh={false}
         />
       </PageContainer>
     );
@@ -776,6 +777,7 @@ export default function InventoryPage() {
           variant="empty"
           title={t("common.selectProperty")}
           description={t("inventory.selectPropertyHint")}
+          showRefresh={false}
         />
       </PageContainer>
     );

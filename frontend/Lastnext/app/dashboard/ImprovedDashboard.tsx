@@ -363,6 +363,7 @@ export default function ImprovedDashboard() {
           title={t('dashboard.loadError')}
           description={error}
           action={<Button onClick={refreshJobs}>{t('action.tryAgain')}</Button>}
+          showRefresh={false}
           className="w-full"
         />
       </PageContainer>
@@ -412,6 +413,7 @@ export default function ImprovedDashboard() {
         <FeedbackState
           title={t('common.selectProperty')}
           description={t('dashboard.selectPropertyHint')}
+          showRefresh={false}
         />
       ) : hasNoMaintenanceData ? (
         <FeedbackState

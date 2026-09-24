@@ -362,6 +362,7 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
               title={t("jobs.loadError")}
               description={error}
               action={<Button type="button" variant="outline" onClick={() => setRefreshKey((value) => value + 1)}>{t("action.tryAgain")}</Button>}
+              showRefresh={false}
             />
           ) : jobs.length === 0 ? (
             <FeedbackState

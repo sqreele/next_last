@@ -11,7 +11,12 @@ import {
 
 const source = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const component = await source('app/contact/ContactPageClient.tsx');
+const homepage = await source('app/HomepageClient.tsx');
 const dictionary = await source('app/lib/i18n/dictionary.ts');
+
+test('Homepage footer links to the canonical contact route', () => {
+  assert.match(homepage, /<footer[\s\S]*?<Link href="\/contact\/"[\s\S]*?contact\.title/);
+});
 
 const messages = {
   nameMin: 'name min', nameMax: 'name max', emailRequired: 'email required',

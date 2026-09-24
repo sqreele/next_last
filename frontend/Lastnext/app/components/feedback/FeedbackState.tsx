@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/app/lib/utils/cn";
+import { RefreshPageButton } from "@/app/components/feedback/RefreshPageButton";
 
 const stateIcons = {
   empty: CircleOff,
@@ -24,6 +25,7 @@ type FeedbackStateProps = {
   title: string;
   description?: string;
   action?: ReactNode;
+  showRefresh?: boolean;
   className?: string;
 };
 
@@ -32,10 +34,17 @@ export function FeedbackState({
   title,
   description,
   action,
+  showRefresh,
   className,
 }: FeedbackStateProps) {
   const Icon = stateIcons[variant];
   const assertive = variant === "error" || variant === "offline";
+  const shouldShowRefresh =
+    showRefresh ??
+    (variant === "empty" ||
+      variant === "error" ||
+      variant === "offline" ||
+      variant === "unavailable");
 
   return (
     <section
@@ -55,8 +64,11 @@ export function FeedbackState({
           {description}
         </p>
       ) : null}
-      {action ? (
-        <div className="mt-5 w-full sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">{action}</div>
+      {action || shouldShowRefresh ? (
+        <div className="mt-5 flex w-full flex-col justify-center gap-2 sm:w-auto sm:flex-row [&>*]:w-full sm:[&>*]:w-auto">
+          {action}
+          {shouldShowRefresh ? <RefreshPageButton /> : null}
+        </div>
       ) : null}
     </section>
   );

@@ -42,6 +42,7 @@ import { useProperties, useUser } from "@/app/lib/stores/mainStore";
 import type { Area } from "@/app/lib/types";
 import { SkeletonTable } from "@/app/components/ui/loading";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 type AreaFormState = {
   id?: number;
@@ -356,13 +357,16 @@ const AreasClient: React.FC = () => {
         {initialLoading ? (
           <SkeletonTable rows={5} columns={5} className="border-0 shadow-none" />
         ) : scopedAreas.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
-            <MapPin className="h-8 w-8 text-gray-300" />
-            <p>No areas found</p>
-            <Button variant="outline" size="sm" onClick={openCreate}>
-              <Plus className="mr-1 h-4 w-4" /> Add your first area
-            </Button>
-          </div>
+          <FeedbackState
+            className="rounded-none border-0 shadow-none"
+            title="No areas found"
+            description="Refresh the page or add the first area for this property."
+            action={
+              <Button variant="outline" size="sm" onClick={openCreate}>
+                <Plus className="mr-1 h-4 w-4" /> Add your first area
+              </Button>
+            }
+          />
         ) : (
           <>
             <div className="grid gap-3 p-3 md:hidden">

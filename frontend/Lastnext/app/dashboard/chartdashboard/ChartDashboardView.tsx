@@ -26,6 +26,7 @@ import type {
   TrendPoint,
 } from "./types";
 import { DashboardKpiSkeleton, SkeletonTable } from "@/app/components/ui/loading";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 const months: MonthLabel[] = [
   "Jan",
@@ -318,14 +319,10 @@ export default function ChartDashboardView() {
       )}
 
       {isEmpty && !error && (
-        <div className="rounded-xl border border-border bg-card p-10 text-center">
-          <h2 className="text-lg font-semibold text-foreground">
-            No data available
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            There is no data for the selected month or year. Try another filter.
-          </p>
-        </div>
+        <FeedbackState
+          title="No data available"
+          description="There is no data for the selected month or year. Refresh or try another filter."
+        />
       )}
 
       {!loading && !error && !isEmpty && (

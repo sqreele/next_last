@@ -12,6 +12,7 @@ import {
 import { useSession } from "@/app/lib/session.client";
 import { useMainStore } from "@/app/lib/stores/mainStore";
 import { SkeletonList } from "@/app/components/ui/loading";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 const readableFrequency = (frequency: string, customDays?: number | null) =>
   frequency === "custom"
@@ -227,11 +228,11 @@ export default function PMMasterPlansPage() {
         {error && !hasCurrentPropertyData ? null : (loading || status === "loading") && !hasCurrentPropertyData ? (
           <SkeletonList rows={4} />
         ) : scopedPlans.length === 0 ? (
-          <div className="rounded-xl border border-border bg-card p-10 text-center">
-            <h2 className="text-lg font-bold">No PM master plans configured</h2>
-            <p className="mt-2 text-muted-foreground">Create a recurring rule for one or more machines at this property.</p>
-            {canManagePMMaster && <Link href="/dashboard/preventive-maintenance/plans/create" className="mt-5 inline-flex min-h-11 items-center rounded-md bg-blue-600 px-4 py-2 font-semibold text-white">Create first plan</Link>}
-          </div>
+          <FeedbackState
+            title="No PM master plans configured"
+            description="Create a recurring rule for one or more machines at this property."
+            action={canManagePMMaster ? <Link href="/dashboard/preventive-maintenance/plans/create" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground">Create first plan</Link> : undefined}
+          />
         ) : (
           <section aria-label="PM master plans" className="grid gap-4 lg:grid-cols-2">
             {scopedPlans.map((plan) => {

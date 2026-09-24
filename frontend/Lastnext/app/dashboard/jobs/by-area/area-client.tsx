@@ -9,6 +9,7 @@ import { SearchInput, MobileTopBar } from "@/app/components/pcms-ui";
 import { AlertCircle, MapPin } from "lucide-react";
 import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import { filterJobsByProperty } from "@/app/lib/utils/property-filter";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 type AreaGroup = {
   key: string;
@@ -170,15 +171,10 @@ export default function JobsByAreaClient({
       </Card>
 
       {groups.length === 0 ? (
-        <Card className="border-dashed border-border bg-card/80">
-          <CardContent className="p-8 text-center">
-            <p className="text-lg font-black text-foreground">No jobs found</p>
-            <p className="mt-1 text-sm font-medium text-muted-foreground">
-              Create a job with Area = Bathroom to see it grouped under Bathroom
-              here.
-            </p>
-          </CardContent>
-        </Card>
+        <FeedbackState
+          title="No jobs found"
+          description="Refresh the page or create a job with an area to see it grouped here."
+        />
       ) : (
         <div className="space-y-6">
           {groups.map((group) => (

@@ -1003,6 +1003,7 @@ const MyJobs: React.FC = () => {
                 ? "Use the Property selector in the dashboard header to choose which operational queue to view."
                 : "Your active TenantMembership does not currently grant access to a Property."
             }
+            showRefresh={false}
           />
         ) : (
           <>
@@ -1042,6 +1043,7 @@ const MyJobs: React.FC = () => {
                 {t("action.tryAgain")}
               </Button>
             }
+            showRefresh={false}
           />
         ) : null}
 
@@ -1121,6 +1123,7 @@ const MyJobs: React.FC = () => {
                 </Button>
               </div>
             }
+            showRefresh={false}
           />
         ) : null}
       </PageContainer>

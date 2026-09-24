@@ -36,6 +36,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 interface MaintenanceTask {
   id: number;
@@ -551,26 +552,12 @@ export default function MaintenanceTasksPage() {
       {/* Tasks List */}
       <div className="space-y-4">
         {filteredTasks.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center py-12">
-              <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {searchQuery ||
-                frequencyFilter !== "all" ||
-                difficultyFilter !== "all"
-                  ? "No tasks found matching your filters"
-                  : "No maintenance tasks yet. Create your first task to get started."}
-              </p>
-              {tasks.length === 0 && (
-                <Button asChild className="mt-4">
-                  <Link href="/dashboard/maintenance-tasks/create">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create First Task
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+          <FeedbackState
+            variant={searchQuery || frequencyFilter !== "all" || difficultyFilter !== "all" ? "no-results" : "empty"}
+            title={searchQuery || frequencyFilter !== "all" || difficultyFilter !== "all" ? "No tasks found" : "No maintenance tasks yet"}
+            description={searchQuery || frequencyFilter !== "all" || difficultyFilter !== "all" ? "No tasks match the current filters." : "Refresh the page or create your first task to get started."}
+            action={tasks.length === 0 ? <Button asChild><Link href="/dashboard/maintenance-tasks/create"><Plus className="h-4 w-4 mr-2" />Create First Task</Link></Button> : undefined}
+          />
         ) : (
           filteredTasks.map((task) => (
             <Card

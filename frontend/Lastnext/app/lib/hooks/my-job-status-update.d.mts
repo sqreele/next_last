@@ -9,6 +9,7 @@ export function requestMyJobStatusUpdate(options: {
   jobId: string | number;
   propertyId: string;
   status: JobStatus;
+  afterImages?: File[];
   fetchImpl?: typeof fetch;
 }): Promise<Job>;
 

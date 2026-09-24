@@ -348,6 +348,8 @@ const en = {
   'updateStatus.addNote': 'Add a note',
   'updateStatus.notePlaceholderCompleted': 'What was fixed? Any follow-up needed?',
   'updateStatus.notePlaceholderDefault': 'Add context for the next person handling this job.',
+  'updateStatus.afterImages': 'After images',
+  'updateStatus.afterImagesHint': 'Add photos of the completed work (optional).',
   'updateStatus.confirm': 'Confirm update',
   'updateStatus.saving': 'Saving...',
 
@@ -1254,6 +1256,8 @@ const th: Record<DictKey, string> = {
   'updateStatus.addNote': 'เพิ่มหมายเหตุ',
   'updateStatus.notePlaceholderCompleted': 'แก้ไขอะไรไป? มีรายการต่อเนื่องไหม?',
   'updateStatus.notePlaceholderDefault': 'เพิ่มรายละเอียดให้คนถัดไปที่รับงานต่อ',
+  'updateStatus.afterImages': 'รูปภาพหลังทำงาน',
+  'updateStatus.afterImagesHint': 'เพิ่มรูปผลงานหลังทำเสร็จ (ไม่บังคับ)',
   'updateStatus.confirm': 'ยืนยันการอัปเดต',
   'updateStatus.saving': 'กำลังบันทึก...',
 

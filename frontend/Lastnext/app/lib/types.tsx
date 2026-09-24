@@ -1,4 +1,5 @@
 import { DateRange } from "react-day-picker";
+import { JOB_STATUS_CHART_COLORS } from "@/app/design-system/status-colors";
 // NextAuth module augmentation removed; using Auth0 compat session shape
 
 export interface User {
@@ -220,13 +221,7 @@ export interface JobsPDFProps {
   filter: TabValue;
 }
 
-export const STATUS_COLORS: Record<JobStatus, string> = {
-  pending: '#2563EB',
-  waiting_sparepart: '#F97316',
-  completed: '#16A34A',
-  cancelled: '#DC2626',
-  in_progress: '#F59E0B',
-};
+export const STATUS_COLORS: Record<JobStatus, string> = JOB_STATUS_CHART_COLORS;
 
 export const FILTER_TITLES: Record<TabValue, string> = {
   all: 'All Jobs Report',

@@ -17,21 +17,34 @@ export async function requestMyJobStatusUpdate({
   jobId,
   propertyId,
   status,
+  afterImages = [],
   fetchImpl = fetch,
 }) {
   const url = buildMyJobStatusUpdateUrl(jobId, propertyId);
   if (!url) throw new Error('A Job and active Property are required.');
   if (!VALID_JOB_STATUSES.has(status)) throw new Error('Invalid Job status.');
 
+  if (afterImages.length > 0 && status !== 'completed') {
+    throw new Error('After images can only be added when completing a job.');
+  }
+
+  const headers = { Accept: 'application/json' };
+  let body;
+  if (afterImages.length > 0) {
+    body = new FormData();
+    body.append('status', status);
+    afterImages.forEach((image) => body.append('after_images', image));
+  } else {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify({ status });
+  }
+
   const response = await fetchImpl(url, {
     method: 'PATCH',
     credentials: 'include',
     cache: 'no-store',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ status }),
+    headers,
+    body,
   });
   const text = await response.text();
   let data = {};

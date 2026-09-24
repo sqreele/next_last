@@ -55,6 +55,45 @@ describe('My Job status update contract', () => {
     );
   });
 
+  it('sends after images as multipart only when completing a job', async () => {
+    let captured;
+    const image = new File(['image'], 'after.jpg', { type: 'image/jpeg' });
+    const fetchImpl = async (url, init) => {
+      captured = { url, init };
+      return Response.json({
+        job_id: 'j1',
+        property_id: 'PA',
+        status: 'completed',
+      });
+    };
+
+    await requestMyJobStatusUpdate({
+      jobId: 'j1',
+      propertyId: 'PA',
+      status: 'completed',
+      afterImages: [image],
+      fetchImpl,
+    });
+
+    assert.ok(captured.init.body instanceof FormData);
+    assert.equal(captured.init.body.get('status'), 'completed');
+    assert.equal(captured.init.body.getAll('after_images').length, 1);
+    assert.equal(captured.init.headers['Content-Type'], undefined);
+  });
+
+  it('rejects after images for a non-completed status', async () => {
+    const image = new File(['image'], 'after.jpg', { type: 'image/jpeg' });
+    await assert.rejects(
+      requestMyJobStatusUpdate({
+        jobId: 'j1',
+        propertyId: 'PA',
+        status: 'in_progress',
+        afterImages: [image],
+      }),
+      /only be added when completing/,
+    );
+  });
+
   it('replaces the rendered Job with the updated status after success', () => {
     const jobs = [
       { job_id: 'j1', status: 'pending' },

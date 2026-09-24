@@ -46,6 +46,7 @@ from .serializers import (
 )
 from .job_property import resolve_job_property
 from django.core.files.base import ContentFile
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
 from .pagination import StandardResultsSetPagination, LargeResultsSetPagination, SmallResultsSetPagination
@@ -4425,6 +4426,7 @@ class JobViewSet(viewsets.ModelViewSet):
     def update_status(self, request, job_id=None):
         job = self.get_object()
         status_value = request.data.get('status')
+        after_images = request.FILES.getlist('after_images')
         if status_value is None:
             return Response(
                 {"detail": "Status is required."},
@@ -4437,6 +4439,12 @@ class JobViewSet(viewsets.ModelViewSet):
                 {"detail": "Completed jobs cannot have their status changed."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if after_images and status_value != 'completed':
+            raise ValidationError({
+                'after_images': 'After images can only be added when completing a job.'
+            })
+        if len(after_images) > 5:
+            raise ValidationError({'after_images': 'You can upload up to 5 after images.'})
 
         require_subscription_write(
             request,
@@ -4445,14 +4453,30 @@ class JobViewSet(viewsets.ModelViewSet):
             resource_type='job',
         )
 
-        if request.user.is_authenticated:
-            job.updated_by = request.user
+        try:
+            with transaction.atomic():
+                if request.user.is_authenticated:
+                    job.updated_by = request.user
 
-        if status_value == 'completed' and job.status != 'completed':
-            job.completed_at = timezone.now()
+                if status_value == 'completed' and job.status != 'completed':
+                    job.completed_at = timezone.now()
 
-        job.status = status_value
-        job.save()
+                for image in after_images:
+                    JobImage.objects.create(
+                        job=job,
+                        image=image,
+                        uploaded_by=request.user,
+                    )
+
+                job.status = status_value
+                job.save()
+        except DjangoValidationError as exc:
+            detail = getattr(exc, 'message_dict', None) or {'after_images': exc.messages}
+            raise ValidationError(detail) from exc
+
+        # get_object() may have prefetched the old image collection.
+        if hasattr(job, '_prefetched_objects_cache'):
+            job._prefetched_objects_cache.pop('job_images', None)
         serializer = self.get_serializer(job)
         return Response(serializer.data)
 

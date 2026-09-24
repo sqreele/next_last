@@ -1,10 +1,14 @@
 """Role and Property isolation coverage for every Job API write path."""
 
+from io import BytesIO
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APITestCase
+from PIL import Image
 
-from .models import Area, Job, Property, Room, Tenant, TenantMembership
+from .models import Area, Job, JobImage, Property, Room, Tenant, TenantMembership
 
 
 User = get_user_model()
@@ -61,6 +65,12 @@ class JobWriteAuthorizationTests(APITestCase):
 
     def login(self, user):
         self.client.force_authenticate(user)
+
+    @staticmethod
+    def image_upload(name='after.jpg'):
+        payload = BytesIO()
+        Image.new('RGB', (80, 40), (20, 120, 80)).save(payload, 'JPEG')
+        return SimpleUploadedFile(name, payload.getvalue(), content_type='image/jpeg')
 
     def create_as(self, user, **overrides):
         self.login(user)
@@ -173,6 +183,57 @@ class JobWriteAuthorizationTests(APITestCase):
             secure=True,
         )
         self.assertEqual(viewer_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_completing_job_can_attach_after_images_atomically(self):
+        technician = self.users['technician']
+        job = Job.objects.create(
+            user=technician,
+            updated_by=technician,
+            property=self.property,
+            description='Completion evidence job',
+            status='in_progress',
+        )
+        self.login(technician)
+
+        response = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/'
+            f'?property_id={self.property.property_id}',
+            {'status': 'completed', 'after_images': [self.image_upload()]},
+            format='multipart',
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data['status'], 'completed')
+        self.assertEqual(len(response.data['images']), 1)
+        job.refresh_from_db()
+        self.assertIsNotNone(job.completed_at)
+        image = JobImage.objects.get(job=job)
+        self.assertEqual(image.uploaded_by, technician)
+
+    def test_after_images_are_rejected_without_completion(self):
+        technician = self.users['technician']
+        job = Job.objects.create(
+            user=technician,
+            updated_by=technician,
+            property=self.property,
+            description='Invalid evidence status job',
+            status='pending',
+        )
+        self.login(technician)
+
+        response = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/update_status/'
+            f'?property_id={self.property.property_id}',
+            {'status': 'in_progress', 'after_images': [self.image_upload()]},
+            format='multipart',
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        job.refresh_from_db()
+        self.assertEqual(job.status, 'pending')
+        self.assertFalse(JobImage.objects.filter(job=job).exists())
 
     def test_my_job_status_action_enforces_active_property_and_membership(self):
         owner = self.users['owner']

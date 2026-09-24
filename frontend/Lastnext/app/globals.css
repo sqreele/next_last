@@ -3340,6 +3340,8 @@ body {
   --sneat-danger-soft: hsl(var(--destructive) / 0.12);
   --sneat-info: hsl(var(--info));
   --sneat-info-soft: hsl(var(--info) / 0.12);
+  --sneat-waiting: #8b5cf6;
+  --sneat-waiting-soft: rgb(139 92 246 / 0.12);
   --sneat-secondary: #82868b;
   --sneat-secondary-soft: rgba(130, 134, 139, 0.16);
   --sneat-body-bg: hsl(var(--background));
@@ -3658,6 +3660,10 @@ body {
 .sneat-stat-card__icon--warning {
   background: var(--sneat-warning-soft);
   color: var(--sneat-warning);
+}
+.sneat-stat-card__icon--waiting {
+  background: var(--sneat-waiting-soft);
+  color: var(--sneat-waiting);
 }
 .sneat-stat-card__icon--danger {
   background: var(--sneat-danger-soft);
@@ -3991,6 +3997,10 @@ body {
 .sneat-timeline__item--warning::before {
   background: var(--sneat-warning);
   box-shadow: 0 0 0 4px var(--sneat-warning-soft);
+}
+.sneat-timeline__item--waiting::before {
+  background: var(--sneat-waiting);
+  box-shadow: 0 0 0 4px var(--sneat-waiting-soft);
 }
 .sneat-timeline__item--danger::before {
   background: var(--sneat-danger);

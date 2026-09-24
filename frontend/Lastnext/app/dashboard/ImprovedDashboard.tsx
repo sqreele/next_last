@@ -45,19 +45,20 @@ import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 import { useLocale } from '@/app/lib/i18n/LocaleProvider';
 import type { DictKey, Locale } from '@/app/lib/i18n/dictionary';
 import { usePlanCapabilities } from '@/app/lib/hooks/usePlanCapabilities';
+import { getStatusConfig } from '@/app/design-system/status-config';
 
-type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
+type StatTone = 'primary' | 'success' | 'warning' | 'waiting' | 'danger' | 'info' | 'secondary';
 
-const STATUS_SUMMARY: Array<{ value: string; label: string; tone: StatTone }> = [
-  { value: 'pending', label: 'Pending', tone: 'primary' },
-  { value: 'assigned', label: 'Assigned', tone: 'info' },
-  { value: 'in_progress', label: 'In Progress', tone: 'warning' },
-  { value: 'waiting_sparepart', label: 'Waiting Spare Part', tone: 'warning' },
-  { value: 'waiting_vendor', label: 'Waiting Vendor', tone: 'warning' },
-  { value: 'completed', label: 'Completed', tone: 'success' },
-  { value: 'verified', label: 'Verified', tone: 'success' },
-  { value: 'cancelled', label: 'Cancelled', tone: 'danger' },
-  { value: 'defect', label: 'Defect', tone: 'danger' },
+const STATUS_SUMMARY: Array<{ value: string; label: string }> = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'waiting_sparepart', label: 'Waiting Spare Part' },
+  { value: 'waiting_vendor', label: 'Waiting Vendor' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'defect', label: 'Defect' },
 ];
 
 const TAB_CONFIG = [
@@ -131,23 +132,9 @@ function getInitials(name: string) {
     .join('') || 'NA';
 }
 
-const STATUS_TONE: Record<string, StatTone> = {
-  open: 'primary',
-  pending: 'primary',
-  assigned: 'info',
-  in_progress: 'warning',
-  waiting_sparepart: 'warning',
-  waiting_spare_part: 'warning',
-  waiting_vendor: 'warning',
-  waiting_fix_defect: 'warning',
-  completed: 'success',
-  verified: 'success',
-  cancelled: 'danger',
-  defect: 'danger',
-};
-
 function statusTone(status?: string): StatTone {
-  return STATUS_TONE[normalizeStatus(status || '')] || 'secondary';
+  const tone = getStatusConfig(status).tone;
+  return tone === 'neutral' ? 'secondary' : tone;
 }
 
 function DashboardLoading() {
@@ -648,6 +635,7 @@ export default function ImprovedDashboard() {
               <div className="sneat-list">
                 {STATUS_SUMMARY.map((status) => {
                   const normalized = normalizeStatus(status.value);
+                  const tone = statusTone(status.value);
                   const count = metrics.statusCounts[normalized] || 0;
                   const percentage = metrics.total > 0 ? Math.round((count / metrics.total) * 100) : 0;
                   return (
@@ -663,7 +651,7 @@ export default function ImprovedDashboard() {
                       }
                       className="sneat-list__row rounded-lg border-0 bg-transparent p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      <span className={`sneat-list__icon sneat-stat-card__icon--${status.tone}`}>
+                      <span className={`sneat-list__icon sneat-stat-card__icon--${tone}`}>
                         <Activity className="h-4 w-4" aria-hidden="true" />
                       </span>
                       <div>

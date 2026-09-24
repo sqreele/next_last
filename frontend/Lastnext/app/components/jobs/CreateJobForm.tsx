@@ -55,6 +55,7 @@ import {
   getAllowedUserProperties,
   getPropertyId,
 } from "@/app/lib/security/propertyAccess";
+import { getStatusConfig } from "@/app/design-system/status-config";
 
 // Use Next.js API routes for proxying to the backend
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
@@ -228,23 +229,6 @@ const JOB_TYPES = [
   descriptionKey: DictKey;
   icon: React.ElementType;
 }>;
-
-const STATUS_SELECT_CLASSES: Record<string, string> = {
-  pending: "border-info/30 bg-info/10 text-info",
-  in_progress: "border-warning/35 bg-warning/10 text-warning-emphasis",
-  waiting_sparepart: "border-warning/35 bg-warning/10 text-warning-emphasis",
-  completed: "border-success/30 bg-success/10 text-success",
-  cancelled: "border-destructive/30 bg-destructive/10 text-destructive",
-};
-
-const STATUS_OPTION_CLASSES: Record<string, string> = {
-  pending: "font-semibold text-info focus:bg-info/10",
-  in_progress: "font-semibold text-warning-emphasis focus:bg-warning/10",
-  waiting_sparepart:
-    "font-semibold text-warning-emphasis focus:bg-warning/10",
-  completed: "font-semibold text-success focus:bg-success/10",
-  cancelled: "font-semibold text-destructive focus:bg-destructive/10",
-};
 
 const initialValues: FormValues = {
   description: "",
@@ -1166,7 +1150,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     (touched.status || submitCount > 0) &&
                                     errors.status
                                       ? "border border-red-400 bg-red-50 text-red-900"
-                                      : STATUS_SELECT_CLASSES[values.status] ||
+                                      : getStatusConfig(values.status).className ||
                                         FIELD_BASE_CLASS
                                   }`}
                                 >
@@ -1180,7 +1164,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                       key={option.value}
                                       value={option.value}
                                       className={
-                                        STATUS_OPTION_CLASSES[option.value]
+                                        getStatusConfig(option.value).optionClassName
                                       }
                                     >
                                       {t(option.labelKey)}

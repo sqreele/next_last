@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import { Button } from "@/app/components/ui/button";
-import { ClipboardEdit } from "lucide-react";
+import { ClipboardEdit, ImagePlus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,11 @@ import { useToast } from "@/app/components/ui/use-toast";
 import { useSession } from "@/app/lib/session.client";
 import { cn } from "@/app/lib/utils/cn";
 import { normalizeStatus } from "@/app/components/StatusBadge";
+import { getStatusConfig } from "@/app/design-system/status-config";
+import FileUpload from "@/app/components/jobs/FileUpload";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
+
+const MAX_AFTER_IMAGES = 5;
 
 // Define status constants
 const JOB_STATUS = {
@@ -34,30 +39,6 @@ const JOB_STATUS = {
   WAITING_SPAREPART: "waiting_sparepart",
   COMPLETED: "completed",
   CANCELLED: "cancelled",
-};
-
-const STATUS_BUTTON_CLASSES: Record<string, string> = {
-  pending:
-    "border-blue-300 bg-blue-50 text-blue-800 hover:border-blue-400 hover:bg-blue-100 hover:text-blue-900",
-  in_progress:
-    "border-indigo-300 bg-indigo-50 text-indigo-800 hover:border-indigo-400 hover:bg-indigo-100 hover:text-indigo-900",
-  waiting_sparepart:
-    "border-orange-300 bg-orange-50 text-orange-800 hover:border-orange-400 hover:bg-orange-100 hover:text-orange-900",
-  completed:
-    "border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-900",
-  cancelled:
-    "border-red-300 bg-red-50 text-red-800 hover:border-red-400 hover:bg-red-100 hover:text-red-900",
-  overdue:
-    "border-red-400 bg-red-100 text-red-900 hover:border-red-500 hover:bg-red-200",
-};
-
-const STATUS_SUBMIT_CLASSES: Record<string, string> = {
-  pending: "bg-blue-700 text-white hover:bg-blue-800",
-  in_progress: "bg-indigo-700 text-white hover:bg-indigo-800",
-  waiting_sparepart: "bg-orange-700 text-white hover:bg-orange-800",
-  completed: "bg-emerald-700 text-white hover:bg-emerald-800",
-  cancelled: "bg-red-700 text-white hover:bg-red-800",
-  overdue: "bg-red-800 text-white hover:bg-red-900",
 };
 
 interface UpdateStatusButtonProps {
@@ -94,10 +75,15 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<JobStatus>(
     job.status as JobStatus,
   );
+  const [afterImages, setAfterImages] = useState<File[]>([]);
+  const [uploadResetKey, setUploadResetKey] = useState(0);
   const { toast } = useToast();
   const { status } = useSession();
+  const t = useT();
   const currentStatusTone = normalizeStatus(job.status);
   const selectedStatusTone = normalizeStatus(selectedStatus);
+  const currentStatusConfig = getStatusConfig(currentStatusTone);
+  const selectedStatusConfig = getStatusConfig(selectedStatusTone);
   const isCompleted = currentStatusTone === JOB_STATUS.COMPLETED;
 
   const handleOpenChange = (open: boolean) => {
@@ -105,6 +91,8 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
     if (open) {
       // Reset the selected status to the current job status when opening
       setSelectedStatus(job.status as JobStatus);
+      setAfterImages([]);
+      setUploadResetKey((current) => current + 1);
     }
   };
 
@@ -143,6 +131,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         jobId: job.job_id,
         propertyId: activePropertyId,
         status: selectedStatus,
+        afterImages,
       }) as Job;
 
       // Update local state
@@ -191,8 +180,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         className={cn(
           "h-11 border-2 font-bold shadow-soft",
           className,
-          STATUS_BUTTON_CLASSES[currentStatusTone] ||
-            "border-border bg-muted text-foreground hover:bg-muted",
+          currentStatusConfig.className,
         )}
         disabled={
           status === "loading" || status === "unauthenticated" || isCompleted
@@ -225,15 +213,20 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
               </Label>
               <Select
                 value={selectedStatus}
-                onValueChange={(value: JobStatus) => setSelectedStatus(value)}
+                onValueChange={(value: JobStatus) => {
+                  setSelectedStatus(value);
+                  if (value !== JOB_STATUS.COMPLETED) {
+                    setAfterImages([]);
+                    setUploadResetKey((current) => current + 1);
+                  }
+                }}
                 disabled={isSubmitting || isCompleted}
               >
                 <SelectTrigger
                   id="status"
                   className={cn(
                     "border-2 text-sm font-bold",
-                    STATUS_BUTTON_CLASSES[selectedStatusTone] ||
-                      "border-border bg-card text-foreground",
+                    selectedStatusConfig.className,
                   )}
                 >
                   <SelectValue placeholder="Select status" />
@@ -264,6 +257,29 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
               </Select>
             </div>
 
+            {selectedStatus === JOB_STATUS.COMPLETED && (
+              <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+                <div className="flex items-start gap-2">
+                  <ImagePlus className="mt-0.5 h-4 w-4 flex-none text-emerald-700" />
+                  <div>
+                    <Label className="text-sm font-bold text-emerald-950">
+                      {t("updateStatus.afterImages")}
+                    </Label>
+                    <p className="mt-0.5 text-xs text-emerald-800">
+                      {t("updateStatus.afterImagesHint")}
+                    </p>
+                  </div>
+                </div>
+                <FileUpload
+                  key={uploadResetKey}
+                  onFileSelect={setAfterImages}
+                  maxFiles={MAX_AFTER_IMAGES}
+                  maxSize={5}
+                  disabled={isSubmitting}
+                />
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
@@ -280,7 +296,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
                 loadingText="Saving..."
                 className={cn(
                   "font-bold",
-                  STATUS_SUBMIT_CLASSES[selectedStatusTone],
+                  selectedStatusConfig.buttonClassName,
                 )}
               >
                 Update

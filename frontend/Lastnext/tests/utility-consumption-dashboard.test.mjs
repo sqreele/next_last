@@ -55,6 +55,8 @@ test("electricity and water consumption use separate unit-specific charts", () =
 });
 
 test("cost comparison uses only the common THB currency", () => {
+  assert.match(costChart, /<LineChart/);
+  assert.doesNotMatch(costChart, /<BarChart/);
   assert.match(costChart, /dataKey="totalelectricity"/);
   assert.match(costChart, /dataKey="electricity_cost_budget"/);
   assert.match(costChart, /unit=" THB"/);

@@ -13,7 +13,7 @@ export const priorityConfig = {
     label: "Low",
     description: "Can be handled in the normal queue",
     icon: ArrowDown,
-    className: "border-border bg-muted text-muted-foreground",
+    className: "border-success/30 bg-success/10 text-success",
   },
   medium: {
     label: "Medium",

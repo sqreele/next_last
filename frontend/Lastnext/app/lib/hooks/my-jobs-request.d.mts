@@ -55,6 +55,7 @@ export function canMutateMyJob(
   job: Job,
   propertyId?: string | null,
 ): boolean;
+export function isMyJobActionLocked(job?: Pick<Job, "status"> | null): boolean;
 export function getMyJobDetailHref(
   jobId?: string | null,
   propertyId?: string | null,

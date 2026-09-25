@@ -6,6 +6,7 @@ import {
   canMutateMyJob,
   getMyJobDetailHref,
   isCurrentMyJobsRequest,
+  isMyJobActionLocked,
   isMyJobsAbortError,
   requestMyJobsPage,
 } from '../app/lib/hooks/my-jobs-request.mjs';
@@ -46,6 +47,14 @@ describe('My Jobs active Property contract', () => {
     assert.equal(canMutateMyJob({ can_operate: true, property_id: 'PA' }, 'PA'), true);
     assert.equal(canMutateMyJob({ can_operate: false, property_id: 'PA' }, 'PA'), false);
     assert.equal(canMutateMyJob({ can_operate: true, property_id: 'PB' }, 'PA'), false);
+  });
+
+  it('locks edit and delete actions for completed or locked jobs', () => {
+    assert.equal(isMyJobActionLocked({ status: 'completed' }), true);
+    assert.equal(isMyJobActionLocked({ status: ' Completed ' }), true);
+    assert.equal(isMyJobActionLocked({ status: 'locked' }), true);
+    assert.equal(isMyJobActionLocked({ status: 'in_progress' }), false);
+    assert.equal(isMyJobActionLocked({ status: 'pending' }), false);
   });
 
   it('navigates with external Job and Property identities', () => {

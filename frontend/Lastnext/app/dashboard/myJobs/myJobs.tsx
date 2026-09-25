@@ -66,6 +66,7 @@ import { useJobsData } from "@/app/lib/hooks/useJobsData";
 import {
   canMutateMyJob,
   getMyJobDetailHref,
+  isMyJobActionLocked,
   type MyJobsStatusCounts,
 } from "@/app/lib/hooks/my-jobs-request.mjs";
 import {
@@ -458,6 +459,7 @@ function JobCard({
   const location = getJobLocation(job);
   const technician = getTechnician(job);
   const canOperate = canMutateMyJob(job, activePropertyId);
+  const actionsLocked = isMyJobActionLocked(job);
   const detailHref = getMyJobDetailHref(job.job_id, activePropertyId);
 
   const openDetail = () => {
@@ -536,6 +538,8 @@ function JobCard({
                 type="button"
                 variant="ghost"
                 onClick={() => onEdit(job)}
+                disabled={actionsLocked}
+                title={actionsLocked ? t("myJobs.actionsLocked") : undefined}
                 className="justify-start"
               >
                 <Pencil className="h-4 w-4" />
@@ -545,6 +549,8 @@ function JobCard({
                 type="button"
                 variant="ghost"
                 onClick={() => onDelete(job)}
+                disabled={actionsLocked}
+                title={actionsLocked ? t("myJobs.actionsLocked") : undefined}
                 className="justify-start text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
@@ -821,13 +827,19 @@ const MyJobs: React.FC = () => {
   };
 
   const handleEdit = (job: Job) => {
-    if (!canMutateMyJob(job, selectedProperty)) return;
+    if (
+      !canMutateMyJob(job, selectedProperty) ||
+      isMyJobActionLocked(job)
+    ) return;
     setSelectedJob(job);
     setIsEditDialogOpen(true);
   };
 
   const handleDelete = (job: Job) => {
-    if (!canMutateMyJob(job, selectedProperty)) return;
+    if (
+      !canMutateMyJob(job, selectedProperty) ||
+      isMyJobActionLocked(job)
+    ) return;
     setSelectedJob(job);
     setIsDeleteDialogOpen(true);
   };
@@ -837,7 +849,8 @@ const MyJobs: React.FC = () => {
     if (
       !selectedJob ||
       !selectedProperty ||
-      !canMutateMyJob(selectedJob, selectedProperty)
+      !canMutateMyJob(selectedJob, selectedProperty) ||
+      isMyJobActionLocked(selectedJob)
     ) return;
 
     setIsSubmitting(true);
@@ -890,7 +903,8 @@ const MyJobs: React.FC = () => {
     if (
       !selectedJob ||
       !selectedProperty ||
-      !canMutateMyJob(selectedJob, selectedProperty)
+      !canMutateMyJob(selectedJob, selectedProperty) ||
+      isMyJobActionLocked(selectedJob)
     ) return;
 
     setIsSubmitting(true);

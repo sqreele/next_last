@@ -1,11 +1,10 @@
 "use client";
 
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  LabelList,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,10 +21,10 @@ interface ActualVsBudgetChartProps {
   yearLabel: string;
 }
 
-function formatBarLabel(v: number | string | null | undefined) {
-  if (v == null || v === "") return "";
+function formatAxisValue(v: number | string | null | undefined) {
+  if (v == null || v === "") return "0";
   const n = typeof v === "number" ? v : Number(v);
-  if (Number.isNaN(n) || n === 0) return "";
+  if (Number.isNaN(n)) return "0";
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 10_000) return `${(n / 1000).toFixed(0)}k`;
   return String(Math.round(n));
@@ -46,49 +45,66 @@ export default function ActualVsBudgetChart({
       </div>
       <div className="h-64 w-full min-w-0 sm:h-80 sm:min-h-[20rem]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            layout="vertical"
+          <LineChart
             data={data}
-            margin={{ left: 8, right: 56, top: 8, bottom: 8 }}
+            margin={{ left: 4, right: 16, top: 12, bottom: 4 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis type="number" unit=" THB" stroke="#64748b" tick={{ fontSize: 11 }} />
-            <YAxis
-              dataKey="label"
-              type="category"
-              width={36}
-              stroke="#64748b"
-              tick={{ fontSize: 11 }}
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
+              vertical={false}
             />
-            <Tooltip formatter={(value) => [`฿${Number(Array.isArray(value) ? value[0] : value).toLocaleString()}`, "THB"]} />
-            <Legend />
-            <Bar
+            <XAxis
+              dataKey="label"
+              stroke="hsl(var(--muted-foreground))"
+              tick={{ fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              unit=" THB"
+              width={68}
+              stroke="hsl(var(--muted-foreground))"
+              tick={{ fontSize: 11 }}
+              tickFormatter={formatAxisValue}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip
+              formatter={(value, name) => [
+                `฿${Number(Array.isArray(value) ? value[0] : value).toLocaleString()}`,
+                name,
+              ]}
+              contentStyle={{
+                background: "hsl(var(--popover))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "0.5rem",
+                color: "hsl(var(--popover-foreground))",
+              }}
+            />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Line
+              type="monotone"
               dataKey="totalelectricity"
               name={t("utility.actual")}
-              fill="hsl(var(--primary))"
-              radius={[0, 4, 4, 0]}
-            >
-              <LabelList
-                dataKey="totalelectricity"
-                position="right"
-                formatter={formatBarLabel}
-                className="fill-slate-600 text-[11px] font-medium"
-              />
-            </Bar>
-            <Bar
+              stroke="hsl(var(--primary))"
+              strokeWidth={3}
+              dot={{ r: 3, fill: "hsl(var(--primary))", strokeWidth: 0 }}
+              activeDot={{ r: 6, strokeWidth: 2 }}
+              connectNulls={false}
+            />
+            <Line
+              type="monotone"
               dataKey="electricity_cost_budget"
               name={t("utility.budget")}
-              fill="hsl(var(--muted-foreground))"
-              radius={[0, 4, 4, 0]}
-            >
-              <LabelList
-                dataKey="electricity_cost_budget"
-                position="right"
-                formatter={formatBarLabel}
-                className="fill-slate-600 text-[11px] font-medium"
-              />
-            </Bar>
-          </BarChart>
+              stroke="hsl(var(--warning))"
+              strokeWidth={3}
+              strokeDasharray="7 5"
+              dot={{ r: 3, fill: "hsl(var(--warning))", strokeWidth: 0 }}
+              activeDot={{ r: 6, strokeWidth: 2 }}
+              connectNulls={false}
+            />
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>

@@ -17,7 +17,7 @@ import {
 import { Textarea } from "@/app/components/ui/textarea";
 import { Label } from "@/app/components/ui/label";
 import { Input } from "@/app/components/ui/input";
-import { StatusBadge } from "@/app/components/pcms-ui";
+import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
 import { cn } from "@/app/lib/utils/cn";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 
@@ -78,25 +78,6 @@ const EditJobDialog: FC<EditDialogProps> = ({
   };
 
   if (!isOpen || !job) return null;
-
-  const priorityColors: Record<string, { active: string; inactive: string }> = {
-    low: {
-      active: "bg-green-500 text-white border-green-500 shadow-soft",
-      inactive: "border-green-200 text-green-700 hover:bg-green-50",
-    },
-    medium: {
-      active: "bg-yellow-500 text-white border-yellow-500 shadow-soft",
-      inactive: "border-yellow-200 text-yellow-700 hover:bg-yellow-50",
-    },
-    high: {
-      active: "bg-orange-500 text-white border-orange-500 shadow-soft",
-      inactive: "border-orange-200 text-orange-700 hover:bg-orange-50",
-    },
-    critical: {
-      active: "bg-red-600 text-white border-red-600 shadow-soft",
-      inactive: "border-red-200 text-red-700 hover:bg-red-50",
-    },
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -184,8 +165,6 @@ const EditJobDialog: FC<EditDialogProps> = ({
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {JOB_PRIORITY_OPTIONS.map((option) => {
                 const active = priority === option.value;
-                const colors =
-                  priorityColors[option.value] || priorityColors.medium;
                 return (
                   <button
                     key={option.value}
@@ -194,11 +173,13 @@ const EditJobDialog: FC<EditDialogProps> = ({
                     disabled={isSubmitting}
                     aria-pressed={active}
                     className={cn(
-                      "min-h-[44px] touch-manipulation rounded-xl border-2 px-3 py-2 text-sm font-bold transition-all duration-150 active:scale-95",
-                      active ? colors.active : colors.inactive,
+                      "flex min-h-[56px] touch-manipulation items-center justify-center rounded-xl border-2 px-3 py-2 transition-all duration-150 active:scale-95",
+                      active
+                        ? "border-primary bg-primary/5 shadow-soft ring-2 ring-primary/20"
+                        : "border-border bg-card hover:border-primary/40 hover:bg-muted/40",
                     )}
                   >
-                    {option.label}
+                    <PriorityBadge priority={option.value} size="sm" />
                   </button>
                 );
               })}

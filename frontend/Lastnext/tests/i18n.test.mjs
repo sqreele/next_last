@@ -16,6 +16,9 @@ const dashboardSource = read("app/dashboard/ImprovedDashboard.tsx");
 const inventorySource = read("app/dashboard/inventory/page.tsx");
 const scheduleSource = read("app/dashboard/preventive-maintenance/schedule/PMScheduleCalendar.tsx");
 const statusBadgeSource = read("app/components/StatusBadge.tsx");
+const priorityBadgeSource = read("app/components/PriorityBadge.tsx");
+const priorityConfigSource = read("app/design-system/priority-config.ts");
+const editJobDialogSource = read("app/components/jobs/EditJobDialog.tsx");
 
 function dictionaryBlock(start, end) {
   return dictionarySource.slice(dictionarySource.indexOf(start), dictionarySource.indexOf(end));
@@ -82,6 +85,19 @@ test("canonical job statuses map to translated labels", () => {
   for (const status of ["pending", "in_progress", "waiting_sparepart", "completed", "cancelled", "overdue", "scheduled", "waiting_vendor"]) {
     assert.match(statusBadgeSource, new RegExp(`${status}: \\"status\\.`));
   }
+});
+
+test("priority badges use one semantic color source across job views", () => {
+  for (const priority of ["low", "medium", "high", "critical"]) {
+    assert.match(priorityBadgeSource, new RegExp(`${priority}: \\"priority\\.`));
+  }
+  assert.match(priorityConfigSource, /low:[\s\S]*?text-success/);
+  assert.match(priorityConfigSource, /medium:[\s\S]*?text-info/);
+  assert.match(priorityConfigSource, /high:[\s\S]*?text-warning-emphasis/);
+  assert.match(priorityConfigSource, /critical:[\s\S]*?text-destructive/);
+  assert.match(priorityConfigSource, /key === "urgent"/);
+  assert.match(editJobDialogSource, /<PriorityBadge priority=\{option\.value\} size="sm"/);
+  assert.doesNotMatch(editJobDialogSource, /priorityColors/);
 });
 
 test("raw PM status code is not rendered", () => {

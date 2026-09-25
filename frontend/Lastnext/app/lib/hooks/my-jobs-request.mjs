@@ -51,6 +51,14 @@ export function canMutateMyJob(job, propertyId) {
   );
 }
 
+export function isMyJobActionLocked(job) {
+  const status = String(job?.status || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-\s]+/g, '_');
+  return status === 'completed' || status === 'locked';
+}
+
 export function getMyJobDetailHref(jobId, propertyId) {
   const externalJobId = String(jobId || '').trim();
   const externalPropertyId = String(propertyId || '').trim();

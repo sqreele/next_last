@@ -1,6 +1,7 @@
 'use client'
 
 import useSWR from 'swr';
+import { fetchWithTimeout } from '@/app/lib/fetch-with-timeout.mjs';
 
 type SessionCompat = {
   user?: {
@@ -18,7 +19,12 @@ type SessionCompat = {
   expires?: string | number;
 } | null;
 
-const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(res => res.json());
+const fetcher = async (url: string): Promise<SessionCompat> => {
+  return fetchWithTimeout(url, { credentials: 'include' }, 12_000, async (response) => {
+    if (!response.ok) throw new Error(`Session request failed (${response.status}).`);
+    return response.json() as Promise<SessionCompat>;
+  });
+};
 
 export function useCompatSession() {
   const { data, error, isLoading, mutate } = useSWR<SessionCompat>('/api/auth/session-compat', fetcher, {
@@ -30,6 +36,8 @@ export function useCompatSession() {
     refreshInterval: 0, // Don't auto-refresh
     revalidateIfStale: true,
     keepPreviousData: true, // Keep previous data while revalidating
+    errorRetryCount: 1,
+    errorRetryInterval: 1000,
   });
 
   const status: 'loading' | 'authenticated' | 'unauthenticated' = isLoading

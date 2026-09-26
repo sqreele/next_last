@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 from datetime import timedelta
 from typing import Optional
 
@@ -27,6 +28,7 @@ except Exception:
 # Security
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
 DEBUG = os.getenv('DEBUG', 'False') in ('True', '1', 'true', 'yes')
+RUNNING_TESTS = 'test' in sys.argv or 'pytest' in Path(sys.argv[0]).name
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Production Security Settings
@@ -47,6 +49,15 @@ if not DEBUG:
     X_FRAME_OPTIONS = 'DENY'
 else:
     # Development settings
+    SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 0
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+
+# Django's test client uses HTTP unless a test explicitly requests a secure
+# request. Keep production HTTPS enforcement enabled in real deployments while
+# allowing API tests to exercise views instead of receiving blanket 301s.
+if RUNNING_TESTS:
     SECURE_SSL_REDIRECT = False
     SECURE_HSTS_SECONDS = 0
     SESSION_COOKIE_SECURE = False

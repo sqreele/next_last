@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { WifiOff, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { OfflineRetryButton } from '@/app/components/pwa/OfflineRetryButton';
@@ -28,10 +29,10 @@ export default function OfflinePage() {
             asChild
             className="bg-blue-600 text-white hover:bg-blue-700"
           >
-            <a href="/dashboard">
+            <Link href="/dashboard">
               <Home className="mr-2 h-4 w-4" />
               Back to dashboard
-            </a>
+            </Link>
           </Button>
           <OfflineRetryButton>
             <RefreshCw className="mr-2 h-4 w-4" />

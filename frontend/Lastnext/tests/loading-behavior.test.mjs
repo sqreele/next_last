@@ -274,7 +274,7 @@ test("tenant invitation loading is scope-bound and does not replace settled rows
 
 test("settings actions expose local progress without replacing loaded pages", async () => {
   const users = await source("app/dashboard/settings/users/page.tsx");
-  const billing = await source("app/dashboard/settings/billing/page.tsx");
+  const billing = await source("app/dashboard/settings/billing/BillingSettingsClient.tsx");
   assert.match(users, /submitting \? "Sending…"/);
   assert.match(users, /actionId === invitation\.id \? "Working…"/);
   assert.match(billing, /loading && !hasLoaded/);

@@ -4,6 +4,7 @@ import { jobsApi, JobsApiError } from '../api/jobsApi';
 import { Job, JobStatus, Property } from '../types';
 import { useToast } from './use-toast';
 import { exportFilteredJobsToCSV } from '../utils/csv-export';
+import { exportJobsReportToPdf } from '../utils/pdf-export';
 import { useMainStore } from '../stores/mainStore';
 
 interface JobsDashboardState {
@@ -451,22 +452,14 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
           description: `Exported ${state.jobs.length} jobs as Excel (CSV format)`
         });
       } else if (format === 'pdf') {
-        // PDF export - show message that it's not implemented yet
+        await exportJobsReportToPdf(state.jobs, state.properties, {
+          filename: `jobs-export-${new Date().toISOString().split('T')[0]}.pdf`,
+        });
         toast({
-          title: "Info",
-          description: 'PDF export is not yet implemented. Use CSV export for now.'
+          title: "Export Successful",
+          description: `Exported ${state.jobs.length} jobs as PDF`
         });
       }
-      
-      // Create download link
-      // const url = window.URL.createObjectURL(blob);
-      // const a = document.createElement('a');
-      // a.href = url;
-      // a.download = `jobs-${new Date().toISOString().split('T')[0]}.${format}`;
-      // document.body.appendChild(a);
-      // a.click();
-      // window.URL.revokeObjectURL(url);
-      // document.body.removeChild(a);
       
       // toast.success(`Jobs exported as ${format.toUpperCase()}`);
       

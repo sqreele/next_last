@@ -7,6 +7,7 @@ import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } 
 import { logger } from "./utils/logger";
 import { getPropertyId } from "./security/propertyAccess";
 import { backendFetch } from "./backend-fetch";
+import { RequestTimeoutError } from "./fetch-with-timeout.mjs";
 
 // Allow using process.env without requiring Node types in this module
 declare const process: { env: Record<string, string | undefined> };
@@ -41,7 +42,10 @@ function isRetryableError(error: any, status?: number): boolean {
     return true;
   }
   // Timeout errors
-  if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('timeout'))) {
+  if (
+    error instanceof RequestTimeoutError ||
+    (error instanceof Error && (error.name === 'AbortError' || error.message.includes('timeout')))
+  ) {
     return true;
   }
   // Server errors (5xx) are retryable
@@ -120,11 +124,11 @@ export async function fetchWithSession<T>(
     const response = await backendFetch(absoluteUrl, {
       ...options,
       signal: controller.signal,
-    });
+    }, timeoutMs);
     
+    const responseText = await response.text();
     clearTimeout(timeoutId);
     signal?.removeEventListener('abort', abortFromCaller);
-    const responseText = await response.text();
 
     logger.debug('API Response', {
       status: response.status,
@@ -185,7 +189,10 @@ export async function fetchWithSession<T>(
     if (signal?.aborted) throw error;
     
     // Handle timeout errors
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (
+      error instanceof RequestTimeoutError ||
+      (error instanceof Error && error.name === 'AbortError')
+    ) {
       if (retries > 0) {
         logger.warn(`Request timeout, retrying (${retries} attempts left)`);
         await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
@@ -225,8 +232,19 @@ async function fetchWithToken<T>(
   return fetchWithSession<T>(url, method, body, retries, timeoutMs, signal);
 }
 
-export async function fetchProperties(accessToken?: string): Promise<Property[]> {
-  return fetchWithToken<Property[]>('/api/v1/properties/', accessToken);
+export async function fetchProperties(
+  accessToken?: string,
+  options: { retries?: number; timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<Property[]> {
+  return fetchWithToken<Property[]>(
+    '/api/v1/properties/',
+    accessToken,
+    'GET',
+    undefined,
+    options.retries,
+    options.timeoutMs,
+    options.signal,
+  );
 }
 
 export async function fetchJobsForProperty(

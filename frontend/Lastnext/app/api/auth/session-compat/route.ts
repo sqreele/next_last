@@ -35,33 +35,45 @@ export async function GET() {
     let properties: Property[] = [];
     let profileData: UserProfileResponse | null = null;
     if (session.user.accessToken) {
-      try {
-        if (DEBUG_CONFIG.logApiCalls) {
-        }
-        properties = await fetchProperties(session.user.accessToken);
-        if (DEBUG_CONFIG.logApiCalls) {
-        }
-      } catch (error) {
-        console.error('❌ Error fetching properties for session:', error);
-        // Continue with empty properties if fetch fails
-      }
-
-      try {
-        const profileResponse = await backendFetch(`${API_CONFIG.baseUrl}/api/v1/user-profiles/me/`, {
+      // These projections are optional session enrichment. Resolve them in
+      // parallel with short deadlines so one slow Django endpoint cannot hold
+      // every authenticated page in its initial loading state.
+      const propertiesRequest = fetchProperties(session.user.accessToken, {
+        retries: 0,
+        timeoutMs: 8_000,
+      });
+      const profileRequest = backendFetch(`${API_CONFIG.baseUrl}/api/v1/user-profiles/me/`, {
           headers: {
             Authorization: `Bearer ${session.user.accessToken}`,
             'Content-Type': 'application/json',
           },
           cache: 'no-store',
-        });
+        }, 8_000, async (response) => ({
+          response,
+          data: response.ok
+            ? await response.json() as UserProfileResponse
+            : null,
+        }));
+      const [propertiesResult, profileResult] = await Promise.allSettled([
+        propertiesRequest,
+        profileRequest,
+      ]);
 
+      if (propertiesResult.status === 'fulfilled') {
+        properties = propertiesResult.value;
+      } else {
+        console.error('❌ Error fetching properties for session:', propertiesResult.reason);
+      }
+
+      if (profileResult.status === 'fulfilled') {
+        const { response: profileResponse, data } = profileResult.value;
         if (profileResponse.ok) {
-          profileData = (await profileResponse.json()) as UserProfileResponse;
+          profileData = data;
         } else if (DEBUG_CONFIG.logApiCalls) {
           console.warn('⚠️ Failed to fetch /user-profiles/me for session-compat:', profileResponse.status);
         }
-      } catch (profileError) {
-        console.error('❌ Error fetching user profile for session:', profileError);
+      } else {
+        console.error('❌ Error fetching user profile for session:', profileResult.reason);
       }
     } else if (DEBUG_CONFIG.logSessions) {
     }

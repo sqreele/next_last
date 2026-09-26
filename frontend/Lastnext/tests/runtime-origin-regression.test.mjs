@@ -34,11 +34,11 @@ test('production runtime cannot resolve HotelCarePro API/Auth0 origins', async (
   }
 });
 
-test('notification polling uses the canonical public API origin', async () => {
+test('notification polling uses the authenticated same-origin BFF', async () => {
   const source = await readFile(new URL('app/components/notifications/NotificationBell.tsx', root), 'utf8');
-  assert.match(source, /process\.env\.NEXT_PUBLIC_API_URL/);
-  assert.match(source, /"https:\/\/staymaint\.com"/);
-  assert.match(source, /\$\{API_BASE_URL\}\/api\/v1\/notifications\/all\//);
+  assert.match(source, /`\/api\/v1\/notifications\/all\/\?\$\{params\.toString\(\)\}`/);
+  assert.match(source, /credentials: "include"/);
+  assert.doesNotMatch(source, /NEXT_PUBLIC_API_URL|https:\/\/staymaint\.com\/api/);
 });
 
 test('Auth0 login uses the StayMaint audience fallback', async () => {

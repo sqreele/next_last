@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from .models import Property, SubscriptionPlan, Tenant, TenantMembership, TenantSubscription
+from .plan_capabilities import PLAN_FEATURES
 from .tenancy import SubscriptionUserLimitReached, enforce_tenant_user_limit, get_tenant_user_capacity
 
 
@@ -18,6 +19,18 @@ class CommercialPlanCapacityTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.owner = User.objects.create_user(username='commercial-capacity-owner')
+        enabled_features = {
+            'starter': set(),
+            'pro': {
+                'preventive_maintenance', 'pm_schedules', 'technician_kpi',
+                'advanced_reports', 'csv_export',
+            },
+            'enterprise': {
+                'preventive_maintenance', 'pm_schedules', 'technician_kpi',
+                'advanced_reports', 'csv_export', 'multi_property',
+                'advanced_property_permissions',
+            },
+        }
         self.plans = {
             code: SubscriptionPlan.objects.update_or_create(
                 code=code,
@@ -26,6 +39,10 @@ class CommercialPlanCapacityTests(TestCase):
                     'monthly_price': price,
                     'max_users': users,
                     'max_properties': properties,
+                    'features': {
+                        feature: feature in enabled_features[code]
+                        for feature in PLAN_FEATURES
+                    },
                 },
             )[0]
             for code, name, price, users, properties in (
@@ -90,7 +107,8 @@ class CommercialPlanCapacityTests(TestCase):
                 first = self.create_property(tenant, f'{code} first')
                 second = self.create_property(tenant, f'{code} second')
                 self.assertEqual(first.status_code, status.HTTP_201_CREATED, first.data)
-                self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST, second.data)
+                self.assertEqual(second.status_code, status.HTTP_403_FORBIDDEN, second.data)
+                self.assertEqual(second.data['code'], 'feature_not_available')
                 self.assertFalse(Property.objects.filter(name=f'{code} second').exists())
 
     def test_each_canonical_user_limit_allows_below_and_blocks_at_limit(self):
@@ -118,7 +136,8 @@ class CommercialPlanCapacityTests(TestCase):
             self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
 
         blocked = self.create_property(tenant, 'enterprise property 5')
-        self.assertEqual(blocked.status_code, status.HTTP_400_BAD_REQUEST, blocked.data)
+        self.assertEqual(blocked.status_code, status.HTTP_409_CONFLICT, blocked.data)
+        self.assertEqual(blocked.data['code'], 'subscription_limit_reached')
         self.assertEqual(Property.objects.filter(tenant=tenant).count(), 5)
 
     def test_enterprise_bulk_import_respects_property_limit(self):

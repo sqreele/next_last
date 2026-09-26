@@ -145,7 +145,8 @@ test('settings invitation form covers role, property, and submission states', as
   assert.match(settings, /const tenantWideRoles = new Set\(\["owner", "admin", "manager"\]\)/);
   assert.match(settings, /const propertyRequiredRoles = new Set\(\["supervisor", "technician", "viewer"\]\)/);
   assert.match(settings, /properties\.filter\(\(property\) => String\(property\.tenant\) === tenantId\)/);
-  assert.match(settings, /properties: propertyIds/);
+  assert.match(settings, /const invitationPropertyIds = canManageAdvancedGrants/);
+  assert.match(settings, /properties: invitationPropertyIds/);
   assert.match(settings, /onCheckedChange=\{\(next\) => setPropertyIds/);
   assert.match(settings, /propertyRequiredRoles\.has\(role\) && propertyIds\.length === 0/);
 

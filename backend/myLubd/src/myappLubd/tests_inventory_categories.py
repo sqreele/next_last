@@ -117,10 +117,10 @@ class InventoryCategoryBehaviorTests(TestCase):
         self.other_property = Property.objects.create(name='Other category hotel', tenant=self.other_tenant)
         self.user = User.objects.create_user(username='category-user', password='pw12345!')
         TenantMembership.objects.create(
-            user=self.user, tenant=self.tenant, role='technician', is_active=True
+            user=self.user, tenant=self.tenant, role='manager', is_active=True
         ).properties.add(self.property)
         TenantMembership.objects.create(
-            user=self.user, tenant=self.other_tenant, role='technician', is_active=True
+            user=self.user, tenant=self.other_tenant, role='manager', is_active=True
         ).properties.add(self.other_property)
         self.client = APIClient()
         self.client.force_authenticate(self.user)

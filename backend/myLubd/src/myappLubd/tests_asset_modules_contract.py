@@ -198,7 +198,9 @@ class InventoryContractTests(APITestCase):
         self.tech = User.objects.create_user(username='inventory-tech')
         self.viewer = User.objects.create_user(username='inventory-viewer')
         self.outsider = User.objects.create_user(username='inventory-outsider')
-        grant(self.tech, self.tenant, 'technician', self.prop)
+        # Inventory stock creation/restocking is manager-only; managers may
+        # also consume stock, so one actor covers both contract paths here.
+        grant(self.tech, self.tenant, 'manager', self.prop)
         grant(self.viewer, self.tenant, 'viewer', self.prop)
         grant(self.outsider, self.other_tenant, 'technician', self.other)
         self.item = Inventory.objects.create(name='Filter', quantity=10, min_quantity=2, property=self.prop)
@@ -334,7 +336,9 @@ class InventoryConcurrencyTests(TransactionTestCase):
         tenant = Tenant.objects.create(name='Concurrent inventory tenant')
         self.prop = Property.objects.create(name='Concurrent hotel', tenant=tenant)
         self.user = User.objects.create_user(username='concurrent-tech')
-        grant(self.user, tenant, 'technician', self.prop)
+        # Managers may both restock and consume inventory, which lets these
+        # concurrency tests exercise the stock-locking behavior itself.
+        grant(self.user, tenant, 'manager', self.prop)
 
     def post_in_thread(self, url, quantity):
         close_old_connections()

@@ -1,43 +1,51 @@
-import { MetadataRoute } from "next";
+import type { MetadataRoute } from "next";
+
 import {
   englishMarketingPages,
   thaiMarketingPages,
 } from "@/app/lib/marketing-pages";
+import { seoConfig } from "@/app/lib/seo-config";
 
+const urlFor = (path = "") => new URL(path, `${seoConfig.siteUrl}/`).href;
+
+/**
+ * Public, canonical pages only. Authenticated dashboards, reports, and other
+ * tenant-specific URLs are deliberately excluded from search indexing.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://staymaint.com";
-
-  // Only public canonical pages belong in the sitemap.
-  const staticPages = [
+  const corePages: MetadataRoute.Sitemap = [
     {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
+      url: urlFor(),
+      changeFrequency: "weekly",
       priority: 1,
     },
     {
-      url: `${baseUrl}/contact/`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.7,
+      url: urlFor("contact/"),
+      changeFrequency: "monthly",
+      priority: 0.6,
     },
     {
-      url: `${baseUrl}/pricing/`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
+      url: urlFor("pricing/"),
+      changeFrequency: "weekly",
       priority: 0.8,
     },
   ];
 
-  const marketingPages = [
-    ...Object.keys(englishMarketingPages).map((slug) => `/${slug}`),
-    ...Object.keys(thaiMarketingPages).map((slug) => `/th/${slug}`),
-  ].map((path) => ({
-    url: `${baseUrl}${path}/`,
-    lastModified: new Date(),
-    changeFrequency: "monthly" as const,
-    priority: 0.85,
+  const englishPages: MetadataRoute.Sitemap = Object.values(
+    englishMarketingPages,
+  ).map((page) => ({
+    url: urlFor(`${page.slug}/`),
+    changeFrequency: "monthly",
+    priority: 0.8,
   }));
 
-  return [...staticPages, ...marketingPages];
+  const thaiPages: MetadataRoute.Sitemap = Object.values(thaiMarketingPages).map(
+    (page) => ({
+      url: urlFor(`th/${page.slug}/`),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    }),
+  );
+
+  return [...corePages, ...englishPages, ...thaiPages];
 }

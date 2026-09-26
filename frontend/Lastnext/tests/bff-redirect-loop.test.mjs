@@ -49,8 +49,7 @@ async function harness(authenticated, upstreamResponse = () => Response.json({ o
   const forwardedRequests = [];
   const env = { NEXT_PRIVATE_API_URL: 'http://backend:8000', NEXT_PUBLIC_API_URL: 'https://staymaint.com' };
   const upstream = await load('app/lib/bff-upstream.ts', env);
-  const backend = await load('app/lib/backend-fetch.ts', env, {}, {
-    fetch: async (url, init) => {
+  const mockFetch = async (url, init) => {
       events.push('fetch');
       assert.equal(url.origin, 'http://backend:8000');
       assert.equal(init.headers.get('cookie'), null);
@@ -67,6 +66,12 @@ async function harness(authenticated, upstreamResponse = () => Response.json({ o
           : [...new Uint8Array(await new Response(init.body).arrayBuffer())],
       });
       return upstreamResponse();
+  };
+  const timeoutFetch = await import('../app/lib/fetch-with-timeout.mjs');
+  const backend = await load('app/lib/backend-fetch.ts', env, {
+    './fetch-with-timeout.mjs': {
+      ...timeoutFetch,
+      fetchWithTimeout: (url, init) => mockFetch(url, init),
     },
   });
   const targets = [];

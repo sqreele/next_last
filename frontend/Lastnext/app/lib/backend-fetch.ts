@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from './fetch-with-timeout.mjs';
+
 type BackendFetchTarget = RequestInfo | URL;
 
 const INTERNAL_BACKEND_URL =
@@ -33,10 +35,12 @@ function mergedHeaders(target: BackendFetchTarget, init?: RequestInit): Headers 
  * The browser must continue to use the public API transport. Keep the runtime
  * guard because some legacy client modules still import data.server.ts.
  */
-export function backendFetch(
+export function backendFetch<T = Response>(
   target: BackendFetchTarget,
   init: RequestInit = {},
-): Promise<Response> {
+  timeoutMs = 20_000,
+  consumeResponse?: (response: Response) => T | Promise<T>,
+): Promise<T> {
   if (typeof window !== 'undefined') {
     throw new Error('backendFetch is only available on the server');
   }
@@ -59,5 +63,8 @@ export function backendFetch(
     headers.set('X-Forwarded-Proto', 'https');
   }
 
-  return fetch(target, options);
+  if (consumeResponse) {
+    return fetchWithTimeout(target, options, timeoutMs, consumeResponse);
+  }
+  return fetchWithTimeout(target, options, timeoutMs) as Promise<T>;
 }

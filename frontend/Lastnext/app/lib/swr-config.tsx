@@ -2,6 +2,29 @@
 
 import { ReactNode } from 'react';
 import { SWRConfig } from 'swr';
+import { fetchWithTimeout, RequestTimeoutError } from '@/app/lib/fetch-with-timeout.mjs';
+
+class ApiResponseError extends Error {
+  constructor(readonly status: number) {
+    super(`API request failed (${status}).`);
+    this.name = 'ApiResponseError';
+  }
+}
+
+async function fetchJson(url: string) {
+  return fetchWithTimeout(
+    url,
+    {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    },
+    undefined,
+    async (response) => {
+      if (!response.ok) throw new ApiResponseError(response.status);
+      return response.json();
+    },
+  );
+}
 
 // ✅ PERFORMANCE: Global SWR configuration for optimized caching
 export function SWRProvider({ children }: { children: ReactNode }) {
@@ -18,24 +41,18 @@ export function SWRProvider({ children }: { children: ReactNode }) {
         focusThrottleInterval: 10000, // Throttle focus revalidation to 10 seconds
         
         // ✅ PERFORMANCE: Error retry configuration
-        errorRetryCount: 3, // Retry up to 3 times on error
-        errorRetryInterval: 5000, // Wait 5 seconds between retries
-        shouldRetryOnError: true,
+        errorRetryCount: 1,
+        errorRetryInterval: 1000,
+        shouldRetryOnError: (error) =>
+          error instanceof RequestTimeoutError ||
+          !(error instanceof ApiResponseError) ||
+          error.status >= 500,
         
         // ✅ PERFORMANCE: Keep previous data while revalidating
         keepPreviousData: true,
         
         // Default fetcher with credentials
-        fetcher: (url: string) => 
-          fetch(url, { 
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          }).then(res => {
-            if (!res.ok) throw new Error('API request failed');
-            return res.json();
-          }),
+        fetcher: fetchJson,
         
         // ✅ PERFORMANCE: Provider for global cache
         provider: () => new Map(),
@@ -48,4 +65,3 @@ export function SWRProvider({ children }: { children: ReactNode }) {
     </SWRConfig>
   );
 }
-

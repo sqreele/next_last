@@ -47,11 +47,18 @@ export default function FiltersBar({
   const toggleYear = (year: number) => {
     if (selectedYears.includes(year)) {
       if (selectedYears.length > 1) {
-        onYearsChange(selectedYears.filter((value) => value !== year));
+        const nextYears = selectedYears.filter((value) => value !== year);
+        onYearsChange(nextYears);
+        if (primaryYear === year) {
+          onPrimaryYearChange(nextYears[0]);
+        }
       }
       return;
     }
-    onYearsChange([...selectedYears, year].sort((a, b) => b - a));
+    const nextYears = [...selectedYears, year].sort((a, b) => b - a);
+    onYearsChange(nextYears);
+    // The single-year charts should immediately follow the year the user selected.
+    onPrimaryYearChange(year);
   };
 
   return (
@@ -94,7 +101,7 @@ export default function FiltersBar({
               onPrimaryYearChange(Number(event.target.value))
             }
           >
-            {availableYears.map((year) => (
+            {selectedYears.map((year) => (
               <option key={year} value={year}>
                 {year}
               </option>

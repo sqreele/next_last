@@ -46,6 +46,16 @@ import { useLocale } from '@/app/lib/i18n/LocaleProvider';
 import type { DictKey, Locale } from '@/app/lib/i18n/dictionary';
 import { usePlanCapabilities } from '@/app/lib/hooks/usePlanCapabilities';
 import { getStatusConfig } from '@/app/design-system/status-config';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceDot,
+  ResponsiveContainer,
+  Tooltip as ChartTooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 type StatTone = 'primary' | 'success' | 'warning' | 'waiting' | 'danger' | 'info' | 'secondary';
 
@@ -222,6 +232,7 @@ export default function ImprovedDashboard() {
       },
       { low: 0, medium: 0, high: 0, critical: 0 },
     );
+    const priorityTotal = Object.values(priorityCounts).reduce((sum, count) => sum + count, 0);
 
     const categoryCounts = jobs.reduce<Record<string, number>>((acc, job) => {
       const category = job.category || job.topics?.[0]?.title || 'General maintenance';
@@ -237,7 +248,7 @@ export default function ImprovedDashboard() {
       return acc;
     }, {});
 
-    // Weekly bar series (last 7 days job count)
+    // Weekly line series (last 7 days job count)
     const buckets: Array<{ label: string; count: number }> = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -317,6 +328,7 @@ export default function ImprovedDashboard() {
       deltas,
       statusCounts: countByStatus,
       priorityCounts,
+      priorityTotal,
       categoryRows: Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).slice(0, 5),
       technicianRows: Object.entries(technicianMap)
         .map(([name, values]) => ({
@@ -539,7 +551,7 @@ export default function ImprovedDashboard() {
             </div>
           </div>
 
-          {/* Mid row: weekly chart + donut */}
+          {/* Mid row: weekly activity + priority overview */}
           <div className="sneat-mid-grid min-w-0">
             <div className="sneat-chart-card min-w-0">
               <div className="sneat-card__head">
@@ -556,22 +568,70 @@ export default function ImprovedDashboard() {
                   <span className="sneat-legend-pill sneat-legend-pill--success"><span className="sneat-legend-pill__dot" /> {t('dashboard.peakDay')}</span>
                 </div>
               </div>
-              <div className="sneat-bars" role="img" aria-label={`Weekly job creation chart, ${metrics.weeklyTotal} jobs total`}>
-                {metrics.weeklyBuckets.map((bucket, idx) => {
-                  const heightPct = bucket.count > 0
-                    ? Math.max(8, Math.round((bucket.count / metrics.weeklyMax) * 100))
-                    : 0;
-                  const isPeak = idx === metrics.weeklyPeakIndex && metrics.weeklyMax > 0;
-                  return (
-                    <div className="sneat-bars__item" key={`${bucket.label}-${idx}`}>
-                      <span
-                        className={`sneat-bars__bar ${isPeak ? 'sneat-bars__bar--filled' : ''}`}
-                        style={{ height: `${heightPct}%`, visibility: bucket.count > 0 ? 'visible' : 'hidden' }}
+              <div
+                className="sneat-weekly-line"
+                role="img"
+                aria-label={t('dashboard.weeklyChartLabel', { count: metrics.weeklyTotal })}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={metrics.weeklyBuckets}
+                    margin={{ top: 18, right: 12, bottom: 0, left: -20 }}
+                  >
+                    <CartesianGrid
+                      stroke="hsl(var(--border))"
+                      strokeDasharray="4 4"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      width={42}
+                      domain={[0, Math.max(4, metrics.weeklyMax + 1)]}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    />
+                    <ChartTooltip
+                      cursor={{ stroke: 'hsl(var(--primary) / 0.25)', strokeWidth: 2 }}
+                      formatter={(value) => [
+                        t('dashboard.jobsCount', { count: Number(value) }),
+                        t('dashboard.created'),
+                      ]}
+                      contentStyle={{
+                        background: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '0.75rem',
+                        color: 'hsl(var(--popover-foreground))',
+                        boxShadow: '0 8px 24px hsl(var(--foreground) / 0.08)',
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      name={t('dashboard.created')}
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: 'hsl(var(--card))', strokeWidth: 3 }}
+                      activeDot={{ r: 6, strokeWidth: 3 }}
+                    />
+                    {metrics.weeklyMax > 0 ? (
+                      <ReferenceDot
+                        x={peakDayLabel}
+                        y={metrics.weeklyMax}
+                        r={6}
+                        fill="hsl(var(--success))"
+                        stroke="hsl(var(--card))"
+                        strokeWidth={3}
                       />
-                      <span className="sneat-bars__label">{bucket.label}</span>
-                    </div>
-                  );
-                })}
+                    ) : null}
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -584,40 +644,89 @@ export default function ImprovedDashboard() {
               </div>
             </div>
 
-            <div className="sneat-card sneat-card--pad-lg min-w-0">
+            <div className="sneat-card sneat-card--pad-lg sneat-priority-card min-w-0">
               <div className="sneat-card__head">
                 <div>
                   <h2>{t('dashboard.jobsByPriority')}</h2>
                   <p className="sneat-card__subtitle">{t('dashboard.priorityHint')}</p>
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
-                <div
-                  className="sneat-donut"
-                  style={{
-                    ['--p' as any]: metrics.total > 0 ? Math.round(((metrics.priorityCounts.critical || 0) / metrics.total) * 100) : 0,
-                  }}
-                  aria-hidden="true"
-                >
-                  <div className="sneat-donut__inner">
-                    <strong>{metrics.priorityCounts.critical || 0}</strong>
-                    <span>{t('priority.critical')}</span>
-                  </div>
+              <div
+                className={`sneat-priority-alert ${(metrics.priorityCounts.critical || 0) > 0 ? 'sneat-priority-alert--active' : 'sneat-priority-alert--clear'}`}
+                role="status"
+              >
+                <span className="sneat-priority-alert__icon">
+                  {(metrics.priorityCounts.critical || 0) > 0 ? (
+                    <ShieldAlert className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <strong>
+                    {(metrics.priorityCounts.critical || 0) > 0
+                      ? t('dashboard.criticalNeedsAttention', { count: metrics.priorityCounts.critical || 0 })
+                      : t('dashboard.noCriticalJobs')}
+                  </strong>
+                  <span>{t('dashboard.priorityCoverage', { count: metrics.priorityTotal })}</span>
                 </div>
+                <b>
+                  {metrics.priorityTotal > 0
+                    ? Math.round(((metrics.priorityCounts.critical || 0) / metrics.priorityTotal) * 100)
+                    : 0}%
+                </b>
               </div>
-              <div className="sneat-divider" />
-              <div className="sneat-list">
+
+              <div
+                className="sneat-priority-distribution"
+                role="img"
+                aria-label={t('dashboard.priorityDistributionLabel')}
+              >
                 {(['critical', 'high', 'medium', 'low'] as const).map((priority) => {
                   const count = metrics.priorityCounts[priority] || 0;
-                  const percentage = metrics.total > 0 ? Math.round((count / metrics.total) * 100) : 0;
+                  if (count === 0) return null;
                   return (
-                    <div key={priority} className="sneat-list__row">
-                      <span><PriorityBadge priority={priority} /></span>
-                      <div>
-                        <div className="sneat-list__title">{t(`priority.${priority}` as DictKey)}</div>
-                        <div className="sneat-list__caption">{t('dashboard.percentJobs', { percent: percentage })}</div>
+                    <span
+                      key={priority}
+                      className={`sneat-priority-distribution__segment sneat-priority-distribution__segment--${priority}`}
+                      style={{ width: `${(count / Math.max(metrics.priorityTotal, 1)) * 100}%` }}
+                    />
+                  );
+                })}
+                {metrics.priorityTotal === 0 ? <span className="sneat-priority-distribution__empty" /> : null}
+              </div>
+
+              <div className="sneat-priority-list">
+                {(['critical', 'high', 'medium', 'low'] as const).map((priority) => {
+                  const count = metrics.priorityCounts[priority] || 0;
+                  const percentage = metrics.priorityTotal > 0
+                    ? Math.round((count / metrics.priorityTotal) * 100)
+                    : 0;
+                  return (
+                    <div
+                      key={priority}
+                      className={`sneat-priority-item ${priority === 'critical' ? 'sneat-priority-item--critical' : ''}`}
+                    >
+                      <div className="sneat-priority-item__top">
+                        <PriorityBadge priority={priority} />
+                        <div className="sneat-priority-item__value">
+                          <strong>{count}</strong>
+                          <span>{percentage}%</span>
+                        </div>
                       </div>
-                      <span className="sneat-list__value">{count}</span>
+                      <div
+                        className="sneat-priority-item__track"
+                        role="progressbar"
+                        aria-label={t(`priority.${priority}` as DictKey)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={percentage}
+                      >
+                        <span
+                          className={`sneat-priority-item__fill sneat-priority-item__fill--${priority}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
                     </div>
                   );
                 })}

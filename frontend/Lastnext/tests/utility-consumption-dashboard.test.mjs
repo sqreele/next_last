@@ -39,6 +39,12 @@ test("existing year, month, and metric filters remain usable", () => {
   assert.match(filters, /aria-pressed/);
 });
 
+test("single-year charts follow the selected comparison years", () => {
+  assert.match(filters, /onPrimaryYearChange\(year\)/);
+  assert.match(filters, /primaryYear === year/);
+  assert.match(filters, /selectedYears\.map\(\(year\) =>/);
+});
+
 test("monthly trend and engineering records table render", () => {
   assert.match(view, /<YoYLineChart/);
   assert.match(trend, /utility\.monthlyTrend/);

@@ -34,11 +34,13 @@ import { Job, Property, Room } from "@/app/lib/types";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
 import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
-import { SkeletonList } from "@/app/components/ui/loading";
+import { BouncingDotsLoader, SkeletonList } from "@/app/components/ui/loading";
 import {
   getJobPropertyName,
   getRoomPropertyName,
 } from "@/app/lib/utils/property-filter";
+
+const SEARCH_TIMEOUT_MS = 15_000;
 
 export default function SearchContent() {
   const searchParams = useSearchParams();
@@ -62,6 +64,9 @@ export default function SearchContent() {
 
   useEffect(() => {
     const requestId = ++searchRequestIdRef.current;
+    let requestController: AbortController | null = null;
+    let requestTimeout: number | null = null;
+
     const fetchSearchResults = async () => {
       if (!query) {
         setJobs([]);
@@ -76,6 +81,12 @@ export default function SearchContent() {
       const loaderGeneration = recordLoaderShown();
       setIsLoading(true);
       setError(null);
+      const controller = new AbortController();
+      requestController = controller;
+      requestTimeout = window.setTimeout(
+        () => requestController?.abort(),
+        SEARCH_TIMEOUT_MS,
+      );
 
       try {
         // Fetch jobs with proper error handling
@@ -86,8 +97,11 @@ export default function SearchContent() {
             jobsParams.set("property_id", selectedProperty);
           if (query) jobsParams.set("search", query);
           const jobsRes = await fetch(
-              `/api/v1/jobs/${jobsParams.toString() ? `?${jobsParams.toString()}` : ""}`,
-            { credentials: "include" },
+            `/api/v1/jobs/${jobsParams.toString() ? `?${jobsParams.toString()}` : ""}`,
+            {
+              credentials: "include",
+              signal: controller.signal,
+            },
           );
           if (jobsRes.ok) {
             const jobsPayload = await jobsRes.json();
@@ -109,7 +123,10 @@ export default function SearchContent() {
         // Fetch properties with proper error handling
         let propertiesData: Property[] = [];
         try {
-          const propertiesRes = await fetch("/api/v1/properties/", { credentials: "include" });
+          const propertiesRes = await fetch("/api/v1/properties/", {
+            credentials: "include",
+            signal: controller.signal,
+          });
           if (propertiesRes.ok) {
             propertiesData = await propertiesRes.json();
             // Ensure we have an array
@@ -132,7 +149,10 @@ export default function SearchContent() {
           } else {
             const roomsRes = await fetch(
               `/api/v1/rooms/?property=${encodeURIComponent(selectedProperty)}`,
-              { credentials: "include" },
+              {
+                credentials: "include",
+                signal: controller.signal,
+              },
             );
             if (roomsRes.ok) {
               roomsData = await roomsRes.json();
@@ -150,6 +170,10 @@ export default function SearchContent() {
         }
 
         if (requestId !== searchRequestIdRef.current) return;
+        if (controller.signal.aborted) {
+          setError("Search took too long. Please try again.");
+          return;
+        }
 
         // Set state with our safely fetched data
         setJobs(jobsData);
@@ -163,6 +187,7 @@ export default function SearchContent() {
           "An error occurred while fetching search results. Please try again.",
         );
       } finally {
+        if (requestTimeout !== null) window.clearTimeout(requestTimeout);
         if (requestId === searchRequestIdRef.current) {
           clearLoadingAfterMinTime(loaderGeneration);
         }
@@ -171,9 +196,11 @@ export default function SearchContent() {
 
     void fetchSearchResults();
     return () => {
+      if (requestTimeout !== null) window.clearTimeout(requestTimeout);
       if (requestId === searchRequestIdRef.current) {
         searchRequestIdRef.current += 1;
       }
+      requestController?.abort();
     };
   }, [
     query,
@@ -278,6 +305,11 @@ export default function SearchContent() {
         aria-busy="true"
         aria-label="Searching"
       >
+        <BouncingDotsLoader
+          size="sm"
+          label={`Searching for “${query}”…`}
+          className="text-muted-foreground"
+        />
         <SkeletonList rows={5} />
       </div>
     );
@@ -345,13 +377,13 @@ export default function SearchContent() {
   return (
     <div className="space-y-6" aria-busy={resultsPending}>
       {resultsPending ? (
-        <p
+        <div
           className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-muted-foreground"
           role="status"
           aria-live="polite"
         >
-          Updating search results…
-        </p>
+          <BouncingDotsLoader size="sm" label="Updating search results…" />
+        </div>
       ) : null}
       {error ? (
         <p

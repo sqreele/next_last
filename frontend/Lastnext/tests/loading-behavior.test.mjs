@@ -86,6 +86,17 @@ test("the React hook delegates to the guarded controller", async () => {
   assert.match(hook, /controller\.dispose\(\)/);
 });
 
+test("route transitions stay visible and cover non-link navigation", async () => {
+  const loader = await source("app/components/ui/loading/RouteTransitionLoader.tsx");
+  assert.match(loader, /useMinLoaderTime\(setLoaderVisible\)/);
+  assert.match(loader, /clearLoadingAfterMinTime\(token\)/);
+  assert.match(loader, /window\.addEventListener\('popstate', onPopState\)/);
+  assert.match(loader, /window\.history\.pushState = function/);
+  assert.match(loader, /window\.history\.replaceState = function/);
+  assert.match(loader, /if \(!restart && activeRef\.current\) return/);
+  assert.match(loader, /MAX_ROUTE_LOADING_MS/);
+});
+
 test("a stale completion cannot hide a newer active request", () => {
   const { clock, controller, hides } = loaderHarness();
   const requestA = controller.start();
@@ -260,6 +271,11 @@ test("search keeps the last settled query but never crosses a property boundary"
   assert.match(search, /loadedContext\?\.propertyId === selectedProperty/);
   assert.match(search, /loadedContext\?\.query !== query/);
   assert.match(search, /requestId !== searchRequestIdRef\.current/);
+  assert.match(search, /const controller = new AbortController\(\)/);
+  assert.match(search, /signal: controller\.signal/);
+  assert.match(search, /SEARCH_TIMEOUT_MS/);
+  assert.match(search, /requestController\?\.abort\(\)/);
+  assert.match(search, /<BouncingDotsLoader/);
   assert.match(search, /Updating search results…/);
 });
 

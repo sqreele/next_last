@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { cn } from '@/app/lib/utils/cn';
 import { SkeletonCard, SkeletonList } from './Skeleton';
+import { PageLoadingFrame } from './PageLoadingFrame';
 
 export function PageLoader({
   label = 'Preparing your maintenance workspace...',
@@ -12,9 +13,9 @@ export function PageLoader({
   className?: string;
 }) {
   return (
-    <div
+    <PageLoadingFrame
       className={cn(
-        'flex min-h-[calc(100vh-3.5rem)] w-full items-center justify-center px-3 py-6 sm:px-6',
+        'px-3 py-6 sm:px-6',
         className,
       )}
       role="status"
@@ -37,6 +38,6 @@ export function PageLoader({
         </div>
         <SkeletonList rows={4} />
       </div>
-    </div>
+    </PageLoadingFrame>
   );
 }

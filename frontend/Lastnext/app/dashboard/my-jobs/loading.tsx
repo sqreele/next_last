@@ -1,8 +1,9 @@
-import { JobListSkeleton, Skeleton } from "@/app/components/ui/loading";
+import { JobListSkeleton, PageLoadingFrame, Skeleton } from "@/app/components/ui/loading";
 
 export default function Loading() {
   return (
-    <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8">
+    <PageLoadingFrame className="px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <div className="w-full max-w-none space-y-5 lg:mx-auto lg:max-w-7xl">
       <div className="rounded-lg border border-border bg-card p-4 shadow-soft">
         <div className="space-y-2">
           <Skeleton className="h-7 w-32" />
@@ -23,6 +24,7 @@ export default function Loading() {
         </div>
       </div>
       <JobListSkeleton count={6} className="grid gap-3 lg:grid-cols-2" />
-    </div>
+      </div>
+    </PageLoadingFrame>
   );
 }

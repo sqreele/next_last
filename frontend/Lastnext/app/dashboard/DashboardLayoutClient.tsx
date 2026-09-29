@@ -68,7 +68,7 @@ export default function DashboardLayoutClient({
   }, [router]);
 
   return (
-    <div className="pcms-app-shell flex min-h-screen-safe w-full bg-[var(--pcms-app-bg)] text-[var(--pcms-text)] overscroll-none">
+    <div className="pcms-app-shell flex h-screen-safe min-h-screen-safe w-full overflow-hidden bg-[var(--pcms-app-bg)] text-[var(--pcms-text)] overscroll-none">
       {/* Desktop Navigation - Hidden on mobile and tablet */}
       <DesktopNav
         collapsed={isSidebarCollapsed}
@@ -76,7 +76,7 @@ export default function DashboardLayoutClient({
       />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile Header - Hidden on desktop */}
         <MobileHeader hidden={headerHidden} />
 
@@ -89,7 +89,7 @@ export default function DashboardLayoutClient({
         <main
           ref={mainRef}
           className="
-            flex-1 overflow-auto
+            min-h-0 flex-1 overflow-auto
             p-0
             pb-24 tablet:pb-0 desktop:pb-0
             transition-all duration-200
@@ -101,10 +101,10 @@ export default function DashboardLayoutClient({
             onRefresh={handleRefresh}
             scrollTargetRef={mainRef}
             className="
-              mx-0 w-full max-w-none
+              mx-0 h-full w-full max-w-none
             "
           >
-            <PageTransition className="w-full min-w-0">
+            <PageTransition className="h-full w-full min-w-0">
               <PlanFeatureGate>{children}</PlanFeatureGate>
             </PageTransition>
           </PullToRefresh>

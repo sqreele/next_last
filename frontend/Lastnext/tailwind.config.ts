@@ -21,7 +21,10 @@ export default {
       minHeight: {
         "touch-target": "44px",
         "screen-mobile": "100vh",
-        "screen-safe": "calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+        "screen-safe": "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+      },
+      height: {
+        "screen-safe": "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
       },
       minWidth: {
         "touch-target": "44px",

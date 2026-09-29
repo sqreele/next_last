@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/app/lib/utils/cn";
+import { PageLoadingFrame } from "./PageLoadingFrame";
 
 export function Skeleton({
   className,
@@ -190,53 +191,57 @@ export function DashboardKpiSkeleton({ className }: { className?: string }) {
 
 export function DetailPageSkeleton({ className }: { className?: string }) {
   return (
-    <div
-      className={cn("mx-auto max-w-4xl space-y-5", className)}
+    <PageLoadingFrame
+      className={className}
       role="status"
       aria-live="polite"
       aria-busy="true"
       aria-label="Loading details"
     >
-      <div className="pcms-page-header">
-        <div className="w-full space-y-3">
-          <Skeleton className="h-3 w-28" />
-          <Skeleton className="h-9 w-64" />
-          <Skeleton className="h-4 w-full max-w-md" />
+      <div className="mx-auto w-full max-w-4xl space-y-5">
+        <div className="pcms-page-header">
+          <div className="w-full space-y-3">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-full max-w-md" />
+          </div>
+        </div>
+        <div className="pcms-section-card space-y-5 p-5 sm:p-6">
+          <Skeleton className="h-56 w-full rounded-xl" />
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="flex gap-3">
+              <Skeleton className="h-5 w-5 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-      <div className="pcms-section-card space-y-5 p-5 sm:p-6">
-        <Skeleton className="h-56 w-full rounded-xl" />
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div key={index} className="flex gap-3">
-            <Skeleton className="h-5 w-5 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-full" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </PageLoadingFrame>
   );
 }
 
 export function SettingsPageSkeleton({ className }: { className?: string }) {
   return (
-    <div
-      className={cn("mx-auto w-full max-w-7xl space-y-5 px-3 py-4 sm:px-6 sm:py-6", className)}
+    <PageLoadingFrame
+      className="px-3 py-4 sm:px-6 sm:py-6"
       role="status"
       aria-live="polite"
       aria-busy="true"
       aria-label="Loading settings"
     >
-      <div className="pcms-page-header">
-        <div className="w-full space-y-3">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-8 w-56 max-w-full" />
-          <Skeleton className="h-4 w-full max-w-xl" />
+      <div className={cn("mx-auto w-full max-w-7xl space-y-5", className)}>
+        <div className="pcms-page-header">
+          <div className="w-full space-y-3">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-8 w-56 max-w-full" />
+            <Skeleton className="h-4 w-full max-w-xl" />
+          </div>
         </div>
+        <SkeletonTable rows={5} columns={5} />
       </div>
-      <SkeletonTable rows={5} columns={5} />
-    </div>
+    </PageLoadingFrame>
   );
 }

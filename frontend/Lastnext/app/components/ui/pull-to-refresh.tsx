@@ -76,6 +76,7 @@ export const PullToRefresh = React.forwardRef<
           </div>
         </div>
         <div
+          className="min-h-full"
           style={{
             transform: `translateY(${pullDistance}px)`,
             transition:

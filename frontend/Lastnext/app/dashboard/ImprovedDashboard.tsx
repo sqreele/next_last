@@ -34,7 +34,7 @@ import {
   normalizePriority,
   normalizeStatus,
 } from '@/app/components/pcms-ui';
-import { SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
+import { PageLoadingFrame, SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
 import { MobileKpiStrip } from '@/app/components/dashboard/MobileKpiStrip';
 import { RecentActivityFeed } from '@/app/components/dashboard/RecentActivityFeed';
 import { TechnicianKpiBoard } from '@/app/components/dashboard/TechnicianKpiBoard';
@@ -150,20 +150,22 @@ function statusTone(status?: string): StatTone {
 function DashboardLoading() {
   const { t } = useLocale();
   return (
-    <div className="sneat-dashboard" aria-busy="true" aria-live="polite">
-      <div className="sneat-page-header">
-        <div className="sneat-page-header__title">
-          <h1>{t('dashboard.title')}</h1>
-          <p>{t('dashboard.loading')}</p>
+    <PageLoadingFrame className="p-4" aria-busy="true" aria-live="polite">
+      <div className="sneat-dashboard w-full">
+        <div className="sneat-page-header">
+          <div className="sneat-page-header__title">
+            <h1>{t('dashboard.title')}</h1>
+            <p>{t('dashboard.loading')}</p>
+          </div>
+        </div>
+        <div className="sneat-top-row">
+          <div className="sneat-welcome-card" />
+          <div className="sneat-stat-grid sneat-stat-grid--4">
+            {Array.from({ length: 4 }).map((_, index) => <SkeletonCard key={index} />)}
+          </div>
         </div>
       </div>
-      <div className="sneat-top-row">
-        <div className="sneat-welcome-card" />
-        <div className="sneat-stat-grid sneat-stat-grid--4">
-          {Array.from({ length: 4 }).map((_, index) => <SkeletonCard key={index} />)}
-        </div>
-      </div>
-    </div>
+    </PageLoadingFrame>
   );
 }
 

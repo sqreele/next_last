@@ -66,7 +66,7 @@ test("bouncing dots loader is accessible, responsive, and motion-safe", async ()
   assert.match(loader, /aria-live="polite"/);
   assert.match(loader, /label \? "ml-2" : "sr-only"/);
   assert.match(loader, /size\?: "sm" \| "md" \| "lg"/);
-  assert.match(loader, /fullScreen && "min-h-screen w-full"/);
+  assert.match(loader, /fullScreen && "pcms-page-loading-frame w-full"/);
   assert.match(loader, /motion-safe:animate-bounce/);
   assert.match(loader, /motion-reduce:animate-none/);
   assert.match(loader, /motion-reduce:opacity-/);
@@ -196,6 +196,37 @@ test("route fallbacks describe their destination instead of one generic wait", a
     const loading = await source(`app/dashboard/${path}/loading.tsx`);
     assert.match(loading, /<PageLoader label=/, path);
   }
+});
+
+test("dashboard page loaders center within the available content area", async () => {
+  const pageLoader = await source("app/components/ui/loading/PageLoader.tsx");
+  const pageLoadingFrame = await source("app/components/ui/loading/PageLoadingFrame.tsx");
+  const dashboardLayout = await source("app/dashboard/DashboardLayoutClient.tsx");
+  const pullToRefresh = await source("app/components/ui/pull-to-refresh.tsx");
+
+  assert.match(pageLoader, /<PageLoadingFrame/);
+  assert.doesNotMatch(pageLoader, /100vh/);
+  assert.match(pageLoadingFrame, /pcms-page-loading-frame flex w-full items-center justify-center/);
+  assert.match(dashboardLayout, /h-screen-safe min-h-screen-safe/);
+  assert.match(dashboardLayout, /min-h-0 flex-1 overflow-auto/);
+  assert.match(dashboardLayout, /<PageTransition className="h-full/);
+  assert.match(pullToRefresh, /className="min-h-full"/);
+});
+
+test("all custom route skeletons use the shared centered loading frame", async () => {
+  const customFallbacks = [
+    "app/dashboard/loading.tsx",
+    "app/dashboard/my-jobs/loading.tsx",
+    "app/dashboard/rooms/by-topics/loading.tsx",
+  ];
+
+  for (const path of customFallbacks) {
+    assert.match(await source(path), /<PageLoadingFrame/, path);
+  }
+
+  const skeletons = await source("app/components/ui/loading/Skeleton.tsx");
+  assert.match(skeletons, /export function DetailPageSkeleton[\s\S]*?<PageLoadingFrame/);
+  assert.match(skeletons, /export function SettingsPageSkeleton[\s\S]*?<PageLoadingFrame/);
 });
 
 test("detail pages use stable detail skeletons on first load", async () => {

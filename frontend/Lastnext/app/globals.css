@@ -396,6 +396,16 @@ body,
   background: var(--pcms-app-bg);
 }
 
+/* Route-level loaders fill the safe viewport by default. Within the dashboard,
+   the shell supplies the exact remaining height below dynamic chrome. */
+.pcms-page-loading-frame {
+  min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+
+.pcms-app-shell .pcms-page-loading-frame {
+  min-height: 100%;
+}
+
 .pcms-page-header,
 .pcms-section-card,
 .pcms-card-modern,

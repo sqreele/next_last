@@ -25,7 +25,7 @@ export function BouncingDotsLoader({
       aria-live="polite"
       className={cn(
         "inline-flex items-center justify-center text-current",
-        fullScreen && "min-h-screen w-full",
+        fullScreen && "pcms-page-loading-frame w-full",
         className,
       )}
     >

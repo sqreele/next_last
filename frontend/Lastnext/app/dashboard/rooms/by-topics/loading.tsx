@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/app/components/ui/card";
+import { PageLoadingFrame } from "@/app/components/ui/loading";
 
 function SkeletonBlock({ className = "" }: { className?: string }) {
   return (
@@ -8,7 +9,8 @@ function SkeletonBlock({ className = "" }: { className?: string }) {
 
 export default function Loading() {
   return (
-    <div className="space-y-4">
+    <PageLoadingFrame className="p-4">
+      <div className="w-full space-y-4">
       <Card>
         <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -39,6 +41,7 @@ export default function Loading() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PageLoadingFrame>
   );
 }

@@ -11,7 +11,7 @@ import {
 } from "@/app/lib/PreventiveMaintenanceService";
 import { useSession } from "@/app/lib/session.client";
 import { useMainStore } from "@/app/lib/stores/mainStore";
-import { SkeletonList } from "@/app/components/ui/loading";
+import { PageLoader } from "@/app/components/ui/loading";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
 const readableFrequency = (frequency: string, customDays?: number | null) =>
@@ -187,6 +187,15 @@ export default function PMMasterPlansPage() {
     );
   }
 
+  if ((loading || status === "loading") && !hasCurrentPropertyData) {
+    return (
+      <PageLoader
+        label="Loading PM master plans"
+        description="Preparing recurring maintenance rules and projections."
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen bg-muted px-3 py-4 sm:px-6 sm:py-6" aria-busy={loading || materializing || deleting}>
       <div className="mx-auto max-w-7xl">
@@ -225,9 +234,7 @@ export default function PMMasterPlansPage() {
           )}
         </section>
 
-        {error && !hasCurrentPropertyData ? null : (loading || status === "loading") && !hasCurrentPropertyData ? (
-          <SkeletonList rows={4} />
-        ) : scopedPlans.length === 0 ? (
+        {error && !hasCurrentPropertyData ? null : scopedPlans.length === 0 ? (
           <FeedbackState
             title="No PM master plans configured"
             description="Create a recurring rule for one or more machines at this property."

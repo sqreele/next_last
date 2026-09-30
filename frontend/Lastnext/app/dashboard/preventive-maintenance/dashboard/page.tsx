@@ -5,7 +5,7 @@ import PreventiveMaintenanceDashboard from "@/app/components/preventive/Preventi
 
 export default function PreventiveMaintenanceDashboardPage() {
   return (
-    <div className="min-h-screen bg-muted">
+    <div className="h-full min-h-full bg-muted">
       <PreventiveMaintenanceDashboard />
     </div>
   );

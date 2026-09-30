@@ -78,6 +78,7 @@ export const PullToRefresh = React.forwardRef<
         <div
           className="min-h-full"
           style={{
+            height: "100%",
             transform: `translateY(${pullDistance}px)`,
             transition:
               pullDistance === 0 || isRefreshing

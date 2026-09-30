@@ -34,7 +34,11 @@ import { Job, Property, Room } from "@/app/lib/types";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
 import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
-import { BouncingDotsLoader, SkeletonList } from "@/app/components/ui/loading";
+import {
+  BouncingDotsLoader,
+  PageLoadingFrame,
+  SkeletonList,
+} from "@/app/components/ui/loading";
 import {
   getJobPropertyName,
   getRoomPropertyName,
@@ -298,20 +302,22 @@ export default function SearchContent() {
 
   if (resultsPending && !hasCurrentPropertyResults) {
     return (
-      <div
-        className="space-y-4"
+      <PageLoadingFrame
+        className="px-3 py-6 sm:px-6"
         role="status"
         aria-live="polite"
         aria-busy="true"
         aria-label="Searching"
       >
-        <BouncingDotsLoader
-          size="sm"
-          label={`Searching for “${query}”…`}
-          className="text-muted-foreground"
-        />
-        <SkeletonList rows={5} />
-      </div>
+        <div className="w-full max-w-4xl space-y-4">
+          <BouncingDotsLoader
+            size="sm"
+            label={`Searching for “${query}”…`}
+            className="flex w-full text-muted-foreground"
+          />
+          <SkeletonList rows={5} />
+        </div>
+      </PageLoadingFrame>
     );
   }
 

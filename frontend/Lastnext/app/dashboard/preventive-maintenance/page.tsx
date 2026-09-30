@@ -19,12 +19,11 @@ import MaintenanceList from '@/app/components/preventive/list/MaintenanceList';
 import Pagination from '@/app/components/preventive/list/Pagination';
 import DeleteModal from '@/app/components/preventive/list/DeleteModal';
 import BulkActions from '@/app/components/preventive/list/BulkActions';
-import LoadingState from '@/app/components/preventive/list/LoadingState';
 import EmptyState from '@/app/components/preventive/list/EmptyState';
 import ErrorDisplay from '@/app/components/preventive/list/ErrorDisplay';
 import { PageContainer } from '@/app/components/layout/PageContainer';
 import { FeedbackState } from '@/app/components/feedback/FeedbackState';
-import { LoadingOverlay } from '@/app/components/ui/loading';
+import { LoadingOverlay, PageLoader } from '@/app/components/ui/loading';
 import Link from 'next/link';
 import { Filter, Plus } from 'lucide-react';
 import { useLocale } from '@/app/lib/i18n/LocaleProvider';
@@ -426,6 +425,15 @@ function PreventiveMaintenanceListPageContent() {
     );
   }
 
+  if (isLoading && maintenanceItems.length === 0) {
+    return (
+      <PageLoader
+        label="Loading preventive maintenance"
+        description="Preparing schedules, filters, and maintenance work."
+      />
+    );
+  }
+
   return (
     <PageContainer aria-busy={isLoading}>
       {/* Mobile Header */}
@@ -491,9 +499,7 @@ function PreventiveMaintenanceListPageContent() {
         )}
 
         {/* Main Content */}
-        {isLoading && maintenanceItems.length === 0 ? (
-          <LoadingState />
-        ) : sortedItems.length === 0 ? (
+        {sortedItems.length === 0 ? (
           <EmptyState 
             hasFilters={activeFiltersCount > 0}
             currentFilters={currentFilters}

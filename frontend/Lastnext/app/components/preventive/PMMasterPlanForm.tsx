@@ -16,6 +16,10 @@ import {
 } from "@/app/lib/maintenanceProcedures";
 import { useSession } from "@/app/lib/session.client";
 import { useMainStore } from "@/app/lib/stores/mainStore";
+import {
+  BouncingDotsLoader,
+  PageLoadingFrame,
+} from "@/app/components/ui/loading";
 
 const FREQUENCIES = [
   ["daily", "Daily"],
@@ -233,7 +237,20 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
   }
 
   if (loading || status === "loading") {
-    return <div className="rounded-xl border border-border bg-card p-8 text-center" role="status">Loading PM master plan…</div>;
+    return (
+      <PageLoadingFrame
+        className="fixed inset-0 z-50 bg-background/90 px-4 backdrop-blur-xs"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <BouncingDotsLoader
+          size="lg"
+          label="Loading PM master plan…"
+          className="text-muted-foreground"
+        />
+      </PageLoadingFrame>
+    );
   }
 
   if (!canManagePMMaster) {

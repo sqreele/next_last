@@ -10,6 +10,7 @@ import { StatusBadge } from "@/app/components/StatusBadge";
 import Image from "next/image";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
+import { PageLoader } from "@/app/components/ui/loading";
 
 // Updated interface to match Django API response
 interface FrequencyDistributionItem {
@@ -227,11 +228,10 @@ export default function PreventiveMaintenanceDashboard() {
 
   if (statisticsLoading && !statistics) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-xl border border-border bg-card py-12 text-center shadow-soft">
-          <BouncingDotsLoader size="md" label="Loading dashboard..." className="text-sm font-medium text-muted-foreground" />
-        </div>
-      </div>
+      <PageLoader
+        label="Loading preventive maintenance dashboard"
+        description="Preparing maintenance statistics and upcoming work."
+      />
     );
   }
 

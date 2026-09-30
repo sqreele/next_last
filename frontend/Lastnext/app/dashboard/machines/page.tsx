@@ -19,10 +19,7 @@ import { Button } from "@/app/components/ui/button";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 import { PageContainer } from "@/app/components/layout/PageContainer";
-import {
-  DashboardKpiSkeleton,
-  SkeletonList,
-} from "@/app/components/ui/loading";
+import { PageLoader } from "@/app/components/ui/loading";
 import {
   Wrench,
   Search,
@@ -292,10 +289,10 @@ export default function MachinesListPage() {
 
   if (status === "loading" || loading) {
     return (
-      <PageContainer aria-busy="true" aria-label="Loading equipment">
-        <DashboardKpiSkeleton />
-        <SkeletonList rows={6} />
-      </PageContainer>
+      <PageLoader
+        label="Loading equipment"
+        description="Preparing machine totals, filters, and records."
+      />
     );
   }
 

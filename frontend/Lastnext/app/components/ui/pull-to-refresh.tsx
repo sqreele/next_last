@@ -79,7 +79,14 @@ export const PullToRefresh = React.forwardRef<
           className="min-h-full"
           style={{
             height: "100%",
-            transform: `translateY(${pullDistance}px)`,
+            // Even an identity transform creates a containing block for fixed
+            // descendants. Keep it off the idle wrapper so viewport-fixed UI
+            // (for example the Create Job submit bar) stays fixed to the
+            // screen instead of scrolling with this container.
+            transform:
+              pullDistance > 0
+                ? `translateY(${pullDistance}px)`
+                : undefined,
             transition:
               pullDistance === 0 || isRefreshing
                 ? "transform 200ms ease-out"

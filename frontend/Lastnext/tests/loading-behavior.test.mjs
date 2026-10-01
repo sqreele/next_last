@@ -213,6 +213,17 @@ test("dashboard page loaders center within the available content area", async ()
   assert.match(pullToRefresh, /className="min-h-full"/);
 });
 
+test("idle pull-to-refresh does not trap viewport-fixed descendants", async () => {
+  const pullToRefresh = await source("app/components/ui/pull-to-refresh.tsx");
+
+  assert.match(pullToRefresh, /pullDistance > 0/);
+  assert.match(pullToRefresh, /: undefined/);
+  assert.doesNotMatch(
+    pullToRefresh,
+    /transform:\s*`translateY\(\$\{pullDistance\}px\)`/,
+  );
+});
+
 test("all custom route skeletons use the shared centered loading frame", async () => {
   const customFallbacks = [
     "app/dashboard/loading.tsx",

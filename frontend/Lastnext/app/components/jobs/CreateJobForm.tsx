@@ -45,7 +45,6 @@ import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useSession, signIn } from "@/app/lib/session.client";
 import { Label } from "@/app/components/ui/label";
-import { Input } from "@/app/components/ui/input";
 import RoomAutocomplete from "@/app/components/jobs/RoomAutocomplete";
 import TopicPicker from "@/app/components/jobs/TopicPicker";
 import FileUpload from "@/app/components/jobs/FileUpload";
@@ -2036,7 +2035,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                       </aside>
                     </div>
 
-                    {/* Submit Button — sticky on mobile, with progress hint and scroll-to-error */}
+                    {/* Submit Button — fixed to the mobile viewport bottom, with progress hint and scroll-to-error */}
                     {(() => {
                       const stepStatus = [
                         Boolean(values.description) &&
@@ -2053,10 +2052,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                       const allReady = completedCount === stepStatus.length;
                       return (
                         <div
-                          className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-border bg-card px-3 py-3 shadow-soft sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
+                          className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-card px-3 py-3 shadow-soft sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
                           style={{
-                            bottom:
-                              "calc(4.5rem + env(safe-area-inset-bottom))",
+                            paddingBottom:
+                              "calc(0.75rem + env(safe-area-inset-bottom))",
                           }}
                         >
                           <div className="w-full max-w-none md:max-w-none">

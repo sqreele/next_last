@@ -53,6 +53,7 @@ export default function DashboardLayoutClient({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isSidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const mainRef = React.useRef<HTMLElement | null>(null);
   const { direction, isAtTop } = useScrollDirection({
@@ -61,6 +62,8 @@ export default function DashboardLayoutClient({
     targetRef: mainRef,
   });
   const headerHidden = direction === "down" && !isAtTop;
+  const isCreateJobPage =
+    pathname === "/dashboard/create-job" || pathname === "/dashboard/createJob";
 
   const handleRefresh = React.useCallback(async () => {
     router.refresh();
@@ -111,7 +114,7 @@ export default function DashboardLayoutClient({
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <BottomNav hidden={headerHidden} />
+        {!isCreateJobPage && <BottomNav hidden={headerHidden} />}
       </div>
     </div>
   );

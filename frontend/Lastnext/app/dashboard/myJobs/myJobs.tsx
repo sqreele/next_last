@@ -8,6 +8,7 @@ import {
   Building2,
   Calendar,
   CheckCircle2,
+  CopyPlus,
   Home,
   MapPin,
   MoreHorizontal,
@@ -65,6 +66,7 @@ import { useSession } from "@/app/lib/session.client";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
 import {
   canMutateMyJob,
+  getCopyMyJobHref,
   getMyJobDetailHref,
   isMyJobActionLocked,
   type MyJobsStatusCounts,
@@ -96,6 +98,7 @@ interface JobActionProps {
   activePropertyId: string;
   propertyName: string;
   onEdit: (job: Job) => void;
+  onCopy: (job: Job) => void;
   onDelete: (job: Job) => void;
   onStatusUpdated: (updatedJob: Job) => void;
 }
@@ -450,6 +453,7 @@ function JobCard({
   activePropertyId,
   propertyName,
   onEdit,
+  onCopy,
   onDelete,
   onStatusUpdated,
 }: JobActionProps) {
@@ -534,6 +538,15 @@ function JobCard({
               {t("myJobs.more")}
             </summary>
             <div className="mt-2 grid gap-1 rounded-lg border border-border bg-popover p-1 shadow-card sm:absolute sm:bottom-full sm:right-0 sm:z-20 sm:mb-2 sm:mt-0 sm:w-40">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onCopy(job)}
+                className="justify-start"
+              >
+                <CopyPlus className="h-4 w-4" />
+                {t("myJobs.copyAndEdit")}
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
@@ -835,6 +848,13 @@ const MyJobs: React.FC = () => {
     setIsEditDialogOpen(true);
   };
 
+  const handleCopy = (job: Job) => {
+    if (!canMutateMyJob(job, selectedProperty) || !selectedProperty) return;
+
+    const copyHref = getCopyMyJobHref(job.job_id, selectedProperty);
+    if (copyHref) router.push(copyHref);
+  };
+
   const handleDelete = (job: Job) => {
     if (
       !canMutateMyJob(job, selectedProperty) ||
@@ -1084,6 +1104,7 @@ const MyJobs: React.FC = () => {
                   activePropertyId={selectedProperty}
                   propertyName={propertyName}
                   onEdit={handleEdit}
+                  onCopy={handleCopy}
                   onDelete={handleDelete}
                   onStatusUpdated={handleStatusUpdated}
                 />

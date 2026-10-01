@@ -60,6 +60,10 @@ export function getMyJobDetailHref(
   jobId?: string | null,
   propertyId?: string | null,
 ): string | null;
+export function getCopyMyJobHref(
+  jobId?: string | null,
+  propertyId?: string | null,
+): string | null;
 export function requestMyJobsPage(
   options: MyJobsRequestOptions,
 ): Promise<MyJobsPageResponse | null>;

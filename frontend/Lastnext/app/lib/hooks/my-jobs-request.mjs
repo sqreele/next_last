@@ -66,6 +66,18 @@ export function getMyJobDetailHref(jobId, propertyId) {
   return `/dashboard/jobs/${encodeURIComponent(externalJobId)}?property_id=${encodeURIComponent(externalPropertyId)}`;
 }
 
+export function getCopyMyJobHref(jobId, propertyId) {
+  const externalJobId = String(jobId || '').trim();
+  const externalPropertyId = String(propertyId || '').trim();
+  if (!externalJobId || !externalPropertyId) return null;
+
+  const params = new URLSearchParams({
+    copy_from: externalJobId,
+    property_id: externalPropertyId,
+  });
+  return `/dashboard/create-job?${params.toString()}`;
+}
+
 export async function requestMyJobsPage({
   propertyId,
   page,

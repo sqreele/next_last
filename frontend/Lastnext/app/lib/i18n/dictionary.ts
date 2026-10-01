@@ -288,6 +288,8 @@ const en = {
   'createJob.cta': 'Create maintenance job',
   'createJob.ctaFinishStep': 'Finish step {n} to create job',
   'createJob.creating': 'Creating maintenance job…',
+  'createJob.copyNotice': 'Copied from Job #{id}. Review and edit the details, then add new evidence photos before saving it as a new job.',
+  'createJob.copyPropertyMismatch': 'The copied job does not belong to the active property.',
 
   // CreateJob validation/errors
   'createJob.validation.descriptionRequired': 'Description is required',
@@ -891,6 +893,7 @@ const en = {
   'myJobs.viewDetail': 'View Detail',
   'myJobs.updateStatus': 'Update Status',
   'myJobs.more': 'More',
+  'myJobs.copyAndEdit': 'Copy & edit',
   'myJobs.actionsLocked': 'Completed or locked jobs cannot be edited or deleted.',
   'myJobs.editNumber': 'Edit Job #{id}',
   'myJobs.editHint': 'Update this maintenance job and save your changes.',
@@ -1206,6 +1209,8 @@ const th: Record<DictKey, string> = {
   'createJob.cta': 'สร้างงานซ่อม',
   'createJob.ctaFinishStep': 'กรอกขั้นที่ {n} ให้เสร็จก่อนสร้าง',
   'createJob.creating': 'กำลังสร้างงาน…',
+  'createJob.copyNotice': 'คัดลอกจากงาน #{id} แล้ว กรุณาตรวจสอบและแก้ไขรายละเอียด จากนั้นเพิ่มรูปหลักฐานใหม่ก่อนบันทึกเป็นงานใหม่',
+  'createJob.copyPropertyMismatch': 'งานที่คัดลอกไม่ได้อยู่ใน property ที่กำลังใช้งาน',
 
   'createJob.validation.descriptionRequired': 'กรุณากรอกรายละเอียดงาน',
   'createJob.validation.statusRequired': 'กรุณาเลือกสถานะ',
@@ -1794,6 +1799,7 @@ const th: Record<DictKey, string> = {
   'myJobs.viewDetail': 'ดูรายละเอียด',
   'myJobs.updateStatus': 'อัปเดตสถานะ',
   'myJobs.more': 'เพิ่มเติม',
+  'myJobs.copyAndEdit': 'คัดลอกและแก้ไข',
   'myJobs.actionsLocked': 'งานที่เสร็จสิ้นหรือถูกล็อกไม่สามารถแก้ไขหรือลบได้',
   'myJobs.editNumber': 'แก้ไขงาน #{id}',
   'myJobs.editHint': 'แก้ไขงานซ่อมนี้แล้วบันทึกการเปลี่ยนแปลง',

@@ -16,10 +16,18 @@ export async function GET(
     }
 
     const { jobId } = await params;
+    const requestedPropertyId = request.nextUrl.searchParams.get('property_id')?.trim();
+    const upstream = new URL(
+      `/api/v1/jobs/${encodeURIComponent(jobId)}/`,
+      API_CONFIG.baseUrl,
+    );
+    if (requestedPropertyId) {
+      upstream.searchParams.set('property_id', requestedPropertyId);
+    }
 
     // Fetch job from the external API
     const response = await backendFetch(
-      `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`,
+      upstream.toString(),
       {
         headers: {
           'Authorization': `Bearer ${session.user.accessToken}`,
@@ -37,6 +45,15 @@ export async function GET(
     }
 
     const job = await response.json();
+    if (
+      requestedPropertyId &&
+      String(job?.property_id || '') !== requestedPropertyId
+    ) {
+      return NextResponse.json(
+        { error: 'Job does not belong to the active property' },
+        { status: 404 },
+      );
+    }
     return NextResponse.json(job);
 
   } catch (error) {

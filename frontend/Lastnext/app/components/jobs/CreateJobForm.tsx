@@ -31,6 +31,7 @@ import {
   Layers3,
   DoorOpen,
   Tag,
+  CopyPlus,
 } from "lucide-react";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import {
@@ -48,8 +49,8 @@ import { Input } from "@/app/components/ui/input";
 import RoomAutocomplete from "@/app/components/jobs/RoomAutocomplete";
 import TopicPicker from "@/app/components/jobs/TopicPicker";
 import FileUpload from "@/app/components/jobs/FileUpload";
-import { Room, TopicFromAPI, Area, Property } from "@/app/lib/types";
-import { useRouter } from "next/navigation";
+import { Room, TopicFromAPI, Area, Property, Job } from "@/app/lib/types";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
 import {
   getAllowedUserProperties,
@@ -441,6 +442,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
   const { selectedPropertyId: selectedProperty, userProfile } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const copyFromJobId = searchParams.get("copy_from")?.trim() || null;
+  const copyPropertyId = searchParams.get("property_id")?.trim() || null;
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -450,6 +454,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [formInitialValues, setFormInitialValues] =
+    useState<FormValues>(initialValues);
 
   const accessibleProperties = React.useMemo(
     () => getAllowedUserProperties(userProfile),
@@ -929,9 +935,19 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     setIsLoading(true);
     setError(null);
     setFloors([]);
+    setFormInitialValues(initialValues);
 
     try {
-      const [roomsResponse, topicsResponse, areasResponse] = await Promise.all([
+      if (
+        copyFromJobId &&
+        copyPropertyId &&
+        copyPropertyId !== activePropertyId
+      ) {
+        throw new Error(t("createJob.copyPropertyMismatch"));
+      }
+
+      const [roomsResponse, topicsResponse, areasResponse, copiedJobResponse] =
+        await Promise.all([
         axios.get(`/api/rooms/`, {
           withCredentials: true,
           params: { property: activePropertyId },
@@ -947,6 +963,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
             property_id: activePropertyId,
           },
         }),
+        copyFromJobId
+          ? axios.get<Job>(`/api/jobs/${encodeURIComponent(copyFromJobId)}`, {
+              withCredentials: true,
+              params: { property_id: activePropertyId },
+            })
+          : Promise.resolve(null),
       ]);
       if (requestId !== dataRequestIdRef.current) return;
       const initialRooms = normalizeRoomsResponse(roomsResponse.data).filter(
@@ -958,8 +980,48 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       const areasList: Area[] = Array.isArray(areasData)
         ? areasData
         : areasData?.results || [];
-      setAreas(areasList.filter(areaBelongsToActiveProperty));
+      const propertyAreas = areasList.filter(areaBelongsToActiveProperty);
+      setAreas(propertyAreas);
       setFloors(deriveFloorsFromRooms(initialRooms));
+
+      if (copiedJobResponse) {
+        const copiedJob = copiedJobResponse.data;
+        if (String(copiedJob.property_id || "") !== activePropertyId) {
+          throw new Error(t("createJob.copyPropertyMismatch"));
+        }
+
+        const copiedRoom =
+          copiedJob.rooms?.find((room) =>
+            initialRooms.some(
+              (candidate) => candidate.room_id === room.room_id,
+            ),
+          ) || null;
+        const copiedAreaId = copiedJob.area_id ?? copiedJob.area?.id ?? null;
+        const copiedArea = propertyAreas.find(
+          (area) => area.id === copiedAreaId,
+        );
+        const copiedTopic = copiedJob.topics?.[0];
+
+        setFormInitialValues({
+          description: copiedJob.description || "",
+          status: "pending",
+          priority: copiedJob.priority || "medium",
+          remarks: copiedJob.remarks || "",
+          topic: {
+            title: copiedTopic?.title || "",
+            description: copiedTopic?.description || "",
+          },
+          room: copiedRoom,
+          area_id: copiedArea?.id ?? null,
+          floor: copiedRoom ? getFloorFromRoomName(copiedRoom.name) : null,
+          files: [],
+          afterFiles: [],
+          is_defective: Boolean(copiedJob.is_defective),
+          is_preventivemaintenance: Boolean(
+            copiedJob.is_preventivemaintenance,
+          ),
+        });
+      }
     } catch (error) {
       if (requestId !== dataRequestIdRef.current) return;
       console.error("Error fetching data:", error);
@@ -982,6 +1044,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     roomBelongsToActiveProperty,
     areaBelongsToActiveProperty,
     deriveFloorsFromRooms,
+    getFloorFromRoomName,
+    copyFromJobId,
+    copyPropertyId,
     showErrorToast,
     t,
   ]);
@@ -1012,6 +1077,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
           </Alert>
         )}
 
+        {copyFromJobId && !isLoading && !error && (
+          <Alert className="border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+            <CopyPlus className="h-5 w-5 text-blue-700 dark:text-blue-300" />
+            <AlertDescription className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              {formatMessage(t("createJob.copyNotice"), {
+                id: copyFromJobId,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Full-screen loading overlay (form data) */}
         {isLoading && (
           <div
@@ -1032,8 +1108,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         {/* Form - only show when not loading */}
         {!isLoading && (
           <Formik
-            key={activePropertyId || "no-active-property"}
-            initialValues={initialValues}
+            key={`${activePropertyId || "no-active-property"}:${copyFromJobId || "new"}`}
+            initialValues={formInitialValues}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
           >

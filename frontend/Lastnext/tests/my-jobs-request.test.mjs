@@ -5,6 +5,7 @@ import {
   buildMyJobsUrl,
   canMutateMyJob,
   getMyJobDetailHref,
+  getCopyMyJobHref,
   isCurrentMyJobsRequest,
   isMyJobActionLocked,
   isMyJobsAbortError,
@@ -62,6 +63,15 @@ describe('My Jobs active Property contract', () => {
       getMyJobDetailHref('j257DE99E', 'P00A12BC'),
       '/dashboard/jobs/j257DE99E?property_id=P00A12BC',
     );
+  });
+
+  it('builds a Property-scoped copy-and-edit link', () => {
+    assert.equal(
+      getCopyMyJobHref('job / 42', 'property & east'),
+      '/dashboard/create-job?copy_from=job+%2F+42&property_id=property+%26+east',
+    );
+    assert.equal(getCopyMyJobHref('', 'PA'), null);
+    assert.equal(getCopyMyJobHref('job-1', null), null);
   });
 
   it('surfaces server errors while accepting a valid scoped page', async () => {

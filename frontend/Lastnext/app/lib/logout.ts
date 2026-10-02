@@ -65,7 +65,6 @@ export async function appSignOut(options?: { callbackUrl?: string; redirect?: bo
     }
   } catch (error) {
     // Swallow errors but attempt client-side redirect fallback below
-    // eslint-disable-next-line no-console
     console.error("[appSignOut] signOut threw error, continuing with fallback redirect:", error);
   } finally {
     // Ensure navigation away from protected pages if redirect is false or signOut doesn't navigate

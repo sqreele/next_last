@@ -18,7 +18,6 @@ import { Badge } from "@/app/components/ui/badge";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import {
   ArrowLeft,
-  Wrench,
   Clock,
   AlertTriangle,
   CheckCircle2,
@@ -102,7 +101,7 @@ export default function MaintenanceTaskDetailPage({
 }) {
   // Unwrap params using React.use() for Next.js 15 compatibility
   const unwrappedParams = use(params);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const { selectedProperty } = useAuthStore();
   const [task, setTask] = useState<MaintenanceTask | null>(null);
@@ -465,7 +464,7 @@ export default function MaintenanceTaskDetailPage({
                     new Date(b.scheduled_date).getTime() -
                     new Date(a.scheduled_date).getTime(),
                 )
-                .map((record, index) => (
+                .map((record) => (
                   <div
                     key={record.pm_id}
                     className="border border-border rounded-lg p-4 hover:bg-muted transition-colors"

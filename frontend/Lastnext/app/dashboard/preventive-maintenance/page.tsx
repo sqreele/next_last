@@ -5,7 +5,7 @@ import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMa
 import { useFilterStore } from '@/app/lib/stores';
 import { useMainStore } from '@/app/lib/stores/mainStore';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
-import { PreventiveMaintenance, determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
+import { determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
 
 // Import types
 import { MachineOption, Stats } from '@/app/lib/hooks/filterTypes';

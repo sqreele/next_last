@@ -19,7 +19,6 @@ import {
 } from "@/app/components/ui/bottom-sheet";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { Badge } from "@/app/components/ui/badge";
 import { PriorityBadge } from "@/app/components/pcms-ui";
 import { JobPriority, SortOrder } from "@/app/lib/types";
 import { cn } from "@/app/lib/utils/cn";

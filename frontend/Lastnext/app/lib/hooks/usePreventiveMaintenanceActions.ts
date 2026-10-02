@@ -142,8 +142,10 @@ export function usePreventiveMaintenanceActions() {
     clearStoreError();
 
     try {
-      const { property_id: _storedPropertyId, ...storedFilters } = currentState.filterParams;
-      const { property_id: _requestedPropertyId, ...requestedFilters } = params || {};
+      const storedFilters = { ...currentState.filterParams };
+      const requestedFilters = { ...(params || {}) };
+      delete storedFilters.property_id;
+      delete requestedFilters.property_id;
       const fetchParams = {
         ...storedFilters,
         ...requestedFilters,

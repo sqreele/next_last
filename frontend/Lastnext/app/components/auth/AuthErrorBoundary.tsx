@@ -6,8 +6,6 @@ import { AlertTriangle, RefreshCw, LogIn } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 
@@ -49,7 +47,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
 
     // Check if it's an authentication error
     if (this.isAuthError(error)) {
-      this.handleAuthError(error);
+      this.handleAuthError();
     }
   }
 
@@ -75,7 +73,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
     );
   }
 
-  private handleAuthError(error: Error) {
+  private handleAuthError() {
     // Store the current page for redirect after login
     if (typeof window !== "undefined") {
       const currentPath = window.location.pathname + window.location.search;

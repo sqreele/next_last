@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { fetchJob, fetchProperties } from "@/app/lib/data.server";
-import { getServerSession } from "@/app/lib/session.server";
 import type { Metadata, ResolvingMetadata } from "next";
 import {
   ArrowLeft,
@@ -140,7 +139,6 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   try {
     const { jobId } = await params;
-    const session = await getServerSession();
     const requestedPropertyId = getRequestedPropertyId(await searchParams);
     const job = await fetchJob(jobId, undefined, requestedPropertyId);
 
@@ -171,7 +169,6 @@ export async function generateMetadata(
 export default async function JobPage({ params, searchParams }: Props) {
   try {
     const { jobId } = await params;
-    const session = await getServerSession();
     const requestedPropertyId = getRequestedPropertyId(await searchParams);
 
     // Fetch job and properties

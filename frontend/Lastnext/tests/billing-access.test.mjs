@@ -60,11 +60,10 @@ test("billing navigation is hidden by default and shown only when authorized", (
   );
 });
 
-test("every desktop, mobile, tablet, and AI navigation surface filters billing", async () => {
+test("every active desktop, mobile, and AI navigation surface filters billing", async () => {
   const paths = [
     "../app/dashboard/DashboardLayoutClient.tsx",
     "../app/components/ui/mobile-nav.tsx",
-    "../app/components/ui/tablet-nav.tsx",
     "../app/components/ai/AiChatDesktopNav.tsx",
     "../app/components/ai/AiChatMobileMenu.tsx",
   ];

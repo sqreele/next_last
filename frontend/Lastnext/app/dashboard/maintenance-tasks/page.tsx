@@ -83,7 +83,7 @@ const difficultyColors: Record<string, string> = {
 };
 
 export default function MaintenanceTasksPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);

@@ -3,13 +3,7 @@ import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState } from "react";
 import { useSession } from "@/app/lib/session.client";
-import {
-  CheckCircle2,
-  FileSpreadsheet,
-  X,
-  Wrench,
-  RefreshCw,
-} from "lucide-react";
+import { FileSpreadsheet, X, Wrench } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Job, JobStatus, Property } from "@/app/lib/types";
 import { jobsToCSV, downloadCSV } from "@/app/lib/utils/csv-export";

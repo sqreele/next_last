@@ -5,7 +5,6 @@ import { handleApiError } from "./api-client";
 import {
   validateFrequency,
   type PreventiveMaintenance,
-  type FrequencyType,
   type ServiceResponse,
 } from "./preventiveMaintenanceModels";
 // Removed next-auth usage; apiClient handles auth headers
@@ -251,29 +250,13 @@ class PreventiveMaintenanceService {
         });
       }
 
-      // Log pagination params specifically
-
-      // Log the machine_id specifically
-      if (cleanParams.machine_id) {
-      }
-
       // /api/v1 is the same-origin catch-all BFF. Its server boundary resolves
       // the Redis session and injects the backend bearer credential.
       const response = await apiClient.get<MaintenanceApiResponse>(
         `${this.baseUrl}/`, { params: cleanParams },
       );
 
-      // Extract items for logging
-      const { items, count } = this.extractItemsFromResponse(response.data);
-
-      if (Array.isArray(response.data)) {
-      } else {
-      }
-
-      // Log machine filtering results
-      if (cleanParams.machine_id && items.length > 0) {
-        items.forEach((item, index) => {});
-      }
+      const { items } = this.extractItemsFromResponse(response.data);
 
       return {
         success: true,
@@ -348,7 +331,7 @@ class PreventiveMaintenanceService {
               return altResponse;
             }
           }
-        } catch (error) {}
+        } catch {}
       }
 
       // Strategy 3: Get all items and filter client-side
@@ -397,43 +380,6 @@ class PreventiveMaintenanceService {
       throw handleApiError(error);
     }
   }
-
-  // NEW: Debug method specifically for machine filtering
-  async debugMachineFiltering(machineId: string): Promise<void> {
-    try {
-      // Test 1: Get all maintenance items
-      const allResponse = await this.getAllPreventiveMaintenance();
-
-      if (allResponse.success && allResponse.data) {
-        const { items: allItems } = this.extractItemsFromResponse(
-          allResponse.data,
-        );
-
-        // Analyze machine data structure
-        allItems.slice(0, 5).forEach((item, index) => {});
-
-        // Test client-side filtering
-        const clientFiltered = allItems.filter((item) =>
-          this.itemMatchesMachine(item, machineId),
-        );
-      }
-
-      // Test 2: Try API filtering
-      const apiFiltered = await this.getAllPreventiveMaintenance({
-        machine_id: machineId,
-      });
-
-      if (apiFiltered.success && apiFiltered.data) {
-        const { items: apiItems } = this.extractItemsFromResponse(
-          apiFiltered.data,
-        );
-      }
-    } catch (error) {
-      console.error("Debug error:", error);
-    }
-  }
-
-  // Keep all your existing methods exactly as they are...
 
   async getPMMasterPlans(
     params?: Record<string, any>,
@@ -1099,24 +1045,6 @@ class PreventiveMaintenanceService {
     }
   }
 
-  async debugMaintenanceData(): Promise<void> {
-    try {
-      const statsResponse = await apiClient.get<any>(`${this.baseUrl}/stats/`, {
-      });
-
-      const upcomingResponse = await apiClient.get<any>(
-        `${this.baseUrl}/upcoming/?days=30`,
-        {
-        },
-      );
-
-      const allResponse = await apiClient.get<any>(`${this.baseUrl}/`, {
-      });
-    } catch (error) {
-      console.error("Debug error:", error);
-    }
-  }
-
   async deletePreventiveMaintenance(
     id: string,
   ): Promise<ServiceResponse<null>> {
@@ -1126,8 +1054,7 @@ class PreventiveMaintenanceService {
     }
 
     try {
-      const response = await apiClient.delete(`${this.baseUrl}/${id}/`, {
-      });
+      await apiClient.delete(`${this.baseUrl}/${id}/`, {});
       return {
         success: true,
         data: null,
@@ -1161,42 +1088,6 @@ class PreventiveMaintenanceService {
       }
 
       throw handleApiError(error);
-    }
-  }
-  async debugAPIEndpoint(machineId: string): Promise<void> {
-    try {
-      // Test different parameter formats
-      const testParams = [
-        { machine: machineId },
-        { machine_id: machineId },
-        { machines: machineId },
-        { machine_ids: machineId },
-      ];
-
-      for (const params of testParams) {
-        try {
-          const response = await apiClient.get<any>(`${this.baseUrl}/`, {
-            params,
-          });
-          const { items } = this.extractItemsFromResponse(response.data);
-
-          // Check first few items
-          items.slice(0, 3).forEach((item, index) => {});
-
-          // Check if target machine is in results
-          const hasTargetMachine = items.some((item) =>
-            item.machines?.some((m) => m.machine_id === machineId),
-          );
-
-          if (hasTargetMachine) {
-          } else {
-          }
-        } catch (error) {
-          console.error("Error in debugMachineFiltering:", error);
-        }
-      }
-    } catch (error) {
-      console.error("Debug error:", error);
     }
   }
 }

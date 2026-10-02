@@ -145,7 +145,7 @@ export function PMScheduleCalendar() {
         if (cancelled) return;
         setData(res);
       })
-      .catch((requestError: unknown) => {
+      .catch(() => {
         if (cancelled) return;
         setError("pmSchedule.loadError");
       })

@@ -125,13 +125,13 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
         </div>
       </header>
       <p className="mt-3 text-sm font-medium text-slate-600">
-        Tell our team what needs attention. We'll triage it as soon as we can.
+        Tell our team what needs attention. We&apos;ll triage it as soon as we can.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="description" className="text-sm font-bold text-slate-900">
-            What's the issue? <span className="text-rose-600">*</span>
+            What&apos;s the issue? <span className="text-rose-600">*</span>
           </Label>
           <Textarea
             id="description"
@@ -197,7 +197,7 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
       </form>
 
       <p className="mt-5 text-[11px] font-medium text-slate-500">
-        This page is provided by the hotel's maintenance management system. Your message goes
+        This page is provided by the hotel&apos;s maintenance management system. Your message goes
         straight to the on-duty team.
       </p>
     </div>

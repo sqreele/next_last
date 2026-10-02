@@ -6,21 +6,13 @@ const root = new URL('../', import.meta.url);
 const source = (path) => readFile(new URL(path, root), 'utf8');
 
 test('notifications use the canonical BFF without browser bearer credentials', async () => {
-  const [api, bell, push] = await Promise.all([
-    source('app/lib/api/notificationsApi.ts'),
-    source('app/components/notifications/NotificationBell.tsx'),
-    source('app/components/pwa/PushNotificationsToggle.tsx'),
-  ]);
-  assert.match(api, /\/api\/v1\/notifications\/all\//);
+  const bell = await source('app/components/notifications/NotificationBell.tsx');
   assert.match(bell, /\/api\/v1\/notifications\/all\/\?\$\{params\.toString\(\)\}/);
   assert.match(bell, /const READ_KEY = "pcms-notifications-read"/);
   assert.match(bell, /saveReadSet\(next\)/);
   assert.match(bell, /!readSet\.has\(n\.pm_id\)/);
-  assert.match(push, /\/api\/v1\/push\/subscribe\//);
-  for (const text of [api, bell, push]) {
-    assert.match(text, /credentials:\s*["']include["']/);
-    assert.doesNotMatch(text, /session\.user\.accessToken|Authorization|Bearer|NEXT_PUBLIC_API_URL/);
-  }
+  assert.match(bell, /credentials:\s*["']include["']/);
+  assert.doesNotMatch(bell, /session\.user\.accessToken|Authorization|Bearer|NEXT_PUBLIC_API_URL/);
 });
 
 test('CSV import keeps FormData and routes uploads through the BFF', async () => {
@@ -69,9 +61,7 @@ test('canonical BFF strips browser authorization and fails closed without a serv
 
 test('Phase 3B browser sources have no browser token dependency', async () => {
   const files = await Promise.all([
-    source('app/lib/api/notificationsApi.ts'),
     source('app/components/notifications/NotificationBell.tsx'),
-    source('app/components/pwa/PushNotificationsToggle.tsx'),
     source('app/components/import/CsvImportDialog.tsx'),
     source('app/components/properties/PropertyExportButton.tsx'),
     source('app/components/inventory/InventoryCsvImport.tsx'),

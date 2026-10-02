@@ -1,6 +1,5 @@
 import React, { Suspense } from "react";
 import type { Metadata } from "next";
-import { getServerSession } from "@/app/lib/session.server";
 import { fetchAllJobsForDashboard } from "@/app/lib/data.server";
 import JobsByAreaClient from "./area-client";
 
@@ -13,7 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default async function JobsByAreaPage() {
-  const session = await getServerSession();
   const jobs = await fetchAllJobsForDashboard().catch(() => []);
 
   return (

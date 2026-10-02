@@ -19,19 +19,18 @@ test('PM service uses canonical same-origin BFF paths and retains request semant
   assert.doesNotMatch(text, /createPreventiveMaintenanceService = \(accessToken/);
 });
 
-test('PM hooks and context have no browser bearer-token dependency', async () => {
+test('active PM page, actions, and store have no browser bearer-token dependency', async () => {
   const paths = [
-    'app/lib/hooks/usePreventiveMaintenanceJobs.ts',
     'app/lib/hooks/usePreventiveMaintenanceActions.ts',
-    'app/lib/PreventiveContext.tsx',
+    'app/dashboard/preventive-maintenance/page.tsx',
+    'app/lib/stores/usePreventiveMaintenanceStore.ts',
   ];
   for (const path of paths) assert.doesNotMatch(await source(path), browserTokenPattern, path);
-  const jobs = await source(paths[0]);
-  assert.match(jobs, /params\.property_id = propertyId/);
-  assert.match(jobs, /fetchData<\{ jobs: Job\[\]; count: number \}>\(pmUrl\)/);
-  const actions = await source(paths[1]);
+  const actions = await source(paths[0]);
   assert.match(actions, /createPreventiveMaintenanceService\(\)/);
   assert.match(actions, /property_id: selectedProperty/);
+  const page = await source(paths[1]);
+  assert.match(page, /fetchMaintenanceItems/);
 });
 
 test('machine and topic services keep property query contracts without browser Authorization', async () => {

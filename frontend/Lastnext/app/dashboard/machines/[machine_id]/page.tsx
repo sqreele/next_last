@@ -29,7 +29,6 @@ import {
   Download,
   Printer,
   AlertTriangle,
-  XCircle,
   FilePlus2,
   Hash,
   ImageIcon,
@@ -125,7 +124,7 @@ export default function MachineDetailPage({
   params: Promise<{ machine_id: string }>;
 }) {
   const unwrappedParams = use(params);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const { selectedPropertyId: selectedProperty } = useUser();
   const [machine, setMachine] = useState<Machine | null>(null);
@@ -553,7 +552,7 @@ export default function MachineDetailPage({
             Machine QR Code
           </CardTitle>
           <CardDescription>
-            Scan this QR code to quickly access this machine's details
+            Scan this QR code to quickly access this machine&apos;s details
           </CardDescription>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">

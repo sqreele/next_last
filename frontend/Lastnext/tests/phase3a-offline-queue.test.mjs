@@ -40,14 +40,15 @@ test('logout durably clears authenticated queued mutations before navigation', a
 });
 
 test('every discovered browser logout initiator delegates to the safe logout core', async () => {
-  const [button, sessionClient, pending, logoutPage, apiClient] = await Promise.all([
-    source('app/components/auth/LogoutButton.tsx'),
+  const [dashboardLayout, dashboardUser, sessionClient, pending, logoutPage, apiClient] = await Promise.all([
+    source('app/dashboard/DashboardLayoutClient.tsx'),
+    source('app/dashboard/user.tsx'),
     source('app/lib/session.client.ts'),
     source('app/auth/access-pending/page.tsx'),
     source('app/auth/logout/page.tsx'),
     source('app/lib/api-client.ts'),
   ]);
-  for (const text of [button, sessionClient, pending, logoutPage]) {
+  for (const text of [dashboardLayout, dashboardUser, sessionClient, pending, logoutPage]) {
     assert.match(text, /appSignOut\(/);
   }
   assert.match(apiClient, /function terminateSessionSafely/);

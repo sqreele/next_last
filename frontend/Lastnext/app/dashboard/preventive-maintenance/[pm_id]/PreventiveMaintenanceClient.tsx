@@ -820,7 +820,6 @@ export default function PreventiveMaintenanceClient({
     // More robust check for empty machines
     const machines = maintenanceData.machines;
     const machinesList = Array.isArray(machines) ? machines : null;
-    const hasMachines = !!machinesList && machinesList.length > 0;
 
     // Debug logging to help diagnose machine assignment issues
 

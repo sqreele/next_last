@@ -10,18 +10,10 @@ interface LogContext {
 
 class Logger {
   private isDevelopment: boolean;
-  private isProduction: boolean;
-  private isServerSide: boolean;
-
   constructor() {
-    // Works in both server and client environments
-    this.isServerSide = typeof window === 'undefined';
     this.isDevelopment = 
       (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') ||
       (typeof window !== 'undefined' && (window as any).__DEV__ === true);
-    this.isProduction = 
-      (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') ||
-      (!this.isDevelopment && typeof window !== 'undefined');
   }
 
   /**
@@ -29,6 +21,7 @@ class Logger {
    */
   debug(message: string, context?: LogContext | unknown): void {
     if (this.isDevelopment) {
+      console.debug(`[DEBUG] ${message}`, context ?? '');
     }
   }
 
@@ -66,6 +59,7 @@ class Logger {
   api(method: string, url: string, status?: number, context?: LogContext): void {
     if (this.isDevelopment) {
       const statusText = status ? `[${status}]` : '';
+      console.debug(`[API] ${method} ${url} ${statusText}`, context ?? '');
     }
   }
 
@@ -90,4 +84,3 @@ export const logger = new Logger();
 
 // Export type for use in other files
 export type { LogLevel, LogContext };
-

@@ -46,7 +46,6 @@ function Calendar(props: CalendarProps) {
     onMonthChange,
     mode = "single",
     disabled,
-    numberOfMonths = 1,
     initialFocus,
   } = props;
 

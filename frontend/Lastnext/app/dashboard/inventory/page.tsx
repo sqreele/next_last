@@ -128,7 +128,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function InventoryPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const t = useT();
   const { selectedPropertyId: selectedProperty } = useUser();

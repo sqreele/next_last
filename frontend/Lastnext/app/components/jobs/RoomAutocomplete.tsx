@@ -54,6 +54,7 @@ const RoomAutocomplete = ({
   const debugLog = useCallback(
     (message: string, data?: any) => {
       if (debug) {
+        console.debug("[RoomAutocomplete]", message, data ?? "");
       }
     },
     [debug],

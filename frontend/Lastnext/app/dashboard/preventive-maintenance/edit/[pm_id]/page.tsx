@@ -3,7 +3,6 @@
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState, useEffect, useRef } from "react";
-import type { JSX } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
@@ -15,15 +14,12 @@ import { UpdatePreventiveMaintenanceData } from "@/app/lib/PreventiveMaintenance
 import { PreviewImage } from "@/app/components/ui/UniversalImage";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import {
-  Calendar,
   Save,
   X,
-  Upload,
   AlertCircle,
   Clock,
   Settings,
   Image as ImageIcon,
-  Trash2,
   ArrowLeft,
 } from "lucide-react";
 import { DetailPageSkeleton } from "@/app/components/ui/loading";
@@ -586,20 +582,6 @@ export default function EditPreventiveMaintenancePage() {
     router.push(path);
   };
 
-  // Get frequency display text
-  const getFrequencyText = (freq: string) => {
-    const frequencyMap: { [key: string]: string } = {
-      daily: "Daily",
-      weekly: "Weekly",
-      monthly: "Monthly",
-      quarterly: "Quarterly",
-      semi_annual: "Semi-Annual",
-      annual: "Annual",
-      custom: "Custom",
-    };
-    return frequencyMap[freq] || freq;
-  };
-
   if (isLoading) {
     return <DetailPageSkeleton className="px-3 py-4 sm:px-6 sm:py-6" />;
   }
@@ -613,7 +595,7 @@ export default function EditPreventiveMaintenancePage() {
             Maintenance Record Not Found
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground mb-6">
-            The maintenance record you're looking for doesn't exist or you don't
+            The maintenance record you&apos;re looking for doesn&apos;t exist or you don&apos;t
             have permission to edit it.
           </p>
           <Link
@@ -676,7 +658,7 @@ export default function EditPreventiveMaintenancePage() {
               </p>
               <ul className="text-red-600 text-xs sm:text-sm mt-1 ml-4 list-disc space-y-1">
                 <li>Check if the PM ID exists in the database</li>
-                <li>Verify the PM ID is correct (should start with "PM")</li>
+                <li>Verify the PM ID is correct (should start with &quot;PM&quot;)</li>
                 <li>Make sure you have permission to edit this record</li>
                 <li>
                   Try accessing from the{" "}

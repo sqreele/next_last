@@ -1,6 +1,6 @@
 // @/app/lib/hooks/use-toast.tsx
 import * as React from "react"
-import { Toast, ToastActionElement, ToastProps } from "@/app/components/ui/toast"
+import { ToastActionElement, ToastProps } from "@/app/components/ui/toast"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 5000

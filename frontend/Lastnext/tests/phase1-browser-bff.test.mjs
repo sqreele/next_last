@@ -5,11 +5,13 @@ import test from 'node:test';
 const root = new URL('../', import.meta.url);
 const source = (path) => readFile(new URL(path, root), 'utf8');
 
-test('Phase 1 providers use safe session identity and BFF profile loading', async () => {
-  const userProvider = await source('app/lib/ providers/user-provider.tsx');
+test('Phase 1 session compatibility uses server-side profile loading without client tokens', async () => {
+  const sessionRoute = await source('app/api/auth/session-compat/route.ts');
+  const authClient = await source('app/lib/auth-client.ts');
   const storeProvider = await source('app/lib/providers/StoreProvider.tsx');
-  assert.match(userProvider, /fetch\('\/api\/v1\/user-profiles\/me\//);
-  assert.doesNotMatch(userProvider, /session\?\.user\?\.accessToken|Authorization:/);
+  assert.match(sessionRoute, /\/api\/v1\/user-profiles\/me\//);
+  assert.match(sessionRoute, /sanitizeSessionForClient\(updatedSession\)/);
+  assert.doesNotMatch(authClient, /accessToken|refreshToken|Authorization:/);
   assert.doesNotMatch(storeProvider, /setAuthTokens|accessToken/);
 });
 

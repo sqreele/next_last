@@ -5,10 +5,6 @@ import { useMainStore } from '../stores/mainStore';
 import { getDefaultPropertyId, getPropertyId } from '../security/propertyAccess';
 import { useSession } from '../session.client';
 
-interface StoreProviderProps {
-  children: ReactNode;
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const setUserProfile = useMainStore(state => state.setUserProfile);

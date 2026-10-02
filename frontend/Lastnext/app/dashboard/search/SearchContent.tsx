@@ -294,7 +294,7 @@ export default function SearchContent() {
           part
         ),
       );
-    } catch (e) {
+    } catch {
       // In case of regex errors
       return text;
     }
@@ -366,7 +366,7 @@ export default function SearchContent() {
           No results found
         </h2>
         <p className="text-center text-muted-foreground max-w-md">
-          We couldn't find anything matching "{displayQuery}". Try using different
+          We couldn&apos;t find anything matching &quot;{displayQuery}&quot;. Try using different
           keywords or filters.
         </p>
         <Button
@@ -404,7 +404,7 @@ export default function SearchContent() {
           <h1 className="text-2xl font-bold text-foreground">Search Results</h1>
           <p className="text-muted-foreground">
             Found {totalResults} {totalResults === 1 ? "result" : "results"} for
-            "{displayQuery}"
+            &quot;{displayQuery}&quot;
           </p>
         </div>
       </div>

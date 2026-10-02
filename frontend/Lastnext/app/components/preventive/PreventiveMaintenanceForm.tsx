@@ -359,7 +359,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           const formattedDate = formatDateForInput(date);
           return formattedDate;
         }
-      } catch (error) {
+      } catch {
         console.error(
           "[ensureDateTimeLocalFormat] Error ensuring datetime-local format:",
           error,
@@ -425,7 +425,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             }
           }
         }
-      } catch (error) {
+      } catch {
         errors.scheduled_date = "Invalid scheduled date format";
       }
     }
@@ -445,7 +445,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               "Completed date cannot be before scheduled date";
           }
         }
-      } catch (error) {
+      } catch {
         errors.completed_date = "Invalid completed date format";
       }
     }

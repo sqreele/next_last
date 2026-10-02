@@ -1,6 +1,4 @@
 // app/lib/csrf.ts - CSRF token utilities
-declare const process: any;
-
 let csrfToken: string | null = null;
 
 // Determine the correct backend base URL for both client and server

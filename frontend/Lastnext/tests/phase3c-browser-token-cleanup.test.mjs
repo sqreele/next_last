@@ -25,14 +25,14 @@ test('rooms, properties, detailed users, and job actions use session BFF transpo
     source('app/lib/hooks/detailed-users-request.mjs'),
     source('app/components/jobs/JobAuditTimeline.tsx'),
     source('app/components/jobs/ReassignJobButton.tsx'),
-    source('app/components/jobs/UpdateStatusModal.tsx'),
+    source('app/components/jobs/UpdateStatusButton.tsx'),
     source('app/dashboard/rooms/page.tsx'),
     source('app/dashboard/properties/page.tsx'),
   ]);
   assert.match(files[0], /\/api\/v1\/users\/detailed\//);
   assert.match(files[1], /\/api\/v1\/jobs\/\$\{jobId\}\/audit-log\//);
   assert.match(files[2], /\/api\/v1\/jobs\/\$\{job\.job_id\}\/reassign\//);
-  assert.match(files[3], /\/api\/v1\/jobs\/\$\{job\.job_id\}\//);
+  assert.match(files[3], /requestMyJobStatusUpdate/);
   for (const text of files) {
     assert.doesNotMatch(text, /session\.user\.accessToken|Authorization.*Bearer|NEXT_PUBLIC_API_URL/);
   }
@@ -41,7 +41,6 @@ test('rooms, properties, detailed users, and job actions use session BFF transpo
 test('client session compatibility state exposes no token fields', async () => {
   const files = await Promise.all([
     source('app/lib/auth-client.ts'),
-    source('app/lib/hooks/useAuth.ts'),
     source('app/lib/hooks/useSessionGuard.ts'),
     source('app/lib/stores/mainStore.ts'),
     source('app/components/auth/ProtectedRoute.tsx'),

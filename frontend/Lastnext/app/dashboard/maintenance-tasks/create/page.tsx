@@ -52,7 +52,7 @@ export default function CreateMaintenanceTaskPage() {
                 Navigate to <strong>Maintenance Tasks</strong> section
               </li>
               <li>
-                Click <strong>"Add Maintenance Task"</strong>
+                Click <strong>&quot;Add Maintenance Task&quot;</strong>
               </li>
               <li>
                 Fill in:
@@ -131,7 +131,7 @@ export default function CreateMaintenanceTaskPage() {
             </ul>
 
             <h4 className="font-semibold text-foreground mt-4">
-              How it's used:
+              How it&apos;s used:
             </h4>
             <p className="text-muted-foreground">
               Once created, these task templates can be used when creating

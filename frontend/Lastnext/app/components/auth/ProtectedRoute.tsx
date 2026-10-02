@@ -3,8 +3,8 @@
 import React, { ReactNode } from 'react';
 import Link from 'next/link';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
-import { Shield, AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Shield } from 'lucide-react';
+import { Card, CardContent } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { PageLoader } from '@/app/components/ui/loading';
 
@@ -49,37 +49,6 @@ const UnauthorizedFallback: React.FC<UnauthorizedFallbackProps> = ({ onRetry, re
           )}
           <Button asChild className="w-full">
             <Link href={redirectTo}>Go to Login</Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-);
-
-interface ErrorFallbackProps {
-  error: Error;
-  onRetry?: () => void;
-}
-
-const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, onRetry }) => (
-  <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4">
-    <Card className="max-w-md w-full">
-      <CardContent className="p-8 text-center space-y-6">
-        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-          <AlertTriangle className="w-10 h-10 text-red-600" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">Authentication Error</h1>
-          <p className="text-gray-600">{error.message || 'An error occurred during authentication.'}</p>
-        </div>
-        <div className="flex flex-col gap-3">
-          {onRetry && (
-            <Button onClick={onRetry} variant="outline" className="w-full">
-              Try Again
-            </Button>
-          )}
-          <Button asChild className="w-full">
-            <Link href="/auth/login">Go to Login</Link>
           </Button>
         </div>
       </CardContent>

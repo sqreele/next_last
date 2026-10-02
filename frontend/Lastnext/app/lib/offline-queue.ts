@@ -290,7 +290,7 @@ export async function replayQueue(
         continue;
       }
       bumpRetry(item.id);
-    } catch (error) {
+    } catch {
       // Network error -> assume still offline; stop replaying so we don't
       // hammer when there's no connection.
       bumpRetry(item.id);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '../session.client';
 import { useToast } from './use-toast';
@@ -34,7 +34,7 @@ export function useSessionGuard(options: UseSessionGuardOptions = {}): UseSessio
   const isLoading = status === 'loading' || isRedirecting;
   const user = session?.user;
 
-  const redirectToLogin = () => {
+  const redirectToLogin = useCallback(() => {
     if (isRedirecting) return;
     
     setIsRedirecting(true);
@@ -54,7 +54,7 @@ export function useSessionGuard(options: UseSessionGuardOptions = {}): UseSessio
     
     // Redirect to login
     router.push(redirectTo);
-  };
+  }, [isRedirecting, redirectTo, router, showToast, toast]);
 
   useEffect(() => {
     // If session is still loading, wait

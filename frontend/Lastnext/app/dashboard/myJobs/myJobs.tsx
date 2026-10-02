@@ -21,7 +21,6 @@ import {
   X,
 } from "lucide-react";
 
-import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import {

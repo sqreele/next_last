@@ -46,3 +46,19 @@ test("machine filtering includes partial machine-name matches", () => {
     /return machineIdMatch \|\| machineIdCaseInsensitive \|\| nameMatch \|\| nameCaseInsensitive \|\| namePartialMatch/,
   );
 });
+
+test("create-job mobile submit bar stays above iPhone navigation and safe area", () => {
+  const form = read("app/components/jobs/CreateJobForm.tsx");
+  const mobileNav = read("app/components/ui/mobile-nav.tsx");
+
+  assert.match(
+    form,
+    /bottom:\s*"calc\(4\.5rem \+ env\(safe-area-inset-bottom\)\)"/,
+  );
+  assert.match(form, /fixed bottom-\[4\.5rem\][^\n]*z-40/);
+  assert.match(mobileNav, /fixed inset-x-0 bottom-0 z-50/);
+  assert.doesNotMatch(
+    form,
+    /className="fixed bottom-0 left-0 right-0 z-20/,
+  );
+});

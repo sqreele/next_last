@@ -2052,10 +2052,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                       const allReady = completedCount === stepStatus.length;
                       return (
                         <div
-                          className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-card px-3 py-3 shadow-soft sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
+                          className="fixed bottom-[4.5rem] left-0 right-0 z-40 border-t border-border bg-card px-3 py-3 shadow-soft sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
                           style={{
-                            paddingBottom:
-                              "calc(0.75rem + env(safe-area-inset-bottom))",
+                            bottom:
+                              "calc(4.5rem + env(safe-area-inset-bottom))",
                           }}
                         >
                           <div className="w-full max-w-none md:max-w-none">

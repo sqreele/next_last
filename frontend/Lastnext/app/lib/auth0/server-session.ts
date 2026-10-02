@@ -53,7 +53,11 @@ export async function requireServerAccessToken(): Promise<string | null> {
 
 export async function getUserProfile(userId: string): Promise<CompatUser | null> {
   try {
-    return null;
+    const session = await getCompatServerSession();
+    if (!session?.user || session.user.id !== userId) {
+      return null;
+    }
+    return session.user;
   } catch (error) {
     console.error('❌ Error getting user profile:', error);
     return null;

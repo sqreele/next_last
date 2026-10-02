@@ -18,7 +18,7 @@ const scheduleSource = read("app/dashboard/preventive-maintenance/schedule/PMSch
 const statusBadgeSource = read("app/components/StatusBadge.tsx");
 const priorityBadgeSource = read("app/components/PriorityBadge.tsx");
 const priorityConfigSource = read("app/design-system/priority-config.ts");
-const editJobDialogSource = read("app/components/jobs/EditJobDialog.tsx");
+const jobToolbarSource = read("app/components/jobs/JobListMobileToolbar.tsx");
 
 function dictionaryBlock(start, end) {
   return dictionarySource.slice(dictionarySource.indexOf(start), dictionarySource.indexOf(end));
@@ -96,8 +96,8 @@ test("priority badges use one semantic color source across job views", () => {
   assert.match(priorityConfigSource, /high:[\s\S]*?text-warning-emphasis/);
   assert.match(priorityConfigSource, /critical:[\s\S]*?text-destructive/);
   assert.match(priorityConfigSource, /key === "urgent"/);
-  assert.match(editJobDialogSource, /<PriorityBadge priority=\{option\.value\} size="sm"/);
-  assert.doesNotMatch(editJobDialogSource, /priorityColors/);
+  assert.match(jobToolbarSource, /<PriorityBadge priority=\{priority\}/);
+  assert.doesNotMatch(jobToolbarSource, /priorityColors/);
 });
 
 test("raw PM status code is not rendered", () => {

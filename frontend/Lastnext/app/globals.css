@@ -139,12 +139,12 @@
   --sidebar-ring: 42 92% 56%;
   --radius: 0.75rem;
 
-  --status-open-bg: #f1f5f9;
-  --status-open-text: #334155;
-  --status-open-border: #cbd5e1;
-  --status-pending-bg: #f1f5f9;
-  --status-pending-text: #334155;
-  --status-pending-border: #cbd5e1;
+  --status-open-bg: #fff7ed;
+  --status-open-text: #9a3412;
+  --status-open-border: #fed7aa;
+  --status-pending-bg: #fff7ed;
+  --status-pending-text: #9a3412;
+  --status-pending-border: #fed7aa;
   --status-assigned-bg: #e0f2fe;
   --status-assigned-text: #0369a1;
   --status-assigned-border: #bae6fd;
@@ -670,12 +670,12 @@ body,
   --sidebar-accent-foreground: 168 20% 96%;
   --sidebar-border: 190 16% 22%;
   --sidebar-ring: 42 90% 62%;
-  --status-open-bg: rgb(30 41 59 / 0.8);
-  --status-open-text: #e2e8f0;
-  --status-open-border: #475569;
-  --status-pending-bg: rgb(30 41 59 / 0.8);
-  --status-pending-text: #e2e8f0;
-  --status-pending-border: #475569;
+  --status-open-bg: rgb(124 45 18 / 0.55);
+  --status-open-text: #fed7aa;
+  --status-open-border: #c2410c;
+  --status-pending-bg: rgb(124 45 18 / 0.55);
+  --status-pending-text: #fed7aa;
+  --status-pending-border: #c2410c;
   --status-assigned-bg: rgb(12 74 110 / 0.55);
   --status-assigned-text: #7dd3fc;
   --status-assigned-border: #075985;
@@ -2844,9 +2844,9 @@ body {
 /* HotelCare Pro mobile-first polish: final layout, navigation, table, button, and workflow status refinements. */
 @layer base {
   :root {
-    --status-pending-bg: #e2e8f0;
-    --status-pending-text: #334155;
-    --status-pending-border: #cbd5e1;
+    --status-pending-bg: #fff7ed;
+    --status-pending-text: #9a3412;
+    --status-pending-border: #fed7aa;
     --status-in-progress-bg: #2563eb;
     --status-in-progress-text: #ffffff;
     --status-in-progress-border: #1d4ed8;
@@ -2996,12 +2996,12 @@ body {
 @layer base {
   :root {
     /* Spec-aligned status palette */
-    --status-open-bg: #2563eb;
-    --status-open-text: #ffffff;
-    --status-open-border: #1d4ed8;
-    --status-pending-bg: #2563eb;
-    --status-pending-text: #ffffff;
-    --status-pending-border: #1d4ed8;
+    --status-open-bg: #fff7ed;
+    --status-open-text: #9a3412;
+    --status-open-border: #fed7aa;
+    --status-pending-bg: #fff7ed;
+    --status-pending-text: #9a3412;
+    --status-pending-border: #fed7aa;
     --status-in-progress-bg: #6366f1;
     --status-in-progress-text: #ffffff;
     --status-in-progress-border: #4f46e5;
@@ -3034,6 +3034,15 @@ body {
     --stock-low-text: #ffffff;
     --stock-none-bg: #dc2626;
     --stock-none-text: #ffffff;
+  }
+
+  .dark {
+    --status-open-bg: rgb(124 45 18 / 0.55);
+    --status-open-text: #fed7aa;
+    --status-open-border: #c2410c;
+    --status-pending-bg: rgb(124 45 18 / 0.55);
+    --status-pending-text: #fed7aa;
+    --status-pending-border: #c2410c;
   }
 }
 
@@ -3194,9 +3203,9 @@ body {
     border-color: #fde68a !important;
   }
   .pcms-status-badge--pending {
-    background: #eff6ff !important;
-    color: #1e40af !important;
-    border-color: #bfdbfe !important;
+    background: var(--status-pending-bg) !important;
+    color: var(--status-pending-text) !important;
+    border-color: var(--status-pending-border) !important;
   }
 
   /* Modern cards: tighter radius, soft shadow, hover lift */
@@ -3662,6 +3671,10 @@ body {
 .sneat-stat-card__icon--primary {
   background: var(--sneat-primary-soft);
   color: var(--sneat-primary);
+}
+.sneat-stat-card__icon--pending {
+  background: var(--status-pending-bg);
+  color: var(--status-pending-text);
 }
 .sneat-stat-card__icon--success {
   background: var(--sneat-success-soft);

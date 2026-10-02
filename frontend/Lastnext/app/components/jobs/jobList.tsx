@@ -86,7 +86,7 @@ export default function JobList({
 
   // Debug logging
 
-  const [itemsPerPage, setItemsPerPage] = useState(24);
+  const itemsPerPage = 24;
 
   // Mobile toolbar filters — applied AFTER the legacy filters above so the desktop
   // JobActions controls keep working unchanged.
@@ -433,9 +433,6 @@ export default function JobList({
         {mobileToolbar}
         <div className="hidden md:flex justify-end mb-2">
           <JobActions
-            jobs={sortedJobs}
-            currentTab={filter}
-            properties={properties}
             onRefresh={handleRefresh}
             onSort={(order) => setSortOrder(order)}
             currentSort={sortOrder}
@@ -463,9 +460,6 @@ export default function JobList({
       {mobileToolbar}
       <div className="hidden md:flex justify-end mb-2">
         <JobActions
-          jobs={sortedJobs}
-          currentTab={filter}
-          properties={properties}
           onRefresh={handleRefresh}
           onSort={(order) => setSortOrder(order)}
           currentSort={sortOrder}

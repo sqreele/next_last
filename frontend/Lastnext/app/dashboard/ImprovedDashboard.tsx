@@ -57,7 +57,7 @@ import {
   YAxis,
 } from 'recharts';
 
-type StatTone = 'primary' | 'success' | 'warning' | 'waiting' | 'danger' | 'info' | 'secondary';
+type StatTone = 'primary' | 'pending' | 'success' | 'warning' | 'waiting' | 'danger' | 'info' | 'secondary';
 
 const STATUS_SUMMARY: Array<{ value: string; label: string }> = [
   { value: 'pending', label: 'Pending' },
@@ -143,6 +143,7 @@ function getInitials(name: string) {
 }
 
 function statusTone(status?: string): StatTone {
+  if (normalizeStatus(status) === 'pending') return 'pending';
   const tone = getStatusConfig(status).tone;
   return tone === 'neutral' ? 'secondary' : tone;
 }
@@ -488,7 +489,7 @@ export default function ImprovedDashboard() {
 
               <div className="sneat-stat-card">
                 <div className="sneat-stat-card__top">
-                  <span className="sneat-stat-card__icon sneat-stat-card__icon--info"><Clock className="h-5 w-5" /></span>
+                  <span className="sneat-stat-card__icon sneat-stat-card__icon--pending"><Clock className="h-5 w-5" /></span>
                 </div>
                 <span className="sneat-stat-card__label">{t('status.pending')}</span>
                 <strong className="sneat-stat-card__value">{metrics.open}</strong>

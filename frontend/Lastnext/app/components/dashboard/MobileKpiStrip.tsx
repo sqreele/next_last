@@ -18,7 +18,7 @@ import { cn } from "@/app/lib/utils/cn";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 export type KpiTone =
-  "primary" | "info" | "warning" | "success" | "danger" | "neutral";
+  "primary" | "pending" | "info" | "warning" | "success" | "danger" | "neutral";
 
 interface KpiInput {
   label: string;
@@ -57,6 +57,11 @@ const TONE_STYLES: Record<
     card: "border-primary/25 bg-primary/[0.03]",
     icon: "bg-primary/10 text-primary",
     value: "text-primary",
+  },
+  pending: {
+    card: "border-orange-200 bg-orange-50/70 dark:border-orange-800 dark:bg-orange-950/30",
+    icon: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300",
+    value: "text-orange-700 dark:text-orange-300",
   },
   info: {
     card: "border-info/25 bg-info/[0.03]",
@@ -117,6 +122,7 @@ function DeltaPill({
 }
 
 function KpiCard({ kpi }: { kpi: KpiInput }) {
+  const t = useT();
   const styles = TONE_STYLES[kpi.tone];
   const Icon = kpi.icon;
   const inner = (
@@ -124,7 +130,11 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
       className={cn(
         "flex h-full w-full min-w-[176px] flex-col gap-3 rounded-lg border p-4 shadow-soft transition-colors",
         styles.card,
-        kpi.href ? "hover:border-primary/40 hover:bg-primary/[0.05]" : "",
+        kpi.href
+          ? kpi.tone === "pending"
+            ? "hover:border-orange-300 hover:bg-orange-100/70 dark:hover:border-orange-700 dark:hover:bg-orange-950/50"
+            : "hover:border-primary/40 hover:bg-primary/[0.05]"
+          : "",
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -158,7 +168,7 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
       </div>
       {kpi.href ? (
         <span className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-primary">
-          Open <ArrowRight className="h-3 w-3" aria-hidden="true" />
+          {t("dashboard.viewJobs")} <ArrowRight className="h-3 w-3" aria-hidden="true" />
         </span>
       ) : null}
     </div>
@@ -189,21 +199,21 @@ export function MobileKpiStrip({
       label: t("kpi.totalJobs"),
       value: total,
       delta: deltas.total ?? null,
-      deltaLabel: "vs last week",
+      deltaLabel: t("dashboard.vsLastWeek"),
       tone: "primary",
       icon: ClipboardList,
       href: "/dashboard/jobs",
-      hint: "All maintenance work",
+      hint: t("dashboard.allJobs"),
     },
     {
       label: t("kpi.open"),
       value: open,
       delta: deltas.open ?? null,
-      deltaLabel: "new this week",
-      tone: "info",
+      deltaLabel: t("dashboard.newThisWeek"),
+      tone: "pending",
       icon: Clock,
       href: "/dashboard/jobs?status=pending",
-      hint: "Needs assignment",
+      hint: t("dashboard.awaitingAssignment"),
     },
     {
       label: t("kpi.inProgress"),
@@ -211,13 +221,13 @@ export function MobileKpiStrip({
       tone: "warning",
       icon: Hammer,
       href: "/dashboard/jobs?status=in_progress",
-      hint: "Active right now",
+      hint: t("dashboard.currentlyHandled"),
     },
     {
       label: t("kpi.completed"),
       value: completed,
       delta: deltas.completed ?? null,
-      deltaLabel: "vs last week",
+      deltaLabel: t("dashboard.vsLastWeek"),
       tone: "success",
       icon: CheckCircle2,
       href: "/dashboard/jobs?status=completed",
@@ -227,11 +237,11 @@ export function MobileKpiStrip({
       label: t("kpi.overdue"),
       value: overdue,
       delta: deltas.overdue ?? null,
-      deltaLabel: "vs last week",
+      deltaLabel: t("dashboard.vsLastWeek"),
       tone: "danger",
       icon: ShieldAlert,
       href: "/dashboard/jobs?status=overdue",
-      hint: "Needs escalation",
+      hint: t("dashboard.needsEscalation"),
     },
     {
       label: t("kpi.waitingParts"),
@@ -239,13 +249,13 @@ export function MobileKpiStrip({
       tone: "neutral",
       icon: Timer,
       href: "/dashboard/jobs?status=waiting_sparepart",
-      hint: "Blocked on inventory",
+      hint: t("dashboard.blockedInventory"),
     },
   ];
 
   return (
     <section
-      aria-label="Maintenance KPI summary"
+      aria-label={t("dashboard.kpiSummary")}
       className={cn("-mx-3 px-3 sm:mx-0 sm:px-0", className)}
     >
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:hidden">

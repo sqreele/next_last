@@ -4,18 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
-  FileDown,
   Filter,
   SortAsc,
   SortDesc,
   Calendar,
   DoorOpen,
-  Settings,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import { useUser } from "@/app/lib/stores/mainStore";
-import { useSession } from "@/app/lib/session.client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/app/components/ui/dropdown-menu";
-import { SortOrder, Job, Property, TabValue, Room } from "@/app/lib/types";
-import { format } from "date-fns";
+import { SortOrder, Room } from "@/app/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -45,10 +41,7 @@ interface JobActionsProps {
   currentDateFilter?: DateFilter;
   onRoomFilter?: (roomId: string | null) => void;
   currentRoomFilter?: string | null;
-  jobs?: Job[];
   onRefresh?: () => void;
-  currentTab?: TabValue;
-  properties?: Property[];
 }
 
 export default function JobActions({
@@ -58,22 +51,17 @@ export default function JobActions({
   currentDateFilter = "all",
   onRoomFilter,
   currentRoomFilter = null,
-  jobs = [],
   onRefresh,
-  currentTab = "all",
-  properties = [],
 }: JobActionsProps) {
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomSearch, setRoomSearch] = useState<string>("");
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const { selectedPropertyId: selectedProperty } = useUser();
-  const { data: session } = useSession();
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
   const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>(
     {},
   );
-  const [isRoomFilterOpen, setIsRoomFilterOpen] = useState(false);
 
   const getDateFilterLabel = (filter: DateFilter) => {
     switch (filter) {
@@ -93,7 +81,11 @@ export default function JobActions({
   };
 
   const handleRefresh = () => {
-    onRefresh ? onRefresh() : router.refresh();
+    if (onRefresh) {
+      onRefresh();
+      return;
+    }
+    router.refresh();
   };
 
   const getRoomName = (roomId: string | null) => {
@@ -160,7 +152,7 @@ export default function JobActions({
                 setRoomSearch("");
               }
             }
-          } catch (fallbackError) {
+          } catch {
             setRooms([]);
           }
         }
@@ -203,8 +195,6 @@ export default function JobActions({
   const handleCloseCustomRange = () => {
     setIsCustomDateOpen(false);
   };
-
-  const exportCount = jobs.length;
 
   const menuItemClass =
     "flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors";
@@ -353,23 +343,6 @@ export default function JobActions({
               </DropdownMenuItem>
             )}
 
-            {/* DEBUG BUTTON - Only show in development */}
-            {process.env.NODE_ENV === "development" && (
-              <DropdownMenuItem
-                onClick={async () => {
-                  try {
-                    const response = await fetch("/api/rooms");
-                    if (response.ok) {
-                      const rooms = await response.json();
-                    } else {
-                    }
-                  } catch (error) {}
-                }}
-                className={menuItemClass}
-              >
-                🐛 Test Rooms API (Backend)
-              </DropdownMenuItem>
-            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -410,11 +383,13 @@ export default function JobActions({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               className="w-9 h-9 p-0 flex items-center justify-center"
+              aria-label="Open job actions"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

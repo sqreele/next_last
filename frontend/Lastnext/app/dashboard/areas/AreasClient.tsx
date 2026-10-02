@@ -12,7 +12,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  MapPin,
   AlertCircle,
   Search,
   X,
@@ -481,18 +480,22 @@ const AreasClient: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => openEdit(area)}
+                        aria-label={`Edit ${area.name}`}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => setDeleteTarget(area)}
+                        aria-label={`Delete ${area.name}`}
                       >
-                        <Trash2 className="h-4 w-4 text-red-600" />
+                        <Trash2 className="h-4 w-4 text-red-600" aria-hidden="true" />
                       </Button>
                     </td>
                   </tr>

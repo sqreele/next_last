@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useUser } from "@/app/lib/stores/mainStore";
 import {
   Tabs,
   TabsContent,
@@ -36,10 +35,6 @@ interface JobsContentProps {
 }
 
 // Update the Job type or extend it here if necessary
-interface ExtendedJob extends Job {
-  is_preventive_maintenance?: boolean; // Added the property with correct naming convention
-}
-
 const tabConfig = [
   {
     value: "all",
@@ -51,7 +46,7 @@ const tabConfig = [
     value: "pending",
     label: "Pending",
     icon: Clock,
-    color: "bg-blue-100 text-blue-700",
+    color: "bg-orange-100 text-orange-700",
   },
   {
     value: "in_progress",
@@ -91,6 +86,11 @@ const tabConfig = [
   },
 ] as const;
 
+const activeTabClass = (value: (typeof tabConfig)[number]["value"]) =>
+  value === "pending"
+    ? "data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:hover:bg-orange-600"
+    : "data-[state=active]:bg-[var(--pcms-primary)] data-[state=active]:text-white";
+
 export default function JobsContent({
   jobs,
   properties,
@@ -100,7 +100,6 @@ export default function JobsContent({
   const [currentTab, setCurrentTab] = useState<TabValue>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const { selectedPropertyId: selectedProperty } = useUser();
 
   const filteredJobs = useMemo(() => {
     if (!Array.isArray(jobs)) return [];
@@ -206,6 +205,7 @@ export default function JobsContent({
             onClick={() => setViewMode("grid")}
             className="h-11 px-4"
             aria-label="Grid view"
+            aria-pressed={viewMode === "grid"}
           >
             <Grid3X3 className="w-4 h-4" />
           </Button>
@@ -215,6 +215,7 @@ export default function JobsContent({
             onClick={() => setViewMode("list")}
             className="h-11 px-4"
             aria-label="List view"
+            aria-pressed={viewMode === "list"}
           >
             <List className="w-4 h-4" />
           </Button>
@@ -231,11 +232,11 @@ export default function JobsContent({
           {/* Desktop Tabs - Horizontal Scrollable */}
           <div className="hidden md:block overflow-x-auto">
             <TabsList className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--pcms-border)] bg-card/85 p-1 shadow-[var(--pcms-shadow-soft)]">
-              {tabConfig.map(({ value, label, icon: Icon, color }) => (
+              {tabConfig.map(({ value, label, icon: Icon }) => (
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="inline-flex min-w-fit items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all hover:bg-[var(--pcms-surface-soft)] hover:text-[var(--pcms-primary-strong)] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--pcms-primary)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)]"
+                  className={`inline-flex min-w-fit items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all hover:bg-[var(--pcms-surface-soft)] hover:text-[var(--pcms-primary-strong)] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-[var(--pcms-button-shadow)] ${activeTabClass(value)}`}
                 >
                   <Icon className="w-4 h-4 mr-2 shrink-0" />
                   {label}
@@ -251,7 +252,7 @@ export default function JobsContent({
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/70 px-3.5 py-2 text-xs font-bold shadow-[var(--pcms-shadow-soft)] transition-all data-[state=active]:bg-[var(--pcms-primary)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)] ${color}`}
+                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/70 px-3.5 py-2 text-xs font-bold shadow-[var(--pcms-shadow-soft)] transition-all data-[state=active]:shadow-[var(--pcms-button-shadow)] ${activeTabClass(value)} ${color}`}
                 >
                   <Icon className="mr-1.5 h-4 w-4 shrink-0" />
                   {label}

@@ -255,7 +255,7 @@ function FilterChip({
       className={`flex min-h-9 max-w-full items-center rounded-full px-3 py-1 text-sm ${colorClasses[color as keyof typeof colorClasses]}`}
     >
       <span className="min-w-0 break-words">{label}</span>
-      <button onClick={onRemove} className="ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-black/5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Remove ${label} filter`}>
+      <button type="button" onClick={onRemove} className="ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-black/5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Remove ${label} filter`}>
         <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </div>

@@ -32,7 +32,7 @@ export const PullToRefresh = React.forwardRef<
       children,
       ...props
     },
-    _forwardedRef,
+    forwardedRef,
   ) => {
     const { ref, pullDistance, isRefreshing } =
       usePullToRefresh<HTMLDivElement>({
@@ -42,11 +42,23 @@ export const PullToRefresh = React.forwardRef<
         scrollTargetRef,
       });
 
+    const setContainerRef = React.useCallback(
+      (node: HTMLDivElement | null) => {
+        ref.current = node;
+        if (typeof forwardedRef === "function") {
+          forwardedRef(node);
+        } else if (forwardedRef) {
+          forwardedRef.current = node;
+        }
+      },
+      [forwardedRef, ref],
+    );
+
     const progress = Math.min(1, pullDistance / threshold);
     const indicatorVisible = pullDistance > 6 || isRefreshing;
 
     return (
-      <div ref={ref} className={cn("relative", className)} {...props}>
+      <div ref={setContainerRef} className={cn("relative", className)} {...props}>
         <div
           aria-hidden={!indicatorVisible}
           className={cn(

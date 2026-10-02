@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -75,7 +75,7 @@ interface PreventiveMaintenanceRow {
 }
 
 export default function MachinesListPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const { selectedPropertyId: selectedProperty } = useUser();
   const [allMachines, setAllMachines] = useState<Machine[]>([]);
@@ -98,31 +98,7 @@ export default function MachinesListPage() {
     }
   }, [status, router]);
 
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    const requestId = ++requestIdRef.current;
-    const controller = new AbortController();
-    setAllMachines([]);
-    setTotalCount(0);
-    setError(null);
-    setPage(1);
-    setSearchTerm("");
-    setSelectedCategory("all");
-    if (!selectedProperty) {
-      setLoading(false);
-      return;
-    }
-    void fetchMachines(selectedProperty, controller.signal, requestId);
-    return () => {
-      if (!controller.signal.aborted) {
-        controller.abort(
-          new DOMException("Machine request superseded", "AbortError"),
-        );
-      }
-    };
-  }, [status, selectedProperty]);
-
-  const fetchMachines = async (
+  const fetchMachines = useCallback(async (
     propertyId: string,
     signal: AbortSignal,
     requestId: number,
@@ -228,7 +204,31 @@ export default function MachinesListPage() {
         clearLoadingAfterMinTime(loaderGeneration);
       }
     }
-  };
+  }, [clearLoadingAfterMinTime, recordLoaderShown]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const requestId = ++requestIdRef.current;
+    const controller = new AbortController();
+    setAllMachines([]);
+    setTotalCount(0);
+    setError(null);
+    setPage(1);
+    setSearchTerm("");
+    setSelectedCategory("all");
+    if (!selectedProperty) {
+      setLoading(false);
+      return;
+    }
+    void fetchMachines(selectedProperty, controller.signal, requestId);
+    return () => {
+      if (!controller.signal.aborted) {
+        controller.abort(
+          new DOMException("Machine request superseded", "AbortError"),
+        );
+      }
+    };
+  }, [fetchMachines, status, selectedProperty]);
 
   // Extract unique categories from machines
   const categories = useMemo(() => {
@@ -383,20 +383,26 @@ export default function MachinesListPage() {
             {/* View Toggle */}
             <div className="flex items-center gap-2 border rounded-md p-1">
               <Button
+                type="button"
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
                 className="h-9 px-3"
+                aria-label="Grid view"
+                aria-pressed={viewMode === "grid"}
               >
-                <LayoutGrid className="h-4 w-4" />
+                <LayoutGrid className="h-4 w-4" aria-hidden="true" />
               </Button>
               <Button
+                type="button"
                 variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("list")}
                 className="h-9 px-3"
+                aria-label="List view"
+                aria-pressed={viewMode === "list"}
               >
-                <List className="h-4 w-4" />
+                <List className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>

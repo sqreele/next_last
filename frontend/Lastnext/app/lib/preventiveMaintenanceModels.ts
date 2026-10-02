@@ -373,7 +373,7 @@ export function itemMatchesMachine(item: PreventiveMaintenance, machineFilter: s
       // Check name (partial match)
       const namePartialMatch = machine.name?.toLowerCase().includes(normalizedFilter);
       
-      return machineIdMatch || machineIdCaseInsensitive || nameMatch || nameCaseInsensitive;
+      return machineIdMatch || machineIdCaseInsensitive || nameMatch || nameCaseInsensitive || namePartialMatch;
     }
     return false;
   });

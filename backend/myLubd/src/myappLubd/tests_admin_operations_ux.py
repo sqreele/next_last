@@ -99,6 +99,7 @@ class AdminOperationsConfigurationTests(SimpleTestCase):
         job_admin = JobAdmin(Job, AdminSite())
         inventory_admin = InventoryAdmin(Inventory, AdminSite())
 
+        self.assertIn('=id', job_admin.search_fields)
         self.assertIn('job_id', job_admin.search_fields)
         self.assertIn('user__email', job_admin.search_fields)
         self.assertIn('property__name', job_admin.search_fields)

@@ -42,6 +42,15 @@ class JobAdminSearchTests(TestCase):
 
         self.assertIn(self.job, queryset)
 
+    def test_search_matches_database_id(self):
+        queryset, _ = self.admin.get_search_results(
+            self.request,
+            Job.objects.all(),
+            str(self.job.pk),
+        )
+
+        self.assertIn(self.job, queryset)
+
     def test_search_matches_room_name(self):
         queryset, _ = self.admin.get_search_results(self.request, Job.objects.all(), '1205')
 

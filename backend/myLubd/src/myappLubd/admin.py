@@ -1309,6 +1309,7 @@ class JobAdmin(admin.ModelAdmin):
     list_display = ['job_id', 'get_description_display', 'get_topics_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_location_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
     list_filter = [JobSortFilter, 'status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, AreaFilter, FloorFilter, RoomFilter, TopicFilter]
     search_fields = [
+        '=id',
         'job_id',
         'description',
         'topics__title',
@@ -1321,7 +1322,7 @@ class JobAdmin(admin.ModelAdmin):
         'user__first_name',
         'user__last_name',
     ]
-    search_help_text = 'Search by job ID, description, topic, room, area, property, or assigned user.'
+    search_help_text = 'Search by database ID, job ID, description, topic, room, area, property, or assigned user.'
     readonly_fields = ['job_id', 'updated_by', 'property', 'inventory_items_display', 'preventive_maintenance_images']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]

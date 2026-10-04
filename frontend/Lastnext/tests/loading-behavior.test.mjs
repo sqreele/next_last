@@ -310,6 +310,7 @@ test("areas keep search controls mounted and hide the previous property immediat
 
 test("search keeps the last settled query but never crosses a property boundary", async () => {
   const search = await source("app/dashboard/search/SearchContent.tsx");
+  const layout = await source("app/dashboard/DashboardLayoutClient.tsx");
   assert.match(search, /loadedContext\?\.propertyId === selectedProperty/);
   assert.match(search, /loadedContext\?\.query !== query/);
   assert.match(search, /requestId !== searchRequestIdRef\.current/);
@@ -319,6 +320,11 @@ test("search keeps the last settled query but never crosses a property boundary"
   assert.match(search, /requestController\?\.abort\(\)/);
   assert.match(search, /<BouncingDotsLoader/);
   assert.match(search, /Updating search results…/);
+  assert.match(search, /asChild\s+variant="outline"/);
+  assert.match(search, /border-primary\/40 bg-background/);
+  assert.match(layout, /type="submit"[\s\S]*?disabled=\{isPending\}/);
+  assert.doesNotMatch(layout, /isLoading=\{isPending\}/);
+  assert.match(layout, /aria-label=\{isPending \? "Searching" : "Search"\}/);
 });
 
 test("tenant invitation loading is scope-bound and does not replace settled rows", async () => {

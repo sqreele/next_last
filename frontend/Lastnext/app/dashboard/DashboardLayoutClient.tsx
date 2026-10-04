@@ -40,7 +40,6 @@ import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
 import { Logo, StayMaintMark } from "@/app/components/branding/Logo";
 import { SubscriptionWarningBanner } from "@/app/components/subscription/SubscriptionWarningBanner";
 import { PlanFeatureGate } from "@/app/components/subscription/PlanFeatureGate";
-import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
 import { filterBillingNavigationGroups } from "@/app/lib/billing-access.mjs";
@@ -522,13 +521,18 @@ function SearchInput() {
         name="q"
         type="search"
         placeholder="Search jobs, properties, rooms..."
-        className="h-10 w-full rounded-lg border-border bg-muted/40 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-10 w-full rounded-lg border-border bg-muted/40 pl-9 pr-11 text-sm focus-visible:ring-2 focus-visible:ring-ring"
       />
-      {isPending && (
-        <div className="absolute right-3 top-3">
-          <BouncingDotsLoader size="sm" />
-        </div>
-      )}
+      <Button
+        type="submit"
+        size="icon"
+        className="absolute right-1 top-1 h-8 min-h-8 w-8 rounded-md"
+        disabled={isPending}
+        aria-busy={isPending || undefined}
+        aria-label={isPending ? "Searching" : "Search"}
+      >
+        <Search className="h-4 w-4" aria-hidden="true" />
+      </Button>
     </form>
   );
 }
@@ -589,13 +593,18 @@ function MobileSearch() {
               type="search"
               placeholder="Search jobs, properties, rooms..."
               autoFocus
-              className="h-11 w-full rounded-lg border-border bg-muted/40 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-11 w-full rounded-lg border-border bg-muted/40 pl-9 pr-12 text-sm focus-visible:ring-2 focus-visible:ring-ring"
             />
-            {isPending && (
-              <div className="absolute right-3 top-3">
-                <BouncingDotsLoader size="sm" />
-              </div>
-            )}
+            <Button
+              type="submit"
+              size="icon"
+              className="absolute right-1 top-1 h-9 min-h-9 w-9 rounded-md"
+              disabled={isPending}
+              aria-busy={isPending || undefined}
+              aria-label={isPending ? "Searching" : "Search"}
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </form>
         </div>
       )}

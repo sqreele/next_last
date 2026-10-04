@@ -602,11 +602,15 @@ function JobCard({ job, query, highlightMatch }: JobCardProps) {
         </div>
       </CardContent>
       <CardFooter className="pt-0 border-t bg-muted p-3">
-        <Link href={`/dashboard/jobs/${job?.job_id}`} className="w-full">
-          <Button variant="ghost" className="w-full text-sm">
+        <Button
+          asChild
+          variant="outline"
+          className="w-full border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+        >
+          <Link href={`/dashboard/jobs/${job?.job_id}`}>
             View Details
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </CardFooter>
     </Card>
   );
@@ -678,14 +682,15 @@ function PropertyCard({ property, query, highlightMatch }: PropertyCardProps) {
         </div>
       </CardContent>
       <CardFooter className="pt-0 border-t bg-muted p-3">
-        <Link
-          href={`/dashboard/properties/${property.property_id}`}
-          className="w-full"
+        <Button
+          asChild
+          variant="outline"
+          className="w-full border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
         >
-          <Button variant="ghost" className="w-full text-sm">
+          <Link href={`/dashboard/properties/${property.property_id}`}>
             View Property
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </CardFooter>
     </Card>
   );
@@ -730,11 +735,15 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
         </div>
       </CardContent>
       <CardFooter className="pt-0 border-t bg-muted p-3">
-        <Link href={`/dashboard/rooms/${room.room_id}`} className="w-full">
-          <Button variant="ghost" className="w-full text-sm">
+        <Button
+          asChild
+          variant="outline"
+          className="w-full border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+        >
+          <Link href={`/dashboard/rooms/${room.room_id}`}>
             View Details
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </CardFooter>
     </Card>
   );

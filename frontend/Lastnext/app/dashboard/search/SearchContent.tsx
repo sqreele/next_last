@@ -48,6 +48,9 @@ const SEARCH_TIMEOUT_MS = 15_000;
 const SEARCH_PAGE_CLASS =
   "min-h-full w-full max-w-none px-3 py-4 sm:px-6 sm:py-6";
 const SEARCH_FEEDBACK_CLASS = `${SEARCH_PAGE_CLASS} flex flex-col items-center justify-center space-y-4`;
+const SEARCH_RESULTS_LIST_CLASS = "space-y-3";
+const SEARCH_RESULT_ROW_CLASS =
+  "overflow-hidden transition-colors hover:border-primary/35 hover:bg-muted/20 sm:grid sm:grid-cols-[minmax(12rem,0.85fr)_minmax(16rem,1.5fr)_auto] sm:items-center";
 
 export default function SearchContent() {
   const searchParams = useSearchParams();
@@ -430,7 +433,7 @@ export default function SearchContent() {
               <h2 className="text-xl font-semibold text-muted-foreground">
                 Jobs
               </h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+              <div className={SEARCH_RESULTS_LIST_CLASS} role="list">
                 {filteredJobs.slice(0, 3).map((job) => (
                   <JobCard
                     key={job.job_id}
@@ -453,7 +456,7 @@ export default function SearchContent() {
               <h2 className="text-xl font-semibold text-muted-foreground">
                 Properties
               </h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+              <div className={SEARCH_RESULTS_LIST_CLASS} role="list">
                 {filteredProperties.slice(0, 3).map((property) => (
                   <PropertyCard
                     key={property.property_id}
@@ -478,7 +481,7 @@ export default function SearchContent() {
               <h2 className="text-xl font-semibold text-muted-foreground">
                 Rooms
               </h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+              <div className={SEARCH_RESULTS_LIST_CLASS} role="list">
                 {filteredRooms.slice(0, 3).map((room) => {
                   const relatedJob = jobs.find((job) =>
                     job?.rooms?.some(
@@ -514,7 +517,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="jobs" className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={SEARCH_RESULTS_LIST_CLASS} role="list">
             {filteredJobs.map((job) => (
               <JobCard
                 key={job.job_id}
@@ -528,7 +531,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="properties" className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={SEARCH_RESULTS_LIST_CLASS} role="list">
             {filteredProperties.map((property) => (
               <PropertyCard
                 key={property.property_id}
@@ -541,7 +544,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="rooms" className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={SEARCH_RESULTS_LIST_CLASS} role="list">
             {filteredRooms.map((room) => {
               const relatedJob = jobs.find((job) =>
                 job?.rooms?.some(
@@ -578,10 +581,10 @@ function JobCard({ job, query, highlightMatch }: JobCardProps) {
     typeof job?.job_id === "number" ? `#${job.job_id}` : job?.job_id;
 
   return (
-    <Card className="overflow-hidden hover:shadow-soft transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold line-clamp-1">
+    <Card className={SEARCH_RESULT_ROW_CLASS} role="listitem">
+      <CardHeader className="min-w-0 p-4 pb-2 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="line-clamp-1 text-base font-semibold">
             Job {highlightMatch(displayId, query)}
           </CardTitle>
           <StatusBadge status={job?.status} />
@@ -591,11 +594,11 @@ function JobCard({ job, query, highlightMatch }: JobCardProps) {
           <PriorityBadge priority={job?.priority} />
         </CardDescription>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className="min-w-0 px-4 pb-4 sm:p-4">
         <p className="text-sm text-muted-foreground line-clamp-2">
           {highlightMatch(job?.description, query)}
         </p>
-        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
           <CalendarClock className="h-3.5 w-3.5" />
           <span>
             {job?.created_at
@@ -604,11 +607,11 @@ function JobCard({ job, query, highlightMatch }: JobCardProps) {
           </span>
         </div>
       </CardContent>
-      <CardFooter className="pt-0 border-t bg-muted p-3">
+      <CardFooter className="border-t bg-muted/60 p-3 sm:h-full sm:border-l sm:border-t-0">
         <Button
           asChild
           variant="outline"
-          className="w-full border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+          className="w-full whitespace-nowrap border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary sm:w-auto"
         >
           <Link href={`/dashboard/jobs/${job?.job_id}`}>
             View Details
@@ -628,35 +631,35 @@ function RoomOnlyJobCard({ job, properties }: RoomOnlyJobCardProps) {
   if (!room) return null;
 
   return (
-    <Card className="flex flex-col h-full transition-all duration-200 bg-card shadow-soft hover:shadow-soft">
-      <CardHeader className="shrink-0 pb-2 pt-3 px-3">
-        <CardTitle className="text-sm font-semibold text-foreground line-clamp-1">
+    <Card className={SEARCH_RESULT_ROW_CLASS} role="listitem">
+      <CardHeader className="min-w-0 p-4 pb-2 sm:p-4">
+        <CardTitle className="line-clamp-1 text-base font-semibold text-foreground">
           Room {room?.name || "N/A"}
           {room?.room_type ? ` (${room.room_type})` : ""}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3 pb-3 px-3">
+      <CardContent className="min-w-0 px-4 pb-4 sm:p-4">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <MapPin className="w-3 h-3 shrink-0 text-muted-foreground" />
           <span className="font-medium line-clamp-1">
             {`${getJobPropertyName(job, selectedProperty, properties)} - Room ${room?.name || "N/A"}${room?.room_type ? ` (${room.room_type})` : ""}`}
           </span>
         </div>
-        <div className="pt-2 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-xs h-8 bg-card"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (room) router.push(`/dashboard/rooms/${room.room_id}`);
-            }}
-            disabled={!room?.room_id}
-          >
-            View Room Details
-          </Button>
-        </div>
       </CardContent>
+      <CardFooter className="border-t bg-muted/60 p-3 sm:h-full sm:border-l sm:border-t-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 w-full whitespace-nowrap bg-card text-xs sm:w-auto"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (room) router.push(`/dashboard/rooms/${room.room_id}`);
+          }}
+          disabled={!room?.room_id}
+        >
+          View Room Details
+        </Button>
+      </CardFooter>
     </Card>
   );
 }
@@ -666,29 +669,29 @@ function PropertyCard({ property, query, highlightMatch }: PropertyCardProps) {
   if (!property) return null;
 
   return (
-    <Card className="overflow-hidden hover:shadow-soft transition-shadow">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold line-clamp-1">
+    <Card className={SEARCH_RESULT_ROW_CLASS} role="listitem">
+      <CardHeader className="min-w-0 p-4 pb-2 sm:p-4">
+        <CardTitle className="line-clamp-1 text-base font-semibold">
           {highlightMatch(property.name, query)}
         </CardTitle>
         <CardDescription className="line-clamp-1">
           ID: {property.property_id}
         </CardDescription>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className="min-w-0 px-4 pb-4 sm:p-4">
         <p className="text-sm text-muted-foreground line-clamp-2">
           {highlightMatch(property.description, query)}
         </p>
-        <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
           <Package className="h-4 w-4" />
           <span>{property.rooms?.length || 0} Rooms</span>
         </div>
       </CardContent>
-      <CardFooter className="pt-0 border-t bg-muted p-3">
+      <CardFooter className="border-t bg-muted/60 p-3 sm:h-full sm:border-l sm:border-t-0">
         <Button
           asChild
           variant="outline"
-          className="w-full border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+          className="w-full whitespace-nowrap border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary sm:w-auto"
         >
           <Link href={`/dashboard/properties/${property.property_id}`}>
             View Property
@@ -709,10 +712,10 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
   const getPropertyName = () => getRoomPropertyName(room, properties);
 
   return (
-    <Card className="overflow-hidden hover:shadow-soft transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold line-clamp-1">
+    <Card className={SEARCH_RESULT_ROW_CLASS} role="listitem">
+      <CardHeader className="min-w-0 p-4 pb-2 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="line-clamp-1 text-base font-semibold">
             {highlightMatch(room.name, query)}
           </CardTitle>
           <Badge variant={room.is_active ? "default" : "secondary"}>
@@ -723,12 +726,12 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
           Room ID: {displayId} | Type: {highlightMatch(room.room_type, query)}
         </CardDescription>
       </CardHeader>
-      <CardContent className="pb-4">
-        <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+      <CardContent className="min-w-0 px-4 pb-4 sm:p-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Home className="h-4 w-4" />
           <span>Property: {getPropertyName()}</span>
         </div>
-        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
           <CalendarClock className="h-3.5 w-3.5" />
           <span>
             {room.created_at
@@ -737,11 +740,11 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
           </span>
         </div>
       </CardContent>
-      <CardFooter className="pt-0 border-t bg-muted p-3">
+      <CardFooter className="border-t bg-muted/60 p-3 sm:h-full sm:border-l sm:border-t-0">
         <Button
           asChild
           variant="outline"
-          className="w-full border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+          className="w-full whitespace-nowrap border-primary/40 bg-background text-sm text-primary hover:border-primary/60 hover:bg-primary/10 hover:text-primary sm:w-auto"
         >
           <Link href={`/dashboard/rooms/${room.room_id}`}>
             View Details

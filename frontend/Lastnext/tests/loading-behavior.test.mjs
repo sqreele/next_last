@@ -336,7 +336,10 @@ test("search fills the dashboard content area in every UI state", async () => {
   assert.match(search, /"min-h-full w-full max-w-none px-3 py-4 sm:px-6 sm:py-6"/);
   assert.match(search, /className=\{SEARCH_FEEDBACK_CLASS\}/);
   assert.doesNotMatch(search, /max-w-4xl/);
-  assert.match(search, /xl:grid-cols-4/);
+  assert.match(search, /const SEARCH_RESULTS_LIST_CLASS = "space-y-3"/);
+  assert.match(search, /className=\{SEARCH_RESULTS_LIST_CLASS\} role="list"/);
+  assert.match(search, /className=\{SEARCH_RESULT_ROW_CLASS\} role="listitem"/);
+  assert.doesNotMatch(search, /xl:grid-cols-4/);
 });
 
 test("tenant invitation loading is scope-bound and does not replace settled rows", async () => {

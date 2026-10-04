@@ -1245,6 +1245,22 @@ class IsDefectFilter(admin.SimpleListFilter):
             return queryset.filter(is_defective=False)
         return queryset
 
+
+class JobSortFilter(admin.SimpleListFilter):
+    title = 'Sort order'
+    parameter_name = 'job_sort'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('number_desc', 'Job number (descending)'),
+            ('name_desc', 'Job name (Z-A)'),
+        )
+
+    def queryset(self, request, queryset):
+        # JobAdmin.get_ordering() applies the selected order while preserving
+        # Django's built-in column-header sorting behavior.
+        return queryset
+
 # Filters specifically for JobImage admin
 class JobImagePropertyFilter(admin.SimpleListFilter):
     title = 'property'
@@ -1288,8 +1304,9 @@ class JobImageTopicFilter(admin.SimpleListFilter):
 class JobAdmin(admin.ModelAdmin):
     list_per_page = 25
     form = JobAdminForm
+    ordering = ['-job_id']
     list_display = ['job_id', 'get_description_display', 'get_topics_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_location_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = ['status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, AreaFilter, FloorFilter, RoomFilter, TopicFilter]
+    list_filter = [JobSortFilter, 'status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, AreaFilter, FloorFilter, RoomFilter, TopicFilter]
     search_fields = [
         'job_id',
         'description',
@@ -1407,7 +1424,13 @@ class JobAdmin(admin.ModelAdmin):
         if obj.description:
             return obj.description[:50] + "..." if len(obj.description) > 50 else obj.description
         return "No Description"
-    get_description_display.short_description = 'Description'
+    get_description_display.short_description = 'Job name / Description'
+    get_description_display.admin_order_field = 'description'
+
+    def get_ordering(self, request):
+        if request.GET.get('job_sort') == 'name_desc':
+            return ['-description', '-job_id']
+        return super().get_ordering(request)
 
     def get_status_display_colored(self, obj):
         status_colors = {

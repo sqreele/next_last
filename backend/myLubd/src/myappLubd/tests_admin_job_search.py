@@ -2,7 +2,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
-from .admin import IsDefectFilter, JobAdmin, _excel_image_for_export
+from .admin import IsDefectFilter, JobAdmin, JobSortFilter, _excel_image_for_export
 from .models import Job, Property, Room
 
 
@@ -103,6 +103,47 @@ class IsDefectFilterTests(TestCase):
 
         self.assertIn(self.defect_job, queryset)
         self.assertNotIn(self.non_defect_job, queryset)
+
+
+class JobSortFilterTests(TestCase):
+    def setUp(self):
+        self.admin = JobAdmin(Job, AdminSite())
+
+    def test_job_number_descending_is_the_default_order(self):
+        request = RequestFactory().get('/admin/myappLubd/job/')
+
+        self.assertEqual(self.admin.get_ordering(request), ['-job_id'])
+
+    def test_job_name_filter_sorts_description_descending(self):
+        request = RequestFactory().get(
+            '/admin/myappLubd/job/',
+            {'job_sort': 'name_desc'},
+        )
+
+        self.assertEqual(
+            self.admin.get_ordering(request),
+            ['-description', '-job_id'],
+        )
+
+    def test_sort_filter_exposes_name_and_number_descending_options(self):
+        request = RequestFactory().get(
+            '/admin/myappLubd/job/',
+            {'job_sort': 'number_desc'},
+        )
+        sort_filter = JobSortFilter(
+            request,
+            {'job_sort': 'number_desc'},
+            Job,
+            self.admin,
+        )
+
+        self.assertEqual(
+            tuple(sort_filter.lookups(request, self.admin)),
+            (
+                ('number_desc', 'Job number (descending)'),
+                ('name_desc', 'Job name (Z-A)'),
+            ),
+        )
 
 
 class JobAdminCsvExportTests(TestCase):

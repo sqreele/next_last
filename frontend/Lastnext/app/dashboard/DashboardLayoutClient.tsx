@@ -46,6 +46,8 @@ import { useBillingAccess } from "@/app/lib/hooks/useBillingAccess";
 import { filterBillingNavigationGroups } from "@/app/lib/billing-access.mjs";
 import { filterPlanNavigationGroups } from "@/app/lib/plan-capabilities.mjs";
 import { usePlanCapabilities } from "@/app/lib/hooks/usePlanCapabilities";
+import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
+import { PageLoader } from "@/app/components/ui/loading";
 
 export default function DashboardLayoutClient({
   children,
@@ -54,6 +56,10 @@ export default function DashboardLayoutClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { isAuthenticated, isLoading: isCheckingSession } = useSessionGuard({
+    requireAuth: true,
+    showToast: false,
+  });
   const [isSidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const mainRef = React.useRef<HTMLElement | null>(null);
   const { direction, isAtTop } = useScrollDirection({
@@ -69,6 +75,15 @@ export default function DashboardLayoutClient({
     router.refresh();
     await new Promise((resolve) => setTimeout(resolve, 650));
   }, [router]);
+
+  if (isCheckingSession || !isAuthenticated) {
+    return (
+      <PageLoader
+        label="Checking authentication..."
+        description="Verifying your secure StayMaint session."
+      />
+    );
+  }
 
   return (
     <div className="pcms-app-shell flex h-screen-safe min-h-screen-safe w-full overflow-hidden bg-[var(--pcms-app-bg)] text-[var(--pcms-text)] overscroll-none">

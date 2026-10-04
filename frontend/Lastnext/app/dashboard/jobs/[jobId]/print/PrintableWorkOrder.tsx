@@ -125,9 +125,27 @@ async function waitForImages(container: HTMLElement) {
  */
 function applyPdfColorFallbacks(clonedDocument: Document) {
   const clonedWindow = clonedDocument.defaultView;
-  const colorContext = clonedDocument.createElement('canvas').getContext('2d');
+  const colorContext = clonedDocument
+    .createElement('canvas')
+    .getContext('2d', { willReadFrequently: true });
   const root = clonedDocument.querySelector<HTMLElement>('[data-work-order-pdf-content]');
   if (!clonedWindow || !colorContext || !root) return;
+
+  // html2canvas also inspects generated pseudo-elements. They are not used by
+  // the work-order content, and Tailwind can give them inherited oklch colors.
+  const pseudoElementReset = clonedDocument.createElement('style');
+  pseudoElementReset.textContent = `
+    [data-work-order-pdf-content]::before,
+    [data-work-order-pdf-content]::after,
+    [data-work-order-pdf-content] *::before,
+    [data-work-order-pdf-content] *::after {
+      content: none !important;
+      background: none !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+  `;
+  clonedDocument.head.appendChild(pseudoElementReset);
 
   const colorProperties = [
     'color',
@@ -172,6 +190,28 @@ function applyPdfColorFallbacks(clonedDocument: Document) {
         element.style.setProperty(property, 'none', 'important');
       }
     });
+
+    // Tailwind may emit oklch in less common properties as its generated CSS
+    // evolves. Sanitize every remaining computed property instead of relying
+    // on a fixed allow-list. Custom properties are harmless to html2canvas;
+    // their resolved consuming property has already been handled above.
+    for (let index = 0; index < computedStyle.length; index += 1) {
+      const property = computedStyle.item(index);
+      if (!property || property.startsWith('--') || colorProperties.includes(property)) continue;
+
+      const value = computedStyle.getPropertyValue(property);
+      if (!unsupportedColor.test(value)) continue;
+
+      if (property.endsWith('-color')) {
+        const srgbColor = toSrgb(value);
+        element.style.setProperty(property, srgbColor ?? 'transparent', 'important');
+      } else {
+        // Effects and gradients are cosmetic in the printable work order.
+        // Resetting an unsupported value is safer than letting html2canvas's
+        // CSS parser abort the complete export.
+        element.style.setProperty(property, 'initial', 'important');
+      }
+    }
   });
 }
 
@@ -224,6 +264,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
 
     setIsDownloadingPdf(true);
     setPdfError(null);
+    let exportStage = 'loading the PDF tools';
     try {
       await waitForImages(printableContent);
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
@@ -231,6 +272,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
         import('jspdf'),
       ]);
 
+      exportStage = 'rendering the work order';
       const canvas = await html2canvas(printableContent, {
         scale: Math.min(2, window.devicePixelRatio || 1),
         useCORS: true,
@@ -239,30 +281,79 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
         logging: false,
         onclone: applyPdfColorFallbacks,
       });
-      const imageData = canvas.toDataURL('image/png');
+
+      if (!canvas.width || !canvas.height) {
+        throw new Error('The rendered work order is empty.');
+      }
+
+      exportStage = 'building the PDF pages';
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 10;
       const targetWidth = pageWidth - margin * 2;
-      const renderedHeight = (canvas.height * targetWidth) / canvas.width;
-      let heightLeft = renderedHeight;
-      let position = margin;
+      const targetHeight = pageHeight - margin * 2;
+      const pixelsPerMillimeter = canvas.width / targetWidth;
+      const pageCanvasHeight = Math.max(1, Math.floor(targetHeight * pixelsPerMillimeter));
+      let sourceY = 0;
+      let pageIndex = 0;
 
-      pdf.addImage(imageData, 'PNG', margin, position, targetWidth, renderedHeight);
-      heightLeft -= pageHeight - margin * 2;
+      // Slice the tall render into page-sized canvases. Adding the entire PNG
+      // repeatedly for every page uses considerably more memory and commonly
+      // fails in mobile browsers.
+      while (sourceY < canvas.height) {
+        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - sourceY);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
 
-      while (heightLeft > 0) {
-        position = heightLeft - renderedHeight + margin;
-        pdf.addPage();
-        pdf.addImage(imageData, 'PNG', margin, position, targetWidth, renderedHeight);
-        heightLeft -= pageHeight - margin * 2;
+        const pageContext = pageCanvas.getContext('2d');
+        if (!pageContext) {
+          throw new Error('Could not create a canvas for a PDF page.');
+        }
+
+        pageContext.fillStyle = '#ffffff';
+        pageContext.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        pageContext.drawImage(
+          canvas,
+          0,
+          sourceY,
+          canvas.width,
+          sliceHeight,
+          0,
+          0,
+          canvas.width,
+          sliceHeight,
+        );
+
+        const imageData = pageCanvas.toDataURL('image/jpeg', 0.9);
+        if (imageData === 'data:,') {
+          throw new Error('The browser could not encode a PDF page image.');
+        }
+
+        if (pageIndex > 0) pdf.addPage();
+        const renderedSliceHeight = sliceHeight / pixelsPerMillimeter;
+        pdf.addImage(
+          imageData,
+          'JPEG',
+          margin,
+          margin,
+          targetWidth,
+          renderedSliceHeight,
+          undefined,
+          'FAST',
+        );
+
+        sourceY += sliceHeight;
+        pageIndex += 1;
       }
 
+      exportStage = 'saving the PDF file';
       pdf.save(buildPdfFilename(job.job_id));
     } catch (error) {
-      console.error('Failed to download work order PDF:', error);
-      setPdfError('Could not download PDF. Please try Print instead.');
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to download work order PDF while ${exportStage}:`, error);
+      setPdfError(`Could not download PDF while ${exportStage}: ${reason}`);
     } finally {
       setIsDownloadingPdf(false);
     }

@@ -101,7 +101,7 @@ export async function middleware(request: NextRequest) {
         process.env.APP_BASE_URL ||
         "https://staymaint.com";
       const loginUrl = new URL("/auth/login", baseUrl);
-      loginUrl.searchParams.set("redirect", pathname);
+      loginUrl.searchParams.set("redirect", `${pathname}${request.nextUrl.search}`);
 
       // For API routes, return 401 status
       if (isProtectedApiRoute) {

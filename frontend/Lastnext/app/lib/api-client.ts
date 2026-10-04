@@ -4,7 +4,7 @@ declare const process: any;
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { useSession } from "@/app/lib/session.client";
-import { appSignOut } from "@/app/lib/logout";
+import { expireSession } from "@/app/lib/logout";
 import { jwtDecode } from "jwt-decode";
 import { useState,useCallback} from 'react'
 import { getCsrfHeaders } from './csrf';
@@ -86,7 +86,7 @@ const processPendingRequests = (refreshed: boolean): void => {
 
 function terminateSessionSafely(): Promise<void> {
   if (!terminalLogoutPromise) {
-    terminalLogoutPromise = appSignOut({ callbackUrl: '/auth/login' })
+    terminalLogoutPromise = expireSession()
       .catch((error) => console.error('[Auth] Safe logout failed:', error))
       .finally(() => { terminalLogoutPromise = null; });
   }

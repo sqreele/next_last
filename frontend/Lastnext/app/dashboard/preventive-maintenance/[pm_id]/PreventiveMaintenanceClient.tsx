@@ -558,7 +558,9 @@ export default function PreventiveMaintenanceClient({
         clonedDocument.head.appendChild(style);
 
         const clonedWindow = clonedDocument.defaultView;
-        const colorContext = clonedDocument.createElement("canvas").getContext("2d");
+        const colorContext = clonedDocument
+          .createElement("canvas")
+          .getContext("2d", { willReadFrequently: true });
         if (!clonedWindow || !colorContext) return;
 
         const colorProperties = [

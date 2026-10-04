@@ -1517,22 +1517,21 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           ]);
 
           const nextDueDate = React.useMemo(() => {
-            if (!values.frequency) {
+            if (!values.frequency || !values.scheduled_date) {
               return null;
             }
 
-            const baseDate = values.scheduled_date
-              ? new Date(values.scheduled_date)
-              : new Date();
-            const safeBaseDate = isNaN(baseDate.getTime())
-              ? new Date()
-              : baseDate;
+            const baseDate = new Date(values.scheduled_date);
+            if (isNaN(baseDate.getTime())) {
+              return null;
+            }
+
             return calculateNextScheduledDate(
               values.frequency,
               values.frequency === "custom" && values.custom_days
                 ? Number(values.custom_days)
                 : undefined,
-              safeBaseDate,
+              baseDate,
             );
           }, [
             values.frequency,
@@ -1680,19 +1679,19 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                               templateFrequency as FrequencyType,
                             );
 
-                            // Calculate next scheduled date based on template frequency
-                            const customDays =
-                              templateFrequency === "custom"
-                                ? (selectedTask.custom_days ?? undefined)
-                                : undefined;
-                            const nextDate = calculateNextScheduledDate(
-                              templateFrequency,
-                              customDays,
-                            );
-                            const formattedDate = formatDateForInput(nextDate);
-
-                            // Always update scheduled_date when template is selected
-                            setFieldValue("scheduled_date", formattedDate);
+                            if (templateFrequency === "custom") {
+                              // Custom intervals do not imply a first due date.
+                              // Require the user to choose the schedule explicitly.
+                              setFieldValue("scheduled_date", "");
+                            } else {
+                              const nextDate = calculateNextScheduledDate(
+                                templateFrequency,
+                              );
+                              setFieldValue(
+                                "scheduled_date",
+                                formatDateForInput(nextDate),
+                              );
+                            }
 
                             // Set custom_days if frequency is custom
                             if (
@@ -1906,6 +1905,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   as="select"
                   id="frequency"
                   name="frequency"
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                    const nextFrequency = e.target.value as FrequencyType;
+                    setFieldValue("frequency", nextFrequency);
+
+                    if (nextFrequency === "custom") {
+                      setFieldValue("scheduled_date", "");
+                    } else {
+                      setFieldValue("custom_days", "");
+                    }
+                  }}
                   className={`w-full p-2 border rounded-md ${
                     errors.frequency && touched.frequency
                       ? "border-red-500"

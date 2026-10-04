@@ -202,6 +202,14 @@ function LoginContent() {
               </Alert>
             )}
 
+            {message === 'session_expired' && (
+              <Alert className="mb-5 border-amber-200 bg-amber-50">
+                <AlertDescription className="text-sm text-amber-900">
+                  Your session expired or could not be verified. Please sign in again.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {visibleError && (
               <Alert className="mb-5 border-red-200 bg-red-50">
                 <AlertDescription className="text-sm text-red-800">

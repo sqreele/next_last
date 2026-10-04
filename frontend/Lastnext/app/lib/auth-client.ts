@@ -29,11 +29,11 @@ const fetcher = async (url: string): Promise<SessionCompat> => {
 export function useCompatSession() {
   const { data, error, isLoading, mutate } = useSWR<SessionCompat>('/api/auth/session-compat', fetcher, {
     // ✅ PERFORMANCE: Optimized session caching
-    revalidateOnFocus: false, // Don't revalidate on every focus
+    revalidateOnFocus: true, // Catch sessions that expired while the tab was inactive
     revalidateOnReconnect: true,
     dedupingInterval: 10000, // Dedupe requests within 10 seconds
     focusThrottleInterval: 30000, // Only revalidate focus every 30 seconds
-    refreshInterval: 0, // Don't auto-refresh
+    refreshInterval: 60_000, // Detect server-side expiry even when no API request is made
     revalidateIfStale: true,
     keepPreviousData: true, // Keep previous data while revalidating
     errorRetryCount: 1,

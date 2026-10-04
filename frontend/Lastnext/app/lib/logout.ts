@@ -76,3 +76,38 @@ export async function appSignOut(options?: { callbackUrl?: string; redirect?: bo
     }
   }
 }
+
+/**
+ * Ends an invalid/expired session and always leaves the protected screen.
+ * Unlike a user-initiated logout, failure to open IndexedDB must not trap the
+ * user behind a stale opaque cookie, so local cleanup is best-effort here.
+ */
+export async function expireSession(returnTo?: string) {
+  if (typeof window === "undefined") return;
+
+  const safeReturnTo =
+    returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
+      ? returnTo
+      : `${window.location.pathname}${window.location.search}`;
+  const loginPath = `/auth/login?message=session_expired&redirect=${encodeURIComponent(safeReturnTo)}`;
+
+  try {
+    await clearQueue();
+  } catch (error) {
+    console.error("offline_queue_clear_failed_after_session_expiry", error);
+  }
+
+  safeClearLocalStorageKeys([
+    "accessToken",
+    "refreshToken",
+    "selectedPropertyId",
+    "auth-storage",
+    "filter-storage",
+    "pm-storage",
+  ]);
+  clearZustandStores();
+
+  // The server route clears the httpOnly cookie before returning to Login.
+  // A hard replace also prevents Back from reopening protected cached UI.
+  window.location.replace(`/api/auth/logout?returnTo=${encodeURIComponent(loginPath)}`);
+}

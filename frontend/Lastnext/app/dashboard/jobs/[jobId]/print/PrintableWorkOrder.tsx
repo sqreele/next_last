@@ -118,6 +118,63 @@ async function waitForImages(container: HTMLElement) {
   );
 }
 
+/**
+ * html2canvas 1.x cannot parse the oklab/oklch values emitted by Tailwind 4.
+ * Browsers can render those colors, so resolve them to sRGB in html2canvas's
+ * cloned document without changing the work order shown on screen.
+ */
+function applyPdfColorFallbacks(clonedDocument: Document) {
+  const clonedWindow = clonedDocument.defaultView;
+  const colorContext = clonedDocument.createElement('canvas').getContext('2d');
+  const root = clonedDocument.querySelector<HTMLElement>('[data-work-order-pdf-content]');
+  if (!clonedWindow || !colorContext || !root) return;
+
+  const colorProperties = [
+    'color',
+    'background-color',
+    'border-top-color',
+    'border-right-color',
+    'border-bottom-color',
+    'border-left-color',
+    'outline-color',
+    'text-decoration-color',
+    'column-rule-color',
+    'caret-color',
+    'fill',
+    'stroke',
+  ];
+  const unsupportedColor = /(?:oklab|oklch|color-mix)\(/i;
+  const toSrgb = (color: string) => {
+    try {
+      colorContext.clearRect(0, 0, 1, 1);
+      colorContext.fillStyle = color;
+      colorContext.fillRect(0, 0, 1, 1);
+      const [red, green, blue, alpha] = colorContext.getImageData(0, 0, 1, 1).data;
+      return `rgba(${red}, ${green}, ${blue}, ${alpha / 255})`;
+    } catch {
+      return null;
+    }
+  };
+
+  [root, ...root.querySelectorAll<HTMLElement>('*')].forEach((element) => {
+    const computedStyle = clonedWindow.getComputedStyle(element);
+    colorProperties.forEach((property) => {
+      const color = computedStyle.getPropertyValue(property);
+      if (!unsupportedColor.test(color)) return;
+      const srgbColor = toSrgb(color);
+      if (srgbColor) element.style.setProperty(property, srgbColor, 'important');
+    });
+
+    // html2canvas also parses colors inside these compound properties. None
+    // are essential to the printable document, so omit unsupported effects.
+    ['box-shadow', 'text-shadow', 'background-image', 'filter'].forEach((property) => {
+      if (unsupportedColor.test(computedStyle.getPropertyValue(property))) {
+        element.style.setProperty(property, 'none', 'important');
+      }
+    });
+  });
+}
+
 export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps) {
   const printableContentRef = useRef<HTMLDivElement | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -180,6 +237,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
         allowTaint: false,
         backgroundColor: '#ffffff',
         logging: false,
+        onclone: applyPdfColorFallbacks,
       });
       const imageData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -271,7 +329,11 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
         </div>
       )}
 
-      <div ref={printableContentRef} className="bg-white px-4 py-6 sm:px-10 sm:py-8">
+      <div
+        ref={printableContentRef}
+        data-work-order-pdf-content
+        className="bg-white px-4 py-6 sm:px-10 sm:py-8"
+      >
         <header className="flex items-start justify-between gap-6 border-b-2 border-slate-900 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500">

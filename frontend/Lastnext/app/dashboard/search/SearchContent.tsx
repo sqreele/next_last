@@ -45,6 +45,9 @@ import {
 } from "@/app/lib/utils/property-filter";
 
 const SEARCH_TIMEOUT_MS = 15_000;
+const SEARCH_PAGE_CLASS =
+  "min-h-full w-full max-w-none px-3 py-4 sm:px-6 sm:py-6";
+const SEARCH_FEEDBACK_CLASS = `${SEARCH_PAGE_CLASS} flex flex-col items-center justify-center space-y-4`;
 
 export default function SearchContent() {
   const searchParams = useSearchParams();
@@ -303,13 +306,13 @@ export default function SearchContent() {
   if (resultsPending && !hasCurrentPropertyResults) {
     return (
       <PageLoadingFrame
-        className="px-3 py-6 sm:px-6"
+        className={SEARCH_PAGE_CLASS}
         role="status"
         aria-live="polite"
         aria-busy="true"
         aria-label="Searching"
       >
-        <div className="w-full max-w-4xl space-y-4">
+        <div className="w-full max-w-none space-y-4">
           <BouncingDotsLoader
             size="sm"
             label={`Searching for “${query}”…`}
@@ -323,7 +326,7 @@ export default function SearchContent() {
 
   if (error && !hasCurrentPropertyResults) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-4 py-12">
+      <div className={SEARCH_FEEDBACK_CLASS}>
         <div className="rounded-full bg-red-100 p-4">
           <AlertCircle className="h-8 w-8 text-red-600" />
         </div>
@@ -342,7 +345,7 @@ export default function SearchContent() {
 
   if (!query) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-4 py-12">
+      <div className={SEARCH_FEEDBACK_CLASS}>
         <div className="rounded-full bg-muted p-4">
           <Search className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -358,7 +361,7 @@ export default function SearchContent() {
 
   if (totalResults === 0) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-4 py-12">
+      <div className={SEARCH_FEEDBACK_CLASS}>
         <div className="rounded-full bg-muted p-4">
           <Search className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -381,7 +384,7 @@ export default function SearchContent() {
   }
 
   return (
-    <div className="space-y-6" aria-busy={resultsPending}>
+    <div className={`${SEARCH_PAGE_CLASS} space-y-6`} aria-busy={resultsPending}>
       {resultsPending ? (
         <div
           className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-muted-foreground"
@@ -511,7 +514,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="jobs" className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {filteredJobs.map((job) => (
               <JobCard
                 key={job.job_id}
@@ -525,7 +528,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="properties" className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProperties.map((property) => (
               <PropertyCard
                 key={property.property_id}
@@ -538,7 +541,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="rooms" className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {filteredRooms.map((room) => {
               const relatedJob = jobs.find((job) =>
                 job?.rooms?.some(

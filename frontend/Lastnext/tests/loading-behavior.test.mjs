@@ -327,6 +327,18 @@ test("search keeps the last settled query but never crosses a property boundary"
   assert.match(layout, /aria-label=\{isPending \? "Searching" : "Search"\}/);
 });
 
+test("search fills the dashboard content area in every UI state", async () => {
+  const page = await source("app/dashboard/search/page.tsx");
+  const search = await source("app/dashboard/search/SearchContent.tsx");
+
+  assert.match(page, /className="w-full max-w-none px-3 py-6 sm:px-6"/);
+  assert.doesNotMatch(page, /max-w-4xl/);
+  assert.match(search, /"min-h-full w-full max-w-none px-3 py-4 sm:px-6 sm:py-6"/);
+  assert.match(search, /className=\{SEARCH_FEEDBACK_CLASS\}/);
+  assert.doesNotMatch(search, /max-w-4xl/);
+  assert.match(search, /xl:grid-cols-4/);
+});
+
 test("tenant invitation loading is scope-bound and does not replace settled rows", async () => {
   const users = await source("app/dashboard/settings/users/page.tsx");
   assert.match(users, /loadedTenantId === tenantId \? invitations : \[\]/);

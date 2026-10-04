@@ -8,12 +8,12 @@ export default function SearchPage() {
     <Suspense
       fallback={
         <PageLoadingFrame
-          className="px-3 py-6 sm:px-6"
+          className="w-full max-w-none px-3 py-6 sm:px-6"
           role="status"
           aria-busy="true"
           aria-label="Loading search results"
         >
-          <div className="w-full max-w-4xl">
+          <div className="w-full max-w-none">
             <SkeletonList rows={5} />
           </div>
         </PageLoadingFrame>

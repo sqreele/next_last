@@ -10,6 +10,8 @@ from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
+from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -77,6 +79,55 @@ class JobTenantGuardTests(APITestCase):
         )
         self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED), resp.content)
         self.assertTrue(Job.objects.filter(description='Leaky tap', user=self.alice).exists())
+        job = Job.objects.get(description='Leaky tap', user=self.alice)
+        entry = LogEntry.objects.get(
+            content_type=ContentType.objects.get_for_model(Job),
+            object_id=str(job.pk),
+        )
+        self.assertEqual(entry.action_flag, ADDITION)
+        self.assertEqual(entry.user, self.alice)
+        self.assertIn('Created through the application', entry.change_message)
+
+        admin_user = User.objects.create_superuser(
+            username='history-admin',
+            email='history-admin@example.com',
+            password='pw12345!',
+        )
+        self.client.force_authenticate(user=None)
+        self.client.force_login(admin_user)
+        history_response = self.client.get(
+            reverse('admin:myappLubd_job_history', args=[job.pk])
+        )
+        self.assertEqual(history_response.status_code, status.HTTP_200_OK)
+        self.assertContains(history_response, 'Created through the application')
+        self.assertNotContains(history_response, "doesn’t have a change history")
+
+    def test_update_writes_admin_history(self):
+        job = Job.objects.create(
+            user=self.alice,
+            property=self.prop_a,
+            description='Initial',
+            remarks='Test job',
+            status='pending',
+            priority='medium',
+        )
+        job.rooms.set([self.room_a])
+
+        _login(self.client, self.alice)
+        resp = self.client.patch(
+            f'/api/v1/jobs/{job.job_id}/',
+            {'status': 'in_progress'},
+            format='json',
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        entry = LogEntry.objects.get(
+            content_type=ContentType.objects.get_for_model(Job),
+            object_id=str(job.pk),
+        )
+        self.assertEqual(entry.action_flag, CHANGE)
+        self.assertEqual(entry.user, self.alice)
+        self.assertIn('status', entry.change_message)
 
     def test_create_with_other_tenant_room_does_not_link_foreign_room(self):
         _login(self.client, self.alice)

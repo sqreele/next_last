@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.admin.models import ADDITION, CHANGE, DELETION
 from django.conf import settings
 from rest_framework import status, viewsets, filters
 from rest_framework.decorators import api_view, permission_classes, action
@@ -45,6 +46,7 @@ from .serializers import (
     TenantSubscriptionSerializer, UsageMetricSerializer,
 )
 from .job_property import resolve_job_property
+from .job_history import log_job_action
 from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.rest_framework import DjangoFilterBackend
@@ -4717,14 +4719,26 @@ class JobViewSet(viewsets.ModelViewSet):
                     operation='create',
                     resource_type='job',
                 )
-                serializer.save(user=self.request.user, updated_by=self.request.user)
+                job = serializer.save(user=self.request.user, updated_by=self.request.user)
         else:
-            serializer.save()
+            job = serializer.save()
+
+        log_job_action(
+            job=job,
+            user=self.request.user,
+            action_flag=ADDITION,
+            message='Created through the application.',
+        )
 
         # Invalidate cache after creating job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
 
     def perform_update(self, serializer):
+        changed_fields = sorted(
+            field
+            for field in serializer.validated_data
+            if not field.startswith('_') and field not in {'property_id'}
+        )
         if self.request.user.is_authenticated:
             self._validate_operable_scope(serializer)
             require_subscription_write(
@@ -4741,11 +4755,19 @@ class JobViewSet(viewsets.ModelViewSet):
             if instance.status == 'completed' and 'status' in data and data['status'] != 'completed':
                 raise ValidationError("Completed jobs cannot have their status changed.")
             if 'status' in data and data['status'] == 'completed' and instance.status != 'completed':
-                serializer.save(updated_by=self.request.user, completed_at=timezone.now())
+                job = serializer.save(updated_by=self.request.user, completed_at=timezone.now())
             else:
-                serializer.save(updated_by=self.request.user)
+                job = serializer.save(updated_by=self.request.user)
         else:
-            serializer.save()
+            job = serializer.save()
+
+        field_list = ', '.join(changed_fields) if changed_fields else 'job details'
+        log_job_action(
+            job=job,
+            user=self.request.user,
+            action_flag=CHANGE,
+            message=f'Changed {field_list} through the application.',
+        )
 
         # Invalidate cache after updating job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
@@ -4758,6 +4780,12 @@ class JobViewSet(viewsets.ModelViewSet):
             resource_type='job',
         )
         instance.delete(deleted_by=self.request.user if self.request.user.is_authenticated else None)
+        log_job_action(
+            job=instance,
+            user=self.request.user,
+            action_flag=DELETION,
+            message='Moved to deleted jobs through the application.',
+        )
         # Invalidate cache after deleting job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
 
@@ -4966,6 +4994,12 @@ class JobViewSet(viewsets.ModelViewSet):
         job.updated_by = request.user if getattr(request.user, 'is_authenticated', False) else target
         job.remarks = f"{job.remarks}\n{log_line}" if job.remarks else log_line
         job.save(update_fields=['user', 'updated_by', 'remarks', 'updated_at'])
+        log_job_action(
+            job=job,
+            user=request.user,
+            action_flag=CHANGE,
+            message=f'Reassigned from {prev_username} to {new_username} through the application.',
+        )
 
         # Push to the new assignee; signal-driven push on Job.save() already
         # fires on changed status but not on assignment, so we send an

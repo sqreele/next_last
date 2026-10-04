@@ -4757,7 +4757,7 @@ class JobViewSet(viewsets.ModelViewSet):
             operation='delete',
             resource_type='job',
         )
-        super().perform_destroy(instance)
+        instance.delete(deleted_by=self.request.user if self.request.user.is_authenticated else None)
         # Invalidate cache after deleting job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
 

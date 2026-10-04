@@ -1493,6 +1493,47 @@ class JobImage(models.Model):
             storage.delete(image_name)
 
 
+class JobQuerySet(models.QuerySet):
+    """QuerySet helpers for recoverable Job deletion."""
+
+    def active(self):
+        return self.filter(deleted_at__isnull=True)
+
+    def deleted(self):
+        return self.filter(deleted_at__isnull=False)
+
+    def soft_delete(self, *, deleted_by=None):
+        return self.active().update(
+            deleted_at=timezone.now(),
+            deleted_by=deleted_by,
+        )
+
+    def restore(self):
+        return self.deleted().update(deleted_at=None, deleted_by=None)
+
+    def delete(self):
+        """Keep bulk deletes recoverable by default."""
+        return self.soft_delete()
+
+    def hard_delete(self):
+        """Explicit escape hatch for retention/cleanup jobs."""
+        return super().delete()
+
+
+class ActiveJobManager(models.Manager.from_queryset(JobQuerySet)):
+    def get_queryset(self):
+        return super().get_queryset().active()
+
+
+class AllJobManager(models.Manager.from_queryset(JobQuerySet)):
+    pass
+
+
+class DeletedJobManager(models.Manager.from_queryset(JobQuerySet)):
+    def get_queryset(self):
+        return super().get_queryset().deleted()
+
+
 class Job(models.Model):
     is_preventivemaintenance = models.BooleanField(default=False, db_index=True)
     STATUS_CHOICES = [
@@ -1565,10 +1606,26 @@ class Job(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(default=timezone.now)
     completed_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, editable=False)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name='deleted_jobs',
+    )
+
+    # Normal application queries never expose items in the trash.  The
+    # unfiltered manager is intentionally explicit for restore/admin flows.
+    objects = ActiveJobManager()
+    all_objects = AllJobManager()
 
     class Meta:
         ordering = ['-created_at']
         verbose_name_plural = 'Maintenance Jobs'
+        default_manager_name = 'objects'
+        base_manager_name = 'all_objects'
         indexes = [
             # ✅ PERFORMANCE OPTIMIZATION: Comprehensive database indexes
             # Single-field indexes (avoid duplicates with implicit indexes from db_index=True or FK/unique)
@@ -1624,6 +1681,32 @@ class Job(models.Model):
         
         super().save(*args, **kwargs)
 
+    def delete(self, *args, deleted_by=None, hard=False, **kwargs):
+        """Move the job to the trash unless permanent deletion is explicit."""
+        if hard:
+            return super().delete(*args, **kwargs)
+        if self.deleted_at is not None:
+            return 0, {self._meta.label: 0}
+        self.deleted_at = timezone.now()
+        self.deleted_by = deleted_by
+        type(self).all_objects.filter(pk=self.pk).update(
+            deleted_at=self.deleted_at,
+            deleted_by=deleted_by,
+        )
+        return 1, {self._meta.label: 1}
+
+    def restore(self):
+        """Restore a soft-deleted job and all still-linked related records."""
+        if self.deleted_at is None:
+            return False
+        type(self).all_objects.filter(pk=self.pk).update(
+            deleted_at=None,
+            deleted_by=None,
+        )
+        self.deleted_at = None
+        self.deleted_by = None
+        return True
+
     @classmethod
     def generate_job_id(cls):
         timestamp = timezone.now().strftime('%y')
@@ -1645,6 +1728,17 @@ class Job(models.Model):
             frequency=frequency,
             created_by=created_by or self.user
         )
+
+
+class DeletedJob(Job):
+    """Admin-only proxy exposing jobs currently in the trash."""
+
+    objects = DeletedJobManager()
+
+    class Meta:
+        proxy = True
+        verbose_name = 'Deleted job'
+        verbose_name_plural = 'Deleted jobs'
 
 
 class JobComment(models.Model):

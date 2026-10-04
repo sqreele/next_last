@@ -1,5 +1,10 @@
 {% extends "admin/change_list.html" %}
 
+{% block object-tools-items %}
+  <li><a href="{% url 'admin:myappLubd_deletedjob_changelist' %}">Deleted jobs</a></li>
+  {{ block.super }}
+{% endblock %}
+
 {% block content_title %}
   {{ block.super }}
   {% if missing_rooms_summary %}

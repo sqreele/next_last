@@ -57,6 +57,7 @@ from .models import (
     Room,
     Topic,
     Job,
+    DeletedJob,
     JobImage,
     UserProfile,
     PreventiveMaintenance,
@@ -1524,13 +1525,13 @@ class JobAdmin(admin.ModelAdmin):
 
 
     def delete_queryset(self, request, queryset):
-        """Allow bulk delete when list filters introduced DISTINCT joins."""
-        if queryset.query.distinct:
-            pk_values = list(queryset.values_list('pk', flat=True))
-            if pk_values:
-                self.model.objects.filter(pk__in=pk_values).delete()
-            return
-        super().delete_queryset(request, queryset)
+        """Move selected jobs to the trash, including DISTINCT querysets."""
+        pk_values = list(queryset.values_list('pk', flat=True))
+        if pk_values:
+            Job.all_objects.filter(pk__in=pk_values).soft_delete(deleted_by=request.user)
+
+    def delete_model(self, request, obj):
+        obj.delete(deleted_by=request.user)
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         extra_context['missing_rooms_summary'] = self._get_missing_rooms_summary(request)
@@ -2607,6 +2608,65 @@ class JobAdmin(admin.ModelAdmin):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     export_jobs_excel.short_description = "Export selected/filtered jobs to Excel with image previews"
+
+@admin.register(DeletedJob)
+class DeletedJobAdmin(admin.ModelAdmin):
+    """Read-only trash with an explicit recovery action."""
+
+    list_per_page = 25
+    list_display = [
+        'job_id',
+        'description_summary',
+        'status',
+        'property',
+        'deleted_at',
+        'deleted_by',
+    ]
+    list_filter = ['deleted_at', 'status', 'priority', PropertyFilter]
+    search_fields = [
+        'job_id',
+        'description',
+        'property__name',
+        'rooms__name',
+        'topics__title',
+    ]
+    actions = ['restore_jobs']
+    ordering = ['-deleted_at']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'property',
+            'deleted_by',
+        ).prefetch_related('rooms', 'topics')
+
+    def description_summary(self, obj):
+        text = obj.description or ''
+        return text[:80] + ('…' if len(text) > 80 else '')
+    description_summary.short_description = 'Description'
+
+    @admin.action(description='Restore selected jobs')
+    def restore_jobs(self, request, queryset):
+        restored_count = queryset.restore()
+        self.message_user(
+            request,
+            f'Restored {restored_count} job(s).',
+            level=messages.SUCCESS,
+        )
+
+    def get_readonly_fields(self, request, obj=None):
+        return [
+            field.name
+            for field in self.model._meta.get_fields()
+            if getattr(field, 'editable', False) and not field.auto_created
+        ]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Permanent deletion belongs in an explicit retention/cleanup process.
+        return False
+
 
 @admin.register(JobImage)
 class JobImageAdmin(admin.ModelAdmin):

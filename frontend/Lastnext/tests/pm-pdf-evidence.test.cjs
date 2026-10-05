@@ -26,6 +26,11 @@ loadCompiledModule(loadedModule, loadedModule.exports);
 
 const { PM_PDF_EVIDENCE_LIMIT, selectPMPdfEvidence } = loadedModule.exports;
 
+const pmDetailSourcePath = path.join(
+  process.cwd(),
+  "app/dashboard/preventive-maintenance/[pm_id]/PreventiveMaintenanceClient.tsx",
+);
+
 const image = (id, imageType) => ({
   id,
   image_type: imageType,
@@ -105,4 +110,14 @@ test("uses a larger reported total for an additive or anomalous payload", () => 
   assert.equal(selection.items.length, 1);
   assert.equal(selection.total, 11);
   assert.equal(selection.truncated, true);
+});
+
+test("sanitizes all Tailwind 4 colors before html2canvas parses the PM report", () => {
+  const pmDetailSource = fs.readFileSync(pmDetailSourcePath, "utf8");
+
+  assert.match(pmDetailSource, /onclone: applyPdfColorFallbacks/);
+  assert.match(pmDetailSource, /\(\?:oklab\|oklch\|color-mix\)/);
+  assert.match(pmDetailSource, /computedStyle\.length/);
+  assert.match(pmDetailSource, /property\.startsWith\("--"\)/);
+  assert.match(pmDetailSource, /#pdf-content \*::before/);
 });

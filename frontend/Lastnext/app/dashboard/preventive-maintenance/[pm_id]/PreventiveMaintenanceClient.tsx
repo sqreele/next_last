@@ -557,6 +557,23 @@ export default function PreventiveMaintenanceClient({
         `;
         clonedDocument.head.appendChild(style);
 
+        // html2canvas also inspects generated pseudo-elements. The PDF layout
+        // does not rely on them, and inherited Tailwind colors can otherwise
+        // leave an oklch() value outside the normal element-style pass below.
+        const pseudoElementReset = clonedDocument.createElement("style");
+        pseudoElementReset.textContent = `
+          #pdf-content::before,
+          #pdf-content::after,
+          #pdf-content *::before,
+          #pdf-content *::after {
+            content: none !important;
+            background: none !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+          }
+        `;
+        clonedDocument.head.appendChild(pseudoElementReset);
+
         const clonedWindow = clonedDocument.defaultView;
         const colorContext = clonedDocument
           .createElement("canvas")
@@ -608,6 +625,36 @@ export default function PreventiveMaintenanceClient({
               element.style.setProperty(property, "none", "important");
             }
           });
+
+          // Tailwind can emit modern colors in properties beyond the common
+          // color list above. html2canvas parses the full computed declaration,
+          // so sanitize every remaining non-custom property as well.
+          for (let index = 0; index < computedStyle.length; index += 1) {
+            const property = computedStyle.item(index);
+            if (
+              !property ||
+              property.startsWith("--") ||
+              colorProperties.includes(property)
+            ) {
+              continue;
+            }
+
+            const value = computedStyle.getPropertyValue(property);
+            if (!unsupportedColor.test(value)) continue;
+
+            if (property.endsWith("-color")) {
+              const srgbColor = toSrgb(value);
+              element.style.setProperty(
+                property,
+                srgbColor ?? "transparent",
+                "important",
+              );
+            } else {
+              // Gradients and effects are cosmetic in the generated report;
+              // resetting them prevents one unsupported token from aborting it.
+              element.style.setProperty(property, "initial", "important");
+            }
+          }
         });
       };
 

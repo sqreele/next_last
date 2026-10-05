@@ -4,6 +4,7 @@ import React from "react";
 import { Search, X, ChevronDown } from "lucide-react";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import type { DictKey } from "@/app/lib/i18n/dictionary";
+import type { MachineOption } from "@/app/lib/hooks/filterTypes";
 
 interface FilterState {
   search: string;
@@ -20,7 +21,7 @@ type SortField = "date" | "status" | "machine";
 
 interface FilterPanelProps {
   currentFilters?: Partial<FilterState>;
-  machineOptions: any[];
+  machineOptions: MachineOption[];
   totalCount: number;
   sortBy: SortField;
   sortOrder: "asc" | "desc";
@@ -54,6 +55,11 @@ export default function FilterPanel({
   onSortChangeAction,
 }: FilterPanelProps) {
   const t = useT();
+  const invalidDateRange = Boolean(
+    currentFilters.startDate &&
+    currentFilters.endDate &&
+    currentFilters.startDate > currentFilters.endDate,
+  );
   const statusKeys: Record<string, DictKey> = {
     completed: "status.completed", pending: "pm.upcoming", overdue: "status.overdue",
   };
@@ -173,9 +179,12 @@ export default function FilterPanel({
                 <input
                   type="date"
                   value={currentFilters.startDate || ""}
+                  max={currentFilters.endDate || undefined}
                   onChange={(e) =>
                     onFilterChangeAction("startDate", e.target.value)
                   }
+                  aria-invalid={invalidDateRange}
+                  aria-describedby={invalidDateRange ? "pm-date-range-error" : undefined}
                   className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
                 />
               </div>
@@ -186,13 +195,21 @@ export default function FilterPanel({
                 <input
                   type="date"
                   value={currentFilters.endDate || ""}
+                  min={currentFilters.startDate || undefined}
                   onChange={(e) =>
                     onFilterChangeAction("endDate", e.target.value)
                   }
+                  aria-invalid={invalidDateRange}
+                  aria-describedby={invalidDateRange ? "pm-date-range-error" : undefined}
                   className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
                 />
               </div>
             </div>
+            {invalidDateRange && (
+              <p id="pm-date-range-error" className="text-sm font-medium text-destructive" role="alert">
+                {t("pm.invalidDateRange")}
+              </p>
+            )}
           </div>
         </FilterSection>
 
@@ -203,12 +220,12 @@ export default function FilterPanel({
             onChange={(e) => handleSortChange(e.target.value)}
             className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
           >
-            <option value="date-desc">Date (Newest First)</option>
-            <option value="date-asc">Date (Oldest First)</option>
-            <option value="status-asc">Status (A-Z)</option>
-            <option value="status-desc">Status (Z-A)</option>
-            <option value="machine-asc">Machine (A-Z)</option>
-            <option value="machine-desc">Machine (Z-A)</option>
+            <option value="date-desc">{t("pm.sortDateNewest")}</option>
+            <option value="date-asc">{t("pm.sortDateOldest")}</option>
+            <option value="status-asc">{t("pm.sortStatusAsc")}</option>
+            <option value="status-desc">{t("pm.sortStatusDesc")}</option>
+            <option value="machine-asc">{t("pm.sortMachineAsc")}</option>
+            <option value="machine-desc">{t("pm.sortMachineDesc")}</option>
           </select>
         </FilterSection>
       </div>

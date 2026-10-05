@@ -14,7 +14,7 @@ interface BulkActionsProps {
 const BulkActions: React.FC<BulkActionsProps> = ({ selectedCount, onBulkDelete, onClear, isPending = false }) => {
   const t = useT();
   return (
-    <aside className="rounded-xl border border-primary/30 bg-primary/10 p-4 shadow-soft" aria-label="Selected maintenance actions">
+    <aside className="rounded-xl border border-primary/30 bg-primary/10 p-4 shadow-soft" aria-label={t("pm.selectedActions")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-sm font-semibold text-primary md:text-base">
           {t('pm.selected', { count: selectedCount })}

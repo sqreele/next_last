@@ -5,7 +5,6 @@ import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMa
 import { useFilterStore } from '@/app/lib/stores';
 import { useMainStore } from '@/app/lib/stores/mainStore';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
-import { determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
 
 // Import types
 import { MachineOption, Stats } from '@/app/lib/hooks/filterTypes';
@@ -38,6 +37,17 @@ import {
 
 // Define the sort field type
 type SortField = 'date' | 'status' | 'machine';
+
+const getServerOrdering = (field: SortField, order: 'asc' | 'desc') => {
+  const fields: Record<SortField, string> = {
+    date: 'scheduled_date',
+    status: 'status_sort',
+    machine: 'machine_sort',
+  };
+  // A unique secondary key keeps page boundaries stable when several PMs
+  // share the same date, status, or machine name.
+  return `${order === 'desc' ? '-' : ''}${fields[field]},pm_id`;
+};
 
 function PreventiveMaintenanceListPageContent() {
   const { locale, t } = useLocale();
@@ -81,9 +91,11 @@ function PreventiveMaintenanceListPageContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [sortBy, setSortBy] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [mutationPending, setMutationPending] = useState(false);
+  const hasInvalidDateRange = Boolean(start_date && end_date && start_date > end_date);
 
   // Dashboard quick actions use shareable status query parameters. Hydrate
   // that value into the existing filter store instead of creating a second
@@ -102,13 +114,22 @@ function PreventiveMaintenanceListPageContent() {
   useEffect(() => {
     setSelectedItems([]);
     setDeleteConfirm(null);
+    setBulkDeleteConfirm(false);
     setMachineId('');
     setPage(1);
 
     if (!selectedProperty) return;
 
-    const currentPageSize = useFilterStore.getState().page_size || 10;
-    fetchMaintenanceItems({ page: 1, page_size: currentPageSize, machine_id: '' });
+    const initialFilters = useFilterStore.getState();
+    const currentPageSize = initialFilters.page_size || 10;
+    const initialDateRangeIsInvalid = Boolean(
+      initialFilters.start_date &&
+      initialFilters.end_date &&
+      initialFilters.start_date > initialFilters.end_date,
+    );
+    if (!initialDateRangeIsInvalid) {
+      fetchMaintenanceItems({ page: 1, page_size: currentPageSize, machine_id: '' });
+    }
     fetchMachines(selectedProperty);
     fetchStatistics();
   }, [selectedProperty, fetchMaintenanceItems, fetchMachines, fetchStatistics, setMachineId, setPage]);
@@ -123,7 +144,7 @@ function PreventiveMaintenanceListPageContent() {
       name: machine.name,
       machine_id: machine.machine_id,
       count: maintenanceItems.filter(item => 
-        item.machines?.some((m: any) => m.machine_id === machine.machine_id)
+        item.machines?.some((itemMachine) => itemMachine.machine_id === machine.machine_id)
       ).length
     }));
     
@@ -147,7 +168,7 @@ function PreventiveMaintenanceListPageContent() {
       const currentPage = Number(page) || 1;
       const currentPageSize = Number(page_size) || 10;
       
-      const newParams: Record<string, any> = {
+      const newParams: Record<string, string | number> = {
         // Always include page and page_size as numbers
         page: currentPage,
         page_size: currentPageSize,
@@ -157,20 +178,21 @@ function PreventiveMaintenanceListPageContent() {
       if (status && status !== 'all') newParams.status = status;
       if (frequency && frequency !== 'all') newParams.frequency = frequency;
       if (search) newParams.search = search;
-      if (start_date) newParams.start_date = start_date;
-      if (end_date) newParams.end_date = end_date;
+      if (start_date) newParams.date_from = start_date;
+      if (end_date) newParams.date_to = end_date;
       if (machine_id) newParams.machine_id = machine_id;
+      newParams.ordering = getServerOrdering(sortBy, sortOrder);
 
       // Check all active and cleared params before updating and fetching.
       // The previous checks only compared truthy UI filter values, so clearing a
       // filter (for example search or machine) could leave the stale backend
       // filter in place and make pagination counts/page links appear wrong.
-      const normalizedCurrentPMParams: Record<string, any> = {
+      const normalizedCurrentPMParams: Record<string, string | number> = {
         page: Number(pmFilterParams.page) || 1,
         page_size: Number(pmFilterParams.page_size) || 10,
       };
 
-      ['status', 'frequency', 'search', 'start_date', 'end_date', 'machine_id'].forEach((key) => {
+      ['status', 'frequency', 'search', 'date_from', 'date_to', 'machine_id', 'ordering'].forEach((key) => {
         const value = pmFilterParams[key as keyof typeof pmFilterParams];
         if (value !== null && value !== undefined && value !== '') {
           normalizedCurrentPMParams[key] = value;
@@ -184,8 +206,11 @@ function PreventiveMaintenanceListPageContent() {
           status: '',
           frequency: '',
           search: '',
+          // Clear legacy keys persisted by earlier frontend versions.
           start_date: '',
           end_date: '',
+          date_from: '',
+          date_to: '',
           machine_id: '',
           ...newParams,
         };
@@ -195,40 +220,17 @@ function PreventiveMaintenanceListPageContent() {
         setFilterParams(clearedParams);
         
         // Trigger fetch with the updated params
-        fetchMaintenanceItems(clearedParams);
+        if (!hasInvalidDateRange) fetchMaintenanceItems(clearedParams);
       }
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [status, frequency, search, start_date, end_date, machine_id, page, page_size, fetchMaintenanceItems, setFilterParams, pmFilterParams]);
+  }, [status, frequency, search, start_date, end_date, machine_id, page, page_size, sortBy, sortOrder, hasInvalidDateRange, fetchMaintenanceItems, setFilterParams, pmFilterParams]);
 
-  // Sorted and filtered data
-  const sortedItems = useMemo(() => {
-    const sorted = [...maintenanceItems].sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortBy) {
-        case 'date':
-          comparison = new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime();
-          break;
-        case 'status':
-          const statusA = determinePMStatus(a).toLowerCase();
-          const statusB = determinePMStatus(b).toLowerCase();
-          comparison = statusA.localeCompare(statusB);
-          break;
-        // case 'frequency': removed - frequency column no longer displayed
-        case 'machine':
-          const machineA = getMachineNames(a.machines);
-          const machineB = getMachineNames(b.machines);
-          comparison = machineA.localeCompare(machineB);
-          break;
-      }
-      
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-    
-    return sorted;
-  }, [maintenanceItems, sortBy, sortOrder]);
+  // The backend owns ordering so it remains correct across the entire
+  // paginated result set. Re-sorting one loaded page here can contradict the
+  // server's machine/status annotations and scramble page boundaries.
+  const sortedItems = maintenanceItems;
 
   // Utility function to get machine name by ID
   const getMachineNameById = useCallback((machineId: string) => {
@@ -281,7 +283,8 @@ function PreventiveMaintenanceListPageContent() {
       setSortBy(field);
       setSortOrder('asc');
     }
-  }, [sortBy]);
+    setPage(1);
+  }, [sortBy, setPage]);
 
   // Create a wrapper that accepts string and converts to SortField
    const handleSortWrapper = useCallback((field: string) => {
@@ -296,7 +299,8 @@ function PreventiveMaintenanceListPageContent() {
   const handleSortChangeAction = useCallback((field: SortField, order: 'asc' | 'desc') => {
     setSortBy(field);
     setSortOrder(order);
-  }, []);
+    setPage(1);
+  }, [setPage]);
 
   // Selection handlers
   const handleSelectAll = useCallback((checked: boolean) => {
@@ -334,20 +338,17 @@ function PreventiveMaintenanceListPageContent() {
 
   const handleBulkDelete = useCallback(async () => {
     if (mutationPending) return;
-    if (!window.confirm(t('pm.deleteWarning'))) {
-      return;
-    }
-
     setMutationPending(true);
     try {
       for (const pmId of selectedItems) {
         await deleteMaintenance(pmId);
       }
       setSelectedItems([]);
+      setBulkDeleteConfirm(false);
     } finally {
       setMutationPending(false);
     }
-  }, [selectedItems, deleteMaintenance, mutationPending, t]);
+  }, [selectedItems, deleteMaintenance, mutationPending]);
 
   // Refresh handler - preserves current page and filters
   const handleRefresh = useCallback(async () => {
@@ -358,11 +359,12 @@ function PreventiveMaintenanceListPageContent() {
       status: status === 'all' ? '' : status || '',
       frequency: frequency === 'all' ? '' : frequency || '',
       search: search || '',
-      start_date: start_date || '',
-      end_date: end_date || '',
+      date_from: start_date || '',
+      date_to: end_date || '',
       machine_id: machine_id || '',
+      ordering: getServerOrdering(sortBy, sortOrder),
     });
-  }, [fetchMaintenanceItems, page, page_size, status, frequency, search, start_date, end_date, machine_id]);
+  }, [fetchMaintenanceItems, page, page_size, status, frequency, search, start_date, end_date, machine_id, sortBy, sortOrder]);
 
   // Pagination - calculate from totalCount and page_size
   const totalPages = useMemo(() => {
@@ -428,8 +430,8 @@ function PreventiveMaintenanceListPageContent() {
   if (isLoading && maintenanceItems.length === 0) {
     return (
       <PageLoader
-        label="Loading preventive maintenance"
-        description="Preparing schedules, filters, and maintenance work."
+        label={t("pm.loading")}
+        description={t("pm.loadingDescription")}
       />
     );
   }
@@ -492,7 +494,7 @@ function PreventiveMaintenanceListPageContent() {
         {canOperate && selectedItems.length > 0 && (
           <BulkActions
             selectedCount={selectedItems.length}
-            onBulkDelete={handleBulkDelete}
+            onBulkDelete={() => setBulkDeleteConfirm(true)}
             onClear={() => setSelectedItems([])}
             isPending={mutationPending}
           />
@@ -606,6 +608,14 @@ function PreventiveMaintenanceListPageContent() {
           onConfirm={() => handleDelete(deleteConfirm)}
           onCancel={() => setDeleteConfirm(null)}
           isPending={mutationPending}
+        />
+      )}
+      {bulkDeleteConfirm && selectedItems.length > 0 && (
+        <DeleteModal
+          onConfirm={handleBulkDelete}
+          onCancel={() => setBulkDeleteConfirm(false)}
+          isPending={mutationPending}
+          selectedCount={selectedItems.length}
         />
       )}
     </PageContainer>

@@ -20,6 +20,7 @@ import {
   BouncingDotsLoader,
   PageLoadingFrame,
 } from "@/app/components/ui/loading";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 const FREQUENCIES = [
   ["daily", "Daily"],
@@ -73,6 +74,7 @@ const messageFromError = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
 export default function PMMasterPlanForm({ planId }: { planId?: string }) {
+  const t = useT();
   const router = useRouter();
   const { status } = useSession();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
@@ -182,13 +184,13 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
-    if (!form.title.trim()) nextErrors.title = "Plan name is required.";
-    if (!form.startDate) nextErrors.startDate = "Start date and time are required.";
-    if (form.machineIds.length === 0) nextErrors.machineIds = "Select at least one machine.";
+    if (!form.title.trim()) nextErrors.title = t("pmPlanForm.validationName");
+    if (!form.startDate) nextErrors.startDate = t("pmPlanForm.validationStart");
+    if (form.machineIds.length === 0) nextErrors.machineIds = t("pmPlanForm.validationMachine");
     if (form.frequency === "custom" && Number(form.customDays) < 1) {
-      nextErrors.customDays = "Custom interval must be at least one day.";
+      nextErrors.customDays = t("pmPlanForm.validationInterval");
     }
-    if (Number(form.leadTimeDays) < 0) nextErrors.leadTimeDays = "Lead time cannot be negative.";
+    if (Number(form.leadTimeDays) < 0) nextErrors.leadTimeDays = t("pmPlanForm.validationLeadTime");
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0 || !selectedPropertyId) return;
     const submitPropertyId = selectedPropertyId;
@@ -230,8 +232,8 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
   if (!selectedPropertyId) {
     return (
       <div className="rounded-xl border border-border bg-card p-8 text-center">
-        <h1 className="text-xl font-bold">Select a property</h1>
-        <p className="mt-2 text-muted-foreground">Select a property to manage PM master plans.</p>
+        <h1 className="text-xl font-bold">{t("common.selectProperty")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("pmPlanForm.selectPropertyHint")}</p>
       </div>
     );
   }
@@ -246,7 +248,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
       >
         <BouncingDotsLoader
           size="lg"
-          label="Loading PM master plan…"
+          label={t("pmPlanForm.loading")}
           className="text-muted-foreground"
         />
       </PageLoadingFrame>
@@ -256,7 +258,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
   if (!canManagePMMaster) {
     return (
       <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 text-amber-950" role="alert">
-        Your role can view PM master plans but cannot create or edit them.
+        {t("pmPlanForm.noPermission")}
       </div>
     );
   }
@@ -265,66 +267,66 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     <form onSubmit={submit} className="space-y-6 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-6">
       {error && <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800" role="alert">{error}</div>}
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-        Active property: <strong>{activePropertyName || selectedPropertyId}</strong>. Only its machines can be selected.
+        {t("pmPlanForm.activeProperty")}: <strong>{activePropertyName || selectedPropertyId}</strong>. {t("pmPlanForm.propertyMachineHint")}
       </div>
 
       <div>
-        <label htmlFor="plan-title" className="text-sm font-semibold">Plan name</label>
+        <label htmlFor="plan-title" className="text-sm font-semibold">{t("pmPlanForm.name")}</label>
         <input id="plan-title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-border px-3" aria-describedby={fieldErrors.title ? "plan-title-error" : undefined} />
         {fieldErrors.title && <p id="plan-title-error" className="mt-1 text-sm text-red-700">{fieldErrors.title}</p>}
       </div>
 
       <fieldset>
-        <legend className="text-sm font-semibold">Machines</legend>
-        <p className="mt-1 text-sm text-muted-foreground">{selectedMachineNames.length} selected for the active property</p>
+        <legend className="text-sm font-semibold">{t("pmPlanForm.machines")}</legend>
+        <p className="mt-1 text-sm text-muted-foreground">{t("pmPlanForm.selectedMachines", { count: selectedMachineNames.length })}</p>
         <div className="mt-2 grid max-h-64 gap-2 overflow-y-auto rounded-lg border border-border p-2 sm:grid-cols-2">
           {machines.length > 0 ? machines.map((machine) => (
             <label key={machine.machine_id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md p-2 hover:bg-muted">
               <input type="checkbox" checked={form.machineIds.includes(machine.machine_id)} onChange={() => toggleMachine(machine.machine_id)} className="h-5 w-5" />
               <span className="min-w-0"><span className="block truncate font-medium">{machine.name}</span><span className="text-xs text-muted-foreground">{machine.machine_id}</span></span>
             </label>
-          )) : <p className="p-3 text-sm text-muted-foreground">No machines are available for this property.</p>}
+          )) : <p className="p-3 text-sm text-muted-foreground">{t("pmPlanForm.noMachines")}</p>}
         </div>
         {fieldErrors.machineIds && <p className="mt-1 text-sm text-red-700">{fieldErrors.machineIds}</p>}
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="plan-start" className="text-sm font-semibold">First due date and time</label>
+          <label htmlFor="plan-start" className="text-sm font-semibold">{t("pmPlanForm.firstDue")}</label>
           <input id="plan-start" type="datetime-local" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-border px-3" />
-          <p className="mt-1 text-xs text-muted-foreground">Entered in your browser&apos;s local time; recurrence follows the property tenant&apos;s timezone.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("pmPlanForm.timezoneHint")}</p>
           {fieldErrors.startDate && <p className="mt-1 text-sm text-red-700">{fieldErrors.startDate}</p>}
         </div>
         <div>
-          <label htmlFor="plan-frequency" className="text-sm font-semibold">Frequency</label>
+          <label htmlFor="plan-frequency" className="text-sm font-semibold">{t("pmPlanForm.frequency")}</label>
           <select id="plan-frequency" value={form.frequency} onChange={(event) => setForm({ ...form, frequency: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-border px-3">
-            {FREQUENCIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {FREQUENCIES.map(([value]) => <option key={value} value={value}>{t(`pmPlanForm.frequency.${value}` as Parameters<typeof t>[0])}</option>)}
           </select>
         </div>
         {form.frequency === "custom" && (
           <div>
-            <label htmlFor="plan-custom-days" className="text-sm font-semibold">Repeat every (days)</label>
+            <label htmlFor="plan-custom-days" className="text-sm font-semibold">{t("pmPlanForm.customDays")}</label>
             <input id="plan-custom-days" type="number" min="1" value={form.customDays} onChange={(event) => setForm({ ...form, customDays: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-border px-3" />
             {fieldErrors.customDays && <p className="mt-1 text-sm text-red-700">{fieldErrors.customDays}</p>}
           </div>
         )}
         <div>
-          <label htmlFor="plan-lead-days" className="text-sm font-semibold">Generate work form before due date (days)</label>
+          <label htmlFor="plan-lead-days" className="text-sm font-semibold">{t("pmPlanForm.leadTime")}</label>
           <input id="plan-lead-days" type="number" min="0" value={form.leadTimeDays} onChange={(event) => setForm({ ...form, leadTimeDays: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-border px-3" />
           {fieldErrors.leadTimeDays && <p className="mt-1 text-sm text-red-700">{fieldErrors.leadTimeDays}</p>}
         </div>
       </div>
 
       <div>
-        <label htmlFor="plan-procedure-template" className="text-sm font-semibold">Maintenance procedure template</label>
+        <label htmlFor="plan-procedure-template" className="text-sm font-semibold">{t("pmPlanForm.template")}</label>
         <select id="plan-procedure-template" value={form.procedureTemplate} onChange={(event) => setForm({ ...form, procedureTemplate: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-border px-3">
-          <option value="">No template</option>
+          <option value="">{t("pm.noTemplate")}</option>
           {procedures.map((procedure) => <option key={procedure.id} value={procedure.id}>{procedure.name}</option>)}
         </select>
       </div>
 
       <fieldset>
-        <legend className="text-sm font-semibold">Topics</legend>
+        <legend className="text-sm font-semibold">{t("pmPlanForm.topics")}</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {topics.map((topic) => (
             <label key={topic.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border p-2">
@@ -332,25 +334,25 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
               <span>{topic.title}</span>
             </label>
           ))}
-          {topics.length === 0 && <p className="text-sm text-muted-foreground">No topics are available.</p>}
+          {topics.length === 0 && <p className="text-sm text-muted-foreground">{t("pmPlanForm.noTopics")}</p>}
         </div>
       </fieldset>
 
       <div className="grid gap-4">
-        <div><label htmlFor="plan-notes" className="text-sm font-semibold">Notes</label><textarea id="plan-notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} rows={3} className="mt-1 w-full rounded-md border border-border p-3" /></div>
-        <div><label htmlFor="plan-procedure" className="text-sm font-semibold">Procedure details</label><textarea id="plan-procedure" value={form.procedure} onChange={(event) => setForm({ ...form, procedure: event.target.value })} rows={4} className="mt-1 w-full rounded-md border border-border p-3" /></div>
-        <div><label htmlFor="plan-remarks" className="text-sm font-semibold">Remarks</label><textarea id="plan-remarks" value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} rows={2} className="mt-1 w-full rounded-md border border-border p-3" /></div>
+        <div><label htmlFor="plan-notes" className="text-sm font-semibold">{t("pmPlanForm.notes")}</label><textarea id="plan-notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} rows={3} className="mt-1 w-full rounded-md border border-border p-3" /></div>
+        <div><label htmlFor="plan-procedure" className="text-sm font-semibold">{t("pmPlanForm.procedureDetails")}</label><textarea id="plan-procedure" value={form.procedure} onChange={(event) => setForm({ ...form, procedure: event.target.value })} rows={4} className="mt-1 w-full rounded-md border border-border p-3" /></div>
+        <div><label htmlFor="plan-remarks" className="text-sm font-semibold">{t("pmPlanForm.remarks")}</label><textarea id="plan-remarks" value={form.remarks} onChange={(event) => setForm({ ...form, remarks: event.target.value })} rows={2} className="mt-1 w-full rounded-md border border-border p-3" /></div>
       </div>
 
       <label className="flex min-h-11 items-center gap-3">
         <input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} className="h-5 w-5" />
-        <span className="font-medium">Active recurring plan</span>
+        <span className="font-medium">{t("pmPlanForm.active")}</span>
       </label>
 
       <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
-        <Link href="/dashboard/preventive-maintenance/plans" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 py-2 font-semibold">Cancel</Link>
+        <Link href="/dashboard/preventive-maintenance/plans" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-4 py-2 font-semibold">{t("action.cancel")}</Link>
         <button type="submit" disabled={submitting} className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-5 py-2 font-semibold text-white disabled:opacity-60">
-          {submitting ? "Saving…" : planId ? "Save changes" : "Create master plan"}
+          {submitting ? t("pmPlanForm.saving") : planId ? t("pmPlanForm.save") : t("pmPlanForm.create")}
         </button>
       </div>
     </form>

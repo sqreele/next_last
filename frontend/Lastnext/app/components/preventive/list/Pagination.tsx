@@ -36,7 +36,7 @@ export default function Pagination({
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
             className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20"
-            aria-label="Tasks per page"
+            aria-label={t("pm.tasksPerPage")}
           >
             <option value={10}>{t("pm.perPage", { count: 10 })}</option>
             <option value={25}>{t("pm.perPage", { count: 25 })}</option>
@@ -49,7 +49,7 @@ export default function Pagination({
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
             className="grid h-11 w-11 place-items-center rounded-lg border border-border bg-background text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Previous page"
+            aria-label={t("pm.previousPage")}
           >
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -62,7 +62,7 @@ export default function Pagination({
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
             className="grid h-11 w-11 place-items-center rounded-lg border border-border bg-background text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Next page"
+            aria-label={t("pm.nextPage")}
           >
             <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -79,7 +79,7 @@ export default function Pagination({
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
             className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20"
-            aria-label="Tasks per page"
+            aria-label={t("pm.tasksPerPage")}
           >
             <option value={10}>{t("pm.perPage", { count: 10 })}</option>
             <option value={25}>{t("pm.perPage", { count: 25 })}</option>
@@ -92,7 +92,7 @@ export default function Pagination({
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
             className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Previous page"
+            aria-label={t("pm.previousPage")}
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -106,7 +106,7 @@ export default function Pagination({
                   ? "bg-primary text-primary-foreground shadow-soft"
                   : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
               }`}
-              aria-label={`Go to page ${pageNum}`}
+              aria-label={t("pm.goToPage", { page: pageNum })}
               aria-current={currentPage === pageNum ? "page" : undefined}
             >
               {pageNum}
@@ -117,7 +117,7 @@ export default function Pagination({
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
             className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Next page"
+            aria-label={t("pm.nextPage")}
           >
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>

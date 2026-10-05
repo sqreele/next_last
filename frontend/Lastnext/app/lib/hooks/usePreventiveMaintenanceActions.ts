@@ -282,9 +282,12 @@ export function usePreventiveMaintenanceActions() {
       const response = await service.deletePreventiveMaintenance(pmId);
       
       if (response.success) {
-        // Remove from store
-        setMaintenanceItems(maintenanceItems.filter(item => item.pm_id !== pmId));
-        setTotalCount(totalCount - 1);
+        // Read the latest store state after the request settles. Bulk deletes
+        // invoke this action repeatedly, so render-time closures would restore
+        // items removed by an earlier request and decrement the count only once.
+        const latestState = usePreventiveMaintenanceStore.getState();
+        setMaintenanceItems(latestState.maintenanceItems.filter(item => item.pm_id !== pmId));
+        setTotalCount(Math.max(0, latestState.totalCount - 1));
         return true;
       } else {
         setError(response.message || 'Failed to delete maintenance item');
@@ -295,7 +298,7 @@ export function usePreventiveMaintenanceActions() {
       setError('Failed to delete maintenance item');
       return false;
     }
-  }, [maintenanceItems, totalCount, setMaintenanceItems, setTotalCount, setError]);
+  }, [setMaintenanceItems, setTotalCount, setError]);
 
   // Fetch maintenance by ID
   const fetchMaintenanceById = useCallback(async (pmId: string): Promise<any | null> => {

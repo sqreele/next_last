@@ -27,6 +27,7 @@ import {
   fetchAllMaintenanceProcedures,
   type MaintenanceProcedureTemplate,
 } from "@/app/lib/maintenanceProcedures";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface FormState {
   pmtitle: string;
@@ -62,6 +63,7 @@ type MaintenanceTaskOption = {
 };
 
 export default function EditPreventiveMaintenancePage() {
+  const t = useT();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -574,7 +576,7 @@ export default function EditPreventiveMaintenancePage() {
     if (
       isDirty &&
       !window.confirm(
-        "You have unsaved changes. Are you sure you want to leave?",
+        t("pmEdit.unsavedConfirm"),
       )
     ) {
       return;
@@ -592,18 +594,17 @@ export default function EditPreventiveMaintenancePage() {
         <div className="text-center max-w-md">
           <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
-            Maintenance Record Not Found
+            {t("pmEdit.notFound")}
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground mb-6">
-            The maintenance record you&apos;re looking for doesn&apos;t exist or you don&apos;t
-            have permission to edit it.
+            {t("pmEdit.notFoundHint")}
           </p>
           <Link
             href="/dashboard/preventive-maintenance"
             className="inline-flex items-center justify-center px-4 py-3 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 touch-target min-h-[44px] text-sm sm:text-base"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to List
+            {t("pmEdit.backToList")}
           </Link>
         </div>
       </div>
@@ -624,10 +625,10 @@ export default function EditPreventiveMaintenancePage() {
             className="flex items-center text-muted-foreground hover:text-foreground mb-2 text-sm sm:text-base touch-target min-h-[44px]"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Details
+            {t("pmEdit.backToDetails")}
           </button>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
-            Edit Maintenance
+            {t("pmEdit.title")}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
             ID: {resolvedPmId}
@@ -638,7 +639,7 @@ export default function EditPreventiveMaintenancePage() {
           {isDirty && (
             <span className="text-xs sm:text-sm text-orange-600 flex items-center">
               <Clock className="h-4 w-4 mr-1" />
-              Unsaved changes
+              {t("pmEdit.unsaved")}
             </span>
           )}
         </div>
@@ -681,14 +682,14 @@ export default function EditPreventiveMaintenancePage() {
           {/* Basic Information */}
           <div className="mb-6 sm:mb-8">
             <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">
-              Basic Information
+              {t("pmEdit.basicInformation")}
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2">
-                  Title *
+                  {t("pmEdit.maintenanceTitle")} *
                 </label>
                 <input
                   type="text"
@@ -709,7 +710,7 @@ export default function EditPreventiveMaintenancePage() {
               {/* Scheduled Date */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2">
-                  Scheduled Date *
+                  {t("pmEdit.scheduledDate")} *
                 </label>
                 <input
                   type="datetime-local"
@@ -1036,7 +1037,7 @@ export default function EditPreventiveMaintenancePage() {
               }
               className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted focus:outline-hidden focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
             >
-              Cancel
+              {t("action.cancel")}
             </button>
 
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -1049,7 +1050,7 @@ export default function EditPreventiveMaintenancePage() {
                 }
                 className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted focus:outline-hidden focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
               >
-                View Details
+                {t("action.viewDetails")}
               </button>
 
               <button
@@ -1064,7 +1065,7 @@ export default function EditPreventiveMaintenancePage() {
                 {isSubmitting ? (
                   <>
                     <BouncingDotsLoader size="sm" />
-                    Saving...
+                    {t("pmPlanForm.saving")}
                   </>
                 ) : (
                   <>

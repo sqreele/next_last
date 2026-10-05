@@ -23,19 +23,13 @@ import { useSession } from "@/app/lib/session.client";
 import { useMainStore } from "@/app/lib/stores/mainStore";
 import { PageLoader } from "@/app/components/ui/loading";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
-
-const readableFrequency = (frequency: string, customDays?: number | null) =>
-  frequency === "custom"
-    ? `Every ${customDays || "?"} days`
-    : frequency.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-
-const readableDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleString() : "Not scheduled";
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
 
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
 export default function PMMasterPlansPage() {
+  const { locale, t } = useLocale();
   const { status } = useSession();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const properties = useMainStore((state) => state.properties);
@@ -43,6 +37,7 @@ export default function PMMasterPlansPage() {
   const requestRef = useRef(0);
   const actionRequestRef = useRef(0);
   const requestedPropertyRef = useRef<string | null>(null);
+  const deleteDialogRef = useRef<HTMLDivElement | null>(null);
   const [plans, setPlans] = useState<PMMasterPlan[]>([]);
   const [projection, setProjection] = useState<PMMasterPlanProjection | null>(null);
   const [canManagePMMaster, setCanManagePMMaster] = useState(false);
@@ -110,6 +105,46 @@ export default function PMMasterPlansPage() {
     setMaterializationResult(null);
   }, [selectedPropertyId]);
 
+  useEffect(() => {
+    if (!deletePlan) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const dialog = deleteDialogRef.current;
+    dialog?.querySelector<HTMLElement>("button")?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !deleting) {
+        event.preventDefault();
+        setDeletePlan(null);
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [deletePlan, deleting]);
+
+  const readableFrequency = (frequency: string, customDays?: number | null) =>
+    frequency === "custom"
+      ? t("pmPlans.everyDays", { count: customDays || "?" })
+      : t(`pm.frequency.${frequency === "semi_annual" ? "semiAnnual" : frequency}` as Parameters<typeof t>[0]);
+  const readableDate = (value?: string | null) =>
+    value
+      ? new Date(value).toLocaleString(locale === "th" ? "th-TH-u-ca-gregory" : "en-US")
+      : t("pmPlans.notScheduled");
+
   const nextProjectionByPlan = useMemo(() => {
     const values = new Map<string, PMMasterPlanProjection["items"][number]>();
     const scopedProjection = loadedPropertyId === selectedPropertyId ? projection : null;
@@ -154,7 +189,7 @@ export default function PMMasterPlansPage() {
         .materializePMMasterPlans(false, requestPropertyId);
       if (actionRequestId !== actionRequestRef.current || useMainStore.getState().selectedPropertyId !== requestPropertyId) return;
       const count = response.data?.created_count || 0;
-      setMaterializationResult(`${count} PM work ${count === 1 ? "form was" : "forms were"} generated.`);
+      setMaterializationResult(t("pmPlans.generatedResult", { count }));
       setMaterializationPreview(null);
       setRefreshKey((value) => value + 1);
     } catch (requestError: unknown) {
@@ -190,8 +225,8 @@ export default function PMMasterPlansPage() {
     return (
       <main className="min-h-screen bg-muted px-4 py-16">
         <div className="mx-auto max-w-xl rounded-xl border border-border bg-card p-8 text-center">
-          <h1 className="text-2xl font-bold">Select a property</h1>
-          <p className="mt-2 text-muted-foreground">Select a property to view PM master plans.</p>
+          <h1 className="text-2xl font-bold">{t("common.selectProperty")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("pmPlans.selectPropertyHint")}</p>
         </div>
       </main>
     );
@@ -200,8 +235,8 @@ export default function PMMasterPlansPage() {
   if ((loading || status === "loading") && !hasCurrentPropertyData) {
     return (
       <PageLoader
-        label="Loading PM master plans"
-        description="Preparing recurring maintenance rules and projections."
+        label={t("pmPlans.loading")}
+        description={t("pmPlans.loadingDescription")}
       />
     );
   }
@@ -212,12 +247,12 @@ export default function PMMasterPlansPage() {
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-purple-700">{activeProperty?.name || selectedPropertyId}</p>
-            <h1 className="text-2xl font-bold text-foreground">PM master plans</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Recurring rules that project and generate preventive-maintenance work.</p>
+            <h1 className="text-2xl font-bold text-foreground">{t("pmPlans.title")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("pmPlans.description")}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Link href="/dashboard/preventive-maintenance/schedule" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-card px-4 py-2 font-semibold"><CalendarClock className="mr-2 h-4 w-4" aria-hidden />Schedule</Link>
-            {canManagePMMaster && <Link href="/dashboard/preventive-maintenance/plans/create" className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-4 py-2 font-semibold text-white"><Plus className="mr-2 h-4 w-4" aria-hidden />Create plan</Link>}
+            <Link href="/dashboard/preventive-maintenance/schedule" className="inline-flex min-h-11 items-center justify-center rounded-md border border-border bg-card px-4 py-2 font-semibold"><CalendarClock className="mr-2 h-4 w-4" aria-hidden />{t("pmPlans.schedule")}</Link>
+            {canManagePMMaster && <Link href="/dashboard/preventive-maintenance/plans/create" className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-4 py-2 font-semibold text-white"><Plus className="mr-2 h-4 w-4" aria-hidden />{t("pmPlans.create")}</Link>}
           </div>
         </header>
 
@@ -227,18 +262,18 @@ export default function PMMasterPlansPage() {
         <section className="mb-6 rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby="projection-heading">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 id="projection-heading" className="font-bold">Next 30 days</h2>
-              <p className="text-sm text-muted-foreground">{scopedProjection ? `${scopedProjection.total} projected or generated occurrences` : loading ? "Loading projection…" : "Projection unavailable"}</p>
+              <h2 id="projection-heading" className="font-bold">{t("pmPlans.next30")}</h2>
+              <p className="text-sm text-muted-foreground">{scopedProjection ? t("pmPlans.occurrences", { count: scopedProjection.total }) : loading ? t("pmPlans.loadingProjection") : t("pmPlans.projectionUnavailable")}</p>
             </div>
-            {canManagePMMaster && <button type="button" onClick={() => void reviewMaterialization()} disabled={materializing} className="inline-flex min-h-11 items-center justify-center rounded-md border border-purple-300 px-4 py-2 font-semibold text-purple-800 disabled:opacity-60"><RefreshCw className={`mr-2 h-4 w-4 ${materializing ? "animate-spin" : ""}`} aria-hidden />Review generation</button>}
+            {canManagePMMaster && <button type="button" onClick={() => void reviewMaterialization()} disabled={materializing} className="inline-flex min-h-11 items-center justify-center rounded-md border border-purple-300 px-4 py-2 font-semibold text-purple-800 disabled:opacity-60"><RefreshCw className={`mr-2 h-4 w-4 ${materializing ? "animate-spin" : ""}`} aria-hidden />{t("pmPlans.reviewGeneration")}</button>}
           </div>
           {materializationPreview && (
             <div className="mt-4 rounded-lg border border-purple-300 bg-purple-50 p-4" role="alertdialog" aria-labelledby="materialize-confirm-title">
-              <h3 id="materialize-confirm-title" className="font-bold text-purple-950">Generate {materializationPreview.created_count} PM work {materializationPreview.created_count === 1 ? "form" : "forms"}?</h3>
-              <p className="mt-1 text-sm text-purple-900">Only due plans for the active property will be processed. Existing occurrences are skipped.</p>
+              <h3 id="materialize-confirm-title" className="font-bold text-purple-950">{t("pmPlans.generateQuestion", { count: materializationPreview.created_count })}</h3>
+              <p className="mt-1 text-sm text-purple-900">{t("pmPlans.generateHint")}</p>
               <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button type="button" onClick={() => setMaterializationPreview(null)} className="min-h-11 rounded-md border border-purple-300 px-4 py-2 font-semibold">Cancel</button>
-                <button type="button" onClick={() => void confirmMaterialization()} disabled={materializing || materializationPreview.created_count === 0} className="min-h-11 rounded-md bg-purple-700 px-4 py-2 font-semibold text-white disabled:opacity-50">Generate work forms</button>
+                <button type="button" onClick={() => setMaterializationPreview(null)} className="min-h-11 rounded-md border border-purple-300 px-4 py-2 font-semibold">{t("action.cancel")}</button>
+                <button type="button" onClick={() => void confirmMaterialization()} disabled={materializing || materializationPreview.created_count === 0} className="min-h-11 rounded-md bg-purple-700 px-4 py-2 font-semibold text-white disabled:opacity-50">{t("pmPlans.generate")}</button>
               </div>
             </div>
           )}
@@ -246,21 +281,21 @@ export default function PMMasterPlansPage() {
 
         {error && !hasCurrentPropertyData ? null : scopedPlans.length === 0 ? (
           <FeedbackState
-            title="No PM master plans configured"
-            description="Create a recurring rule for one or more machines at this property."
-            action={canManagePMMaster ? <Link href="/dashboard/preventive-maintenance/plans/create" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground">Create first plan</Link> : undefined}
+            title={t("pmPlans.noPlans")}
+            description={t("pmPlans.noPlansHint")}
+            action={canManagePMMaster ? <Link href="/dashboard/preventive-maintenance/plans/create" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground">{t("pmPlans.createFirst")}</Link> : undefined}
           />
         ) : (
           <section aria-label="PM master plans" className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
             <div className="hidden border-b border-border bg-muted/50 px-5 py-3 lg:block">
               <div className="grid grid-cols-[minmax(12rem,1.4fr)_0.7fr_0.9fr_1fr_1.1fr_1.1fr_8.5rem] items-center gap-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <span>Plan</span>
-                <span>Status</span>
-                <span>Frequency</span>
-                <span>Next due</span>
-                <span>Machines</span>
-                <span>Procedure</span>
-                <span className="text-right">Actions</span>
+                <span>{t("pmPlans.plan")}</span>
+                <span>{t("editJob.status")}</span>
+                <span>{t("pmPlanForm.frequency")}</span>
+                <span>{t("pm.nextDue")}</span>
+                <span>{t("pmPlanForm.machines")}</span>
+                <span>{t("pmPlans.procedure")}</span>
+                <span className="text-right">{t("inventory.actions")}</span>
               </div>
             </div>
 
@@ -288,26 +323,26 @@ export default function PMMasterPlansPage() {
                           </div>
                           <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${plan.active ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${plan.active ? "bg-green-600" : "bg-muted-foreground"}`} aria-hidden />
-                            {plan.active ? "Active" : "Inactive"}
+                            {plan.active ? t("pmPlans.active") : t("pmPlans.inactive")}
                           </span>
                         </div>
 
                         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                           <div className="flex min-w-0 gap-2">
                             <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                            <div><dt className="text-xs text-muted-foreground">Frequency</dt><dd className="font-medium">{readableFrequency(plan.frequency, plan.custom_days)}</dd></div>
+                            <div><dt className="text-xs text-muted-foreground">{t("pmPlanForm.frequency")}</dt><dd className="font-medium">{readableFrequency(plan.frequency, plan.custom_days)}</dd></div>
                           </div>
                           <div className="flex min-w-0 gap-2">
                             <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                            <div><dt className="text-xs text-muted-foreground">Next due</dt><dd className="font-medium">{nextDue}</dd></div>
+                            <div><dt className="text-xs text-muted-foreground">{t("pm.nextDue")}</dt><dd className="font-medium">{nextDue}</dd></div>
                           </div>
                           <div className="flex min-w-0 gap-2">
                             <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                            <div className="min-w-0"><dt className="text-xs text-muted-foreground">Machines ({plan.machines?.length || 0})</dt><dd className="truncate font-medium">{machineNames || "No machines assigned"}</dd></div>
+                            <div className="min-w-0"><dt className="text-xs text-muted-foreground">{t("pmPlans.machineCount", { count: plan.machines?.length || 0 })}</dt><dd className="truncate font-medium">{machineNames || t("pmPlans.noMachines")}</dd></div>
                           </div>
                           <div className="flex min-w-0 gap-2">
                             <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                            <div className="min-w-0"><dt className="text-xs text-muted-foreground">Procedure</dt><dd className="truncate font-medium">{plan.procedure_template_name || "Not set"}</dd></div>
+                            <div className="min-w-0"><dt className="text-xs text-muted-foreground">{t("pmPlans.procedure")}</dt><dd className="truncate font-medium">{plan.procedure_template_name || t("jobs.notSet")}</dd></div>
                           </div>
                         </dl>
 
@@ -326,16 +361,16 @@ export default function PMMasterPlansPage() {
                         <div>
                           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${plan.active ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
                             <span className={`h-1.5 w-1.5 rounded-full ${plan.active ? "bg-green-600" : "bg-muted-foreground"}`} aria-hidden />
-                            {plan.active ? "Active" : "Inactive"}
+                            {plan.active ? t("pmPlans.active") : t("pmPlans.inactive")}
                           </span>
                         </div>
                         <p className="text-sm font-medium">{readableFrequency(plan.frequency, plan.custom_days)}</p>
                         <p className="text-sm text-foreground">{nextDue}</p>
                         <div className="min-w-0 text-sm">
-                          <p className="font-medium">{plan.machines?.length || 0} {(plan.machines?.length || 0) === 1 ? "machine" : "machines"}</p>
-                          <p className="truncate text-xs text-muted-foreground" title={machineNames}>{machineNames || "None assigned"}</p>
+                          <p className="font-medium">{t("pmPlans.machineCount", { count: plan.machines?.length || 0 })}</p>
+                          <p className="truncate text-xs text-muted-foreground" title={machineNames}>{machineNames || t("pmPlans.noMachines")}</p>
                         </div>
-                        <p className="truncate text-sm text-foreground" title={plan.procedure_template_name || "Not set"}>{plan.procedure_template_name || "Not set"}</p>
+                        <p className="truncate text-sm text-foreground" title={plan.procedure_template_name || t("jobs.notSet")}>{plan.procedure_template_name || t("jobs.notSet")}</p>
                         <div className="flex items-center justify-end gap-1">
                           <Link href={`/dashboard/preventive-maintenance/${plan.plan_id}`} className="grid h-10 w-10 place-items-center rounded-lg text-primary hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title="View plan" aria-label={`View ${plan.title}`}><Eye className="h-4 w-4" aria-hidden /></Link>
                           {canManagePMMaster && <Link href={`/dashboard/preventive-maintenance/plans/${plan.plan_id}/edit`} className="grid h-10 w-10 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title="Edit plan" aria-label={`Edit ${plan.title}`}><Pencil className="h-4 w-4" aria-hidden /></Link>}
@@ -351,17 +386,17 @@ export default function PMMasterPlansPage() {
         )}
 
         {loading && hasCurrentPropertyData ? (
-          <p className="mt-4 text-sm font-medium text-muted-foreground" role="status" aria-live="polite">Updating PM master plans…</p>
+          <p className="mt-4 text-sm font-medium text-muted-foreground" role="status" aria-live="polite">{t("pmPlans.updating")}</p>
         ) : null}
 
         {deletePlan && (
           <div className="fixed inset-0 z-50 flex items-end bg-black/50 p-3 sm:items-center sm:justify-center" role="presentation">
-            <div className="w-full max-w-md rounded-xl bg-card p-5 shadow-xl" role="alertdialog" aria-modal="true" aria-labelledby="delete-plan-title">
-              <h2 id="delete-plan-title" className="text-lg font-bold">Delete “{deletePlan.title}”?</h2>
-              <p className="mt-2 text-sm text-muted-foreground">The recurring rule will be removed. PM work records already generated from it will be preserved.</p>
+            <div ref={deleteDialogRef} className="w-full max-w-md rounded-xl bg-card p-5 shadow-xl" role="alertdialog" aria-modal="true" aria-labelledby="delete-plan-title" aria-describedby="delete-plan-description">
+              <h2 id="delete-plan-title" className="text-lg font-bold">{t("pmPlans.deleteTitle", { title: deletePlan.title })}</h2>
+              <p id="delete-plan-description" className="mt-2 text-sm text-muted-foreground">{t("pmPlans.deleteDescription")}</p>
               <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button type="button" onClick={() => setDeletePlan(null)} disabled={deleting} className="min-h-11 rounded-md border border-border px-4 py-2 font-semibold">Cancel</button>
-                <button type="button" onClick={() => void confirmDelete()} disabled={deleting} className="min-h-11 rounded-md bg-red-600 px-4 py-2 font-semibold text-white disabled:opacity-60">{deleting ? "Deleting…" : "Delete plan"}</button>
+                <button type="button" onClick={() => setDeletePlan(null)} disabled={deleting} className="min-h-11 rounded-md border border-border px-4 py-2 font-semibold">{t("action.cancel")}</button>
+                <button type="button" onClick={() => void confirmDelete()} disabled={deleting} className="min-h-11 rounded-md bg-red-600 px-4 py-2 font-semibold text-white disabled:opacity-60">{deleting ? t("pm.deleting") : t("pmPlans.delete")}</button>
               </div>
             </div>
           </div>

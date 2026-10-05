@@ -16,7 +16,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 import math
 import csv
-from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg, Exists, OuterRef
+from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg, Exists, OuterRef, Min, IntegerField
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models, transaction
 from .models import (
@@ -1804,7 +1804,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['topics__id', 'frequency']
     search_fields = ['pm_id', 'pmtitle', 'notes']
-    ordering_fields = ['scheduled_date', 'created_at', 'frequency']
+    ordering_fields = [
+        'pm_id', 'scheduled_date', 'created_at', 'frequency', 'status_sort', 'machine_sort',
+    ]
     ordering = ['-scheduled_date']
     permission_classes = [IsAuthenticated]
 
@@ -1962,7 +1964,19 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         - date_from & date_to
         - pm_id (exact match)
         """
-        queryset = self._get_base_queryset()
+        queryset = self._get_base_queryset().annotate(
+            # Stable values used by the list UI for server-side ordering. This
+            # keeps sorting correct across pagination instead of sorting only
+            # the records already loaded in the browser.
+            machine_sort=Min('machines__name'),
+            status_sort=Case(
+                When(status='cancelled', then=Value(0)),
+                When(completed_date__isnull=False, then=Value(1)),
+                When(scheduled_date__lt=timezone.now(), then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            ),
+        )
 
         pm_id = self.request.query_params.get('pm_id')
         status_param = self.request.query_params.get('status')
@@ -1992,10 +2006,12 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(topics__id=topic_id)
 
         if date_from:
-            queryset = queryset.filter(scheduled_date__gte=date_from)
+            queryset = queryset.filter(scheduled_date__date__gte=date_from)
 
         if date_to:
-            queryset = queryset.filter(scheduled_date__lte=date_to)
+            # A date-only end value means the whole selected day, not midnight
+            # at the beginning of that day.
+            queryset = queryset.filter(scheduled_date__date__lte=date_to)
 
         return queryset.distinct()
 

@@ -13,6 +13,9 @@ export interface SearchParams {
   search?: string;
   start_date?: string;
   end_date?: string;
+  date_from?: string;
+  date_to?: string;
+  ordering?: string;
   property_id?: string;
   topic_id?: string;
   machine_id?: string;

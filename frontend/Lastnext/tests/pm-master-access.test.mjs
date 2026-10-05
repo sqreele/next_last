@@ -20,9 +20,11 @@ test("PM master write controls use the server-authorized management capability",
 
 test("PM master create and edit routes fail closed for non-management users", async () => {
   const form = await source("../app/components/preventive/PMMasterPlanForm.tsx");
+  const dictionary = await source("../app/lib/i18n/dictionary.ts");
   assert.match(form, /can_manage_pm_master/);
   assert.match(form, /if \(!canManagePMMaster\)/);
-  assert.match(form, /cannot create or edit them/);
+  assert.match(form, /t\("pmPlanForm\.noPermission"\)/);
+  assert.match(dictionary, /'pmPlanForm\.noPermission': 'Your role can view PM master plans but cannot create or edit them\.'/);
   assert.doesNotMatch(form, /statsResponse\.data\?\.can_operate === true/);
 });
 

@@ -12,7 +12,7 @@ import {
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface DesktopHeaderProps {
-  currentFilters: any;
+  currentFilters: { machine?: string };
   isLoading: boolean;
   showFilters: boolean;
   activeFiltersCount: number;

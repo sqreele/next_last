@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PMSchedulePage() {
   return (
-    <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-5 lg:mx-auto lg:max-w-7xl">
+    <div className="mx-auto w-full max-w-[1600px] px-3 py-3 sm:px-5 sm:py-5 lg:px-6">
       <PMScheduleCalendar />
     </div>
   );

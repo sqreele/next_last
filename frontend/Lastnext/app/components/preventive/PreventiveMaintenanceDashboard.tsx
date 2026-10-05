@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
-import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
+import { PreventiveMaintenance, determinePMStatus } from "@/app/lib/preventiveMaintenanceModels";
 import { createPreventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
 import { useMainStore } from "@/app/lib/stores/mainStore";
 import { StatusBadge } from "@/app/components/StatusBadge";
@@ -11,6 +11,8 @@ import Image from "next/image";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 import { PageLoader } from "@/app/components/ui/loading";
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
+import { CalendarDays, Repeat2 } from "lucide-react";
 
 // Updated interface to match Django API response
 interface FrequencyDistributionItem {
@@ -18,45 +20,9 @@ interface FrequencyDistributionItem {
   count: number; // Changed to match Django API response
 }
 
-// Helper function to determine PM status
-const determinePMStatus = (item: PreventiveMaintenance): string => {
-  // If status is already set, return it
-  if (item.status) {
-    const normalizedStatus = item.status.toLowerCase();
-    return normalizedStatus === "complete" ? "completed" : normalizedStatus;
-  }
-
-  // Get current date
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  // Check if completed
-  if (item.completed_date) {
-    return "completed";
-  }
-
-  // Check if scheduled date is in the past
-  if (item.scheduled_date) {
-    const scheduledDate = new Date(item.scheduled_date);
-    if (scheduledDate < today) {
-      return "overdue";
-    }
-  }
-
-  // Default to pending
-  return "pending";
-};
-
-// Updated helper function to safely format frequency name
-const formatFrequencyName = (frequency: string | undefined | null): string => {
-  if (!frequency || typeof frequency !== "string") {
-    return "Unknown";
-  }
-  const normalized = frequency.replaceAll("_", " ");
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-};
-
 export default function PreventiveMaintenanceDashboard() {
+  const { locale, t } = useLocale();
+  const dateLocale = locale === "th" ? "th-TH-u-ca-gregory" : "en-US";
   // Use our store hook to access all maintenance data and actions
   const context = usePreventiveMaintenanceActions();
   const {
@@ -134,7 +100,7 @@ export default function PreventiveMaintenanceDashboard() {
           setUpcomingItems([]);
           setUpcomingPropertyId(selectedProperty);
           setUpcomingTotal(0);
-          setUpcomingError(response.message || "Unable to load upcoming maintenance.");
+          setUpcomingError(response.message || t("pmDashboard.upcomingError"));
         }
       } catch (error) {
         if (requestId !== upcomingRequestRef.current) return;
@@ -142,12 +108,12 @@ export default function PreventiveMaintenanceDashboard() {
         setUpcomingItems([]);
         setUpcomingPropertyId(selectedProperty);
         setUpcomingTotal(0);
-        setUpcomingError("Unable to load upcoming maintenance.");
+        setUpcomingError(t("pmDashboard.upcomingError"));
       } finally {
         if (requestId === upcomingRequestRef.current) setUpcomingLoading(false);
       }
     },
-    [selectedProperty],
+    [selectedProperty, t],
   );
 
   // Fetch maintenance data on component mount
@@ -189,8 +155,10 @@ export default function PreventiveMaintenanceDashboard() {
 
   // Format date
   const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    if (!dateString) return t("common.notAvailable");
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return t("common.notAvailable");
+    return date.toLocaleDateString(dateLocale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -210,16 +178,25 @@ export default function PreventiveMaintenanceDashboard() {
 
   // Get maintenance title with fallback
   const getMaintenanceTitle = (item: PreventiveMaintenance): string => {
-    return item.pmtitle || `Maintenance #${item.pm_id}`;
+    return item.pmtitle || t("pm.taskId", { id: item.pm_id });
+  };
+
+  const formatFrequencyName = (frequency: string | undefined | null): string => {
+    if (!frequency || typeof frequency !== "string") return t("pmDashboard.unknown");
+    const key = frequency === "semi_annual" ? "semiAnnual" : frequency;
+    const supported = ["daily", "weekly", "monthly", "quarterly", "semiAnnual", "annual", "custom"];
+    return supported.includes(key)
+      ? t(`pm.frequency.${key}` as Parameters<typeof t>[0])
+      : frequency.replaceAll("_", " ");
   };
 
   if (!selectedProperty) {
     return (
       <div className="mx-auto flex min-h-[55vh] w-full max-w-2xl items-center px-4 py-12">
         <div className="w-full rounded-xl border border-border bg-card p-8 text-center shadow-soft">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Select a property</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("common.selectProperty")}</h1>
         <p className="mt-2 leading-6 text-muted-foreground">
-          Choose an active property from the dashboard header to view preventive maintenance analytics.
+          {t("pmDashboard.selectPropertyHint")}
         </p>
         </div>
       </div>
@@ -229,8 +206,8 @@ export default function PreventiveMaintenanceDashboard() {
   if (statisticsLoading && !statistics) {
     return (
       <PageLoader
-        label="Loading preventive maintenance dashboard"
-        description="Preparing maintenance statistics and upcoming work."
+        label={t("pmDashboard.loading")}
+        description={t("pmDashboard.loadingDescription")}
       />
     );
   }
@@ -245,7 +222,7 @@ export default function PreventiveMaintenanceDashboard() {
           href="/dashboard/preventive-maintenance/"
           className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          View All Maintenance Tasks
+          {t("pmDashboard.viewAll")}
         </Link>
       </div>
     );
@@ -258,7 +235,7 @@ export default function PreventiveMaintenanceDashboard() {
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="rounded-xl border border-border bg-card py-12 text-center shadow-soft" aria-busy="true">
           <p className="text-base font-medium text-muted-foreground">
-            Loading maintenance summary...
+            {t("pmDashboard.loadingSummary")}
           </p>
         </div>
       </div>
@@ -275,32 +252,32 @@ export default function PreventiveMaintenanceDashboard() {
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
       <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Maintenance analytics</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">{t("pmDashboard.eyebrow")}</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            Preventive Maintenance Dashboard
+            {t("pmDashboard.title")}
           </h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">Property-scoped maintenance performance and upcoming work.</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("pmDashboard.description")}</p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:space-x-3">
           <Link
             href="/dashboard/preventive-maintenance"
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-center text-sm font-semibold text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
           >
-            View All Tasks
+            {t("pmDashboard.viewAll")}
           </Link>
           {canOperate && (
             <Link
               href="/dashboard/preventive-maintenance/create"
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
             >
-              Create New
+              {t("pmDashboard.createNew")}
             </Link>
           )}
         </div>
       </header>
 
       {/* Main Stats Cards */}
-      <section className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4" aria-label="Preventive maintenance KPIs">
+      <section className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:gap-4 lg:grid-cols-4" aria-label={t("pmDashboard.kpis")}>
         {/* Total */}
         <div className="order-3 min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5">
           <div className="flex items-center">
@@ -321,8 +298,8 @@ export default function PreventiveMaintenanceDashboard() {
               </svg>
             </div>
             <div className="ml-3 min-w-0">
-              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Total Tasks
+              <p className="text-xs font-semibold uppercase leading-4 tracking-wide text-muted-foreground">
+                {t("pmDashboard.totalTasks")}
               </p>
               <p className="text-2xl font-bold tabular-nums text-info sm:text-3xl">
                 {statistics.counts.total}
@@ -351,8 +328,8 @@ export default function PreventiveMaintenanceDashboard() {
               </svg>
             </div>
             <div className="ml-3 min-w-0">
-              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Upcoming
+              <p className="text-xs font-semibold uppercase leading-4 tracking-wide text-muted-foreground">
+                {t("pm.upcoming")}
               </p>
               <p className="text-2xl font-bold tabular-nums text-warning-emphasis sm:text-3xl">
                 {statistics.counts.pending}
@@ -381,8 +358,8 @@ export default function PreventiveMaintenanceDashboard() {
               </svg>
             </div>
             <div className="ml-3 min-w-0">
-              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Overdue
+              <p className="text-xs font-semibold uppercase leading-4 tracking-wide text-muted-foreground">
+                {t("status.overdue")}
               </p>
               <p className="text-2xl font-bold tabular-nums text-destructive sm:text-3xl">
                 {statistics.counts.overdue}
@@ -411,8 +388,8 @@ export default function PreventiveMaintenanceDashboard() {
               </svg>
             </div>
             <div className="ml-3 min-w-0">
-              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Completed
+              <p className="text-xs font-semibold uppercase leading-4 tracking-wide text-muted-foreground">
+                {t("status.completed")}
               </p>
               <p className="text-2xl font-bold tabular-nums text-success sm:text-3xl">
                 {statistics.counts.completed}
@@ -425,10 +402,10 @@ export default function PreventiveMaintenanceDashboard() {
       {/* Completion Progress */}
       <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6" aria-labelledby="completion-rate-title">
         <h2 id="completion-rate-title" className="mb-4 text-lg font-semibold text-foreground">
-          Completion Rate
+          {t("pmDashboard.completionRate")}
         </h2>
         <div className="mb-2 flex items-center gap-4">
-          <div className="h-3 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Completion rate" aria-valuenow={getCompletionRate()} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-3 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("pmDashboard.completionRate")} aria-valuenow={getCompletionRate()} aria-valuemin={0} aria-valuemax={100}>
             <div
               className="h-3 rounded-full bg-success"
               style={{ width: `${getCompletionRate()}%` }}
@@ -437,8 +414,7 @@ export default function PreventiveMaintenanceDashboard() {
           <span className="shrink-0 text-xl font-bold tabular-nums text-success">{getCompletionRate()}%</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          {statistics.counts.completed} of {completionEligibleTotal} non-cancelled
-          maintenance tasks completed
+          {t("pmDashboard.completionSummary", { completed: statistics.counts.completed, total: completionEligibleTotal })}
         </p>
       </section>
 
@@ -448,7 +424,7 @@ export default function PreventiveMaintenanceDashboard() {
         statistics.frequency_distribution.length > 0 && (
           <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
-              Maintenance Frequency Distribution
+              {t("pmDashboard.frequencyDistribution")}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {statistics.frequency_distribution
@@ -476,10 +452,10 @@ export default function PreventiveMaintenanceDashboard() {
         statistics.frequency_distribution.length === 0) && (
         <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
           <h2 className="mb-2 text-lg font-semibold text-foreground">
-            Maintenance Frequency Distribution
+            {t("pmDashboard.frequencyDistribution")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            No frequency data is available for this property yet.
+            {t("pmDashboard.noFrequencyData")}
           </p>
         </section>
       )}
@@ -489,7 +465,7 @@ export default function PreventiveMaintenanceDashboard() {
         Object.keys(statistics.avg_completion_times).length > 0 && (
           <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
-              Average Completion Times
+              {t("pmDashboard.averageCompletion")}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(statistics.avg_completion_times).map(
@@ -500,25 +476,24 @@ export default function PreventiveMaintenanceDashboard() {
                   >
                     <p className="text-xl font-bold text-foreground">
                       {typeof avgDays === "number" ? Math.round(avgDays) : 0}{" "}
-                      days
+                      {t("pmDashboard.days")}
                     </p>
                     <p className="text-sm font-medium text-muted-foreground capitalize">
                       {formatFrequencyName(frequency)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {typeof avgDays === "number" && avgDays < 0
-                        ? "Early"
+                        ? t("pmDashboard.early")
                         : avgDays === 0
-                          ? "On Time"
-                          : "Delayed"}
+                          ? t("pmDashboard.onTime")
+                          : t("pmDashboard.delayed")}
                     </p>
                   </div>
                 ),
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-4">
-              * Negative values indicate tasks completed early, positive values
-              indicate delays
+              {t("pmDashboard.timingHint")}
             </p>
           </section>
         )}
@@ -526,10 +501,10 @@ export default function PreventiveMaintenanceDashboard() {
         Object.keys(statistics.avg_completion_times).length === 0) && (
         <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
           <h2 className="mb-2 text-lg font-semibold text-foreground">
-            Average Completion Times
+            {t("pmDashboard.averageCompletion")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Completion timing will appear after tasks have been completed.
+            {t("pmDashboard.noCompletionData")}
           </p>
         </section>
       )}
@@ -539,26 +514,27 @@ export default function PreventiveMaintenanceDashboard() {
         <div className="border-b border-border bg-muted/30 px-4 py-4 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 id="upcoming-maintenance-title" className="text-lg font-semibold text-foreground">
-              Upcoming Maintenance
+              {t("pmDashboard.upcomingMaintenance")}
             </h2>
             <div className="flex flex-wrap items-center gap-3 sm:space-x-4">
               <span className="text-sm text-muted-foreground">
-                Total: {visibleUpcomingTotal} tasks
+                {t("pmDashboard.totalUpcoming", { count: visibleUpcomingTotal })}
               </span>
               <div className="flex flex-wrap items-center gap-2">
-                <label className="text-sm font-medium text-muted-foreground">Show:</label>
+                <label htmlFor="pm-upcoming-page-size" className="text-sm font-medium text-muted-foreground">{t("pmDashboard.show")}</label>
                 <select
+                  id="pm-upcoming-page-size"
                   value={upcomingPageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                   className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/20"
-                  aria-label="Upcoming tasks per page"
+                  aria-label={t("pmDashboard.perPage")}
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={25}>25</option>
                   <option value={50}>50</option>
                 </select>
-                <span className="text-sm text-muted-foreground">per page</span>
+                <span className="text-sm text-muted-foreground">{t("pmDashboard.perPage")}</span>
               </div>
             </div>
           </div>
@@ -566,7 +542,7 @@ export default function PreventiveMaintenanceDashboard() {
 
         {upcomingLoading ? (
           <div className="p-10 text-center">
-            <BouncingDotsLoader size="md" label="Loading upcoming maintenance..." className="text-sm font-medium text-muted-foreground" />
+            <BouncingDotsLoader size="md" label={t("pmDashboard.loadingUpcoming")} className="text-sm font-medium text-muted-foreground" />
           </div>
         ) : upcomingError ? (
           <div className="p-8 text-center" role="alert">
@@ -576,14 +552,14 @@ export default function PreventiveMaintenanceDashboard() {
               onClick={() => void fetchUpcomingMaintenance(upcomingPage, upcomingPageSize)}
               className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              Try again
+              {t("action.tryAgain")}
             </button>
           </div>
         ) : visibleUpcomingItems.length > 0 ? (
           <>
             <div className="divide-y divide-border xl:hidden">
               {visibleUpcomingItems.map((item: PreventiveMaintenance) => {
-                const status = item.status || determinePMStatus(item);
+                const status = determinePMStatus(item);
                 const title = getMaintenanceTitle(item);
 
                 return (
@@ -591,17 +567,17 @@ export default function PreventiveMaintenanceDashboard() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="break-words font-semibold text-foreground">{title}</p>
-                        <p className="text-sm text-muted-foreground">Task #{item.pm_id}</p>
+                        <p className="text-sm text-muted-foreground">{t("pm.taskId", { id: item.pm_id })}</p>
                       </div>
                       <StatusBadge status={status} />
                     </div>
-                    <dl className="grid grid-cols-2 gap-3 text-sm">
+                    <dl className="grid grid-cols-1 gap-3 text-sm min-[400px]:grid-cols-2">
                       <div>
-                        <dt className="text-muted-foreground">Scheduled</dt>
+                        <dt className="text-muted-foreground">{t("status.scheduled")}</dt>
                         <dd className="font-medium text-foreground">{formatDate(item.scheduled_date)}</dd>
                       </div>
                       <div>
-                        <dt className="text-muted-foreground">Next due</dt>
+                        <dt className="text-muted-foreground">{t("pm.nextDue")}</dt>
                         <dd className="font-medium text-foreground">{formatDate(item.next_due_date)}</dd>
                       </div>
                     </dl>
@@ -610,14 +586,14 @@ export default function PreventiveMaintenanceDashboard() {
                         href={`/dashboard/preventive-maintenance/${item.pm_id}`}
                         className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-primary shadow-soft hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
-                        View
+                        {t("action.viewDetails")}
                       </Link>
                       {canOperate && status !== "completed" && (
                         <Link
                           href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
                           className="inline-flex min-h-11 items-center justify-center rounded-lg border border-success bg-success px-3 py-2 text-sm font-semibold text-success-foreground shadow-soft hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
-                          Complete
+                          {t("status.completed")}
                         </Link>
                       )}
                     </div>
@@ -633,43 +609,43 @@ export default function PreventiveMaintenanceDashboard() {
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                     >
-                      ID
+                      {t("pmDashboard.id")}
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                     >
-                      Title
+                      {t("pmEdit.maintenanceTitle")}
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                     >
-                      Scheduled Date
+                      {t("pmEdit.scheduledDate")}
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                     >
-                      Next Due Date
+                      {t("pm.nextDue")}
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                     >
-                      Status
+                      {t("editJob.status")}
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                     >
-                      Images
+                      {t("pmDashboard.images")}
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                     >
-                      Actions
+                      {t("inventory.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -681,7 +657,7 @@ export default function PreventiveMaintenanceDashboard() {
                     )
                     .map((item: PreventiveMaintenance) => {
                       // Determine PM status
-                      const status = item.status || determinePMStatus(item);
+                      const status = determinePMStatus(item);
 
                       // Get maintenance title
                       const title = getMaintenanceTitle(item);
@@ -717,7 +693,7 @@ export default function PreventiveMaintenanceDashboard() {
                                 <div className="h-10 w-10 rounded-sm overflow-hidden border">
                                   <Image
                                     src={beforeImageUrl}
-                                    alt={`${title} before maintenance`}
+                                alt={t("pmDashboard.beforeImage", { title })}
                                     width={40}
                                     height={40}
                                     className="h-full w-full object-cover"
@@ -732,7 +708,7 @@ export default function PreventiveMaintenanceDashboard() {
                                 <div className="h-10 w-10 rounded-sm overflow-hidden border">
                                   <Image
                                     src={afterImageUrl}
-                                    alt={`${title} after maintenance`}
+                                    alt={t("pmDashboard.afterImage", { title })}
                                     width={40}
                                     height={40}
                                     className="h-full w-full object-cover"
@@ -752,14 +728,14 @@ export default function PreventiveMaintenanceDashboard() {
                                 href={`/dashboard/preventive-maintenance/${item.pm_id}`}
                                 className="rounded-sm text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                               >
-                                View
+                                {t("action.viewDetails")}
                               </Link>
                               {canOperate && status !== "completed" && (
                                 <Link
                                   href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
                                   className="rounded-sm text-success hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                                 >
-                                  Complete
+                                  {t("status.completed")}
                                 </Link>
                               )}
                             </div>
@@ -777,9 +753,11 @@ export default function PreventiveMaintenanceDashboard() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center justify-between gap-2 sm:justify-start">
                     <span className="text-sm text-muted-foreground">
-                      Showing {(upcomingPage - 1) * upcomingPageSize + 1} to{" "}
-                      {Math.min(upcomingPage * upcomingPageSize, visibleUpcomingTotal)}{" "}
-                      of {visibleUpcomingTotal} results
+                      {t("pm.showing", {
+                        from: (upcomingPage - 1) * upcomingPageSize + 1,
+                        to: Math.min(upcomingPage * upcomingPageSize, visibleUpcomingTotal),
+                        total: visibleUpcomingTotal,
+                      })}
                     </span>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -788,7 +766,7 @@ export default function PreventiveMaintenanceDashboard() {
                       disabled={upcomingPage <= 1}
                       className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Previous
+                      {t("pmDashboard.previous")}
                     </button>
 
                     {/* Page numbers */}
@@ -807,7 +785,7 @@ export default function PreventiveMaintenanceDashboard() {
                             <button
                               key={pageNum}
                               onClick={() => handlePageChange(pageNum)}
-                              aria-label={`Go to page ${pageNum}`}
+                              aria-label={t("pmDashboard.goToPage", { page: pageNum })}
                               aria-current={pageNum === upcomingPage ? "page" : undefined}
                               className={`min-h-11 min-w-11 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                 pageNum === upcomingPage
@@ -827,7 +805,7 @@ export default function PreventiveMaintenanceDashboard() {
                       disabled={upcomingPage >= totalPages}
                       className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Next
+                      {t("pmDashboard.next")}
                     </button>
                   </div>
                 </div>
@@ -851,29 +829,22 @@ export default function PreventiveMaintenanceDashboard() {
                 />
               </svg>
             </div>
-            <p className="text-muted-foreground mb-2">
-              No upcoming maintenance tasks found
-            </p>
-            <p className="text-sm text-muted-foreground">This could mean:</p>
-            <ul className="text-sm text-muted-foreground mt-1 list-disc list-inside">
-              <li>All tasks are completed</li>
-              <li>No pending maintenance tasks exist</li>
-              <li>Try adjusting your filters</li>
-            </ul>
-            <div className="mt-4 space-x-2">
+            <p className="mb-2 font-semibold text-foreground">{t("pmDashboard.noUpcoming")}</p>
+            <p className="text-sm text-muted-foreground">{t("pmDashboard.noUpcomingHint")}</p>
+            <div className="mt-4 grid gap-2 sm:flex sm:justify-center">
               {canOperate && (
                 <Link
                   href="/dashboard/preventive-maintenance/create"
                   className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  Create New Task
+                  {t("pm.createTask")}
                 </Link>
               )}
               <Link
                 href="/dashboard/preventive-maintenance"
                 className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                View All Tasks
+                {t("pmDashboard.viewAll")}
               </Link>
             </div>
           </div>
@@ -889,35 +860,9 @@ export default function PreventiveMaintenanceDashboard() {
           id="quick-actions-heading"
           className="mb-4 text-lg font-semibold text-foreground"
         >
-          Quick Actions
+          {t("pmDashboard.quickActions")}
         </h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {canOperate && (
-            <Link
-              href="/dashboard/preventive-maintenance/create"
-              className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <div className="mr-3 rounded-full bg-primary/10 p-2 text-primary">
-                <svg
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-              </div>
-              <span>Create New Task</span>
-            </Link>
-          )}
-
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Link
             href="/dashboard/preventive-maintenance?status=overdue"
             className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -939,7 +884,7 @@ export default function PreventiveMaintenanceDashboard() {
                 />
               </svg>
             </div>
-            <span>View Overdue Tasks</span>
+            <span>{t("pmDashboard.viewOverdue")}</span>
           </Link>
 
           <Link
@@ -963,7 +908,27 @@ export default function PreventiveMaintenanceDashboard() {
                 />
               </svg>
             </div>
-            <span>View Upcoming Tasks</span>
+            <span>{t("pmDashboard.viewUpcoming")}</span>
+          </Link>
+
+          <Link
+            href="/dashboard/preventive-maintenance/schedule"
+            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <div className="mr-3 rounded-full bg-primary/10 p-2 text-primary">
+              <CalendarDays className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <span>{t("pmPlans.schedule")}</span>
+          </Link>
+
+          <Link
+            href="/dashboard/preventive-maintenance/plans"
+            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-purple-400 hover:bg-purple-50 hover:text-purple-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <div className="mr-3 rounded-full bg-purple-100 p-2 text-purple-700">
+              <Repeat2 className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <span>{t("pm.masterPlans")}</span>
           </Link>
         </div>
       </section>

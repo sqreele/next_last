@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   CopyPlus,
   Home,
+  LayoutGrid,
+  List,
   MapPin,
   MoreHorizontal,
   Pencil,
@@ -81,8 +83,10 @@ import { getDisplayName } from "@/app/lib/utils/display-name";
 import type { Job, JobPriority, JobStatus } from "@/app/lib/types";
 
 const ITEMS_PER_PAGE = 24;
+const VIEW_MODE_STORAGE_KEY = "my-jobs-view-mode";
 
 type DateFilter = "all" | "today" | "week" | "month";
+type ViewMode = "grid" | "list";
 
 interface FilterState {
   search: string;
@@ -94,6 +98,7 @@ interface FilterState {
 
 interface JobActionProps {
   job: Job;
+  viewMode: ViewMode;
   activePropertyId: string;
   propertyName: string;
   onEdit: (job: Job) => void;
@@ -449,6 +454,7 @@ function FilterBar({
 
 function JobCard({
   job,
+  viewMode,
   activePropertyId,
   propertyName,
   onEdit,
@@ -470,8 +476,15 @@ function JobCard({
   };
 
   return (
-    <article className="group flex w-full flex-col rounded-xl border border-border bg-card p-4 shadow-soft transition-colors hover:border-foreground/25 motion-reduce:transition-none md:p-5">
-      <div className="flex items-start justify-between gap-3">
+    <article
+      className={cn(
+        "group w-full rounded-xl border border-border bg-card p-4 shadow-soft transition-colors hover:border-foreground/25 motion-reduce:transition-none md:p-5",
+        viewMode === "grid"
+          ? "flex flex-col"
+          : "lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(15rem,0.8fr)_auto] lg:items-center lg:gap-x-6",
+      )}
+    >
+      <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
             <Building2 className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -492,7 +505,12 @@ function JobCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+      <div
+        className={cn(
+          "mt-4 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2",
+          viewMode === "list" && "lg:mt-0 lg:grid-cols-1",
+        )}
+      >
         <div className="flex min-w-0 items-center gap-2">
           <Home className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="truncate">{location}</span>
@@ -507,11 +525,22 @@ function JobCard({
         </div>
       </div>
 
-      <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted-foreground">
+      <p
+        className={cn(
+          "mt-4 line-clamp-2 text-sm leading-6 text-muted-foreground",
+          viewMode === "list" && "lg:col-start-1 lg:row-start-2 lg:mt-2",
+        )}
+      >
         {description}
       </p>
 
-      <div className="mt-5 grid grid-cols-2 gap-2 border-t border-border pt-4 sm:flex sm:items-center">
+      <div
+        className={cn(
+          "mt-5 grid grid-cols-2 gap-2 border-t border-border pt-4 sm:flex sm:items-center",
+          viewMode === "list" &&
+            "lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:flex-col lg:items-stretch lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0",
+        )}
+      >
         <Button
           type="button"
           onClick={openDetail}
@@ -531,7 +560,12 @@ function JobCard({
           />
         ) : null}
         {canOperate ? (
-          <details className="relative col-span-2 sm:ml-auto">
+          <details
+            className={cn(
+              "relative col-span-2 sm:ml-auto",
+              viewMode === "list" && "lg:ml-0",
+            )}
+          >
             <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:border-0">
               <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
               {t("myJobs.more")}
@@ -742,6 +776,7 @@ const MyJobs: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   const [debouncedRoom, setDebouncedRoom] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
   const [queryPropertyId, setQueryPropertyId] = React.useState(selectedProperty);
   const [selectedJob, setSelectedJob] = React.useState<Job | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
@@ -755,6 +790,18 @@ const MyJobs: React.FC = () => {
     [properties, selectedProperty],
   );
   const propertyName = activeProperty?.name || selectedProperty || "";
+
+  React.useEffect(() => {
+    const savedViewMode = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (savedViewMode === "grid" || savedViewMode === "list") {
+      setViewMode(savedViewMode);
+    }
+  }, []);
+
+  const handleViewModeChange = (nextViewMode: ViewMode) => {
+    setViewMode(nextViewMode);
+    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, nextViewMode);
+  };
 
   React.useEffect(() => {
     const timeoutId = window.setTimeout(
@@ -1089,17 +1136,58 @@ const MyJobs: React.FC = () => {
             <SectionHeader
               title={t("myJobs.assigned")}
               action={
-                <p className="text-sm font-medium text-muted-foreground">
-                  {t("myJobs.showing", { from: startIndex + 1, to: endIndex, total: totalCount })}
-                </p>
+                <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {t("myJobs.showing", { from: startIndex + 1, to: endIndex, total: totalCount })}
+                  </p>
+                  <div
+                    className="inline-flex rounded-lg border border-border bg-muted/50 p-1"
+                    role="group"
+                    aria-label={t("myJobs.viewMode")}
+                  >
+                    <Button
+                      type="button"
+                      variant={viewMode === "grid" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => handleViewModeChange("grid")}
+                      className="h-9 gap-2 px-3"
+                      aria-label={t("myJobs.gridView")}
+                      aria-pressed={viewMode === "grid"}
+                      title={t("myJobs.gridView")}
+                    >
+                      <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+                      <span className="hidden sm:inline">{t("myJobs.grid")}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={viewMode === "list" ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => handleViewModeChange("list")}
+                      className="h-9 gap-2 px-3"
+                      aria-label={t("myJobs.listView")}
+                      aria-pressed={viewMode === "list"}
+                      title={t("myJobs.listView")}
+                    >
+                      <List className="h-4 w-4" aria-hidden="true" />
+                      <span className="hidden sm:inline">{t("myJobs.list")}</span>
+                    </Button>
+                  </div>
+                </div>
               }
+              className="items-end"
             />
 
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div
+              className={cn(
+                "grid gap-3",
+                viewMode === "grid" && "lg:grid-cols-2",
+              )}
+            >
               {jobs.map((job) => (
                 <JobCard
                   key={job.job_id}
                   job={job}
+                  viewMode={viewMode}
                   activePropertyId={selectedProperty}
                   propertyName={propertyName}
                   onEdit={handleEdit}

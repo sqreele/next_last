@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  CalendarDays,
+  ClipboardList,
+  Eye,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Wrench,
+} from "lucide-react";
 import {
   createPreventiveMaintenanceService,
   type PMMasterPlan,
@@ -241,30 +251,102 @@ export default function PMMasterPlansPage() {
             action={canManagePMMaster ? <Link href="/dashboard/preventive-maintenance/plans/create" className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 py-2 font-semibold text-primary-foreground">Create first plan</Link> : undefined}
           />
         ) : (
-          <section aria-label="PM master plans" className="grid gap-4 lg:grid-cols-2">
-            {scopedPlans.map((plan) => {
-              const nextProjection = nextProjectionByPlan.get(plan.plan_id);
-              return (
-                <article key={plan.plan_id} className="rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0"><h2 className="truncate text-lg font-bold">{plan.title}</h2><p className="text-xs text-muted-foreground">#{plan.plan_id}</p></div>
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${plan.active ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-700"}`}>{plan.active ? "Active" : "Inactive"}</span>
-                  </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                    <div><dt className="text-muted-foreground">Frequency</dt><dd className="font-semibold">{readableFrequency(plan.frequency, plan.custom_days)}</dd></div>
-                    <div><dt className="text-muted-foreground">Next due</dt><dd className="font-semibold">{readableDate(nextProjection?.scheduled_date || plan.next_due_date)}</dd></div>
-                    <div><dt className="text-muted-foreground">Machines</dt><dd className="font-semibold">{plan.machines?.length || 0}</dd></div>
-                    <div><dt className="text-muted-foreground">Procedure</dt><dd className="truncate font-semibold">{plan.procedure_template_name || "Not set"}</dd></div>
-                  </dl>
-                  <p className="mt-4 line-clamp-2 text-sm text-muted-foreground">{plan.machines?.map((machine) => machine.name || machine.machine_id).join(", ")}</p>
-                  <div className="mt-5 grid grid-cols-2 gap-2 sm:flex">
-                    <Link href={`/dashboard/preventive-maintenance/${plan.plan_id}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 py-2 font-semibold text-blue-700">View</Link>
-                    {canManagePMMaster && <Link href={`/dashboard/preventive-maintenance/plans/${plan.plan_id}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 py-2 font-semibold"><Pencil className="mr-2 h-4 w-4" aria-hidden />Edit</Link>}
-                    {canManagePMMaster && <button type="button" onClick={() => setDeletePlan(plan)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-md border border-red-300 px-3 py-2 font-semibold text-red-700"><Trash2 className="mr-2 h-4 w-4" aria-hidden />Delete</button>}
-                  </div>
-                </article>
-              );
-            })}
+          <section aria-label="PM master plans" className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+            <div className="hidden border-b border-border bg-muted/50 px-5 py-3 lg:block">
+              <div className="grid grid-cols-[minmax(12rem,1.4fr)_0.7fr_0.9fr_1fr_1.1fr_1.1fr_8.5rem] items-center gap-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <span>Plan</span>
+                <span>Status</span>
+                <span>Frequency</span>
+                <span>Next due</span>
+                <span>Machines</span>
+                <span>Procedure</span>
+                <span className="text-right">Actions</span>
+              </div>
+            </div>
+
+            <ul className="divide-y divide-border">
+              {scopedPlans.map((plan) => {
+                const nextProjection = nextProjectionByPlan.get(plan.plan_id);
+                const machineNames = plan.machines
+                  ?.map((machine) => machine.name || machine.machine_id)
+                  .join(", ");
+                const nextDue = readableDate(nextProjection?.scheduled_date || plan.next_due_date);
+
+                return (
+                  <li key={plan.plan_id} className="px-4 py-4 transition-colors hover:bg-muted/40 sm:px-5">
+                    <article>
+                      <div className="lg:hidden">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/dashboard/preventive-maintenance/${plan.plan_id}`}
+                              className="font-semibold text-foreground hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              {plan.title}
+                            </Link>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">#{plan.plan_id}</p>
+                          </div>
+                          <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${plan.active ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${plan.active ? "bg-green-600" : "bg-muted-foreground"}`} aria-hidden />
+                            {plan.active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+
+                        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                          <div className="flex min-w-0 gap-2">
+                            <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                            <div><dt className="text-xs text-muted-foreground">Frequency</dt><dd className="font-medium">{readableFrequency(plan.frequency, plan.custom_days)}</dd></div>
+                          </div>
+                          <div className="flex min-w-0 gap-2">
+                            <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                            <div><dt className="text-xs text-muted-foreground">Next due</dt><dd className="font-medium">{nextDue}</dd></div>
+                          </div>
+                          <div className="flex min-w-0 gap-2">
+                            <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                            <div className="min-w-0"><dt className="text-xs text-muted-foreground">Machines ({plan.machines?.length || 0})</dt><dd className="truncate font-medium">{machineNames || "No machines assigned"}</dd></div>
+                          </div>
+                          <div className="flex min-w-0 gap-2">
+                            <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                            <div className="min-w-0"><dt className="text-xs text-muted-foreground">Procedure</dt><dd className="truncate font-medium">{plan.procedure_template_name || "Not set"}</dd></div>
+                          </div>
+                        </dl>
+
+                        <div className="mt-4 flex items-center justify-end gap-1 border-t border-border/70 pt-3">
+                          <Link href={`/dashboard/preventive-maintenance/${plan.plan_id}`} className="grid h-11 w-11 place-items-center rounded-lg text-primary hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title="View plan" aria-label={`View ${plan.title}`}><Eye className="h-4 w-4" aria-hidden /></Link>
+                          {canManagePMMaster && <Link href={`/dashboard/preventive-maintenance/plans/${plan.plan_id}/edit`} className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title="Edit plan" aria-label={`Edit ${plan.title}`}><Pencil className="h-4 w-4" aria-hidden /></Link>}
+                          {canManagePMMaster && <button type="button" onClick={() => setDeletePlan(plan)} className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title="Delete plan" aria-label={`Delete ${plan.title}`}><Trash2 className="h-4 w-4" aria-hidden /></button>}
+                        </div>
+                      </div>
+
+                      <div className="hidden grid-cols-[minmax(12rem,1.4fr)_0.7fr_0.9fr_1fr_1.1fr_1.1fr_8.5rem] items-center gap-4 lg:grid">
+                        <div className="min-w-0">
+                          <Link href={`/dashboard/preventive-maintenance/${plan.plan_id}`} className="block truncate text-sm font-semibold text-foreground hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title={plan.title}>{plan.title}</Link>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">#{plan.plan_id}</p>
+                        </div>
+                        <div>
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${plan.active ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${plan.active ? "bg-green-600" : "bg-muted-foreground"}`} aria-hidden />
+                            {plan.active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium">{readableFrequency(plan.frequency, plan.custom_days)}</p>
+                        <p className="text-sm text-foreground">{nextDue}</p>
+                        <div className="min-w-0 text-sm">
+                          <p className="font-medium">{plan.machines?.length || 0} {(plan.machines?.length || 0) === 1 ? "machine" : "machines"}</p>
+                          <p className="truncate text-xs text-muted-foreground" title={machineNames}>{machineNames || "None assigned"}</p>
+                        </div>
+                        <p className="truncate text-sm text-foreground" title={plan.procedure_template_name || "Not set"}>{plan.procedure_template_name || "Not set"}</p>
+                        <div className="flex items-center justify-end gap-1">
+                          <Link href={`/dashboard/preventive-maintenance/${plan.plan_id}`} className="grid h-10 w-10 place-items-center rounded-lg text-primary hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title="View plan" aria-label={`View ${plan.title}`}><Eye className="h-4 w-4" aria-hidden /></Link>
+                          {canManagePMMaster && <Link href={`/dashboard/preventive-maintenance/plans/${plan.plan_id}/edit`} className="grid h-10 w-10 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title="Edit plan" aria-label={`Edit ${plan.title}`}><Pencil className="h-4 w-4" aria-hidden /></Link>}
+                          {canManagePMMaster && <button type="button" onClick={() => setDeletePlan(plan)} className="grid h-10 w-10 place-items-center rounded-lg text-red-600 hover:bg-red-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" title="Delete plan" aria-label={`Delete ${plan.title}`}><Trash2 className="h-4 w-4" aria-hidden /></button>}
+                        </div>
+                      </div>
+                    </article>
+                  </li>
+                );
+              })}
+            </ul>
           </section>
         )}
 

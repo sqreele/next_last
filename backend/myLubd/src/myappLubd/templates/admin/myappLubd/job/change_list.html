@@ -1,8 +1,75 @@
 {% extends "admin/change_list.html" %}
+{% load admin_list i18n static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'myappLubd/css/job_filter_dialog.css' %}">
+{% endblock %}
 
 {% block object-tools-items %}
+  {% if cl.has_filters %}
+    <li>
+      <button
+        type="button"
+        class="job-filter-trigger"
+        data-job-filter-open
+        aria-haspopup="dialog"
+        aria-controls="job-filter-dialog"
+      >
+        Filter
+        {% if cl.has_active_filters %}<span class="job-filter-trigger__dot" aria-label="Active filters"></span>{% endif %}
+      </button>
+    </li>
+  {% endif %}
   <li><a href="{% url 'admin:myappLubd_deletedjob_changelist' %}">Deleted jobs</a></li>
   {{ block.super }}
+{% endblock %}
+
+{% block filters %}
+  {% if cl.has_filters %}
+    <dialog
+      id="job-filter-dialog"
+      class="job-filter-dialog"
+      aria-labelledby="job-filter-dialog-title"
+      aria-describedby="job-filter-dialog-description"
+    >
+      <form method="dialog" class="job-filter-dialog__shell" data-job-filter-form>
+        <header class="job-filter-dialog__header">
+          <div>
+            <h2 id="job-filter-dialog-title">Filter maintenance jobs</h2>
+            <p id="job-filter-dialog-description">
+              เลือกเงื่อนไขแล้วตรวจสอบรายการก่อนกดค้นหา
+            </p>
+          </div>
+          <button type="button" class="job-filter-dialog__close" data-job-filter-cancel aria-label="ปิด Dialog">&times;</button>
+        </header>
+
+        <div class="job-filter-dialog__body">
+          <div class="job-filter-dialog__fields" data-job-filter-groups>
+            {% for spec in cl.filter_specs %}
+              <section class="job-filter-group" data-job-filter-group>
+                {% admin_list_filter cl spec %}
+              </section>
+            {% endfor %}
+          </div>
+
+          <section class="job-filter-summary" aria-labelledby="job-filter-summary-title" aria-live="polite">
+            <h3 id="job-filter-summary-title">รายการตัวกรองที่เลือก</h3>
+            <div class="job-filter-summary__items" data-job-filter-summary></div>
+            <p class="job-filter-summary__empty" data-job-filter-empty>ยังไม่ได้เลือกตัวกรอง</p>
+          </section>
+        </div>
+
+        <footer class="job-filter-dialog__footer">
+          <button type="button" class="button job-filter-dialog__clear" data-job-filter-clear>ล้างตัวกรอง</button>
+          <span class="job-filter-dialog__footer-spacer"></span>
+          <button type="button" class="button job-filter-dialog__cancel" data-job-filter-cancel>ยกเลิก</button>
+          <button type="submit" class="button default job-filter-dialog__apply" data-job-filter-apply>ค้นหา</button>
+        </footer>
+      </form>
+    </dialog>
+    <script src="{% static 'myappLubd/js/job_filter_dialog.js' %}" defer></script>
+  {% endif %}
 {% endblock %}
 
 {% block content_title %}

@@ -1,6 +1,7 @@
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
+from django.urls import reverse
 
 from .admin import IsDefectFilter, JobAdmin, JobSortFilter, _excel_image_for_export
 from .models import Job, Property, Room
@@ -74,6 +75,28 @@ class JobAdminSearchTests(TestCase):
 
         # Description is an intentional JobAdmin search field.
         self.assertIn(self.job, queryset)
+
+    def test_change_list_uses_deferred_filter_dialog(self):
+        self.user.is_staff = True
+        self.user.is_superuser = True
+        self.user.save(update_fields=['is_staff', 'is_superuser'])
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse('admin:myappLubd_job_changelist'),
+            {'q': 'ADMINSEARCH', 'status__exact': 'pending', 'job_sort': 'name_desc'},
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="job-filter-dialog"')
+        self.assertContains(response, 'data-job-filter-group')
+        self.assertContains(response, 'รายการตัวกรองที่เลือก')
+        self.assertContains(response, 'ยังไม่ได้เลือกตัวกรอง')
+        self.assertContains(response, 'data-job-filter-clear')
+        self.assertContains(response, 'data-job-filter-cancel', count=2)
+        self.assertContains(response, 'data-job-filter-apply')
+        self.assertContains(response, 'myappLubd/js/job_filter_dialog.js')
 
 
 class IsDefectFilterTests(TestCase):

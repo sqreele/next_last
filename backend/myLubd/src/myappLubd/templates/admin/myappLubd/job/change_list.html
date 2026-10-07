@@ -1,4 +1,72 @@
 {% extends "admin/change_list.html" %}
+{% load admin_list i18n static %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script src="{% static 'myappLubd/js/job_filter_dialog.js' %}" defer></script>
+{% endblock %}
+
+{% block search %}
+  <div class="job-changelist-controls">
+    {% search_form cl %}
+    {% if cl.has_filters %}
+      <button
+        class="job-filter-trigger"
+        type="button"
+        data-job-filter-open
+        aria-haspopup="dialog"
+        aria-controls="job-filter-dialog"
+      >
+        <span class="job-filter-trigger__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M4 6h16M7 12h10m-7 6h4" />
+          </svg>
+        </span>
+        <span>Filters</span>
+        <span class="job-filter-trigger__badge" data-job-filter-count hidden></span>
+      </button>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block filters %}
+  {% if cl.has_filters %}
+    <dialog
+      id="job-filter-dialog"
+      class="job-filter-dialog"
+      aria-labelledby="job-filter-title"
+      aria-describedby="job-filter-description"
+    >
+      <div class="job-filter-dialog__surface">
+        <header class="job-filter-dialog__header">
+          <div>
+            <p class="job-filter-dialog__eyebrow">Job list</p>
+            <h2 id="job-filter-title">Filter jobs</h2>
+            <p id="job-filter-description">Choose an option below. Each selection updates the list immediately.</p>
+          </div>
+          <button class="job-filter-dialog__close" type="button" data-job-filter-close aria-label="Close filters">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </header>
+
+        <div id="changelist-filter" class="job-filter-dialog__list">
+          {% for spec in cl.filter_specs %}
+            {% admin_list_filter cl spec %}
+          {% endfor %}
+        </div>
+
+        <footer class="job-filter-dialog__footer">
+          {% if cl.has_active_filters %}
+            <a class="job-filter-dialog__clear" href="{{ cl.clear_all_filters_qs }}">{% translate "Clear all filters" %}</a>
+          {% else %}
+            <span class="job-filter-dialog__empty">No filters selected</span>
+          {% endif %}
+          <button class="button default" type="button" data-job-filter-close>Done</button>
+        </footer>
+      </div>
+    </dialog>
+  {% endif %}
+{% endblock %}
 
 {% block object-tools-items %}
   <li><a href="{% url 'admin:myappLubd_deletedjob_changelist' %}">Deleted jobs</a></li>

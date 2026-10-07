@@ -267,6 +267,251 @@ html[data-theme="dark"] #changelist table thead th {
   font-weight: 700;
 }
 
+/* The job changelist has enough filters to warrant a focused, searchable-area
+   friendly dialog instead of Django's narrow right-hand filter rail. */
+.model-job.change-list #changelist.filtered .results,
+.model-job.change-list #changelist.filtered .paginator,
+.model-job.change-list #changelist.filtered #toolbar,
+.model-job.change-list #changelist.filtered div.xfull,
+.model-job.change-list #changelist.filtered .actions {
+  margin-right: 0;
+}
+
+.job-changelist-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.job-changelist-controls #toolbar {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  margin-right: 0;
+}
+
+.job-filter-trigger {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  align-self: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--body-bg);
+  color: var(--body-loud-color);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.job-filter-trigger:hover {
+  border-color: #94a3b8;
+  background: var(--darkened-bg);
+}
+
+.job-filter-trigger:focus-visible,
+.job-filter-dialog button:focus-visible,
+.job-filter-dialog a:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, .28);
+  outline-offset: 2px;
+}
+
+.job-filter-trigger__icon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+}
+
+.job-filter-trigger__icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.job-filter-trigger__badge {
+  min-width: 18px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.job-filter-dialog {
+  width: min(620px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(820px, calc(100vh - 32px));
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: var(--body-bg);
+  color: var(--body-fg);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, .28);
+}
+
+.job-filter-dialog::backdrop {
+  background: rgba(15, 23, 42, .62);
+  backdrop-filter: blur(3px);
+}
+
+.job-filter-dialog__surface {
+  display: flex;
+  max-height: min(820px, calc(100vh - 32px));
+  flex-direction: column;
+}
+
+.job-filter-dialog__header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+.job-filter-dialog__header h2 {
+  margin: 2px 0 5px;
+  color: var(--body-loud-color);
+  font-size: 20px;
+  letter-spacing: -.025em;
+  text-transform: none;
+}
+
+.job-filter-dialog__header p {
+  margin: 0;
+}
+
+.job-filter-dialog__eyebrow {
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+#job-filter-description {
+  color: var(--body-quiet-color);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.job-filter-dialog__close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--darkened-bg);
+  color: var(--body-quiet-color);
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.job-filter-dialog__list#changelist-filter {
+  position: static;
+  width: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 8px 12px 18px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.job-filter-dialog__list details {
+  margin: 0;
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+.job-filter-dialog__list details:last-child {
+  border-bottom: 0;
+}
+
+.job-filter-dialog__list summary,
+.job-filter-dialog__list h3 {
+  padding: 14px 8px 9px;
+  color: var(--body-loud-color);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.job-filter-dialog__list h3 {
+  margin: 0;
+}
+
+.job-filter-dialog__list ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.job-filter-dialog__list li {
+  margin: 0;
+  list-style: none;
+}
+
+.job-filter-dialog__list a {
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  line-height: 1.35;
+}
+
+.job-filter-dialog__list li.selected a {
+  border-color: rgba(15, 118, 110, .25);
+  background: var(--selected-bg);
+}
+
+.job-filter-dialog__footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--hairline-color);
+  background: var(--darkened-bg);
+}
+
+.job-filter-dialog__clear {
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.job-filter-dialog__empty {
+  color: var(--body-quiet-color);
+  font-size: 12px;
+}
+
+html.job-filter-dialog-open {
+  overflow: hidden;
+}
+
 #changelist-search input[type="text"] {
   min-height: 38px;
   border-radius: 8px;
@@ -407,6 +652,44 @@ body.login {
 
   .aligned .form-row > div {
     flex-direction: column;
+  }
+
+  .job-changelist-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .job-filter-trigger {
+    align-self: stretch;
+    justify-content: center;
+  }
+
+  .job-filter-dialog {
+    width: 100vw;
+    max-height: 92vh;
+    margin: auto 0 0;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .job-filter-dialog__surface {
+    max-height: 92vh;
+  }
+
+  .job-filter-dialog__header {
+    padding: 18px 16px 14px;
+  }
+
+  .job-filter-dialog__list#changelist-filter {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .job-filter-dialog__list ul {
+    grid-template-columns: 1fr;
+  }
+
+  .job-filter-dialog__footer {
+    padding: 12px 16px;
   }
 }
 

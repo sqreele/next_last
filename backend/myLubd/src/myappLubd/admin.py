@@ -1262,6 +1262,29 @@ class JobSortFilter(admin.SimpleListFilter):
         # Django's built-in column-header sorting behavior.
         return queryset
 
+
+class JobNameFilter(admin.SimpleListFilter):
+    """Filter jobs by the description used as their name in the admin."""
+
+    title = 'Job name'
+    parameter_name = 'job_name'
+
+    def lookups(self, request, model_admin):
+        names = (
+            model_admin.get_queryset(request)
+            .exclude(description__isnull=True)
+            .exclude(description='')
+            .order_by('description')
+            .values_list('description', flat=True)
+            .distinct()
+        )
+        return [(name, name) for name in names]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(description=self.value())
+        return queryset
+
 # Filters specifically for JobImage admin
 class JobImagePropertyFilter(admin.SimpleListFilter):
     title = 'property'
@@ -1307,7 +1330,7 @@ class JobAdmin(admin.ModelAdmin):
     form = JobAdminForm
     ordering = ['-job_id']
     list_display = ['job_id', 'get_description_display', 'get_topics_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_location_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = [JobSortFilter, 'status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, AreaFilter, FloorFilter, RoomFilter, TopicFilter]
+    list_filter = [JobSortFilter, JobNameFilter, 'status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, AreaFilter, FloorFilter, RoomFilter, TopicFilter]
     search_fields = [
         '=id',
         'job_id',

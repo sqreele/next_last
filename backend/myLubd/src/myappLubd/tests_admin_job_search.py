@@ -2,7 +2,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
-from .admin import IsDefectFilter, JobAdmin, JobSortFilter, _excel_image_for_export
+from .admin import JobNameFilter, IsDefectFilter, JobAdmin, JobSortFilter, _excel_image_for_export
 from .models import Job, Property, Room
 
 
@@ -152,6 +152,52 @@ class JobSortFilterTests(TestCase):
                 ('number_desc', 'Job number (descending)'),
                 ('name_desc', 'Job name (Z-A)'),
             ),
+        )
+
+
+class JobNameFilterTests(TestCase):
+    def setUp(self):
+        self.admin = JobAdmin(Job, AdminSite())
+        self.user = User.objects.create_user(username='name-filter-user')
+        self.property = Property.objects.create(name='Name Filter Hotel')
+        self.aircon_job = Job.objects.create(
+            user=self.user,
+            property=self.property,
+            description='Aircon repair',
+        )
+        self.lighting_job = Job.objects.create(
+            user=self.user,
+            property=self.property,
+            description='Lighting repair',
+        )
+
+    def test_filter_exposes_distinct_job_names_in_name_order(self):
+        request = RequestFactory().get('/admin/myappLubd/job/')
+        name_filter = JobNameFilter(request, {}, Job, self.admin)
+
+        self.assertEqual(
+            tuple(name_filter.lookups(request, self.admin)),
+            (
+                ('Aircon repair', 'Aircon repair'),
+                ('Lighting repair', 'Lighting repair'),
+            ),
+        )
+
+    def test_filter_matches_the_selected_job_name(self):
+        request = RequestFactory().get(
+            '/admin/myappLubd/job/',
+            {'job_name': 'Aircon repair'},
+        )
+        name_filter = JobNameFilter(
+            request,
+            {'job_name': 'Aircon repair'},
+            Job,
+            self.admin,
+        )
+
+        self.assertQuerySetEqual(
+            name_filter.queryset(request, Job.objects.all()),
+            [self.aircon_job],
         )
 
 

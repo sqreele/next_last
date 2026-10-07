@@ -16,6 +16,7 @@ from .admin import (
     InvitationStatusFilter,
     InventoryAdmin,
     JobAdmin,
+    JobNameFilter,
     JobSortFilter,
     LowStockFilter,
     PropertyAdmin,
@@ -104,6 +105,7 @@ class AdminOperationsConfigurationTests(SimpleTestCase):
         self.assertIn('user__email', job_admin.search_fields)
         self.assertIn('property__name', job_admin.search_fields)
         self.assertIn(JobSortFilter, job_admin.list_filter)
+        self.assertIn(JobNameFilter, job_admin.list_filter)
         self.assertEqual(job_admin.ordering, ['-job_id'])
         self.assertIn('supplier', inventory_admin.search_fields)
         self.assertIn('category__code', inventory_admin.search_fields)

@@ -79,7 +79,8 @@ export interface Room {
   is_active: boolean;
   created_at: string;
   properties?: (number | string | Property)[];
-  property_id?: string | number | null;
+  property_id?: string | null;
+  property_pk?: number | null;
 }
 
 export interface Job {

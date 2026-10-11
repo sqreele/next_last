@@ -4,7 +4,9 @@ HotelCare Pro is smart hotel maintenance and engineering management software
 for work orders, preventive maintenance, assets, rooms, technicians and
 engineering reports.
 
-Production domain: `https://hotelcarepro.com`
+Production domain: `https://staymaint.com`
+
+`hotelcarepro.com` is retained only as a legacy redirect.
 
 ## Scope
 

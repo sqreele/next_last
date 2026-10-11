@@ -103,6 +103,7 @@ class AdminOperationsConfigurationTests(SimpleTestCase):
         self.assertIn('job_id', job_admin.search_fields)
         self.assertIn('user__email', job_admin.search_fields)
         self.assertIn('property__name', job_admin.search_fields)
+        self.assertIn('description', job_admin.search_fields)
         self.assertIn(JobSortFilter, job_admin.list_filter)
         self.assertEqual(job_admin.ordering, ['-job_id'])
         self.assertIn('supplier', inventory_admin.search_fields)

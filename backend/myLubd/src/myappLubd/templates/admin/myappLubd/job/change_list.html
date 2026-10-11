@@ -6,53 +6,50 @@
   <link rel="stylesheet" href="{% static 'myappLubd/css/job_filter_dialog.css' %}">
 {% endblock %}
 
-{% block object-tools-items %}
-  {% if cl.has_filters %}
-    <li>
-      <button
-        type="button"
-        class="job-filter-trigger"
-        data-job-filter-open
-        aria-haspopup="dialog"
-        aria-controls="job-filter-dialog"
-      >
-        Filter
-        {% if cl.has_active_filters %}<span class="job-filter-trigger__dot" aria-label="Active filters"></span>{% endif %}
+{% block extrahead %}
+  {{ block.super }}
+  <script src="{% static 'myappLubd/js/job_filter_dialog.js' %}" defer></script>
+{% endblock %}
+
+{% block search %}
+  <div class="job-changelist-controls">
+    {% search_form cl %}
+    {% if cl.has_filters %}
+      <button class="job-filter-trigger" type="button" data-job-filter-open aria-haspopup="dialog" aria-controls="job-filter-dialog">
+        <span class="job-filter-trigger__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M4 6h16M7 12h10m-7 6h4" /></svg>
+        </span>
+        <span>Filters</span>
+        <span class="job-filter-trigger__badge" data-job-filter-count hidden></span>
       </button>
-    </li>
-  {% endif %}
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block object-tools-items %}
   <li><a href="{% url 'admin:myappLubd_deletedjob_changelist' %}">Deleted jobs</a></li>
   {{ block.super }}
 {% endblock %}
 
 {% block filters %}
   {% if cl.has_filters %}
-    <dialog
-      id="job-filter-dialog"
-      class="job-filter-dialog"
-      aria-labelledby="job-filter-dialog-title"
-      aria-describedby="job-filter-dialog-description"
-    >
+    <dialog id="job-filter-dialog" class="job-filter-dialog" aria-labelledby="job-filter-dialog-title" aria-describedby="job-filter-dialog-description">
       <form method="dialog" class="job-filter-dialog__shell" data-job-filter-form>
         <header class="job-filter-dialog__header">
           <div>
+            <p class="job-filter-dialog__eyebrow">Job list</p>
             <h2 id="job-filter-dialog-title">Filter maintenance jobs</h2>
-            <p id="job-filter-dialog-description">
-              เลือกเงื่อนไขแล้วตรวจสอบรายการก่อนกดค้นหา
-            </p>
+            <p id="job-filter-dialog-description">เลือกเงื่อนไขแล้วตรวจสอบรายการก่อนกดค้นหา</p>
           </div>
-          <button type="button" class="job-filter-dialog__close" data-job-filter-cancel aria-label="ปิด Dialog">&times;</button>
+          <button type="button" class="job-filter-dialog__close" data-job-filter-cancel aria-label="Close filters">&times;</button>
         </header>
 
         <div class="job-filter-dialog__body">
-          <div class="job-filter-dialog__fields" data-job-filter-groups>
+          <div id="changelist-filter" class="job-filter-dialog__fields" data-job-filter-groups>
             {% for spec in cl.filter_specs %}
-              <section class="job-filter-group" data-job-filter-group>
-                {% admin_list_filter cl spec %}
-              </section>
+              <section class="job-filter-group" data-job-filter-group>{% admin_list_filter cl spec %}</section>
             {% endfor %}
           </div>
-
           <section class="job-filter-summary" aria-labelledby="job-filter-summary-title" aria-live="polite">
             <h3 id="job-filter-summary-title">รายการตัวกรองที่เลือก</h3>
             <div class="job-filter-summary__items" data-job-filter-summary></div>
@@ -68,7 +65,6 @@
         </footer>
       </form>
     </dialog>
-    <script src="{% static 'myappLubd/js/job_filter_dialog.js' %}" defer></script>
   {% endif %}
 {% endblock %}
 
@@ -83,27 +79,17 @@
             <div style="color: #64748b; font-size: 12px; margin-top: 2px;">Based on active rooms in the Room model and current admin filters.</div>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <span style="font-size: 12px; border: 1px solid #dbe3ee; background: #fff; border-radius: 999px; padding: 3px 8px;">
-              Missing: <strong style="color: #b42318;">{{ missing_rooms_summary.missing_rooms_count }}</strong>
-            </span>
-            <span style="font-size: 12px; border: 1px solid #dbe3ee; background: #fff; border-radius: 999px; padding: 3px 8px;">
-              Total: <strong>{{ missing_rooms_summary.total_rooms_in_model }}</strong>
-            </span>
-            <span style="font-size: 12px; border: 1px solid #dbe3ee; background: #fff; border-radius: 999px; padding: 3px 8px;">
-              With jobs: <strong>{{ missing_rooms_summary.rooms_with_jobs }}</strong>
-            </span>
+            <span style="font-size: 12px; border: 1px solid #dbe3ee; background: #fff; border-radius: 999px; padding: 3px 8px;">Missing: <strong style="color: #b42318;">{{ missing_rooms_summary.missing_rooms_count }}</strong></span>
+            <span style="font-size: 12px; border: 1px solid #dbe3ee; background: #fff; border-radius: 999px; padding: 3px 8px;">Total: <strong>{{ missing_rooms_summary.total_rooms_in_model }}</strong></span>
+            <span style="font-size: 12px; border: 1px solid #dbe3ee; background: #fff; border-radius: 999px; padding: 3px 8px;">With jobs: <strong>{{ missing_rooms_summary.rooms_with_jobs }}</strong></span>
           </div>
         </div>
       </div>
-
       <div style="padding: 12px 14px;">
         <form method="get" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
           {% for key, value in request.GET.items %}
-            {% if key != 'missing_floor' %}
-              <input type="hidden" name="{{ key }}" value="{{ value }}">
-            {% endif %}
+            {% if key != 'missing_floor' %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}
           {% endfor %}
-
           <label for="missing_floor" style="font-size: 12px; color: #334155;">Floor</label>
           <input id="missing_floor" type="text" name="missing_floor" value="{{ missing_rooms_summary.floor }}" placeholder="e.g. 6" style="width: 110px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; font-size: 12px;">
           <button type="submit" style="padding: 6px 10px; border: 1px solid #c6d0df; border-radius: 6px; background: #f8fafc; cursor: pointer;">Apply</button>
@@ -111,25 +97,17 @@
             <a href="?{% for key, value in request.GET.items %}{% if key != 'missing_floor' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}" style="font-size: 12px; color: #1d4ed8; text-decoration: none;">Clear floor</a>
           {% endif %}
         </form>
-
         <div style="font-size: 12px; color: #334155; margin-bottom: 8px;">
-          Selected topic ID:
-          <strong>{{ missing_rooms_summary.selected_topic_id|default:"All topics" }}</strong>
-          {% if missing_rooms_summary.property %}
-            · Property filter ID: <strong>{{ missing_rooms_summary.property }}</strong>
-          {% endif %}
+          Selected topic ID: <strong>{{ missing_rooms_summary.selected_topic_id|default:"All topics" }}</strong>
+          {% if missing_rooms_summary.property %}· Property filter ID: <strong>{{ missing_rooms_summary.property }}</strong>{% endif %}
         </div>
-
         <details {% if missing_rooms_summary.missing_rooms_count %}open{% endif %} style="border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc;">
-          <summary style="padding: 8px 10px; cursor: pointer; font-size: 12px; color: #111827; font-weight: 600;">
-            Missing rooms list ({{ missing_rooms_summary.missing_rooms_count }})
-          </summary>
+          <summary style="padding: 8px 10px; cursor: pointer; font-size: 12px; color: #111827; font-weight: 600;">Missing rooms list ({{ missing_rooms_summary.missing_rooms_count }})</summary>
           <div style="padding: 10px; border-top: 1px solid #e5e7eb; white-space: normal; line-height: 1.5; font-size: 12px;">
             {% if missing_rooms_summary.missing_rooms %}
               {{ missing_rooms_summary.missing_rooms|join:", " }}
-            {% else %}
-              <span style="color: #667085;">No missing rooms for the selected filters.</span>
-            {% endif %}
+              {% if missing_rooms_summary.missing_rooms_truncated %}<span>… showing the first 250 rooms</span>{% endif %}
+            {% else %}<span style="color: #667085;">No missing rooms for the selected filters.</span>{% endif %}
           </div>
         </details>
       </div>

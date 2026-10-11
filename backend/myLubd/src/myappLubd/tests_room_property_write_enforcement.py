@@ -36,7 +36,8 @@ class RoomPropertyWriteEnforcementTests(APITestCase):
         room = Room.objects.get(name='RW-101')
         self.assert_canonical_write(room, self.chinatown)
         self.assertEqual(response.data['properties'], [self.chinatown.pk])
-        self.assertEqual(response.data['property_id'], self.chinatown.pk)
+        self.assertEqual(response.data['property_id'], self.chinatown.property_id)
+        self.assertEqual(response.data['property_pk'], self.chinatown.pk)
 
     def test_api_read_projection_uses_canonical_property_without_legacy_m2m(self):
         room = Room.objects.create(name='RW-READ-PROJECTION', room_type='Standard', property=self.chinatown)
@@ -44,7 +45,8 @@ class RoomPropertyWriteEnforcementTests(APITestCase):
         response = self.client.get(f'/api/v1/rooms/{room.room_id}/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
-        self.assertEqual(response.data['property_id'], self.chinatown.pk)
+        self.assertEqual(response.data['property_id'], self.chinatown.property_id)
+        self.assertEqual(response.data['property_pk'], self.chinatown.pk)
         self.assertEqual(response.data['properties'], [self.chinatown.pk])
 
     def test_api_create_rejects_legacy_properties_input(self):

@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - room-property-canonicalization-live
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/Lastnext
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/Lastnext/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: staymaint_ci
+          POSTGRES_USER: staymaint
+          POSTGRES_PASSWORD: staymaint
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U staymaint -d staymaint_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend/myLubd/src
+    env:
+      DEBUG: "False"
+      DJANGO_SECRET_KEY: ci-only-secret-key
+      DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 testserver
+      DJANGO_CORS_ORIGINS: https://staymaint.com
+      SQL_ENGINE: django.db.backends.postgresql
+      SQL_DATABASE: staymaint_ci
+      SQL_USER: staymaint
+      SQL_PASSWORD: staymaint
+      SQL_HOST: 127.0.0.1
+      SQL_PORT: "5432"
+      REDIS_URL: redis://127.0.0.1:6379/1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/myLubd/requirements.txt
+      - run: pip install -r ../requirements.txt
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py migrate --noinput
+      - run: python manage.py check --deploy
+      - name: Run canonical property contract regressions
+        run: >-
+          python manage.py test
+          myappLubd.tests_room_property_write_enforcement
+          myappLubd.tests_room_property_read_cutover
+          myappLubd.tests_room_contract_hardening
+          myappLubd.tests_job_property_write_enforcement.JobPropertyWriteApiTests
+          myappLubd.tests_admin_job_search
+          myappLubd.tests_admin_operations_ux
+          --noinput

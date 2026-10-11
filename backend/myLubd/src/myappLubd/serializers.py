@@ -356,10 +356,14 @@ class RoomSerializer(serializers.ModelSerializer):
     # The canonical FK is both the singular read contract and a supported
     # write reference. ``properties`` is output-only compatibility.
     property_id = serializers.CharField(required=False)
+    property_pk = serializers.IntegerField(source='property_id', read_only=True)
 
     class Meta:
         model = Room
-        fields = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'properties', 'property_id']
+        fields = [
+            'room_id', 'name', 'room_type', 'is_active', 'created_at',
+            'properties', 'property_id', 'property_pk',
+        ]
 
     @staticmethod
     def _as_drf_validation_error(error):
@@ -419,7 +423,8 @@ class RoomSerializer(serializers.ModelSerializer):
         data['is_active'] = bool(data.get('is_active'))
         # Compatibility output is deliberately derived from the canonical FK,
         # never from the transitional Room.properties M2M.
-        data['property_id'] = instance.property_id
+        data['property_id'] = instance.property.property_id
+        data['property_pk'] = instance.property_id
         data['properties'] = [instance.property_id] if instance.property_id else []
         return data
 
@@ -431,11 +436,12 @@ class RoomSummarySerializer(serializers.ModelSerializer):
     avoid deep nesting and large payloads.
     """
     properties = serializers.SerializerMethodField()
-    property_id = serializers.IntegerField(read_only=True)
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    property_pk = serializers.IntegerField(source='property_id', read_only=True)
 
     class Meta:
         model = Room
-        fields = ['room_id', 'name', 'room_type', 'property_id', 'properties']
+        fields = ['room_id', 'name', 'room_type', 'property_id', 'property_pk', 'properties']
 
     def get_properties(self, obj):
         return [obj.property_id] if obj.property_id else []
@@ -445,7 +451,8 @@ class RoomSummarySerializer(serializers.ModelSerializer):
         data['room_id'] = data.get('room_id') or getattr(instance, 'room_id', None)
         data['name'] = data.get('name') or 'Unnamed room'
         data['room_type'] = data.get('room_type') or 'Room'
-        data['property_id'] = instance.property_id
+        data['property_id'] = instance.property.property_id
+        data['property_pk'] = instance.property_id
         data['properties'] = data.get('properties') if isinstance(data.get('properties'), list) else []
         return data
 

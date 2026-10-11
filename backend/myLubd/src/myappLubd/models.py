@@ -1290,7 +1290,7 @@ class LineGroupPairing(models.Model):
 
 class Room(models.Model):
     room_id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     room_type = models.CharField(max_length=50, db_index=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1303,6 +1303,12 @@ class Room(models.Model):
     class Meta:
         ordering = ['room_type', 'name']
         verbose_name_plural = 'Rooms'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['property', 'name'],
+                name='unique_room_name_per_property',
+            ),
+        ]
         indexes = [
             # ✅ PERFORMANCE: Enhanced Room indexes
             models.Index(fields=['room_type']),

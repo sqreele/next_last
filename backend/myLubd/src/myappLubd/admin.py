@@ -102,6 +102,7 @@ from .notifications.line_webhook import (
     masked_destination,
     pairing_ttl,
 )
+from .admin_job_summary import build_missing_rooms_summary
 
 
 
@@ -1262,6 +1263,7 @@ class JobSortFilter(admin.SimpleListFilter):
         # Django's built-in column-header sorting behavior.
         return queryset
 
+
 # Filters specifically for JobImage admin
 class JobImagePropertyFilter(admin.SimpleListFilter):
     title = 'property'
@@ -1539,43 +1541,7 @@ class JobAdmin(admin.ModelAdmin):
         return super().changelist_view(request, extra_context=extra_context)
 
     def _get_missing_rooms_summary(self, request):
-        """
-        Admin summary for room numbers in Room model that are not present in Job.
-        Supports optional floor filtering via ?missing_floor=6
-        and aligns with selected property/topic filter when present.
-        """
-        floor = (request.GET.get('missing_floor') or '').strip()
-        property_filter = (request.GET.get('property') or '').strip()
-        topic_filter = (request.GET.get('topic') or '').strip()
-
-        room_qs = Room.objects.filter(is_active=True)
-        if property_filter:
-            room_qs = room_qs.filter(property__id=property_filter)
-        if floor:
-            room_qs = room_qs.filter(name__regex=rf'^{floor}[0-9]+$')
-
-        room_names = sorted(set(room_qs.values_list('name', flat=True)))
-
-        job_qs = Job.objects.all()
-        if property_filter:
-            job_qs = job_qs.filter(property__id=property_filter)
-        if topic_filter:
-            job_qs = job_qs.filter(topics__id=topic_filter)
-        if floor:
-            job_qs = job_qs.filter(rooms__name__regex=rf'^{floor}[0-9]+$')
-
-        used_room_names = set(job_qs.values_list('rooms__name', flat=True))
-        missing_rooms = [name for name in room_names if name and name not in used_room_names]
-
-        return {
-            'floor': floor,
-            'property': property_filter,
-            'selected_topic_id': topic_filter or None,
-            'total_rooms_in_model': len(room_names),
-            'rooms_with_jobs': len([name for name in room_names if name in used_room_names]),
-            'missing_rooms_count': len(missing_rooms),
-            'missing_rooms': missing_rooms,
-        }
+        return build_missing_rooms_summary(request)
 
     def get_inventory_items_display(self, obj):
         """Display inventory items used in this job"""

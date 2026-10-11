@@ -11,9 +11,8 @@ type PropertyLike =
  * Build the set of identifiers that refer to the selected property.
  * The backend uses two different IDs for a property: the human-facing
  * `property_id` string (e.g. "P1A2B3C4") and the database PK `id` (an integer).
- * Different endpoints return different forms (e.g. RoomSerializer returns
- * M2M as PKs, while user/property endpoints return the string property_id),
- * so we accept both when matching.
+ * New Room payloads expose the public string as `property_id` and the database
+ * key as `property_pk`. Legacy payloads can still contain PKs in `properties`.
  */
 const buildPropertyIdSet = (
   propertyId: string,
@@ -52,6 +51,7 @@ const matchesPropertyEntry = (entry: PropertyLike, idSet: Set<string>): boolean 
  */
 export const getRoomPropertyId = (room: Room): PropertyLike => {
   if (room.property_id != null) return room.property_id;
+  if (room.property_pk != null) return room.property_pk;
   const legacy = room.properties?.[0];
   if (legacy == null || typeof legacy === 'string' || typeof legacy === 'number') return legacy;
   return legacy.property_id ?? legacy.id;

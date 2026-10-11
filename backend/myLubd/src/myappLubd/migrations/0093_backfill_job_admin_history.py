@@ -10,7 +10,12 @@ def backfill_job_history(apps, schema_editor):
     ContentType = apps.get_model('contenttypes', 'ContentType')
     LogEntry = apps.get_model('admin', 'LogEntry')
 
-    content_type = ContentType.objects.get(app_label='myappLubd', model='job')
+    # Content types are normally populated by the post_migrate signal. A clean
+    # database reaches this data migration before that signal has run.
+    content_type, _ = ContentType.objects.get_or_create(
+        app_label='myappLubd',
+        model='job',
+    )
     jobs_with_history = set(
         LogEntry.objects.filter(content_type_id=content_type.pk)
         .values_list('object_id', flat=True)

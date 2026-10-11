@@ -585,6 +585,8 @@ if _env_cors_origins:
 else:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
+        "https://staymaint.com",
+        "https://www.staymaint.com",
         "https://pcms.live",
         "https://www.pcms.live",
         "http://nextjs-frontend:3000",
@@ -595,6 +597,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.pcms.live",
     "http://nextjs-frontend:3000",
     "https://staymaint.com",
+    "https://www.staymaint.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']

@@ -12,12 +12,13 @@ from __future__ import annotations
 import logging
 from functools import partial
 
+from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.db import transaction
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import m2m_changed, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import Inventory, InventoryCategory, Job, JobComment, Tenant
+from .models import Inventory, InventoryCategory, Job, JobComment, Room, Tenant
 
 
 @receiver(post_save, sender=Tenant)
@@ -30,6 +31,29 @@ from .push import send_push_to_user
 from .tenancy import get_property_summary_recipients
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(m2m_changed, sender=Job.rooms.through)
+def _enforce_job_room_property(sender, instance, action, reverse, pk_set, **kwargs):
+    """Reject Job-Room links that cross the canonical Property boundary."""
+    if action != 'pre_add' or not pk_set:
+        return
+
+    if reverse:
+        room = instance
+        mismatched = Job.all_objects.filter(pk__in=pk_set).exclude(
+            property_id=room.property_id,
+        )
+    else:
+        job = instance
+        mismatched = Room.objects.filter(pk__in=pk_set).exclude(
+            property_id=job.property_id,
+        )
+
+    if mismatched.exists():
+        raise ValidationError(
+            'A Job can only be linked to Rooms from its canonical Property.'
+        )
 
 
 # Track the prior status on each Job instance so post_save can decide whether

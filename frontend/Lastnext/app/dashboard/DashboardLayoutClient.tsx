@@ -160,13 +160,13 @@ function DesktopNav({
   return (
     <aside
       className={cn(
-        "relative z-30 hidden min-h-screen-safe shrink-0 flex-col self-start border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-soft transition-[width] duration-300 desktop:sticky desktop:top-0 desktop:flex",
+        "relative z-30 hidden h-screen-safe min-h-0 shrink-0 flex-col self-start overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-soft transition-[width] duration-300 desktop:sticky desktop:top-0 desktop:flex",
         collapsed ? "w-20" : "w-64",
       )}
     >
       <div
         className={cn(
-          "flex h-16 items-center border-b border-sidebar-border px-4",
+          "flex h-16 shrink-0 items-center border-b border-sidebar-border px-4",
           collapsed ? "justify-center" : "justify-between",
         )}
       >
@@ -200,7 +200,7 @@ function DesktopNav({
           </Button>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4">
         <nav className="grid gap-6 px-3" aria-label="Primary navigation">
           {visibleNavigationGroups.map((group) => (
             <div key={group.label}>
@@ -258,7 +258,7 @@ function DesktopNav({
           ))}
         </nav>
       </div>
-      <div className="mt-auto border-t border-sidebar-border bg-sidebar-accent/30 p-3">
+      <div className="mt-auto shrink-0 border-t border-sidebar-border bg-sidebar-accent/30 p-3">
         {!collapsed ? (
           <>
             <User darkSurface />

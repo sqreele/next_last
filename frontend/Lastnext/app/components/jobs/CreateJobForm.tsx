@@ -55,6 +55,7 @@ import {
   getAllowedUserProperties,
   getPropertyId,
 } from "@/app/lib/security/propertyAccess";
+import { roomBelongsToProperty } from "@/app/lib/utils/property-filter";
 import { getStatusConfig } from "@/app/design-system/status-config";
 
 // Use Next.js API routes for proxying to the backend
@@ -474,6 +475,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const activePropertyNumericId = activeProperty
     ? String(activeProperty.id)
     : null;
+  const activePropertyIdentifiers = React.useMemo(() => {
+    const identifiers = new Set<string>();
+    if (activePropertyId) identifiers.add(activePropertyId);
+    if (activePropertyNumericId) identifiers.add(activePropertyNumericId);
+    return identifiers;
+  }, [activePropertyId, activePropertyNumericId]);
   const selectedPropertyLabel = activeProperty?.name || activePropertyId || "";
 
   const normalizeRoomsResponse = useCallback((data: unknown): Room[] => {
@@ -490,12 +497,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
   const roomBelongsToActiveProperty = useCallback(
     (room: Room): boolean => {
-      if (!activePropertyNumericId) return false;
-      return room.property_id !== null && room.property_id !== undefined
-        ? String(room.property_id) === activePropertyNumericId
-        : false;
+      if (activePropertyIdentifiers.size === 0) return false;
+      return roomBelongsToProperty(room, activePropertyIdentifiers);
     },
-    [activePropertyNumericId],
+    [activePropertyIdentifiers],
   );
 
   const areaBelongsToActiveProperty = useCallback(

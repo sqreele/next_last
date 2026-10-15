@@ -19,6 +19,7 @@ from .models import (
     Tenant,
     TenantMembership,
 )
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -29,6 +30,7 @@ class MaintenanceDepthTests(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='engineer', password='pw12345!')
         tenant = Tenant.objects.create(name='Maintenance Depth Tenant')
+        use_canonical_plan(tenant, 'pro')
         self.prop = Property.objects.create(name='Hotel Depth', tenant=tenant)
         self.membership = TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician')
         self.membership.properties.add(self.prop)

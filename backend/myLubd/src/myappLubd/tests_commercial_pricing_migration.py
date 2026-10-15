@@ -138,7 +138,14 @@ class PlanFeatureCapabilitiesMigrationTests(TransactionTestCase):
         Subscription = old_apps.get_model('myappLubd', 'TenantSubscription')
         self.before = {}
         for code in ('starter', 'pro', 'enterprise'):
-            plan = Plan.objects.get(code=code)
+            plan, _ = Plan.objects.get_or_create(
+                code=code,
+                defaults={
+                    'name': {'starter': 'Basic', 'pro': 'Pro', 'enterprise': 'Enterprise'}[code],
+                    'max_users': {'starter': 4, 'pro': 10, 'enterprise': 50}[code],
+                    'max_properties': {'starter': 1, 'pro': 1, 'enterprise': 5}[code],
+                },
+            )
             plan.features = {'obsolete': True}
             plan.save(update_fields=['features'])
             self.before[code] = (plan.pk, plan.max_users, plan.max_properties)

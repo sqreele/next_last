@@ -13,6 +13,7 @@ from .models import (
     Tenant,
     TenantMembership,
 )
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -21,6 +22,7 @@ User = get_user_model()
 class PreventiveMaintenanceCompletionWorkflowTests(APITestCase):
     def setUp(self):
         self.tenant = Tenant.objects.create(name='PM completion tenant')
+        use_canonical_plan(self.tenant, 'pro')
         self.property_a = Property.objects.create(
             name='PM completion property A',
             tenant=self.tenant,

@@ -29,6 +29,7 @@ from .models import (
     TenantMembership,
     Topic,
 )
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -235,6 +236,7 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='tech', password='pw12345!')
         self.tenant = Tenant.objects.create(name='Schedule Tenant')
+        use_canonical_plan(self.tenant, 'pro')
         self.prop = Property.objects.create(name='Hotel S', tenant=self.tenant)
         TenantMembership.objects.create(user=self.user, tenant=self.tenant, role='technician').properties.add(self.prop)
         self.room = Room.objects.create(name='S-1', room_type='Standard', property=self.prop)
@@ -550,6 +552,7 @@ class PreventiveMaintenanceCreateTests(APITestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='pm-tech', password='pw12345!')
         tenant = Tenant.objects.create(name='PM Create Tenant')
+        use_canonical_plan(tenant, 'pro')
         self.prop = Property.objects.create(name='Hotel PM', tenant=tenant)
         TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
         self.machine = Machine.objects.create(
@@ -568,6 +571,7 @@ class PreventiveMaintenanceCreateTests(APITestCase):
                 'pmtitle': 'Inspect laundry extractor',
                 'scheduled_date': timezone.now().isoformat(),
                 'frequency': 'monthly',
+                'property_id': self.prop.property_id,
                 'machine_ids': [self.machine.machine_id],
                 'procedure_template': '',
                 'assigned_to': '',
@@ -589,6 +593,7 @@ class PMMasterPlanWorkflowTests(APITestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='planner', password='pw12345!')
         tenant = Tenant.objects.create(name='PM Plan Tenant')
+        use_canonical_plan(tenant, 'pro')
         self.prop = Property.objects.create(name='Hotel Plan', tenant=tenant)
         TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
         self.machine = Machine.objects.create(

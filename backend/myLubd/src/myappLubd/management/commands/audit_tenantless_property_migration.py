@@ -69,7 +69,10 @@ class Command(BaseCommand):
             Property.objects.filter(property_id__in=targets).order_by('id')
             if post_cutover else tenantless
         )
-        legacy_ids_by_user = self._legacy_property_ids_by_user(audited_properties)
+        legacy_ids_by_user = self._legacy_property_ids_by_user(
+            audited_properties,
+            mapping=mapping,
+        )
         planned_ids_by_tenant = defaultdict(set)
         for property_id, tenant in targets.items():
             property_pk = audited_properties.filter(property_id=property_id).values_list('pk', flat=True).first()
@@ -172,19 +175,45 @@ class Command(BaseCommand):
         return mapping
 
     @staticmethod
-    def _legacy_property_ids_by_user(properties):
+    def _legacy_property_ids_by_user(properties, mapping=None):
         result = defaultdict(set)
-        for property_obj in properties.prefetch_related('users', 'user_profiles__user'):
-            for user_id in property_obj.users.values_list('id', flat=True):
-                result[user_id].add(property_obj.id)
-            for user_id in property_obj.user_profiles.values_list('user_id', flat=True):
-                result[user_id].add(property_obj.id)
+        if hasattr(Property, 'users') and hasattr(Property, 'user_profiles'):
+            for property_obj in properties.prefetch_related('users', 'user_profiles__user'):
+                for user_id in property_obj.users.values_list('id', flat=True):
+                    result[user_id].add(property_obj.id)
+                for user_id in property_obj.user_profiles.values_list('user_id', flat=True):
+                    result[user_id].add(property_obj.id)
+            return result
+
+        # Migration 0077 intentionally removed the legacy authorization M2Ms.
+        # Post-cutover audits must use the approved worksheet's immutable
+        # legacy_property_set snapshot instead of querying relations that no
+        # longer exist in the live schema.
+        property_pks = dict(properties.values_list('property_id', 'pk'))
+        for user_id, row in (mapping or {}).items():
+            for property_id in row['legacy_property_ids']:
+                property_pk = property_pks.get(property_id)
+                if property_pk is not None:
+                    result[user_id].add(property_pk)
         return result
 
     def _report_property(self, property_obj, target_tenant, show_plan, legacy_ids_by_user, planned_ids_by_tenant):
-        direct_ids = set(property_obj.users.values_list('id', flat=True))
-        profile_ids = set(property_obj.user_profiles.values_list('user_id', flat=True))
-        all_ids = direct_ids | profile_ids
+        if hasattr(property_obj, 'users') and hasattr(property_obj, 'user_profiles'):
+            direct_ids = set(property_obj.users.values_list('id', flat=True))
+            profile_ids = set(property_obj.user_profiles.values_list('user_id', flat=True))
+            all_ids = direct_ids | profile_ids
+            legacy_summary = (
+                f'direct_only={len(direct_ids - profile_ids)} '
+                f'profile_only={len(profile_ids - direct_ids)} '
+                f'both={len(direct_ids & profile_ids)} union={len(all_ids)}'
+            )
+        else:
+            all_ids = {
+                user_id
+                for user_id, property_ids in legacy_ids_by_user.items()
+                if property_obj.pk in property_ids
+            }
+            legacy_summary = f'worksheet={len(all_ids)} union={len(all_ids)}'
 
         jobs = Job.objects.filter(
             Q(area__property=property_obj) | Q(rooms__property=property_obj)
@@ -208,9 +237,7 @@ class Command(BaseCommand):
         )
         self.stdout.write(
             '  legacy users: '
-            f'direct_only={len(direct_ids - profile_ids)} '
-            f'profile_only={len(profile_ids - direct_ids)} '
-            f'both={len(direct_ids & profile_ids)} union={len(all_ids)}'
+            + legacy_summary
         )
         self._report_users(
             all_ids,

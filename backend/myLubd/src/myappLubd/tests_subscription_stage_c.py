@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
@@ -21,6 +22,7 @@ from .models import (
     TenantSubscription,
 )
 from .subscription_permissions import require_subscription_write
+from .tenancy import enforce_storage_limit, enforce_subscription_limit
 
 
 User = get_user_model()
@@ -287,6 +289,23 @@ class SubscriptionStageCOperationalTests(APITestCase):
         record = logs.records[0]
         self.assertIsNone(record.tenant_id)
         self.assertEqual(record.reason_code, 'target_tenant_unresolved')
+
+    def test_observe_mode_does_not_turn_capacity_checks_into_lifecycle_gates(self):
+        enforce_subscription_limit(
+            self.suspended_tenant,
+            'max_monthly_work_orders',
+        )
+        enforce_storage_limit(self.suspended_tenant, additional_bytes=1)
+
+    @override_settings(SUBSCRIPTION_ENFORCEMENT_MODE='enforce')
+    def test_enforce_mode_applies_lifecycle_gate_to_capacity_checks(self):
+        with self.assertRaises(PermissionDenied):
+            enforce_subscription_limit(
+                self.suspended_tenant,
+                'max_monthly_work_orders',
+            )
+        with self.assertRaises(PermissionDenied):
+            enforce_storage_limit(self.suspended_tenant, additional_bytes=1)
 
     @override_settings(SUBSCRIPTION_ENFORCEMENT_MODE='enforce')
     def test_enforce_primitive_fails_closed(self):

@@ -230,7 +230,13 @@ class JobPropertyWriteApiTests(APITestCase):
 class JobPropertyWriteServiceAndPmTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='job-property-service', password='pw12345!')
-        self.property = Property.objects.create(name='Service property')
+        self.tenant = Tenant.objects.create(name='Service tenant')
+        self.property = Property.objects.create(name='Service property', tenant=self.tenant)
+        TenantMembership.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            role='manager',
+        ).properties.add(self.property)
         self.room = Room.objects.create(
             name='WE-SVC-101', room_type='Standard', property=self.property,
         )
@@ -260,7 +266,7 @@ class JobPropertyWriteServiceAndPmTests(TestCase):
         self.assertEqual(pm.job.property_id, self.property.id)
 
     def test_model_validation_rejects_property_area_mismatch(self):
-        other = Property.objects.create(name='Other property')
+        other = Property.objects.create(name='Other property', tenant=self.tenant)
         foreign_area = Area.objects.create(property=other, name='Foreign area')
         job = Job(
             user=self.user,

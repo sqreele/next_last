@@ -144,8 +144,9 @@ class SaaSFoundationTests(APITestCase):
             format='json',
             secure=True,
         )
-        self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST, second.content)
-        self.assertIn('billing_limit', second.data)
+        self.assertEqual(second.status_code, status.HTTP_409_CONFLICT, second.content)
+        self.assertEqual(second.data['code'], 'subscription_limit_reached')
+        self.assertEqual(second.data['limit'], 'max_properties')
 
     def test_properties_all_is_scoped_for_regular_users(self):
         visible_tenant = Tenant.objects.create(name='Visible Hotels', owner=self.owner)

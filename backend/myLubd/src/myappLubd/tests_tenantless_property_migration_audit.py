@@ -17,17 +17,20 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         direct_user = User.objects.create_user(username='direct-user')
         profile_user = User.objects.create_user(username='profile-user')
         property_obj = Property.objects.create(name='Legacy audit property')
-        property_obj.users.add(direct_user)
-        profile_user.userprofile.properties.add(property_obj)
+        mapping = self._mapping_file(
+            self._row(direct_user.id, 'technician', 'NO', 'NO', 'NO', 'PENDING', property_obj.property_id),
+            self._row(profile_user.id, 'technician', 'NO', 'NO', 'NO', 'PENDING', property_obj.property_id),
+        )
+        self.addCleanup(mapping.unlink)
 
         before = (property_obj.tenant_id, Tenant.objects.count(), TenantMembership.objects.count())
         output = StringIO()
-        call_command('audit_tenantless_property_migration', stdout=output)
+        call_command('audit_tenantless_property_migration', '--mapping', str(mapping), stdout=output)
 
         property_obj.refresh_from_db()
         self.assertEqual((property_obj.tenant_id, Tenant.objects.count(), TenantMembership.objects.count()), before)
         self.assertIn('Mode: READ ONLY', output.getvalue())
-        self.assertIn('direct_only=1 profile_only=1 both=0 union=2', output.getvalue())
+        self.assertIn('worksheet=2 union=2', output.getvalue())
         self.assertIn('MANUAL BUSINESS DECISION REQUIRED', output.getvalue())
 
     def test_planned_tenant_wide_role_overgrant_is_reported(self):
@@ -35,15 +38,19 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         tenant = Tenant.objects.create(name='Migration target')
         property_a = Property.objects.create(name='Legacy A')
         property_b = Property.objects.create(name='Legacy B')
-        property_a.users.add(user)
         membership = TenantMembership.objects.create(user=user, tenant=tenant, role='manager')
         membership.properties.add(property_a)
+        mapping = self._mapping_file(
+            self._row(user.id, 'manager', 'YES', 'NO', 'YES', 'APPROVED', property_a.property_id)
+        )
+        self.addCleanup(mapping.unlink)
 
         output = StringIO()
         call_command(
             'audit_tenantless_property_migration',
             '--target', f'{property_a.property_id}={tenant.tenant_id}',
             '--target', f'{property_b.property_id}={tenant.tenant_id}',
+            '--mapping', str(mapping),
             stdout=output,
         )
 
@@ -53,8 +60,7 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         user = User.objects.create_user(username='ambiguous-user')
         tenant = Tenant.objects.create(name='Mapping target')
         property_obj = Property.objects.create(name='Legacy mapping property', property_id='PB749146D')
-        property_obj.users.add(user)
-        mapping = self._mapping_file(self._row(user.id, 'MANUAL_REQUIRED', 'YES', 'NO', '', 'PENDING'))
+        mapping = self._mapping_file(self._row(user.id, 'MANUAL_REQUIRED', 'YES', 'NO', '', 'PENDING', property_obj.property_id))
         self.addCleanup(mapping.unlink)
 
         output = StringIO()
@@ -72,8 +78,7 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         tenant = Tenant.objects.create(name='Approved expansion target')
         property_a = Property.objects.create(name='Legacy manager A', property_id='PB749146D')
         property_b = Property.objects.create(name='Legacy manager B', property_id='PE17D8D2C')
-        property_a.users.add(user)
-        mapping = self._mapping_file(self._row(user.id, 'manager', 'YES', 'YES', 'YES', 'APPROVED'))
+        mapping = self._mapping_file(self._row(user.id, 'manager', 'YES', 'YES', 'YES', 'APPROVED', property_a.property_id))
         self.addCleanup(mapping.unlink)
 
         output = StringIO()
@@ -90,8 +95,7 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         user = User.objects.create_user(username='missing-grant-user')
         tenant = Tenant.objects.create(name='Access loss target')
         property_obj = Property.objects.create(name='Legacy access loss property', property_id='PB749146D')
-        property_obj.users.add(user)
-        mapping = self._mapping_file(self._row(user.id, 'technician', 'NO', 'NO', 'NO', 'APPROVED'))
+        mapping = self._mapping_file(self._row(user.id, 'technician', 'NO', 'NO', 'NO', 'APPROVED', property_obj.property_id))
         self.addCleanup(mapping.unlink)
 
         output = StringIO()
@@ -110,11 +114,9 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         tenant = Tenant.objects.create(name='Ready target')
         property_a = Property.objects.create(name='Ready legacy A', property_id='PB749146D')
         property_b = Property.objects.create(name='Ready legacy B', property_id='PE17D8D2C')
-        property_a.users.add(user_a)
-        property_b.users.add(user_b)
         mapping = self._mapping_file(
-            self._row(user_a.id, 'technician', 'YES', 'NO', 'NO', 'APPROVED'),
-            self._row(user_b.id, 'technician', 'NO', 'YES', 'NO', 'APPROVED'),
+            self._row(user_a.id, 'technician', 'YES', 'NO', 'NO', 'APPROVED', property_a.property_id),
+            self._row(user_b.id, 'technician', 'NO', 'YES', 'NO', 'APPROVED', property_b.property_id),
         )
         self.addCleanup(mapping.unlink)
 
@@ -133,8 +135,7 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         user = User.objects.create_user(username='invalid-role-user')
         tenant = Tenant.objects.create(name='Invalid role target')
         property_obj = Property.objects.create(name='Invalid role property', property_id='PB749146D')
-        property_obj.users.add(user)
-        mapping = self._mapping_file(self._row(user.id, 'invented_role', 'YES', 'NO', 'NO', 'APPROVED'))
+        mapping = self._mapping_file(self._row(user.id, 'invented_role', 'YES', 'NO', 'NO', 'APPROVED', property_obj.property_id))
         self.addCleanup(mapping.unlink)
 
         output = StringIO()
@@ -148,8 +149,7 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         tenant = Tenant.objects.create(name='Tenant-wide target')
         property_a = Property.objects.create(name='Tenant-wide A', property_id='PB749146D')
         property_b = Property.objects.create(name='Tenant-wide B', property_id='PE17D8D2C')
-        property_a.users.add(user)
-        mapping = self._mapping_file(self._row(user.id, 'manager', 'YES', 'NO', 'YES', 'APPROVED'))
+        mapping = self._mapping_file(self._row(user.id, 'manager', 'YES', 'NO', 'YES', 'APPROVED', property_a.property_id))
         self.addCleanup(mapping.unlink)
 
         output = StringIO()
@@ -162,8 +162,7 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         user = User.objects.create_user(username='retired-legacy-user')
         tenant = Tenant.objects.create(name='Retirement target')
         property_obj = Property.objects.create(name='Retired legacy property', property_id='PB749146D')
-        property_obj.users.add(user)
-        mapping = self._mapping_file(self._row(user.id, 'NONE', 'NO', 'NO', 'NO', 'APPROVED_RETIREMENT'))
+        mapping = self._mapping_file(self._row(user.id, 'NONE', 'NO', 'NO', 'NO', 'APPROVED_RETIREMENT', property_obj.property_id))
         self.addCleanup(mapping.unlink)
         before = (User.objects.filter(pk=user.pk).exists(), TenantMembership.objects.filter(user=user).count())
 
@@ -178,8 +177,7 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         user = User.objects.create_user(username='ready-retired-user')
         tenant = Tenant.objects.create(name='Ready retirement target')
         property_obj = Property.objects.create(name='Ready retired property', property_id='PB749146D')
-        property_obj.users.add(user)
-        mapping = self._mapping_file(self._row(user.id, 'NONE', 'NO', 'NO', 'NO', 'APPROVED_RETIREMENT'))
+        mapping = self._mapping_file(self._row(user.id, 'NONE', 'NO', 'NO', 'NO', 'APPROVED_RETIREMENT', property_obj.property_id))
         self.addCleanup(mapping.unlink)
 
         output = StringIO()
@@ -189,8 +187,11 @@ class TenantlessPropertyMigrationAuditTests(TestCase):
         self.assertIn('migration readiness: READY', output.getvalue())
 
     @staticmethod
-    def _row(user_id, role, chinatown, siam, expansion, status):
-        return f'{user_id},,,,,{role},{chinatown},{siam},{expansion},{status},test fixture\n'
+    def _row(user_id, role, chinatown, siam, expansion, status, legacy_property_set=''):
+        return (
+            f'{user_id},,,{legacy_property_set},,{role},'
+            f'{chinatown},{siam},{expansion},{status},test fixture\n'
+        )
 
     @staticmethod
     def _mapping_file(*rows):

@@ -23,6 +23,7 @@ from .models import (
     Tenant,
     TenantMembership,
 )
+from .test_plan_helpers import use_canonical_plan
 
 
 User = get_user_model()
@@ -37,6 +38,7 @@ class PreventiveMaintenanceImageTests(APITestCase):
         self.addCleanup(self.media.cleanup)
 
         self.tenant = Tenant.objects.create(name='PM image tenant')
+        use_canonical_plan(self.tenant, 'pro')
         self.property_a = Property.objects.create(name='PM image property A', tenant=self.tenant)
         self.property_b = Property.objects.create(name='PM image property B', tenant=self.tenant)
 

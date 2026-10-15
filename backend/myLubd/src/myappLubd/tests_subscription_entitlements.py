@@ -28,7 +28,7 @@ from .subscription_permissions import (
     resolve_tenant_from_target,
     resolve_tenant_from_validated_data,
 )
-from .tenancy import enforce_subscription_limit
+from .tenancy import SubscriptionLimitReached, enforce_subscription_limit
 
 
 User = get_user_model()
@@ -295,7 +295,7 @@ class TenantEntitlementTests(TestCase):
             'active', current_period_end=timezone.now().date() + timedelta(days=1),
         )
         Property.objects.create(name='Existing Plan Property', tenant=self.tenant)
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(SubscriptionLimitReached):
             enforce_subscription_limit(self.tenant, 'max_properties')
 
 

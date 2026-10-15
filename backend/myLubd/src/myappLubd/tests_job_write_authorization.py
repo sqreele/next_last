@@ -423,7 +423,10 @@ class JobWriteAuthorizationTests(APITestCase):
         )
         self.login(viewer)
 
-        response = self.client.get('/api/v1/jobs/my_jobs/')
+        response = self.client.get(
+            '/api/v1/jobs/my_jobs/',
+            {'property_id': self.property.property_id},
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
         job_ids = {row['job_id'] for row in response.data['results']}
         self.assertIn(visible.job_id, job_ids)

@@ -538,7 +538,15 @@ def enforce_storage_limit(tenant, additional_bytes):
         return
     from .entitlements import get_tenant_entitlement
 
-    if not get_tenant_entitlement(tenant).can_write:
+    from .subscription_permissions import get_subscription_enforcement_mode
+
+    # Capacity accounting must not become a second lifecycle gate in off or
+    # observe mode. ``require_subscription_write`` owns lifecycle observation
+    # and enforcement at the request boundary.
+    if (
+        not get_tenant_entitlement(tenant).can_write
+        and get_subscription_enforcement_mode() == 'enforce'
+    ):
         raise PermissionDenied("This tenant's subscription is not active.")
     limit_mb = subscription.plan.max_storage_mb
     if limit_mb is None:
@@ -671,7 +679,14 @@ def enforce_subscription_limit(tenant, limit_key, increment=1):
 
     from .entitlements import get_tenant_entitlement
 
-    if not get_tenant_entitlement(tenant).can_write:
+    from .subscription_permissions import get_subscription_enforcement_mode
+
+    # Keep lifecycle policy centralized in ``require_subscription_write``.
+    # Quantitative limits still apply in every mode when a plan is present.
+    if (
+        not get_tenant_entitlement(tenant).can_write
+        and get_subscription_enforcement_mode() == 'enforce'
+    ):
         raise PermissionDenied("This tenant's subscription is not active.")
 
     if limit_key == 'max_storage_mb':

@@ -43,7 +43,7 @@ interface JobListMobileToolbarProps {
   className?: string;
 }
 
-const ALL_PRIORITIES: JobPriority[] = ["low", "medium", "high"];
+const ALL_PRIORITIES: JobPriority[] = ["low", "medium", "high", "critical"];
 
 const DATE_OPTIONS: Array<{ value: DateFilter; label: string }> = [
   { value: "all", label: "All time" },

@@ -63,9 +63,14 @@ class JobPropertyWriteApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
         return Job.objects.get(job_id=response.data['job_id'])
 
-    def test_create_property_only(self):
-        job = self.create_job(property_id=self.chinatown.property_id)
-        self.assertEqual(job.property_id, self.chinatown.id)
+    def test_create_property_only_is_rejected_without_location(self):
+        response = self.client.post(
+            '/api/v1/jobs/',
+            self.payload(property_id=self.chinatown.property_id),
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        self.assertIn('non_field_errors', response.data)
 
     def test_create_requires_explicit_property_even_with_area_or_room(self):
         for location in (

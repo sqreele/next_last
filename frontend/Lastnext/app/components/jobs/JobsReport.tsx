@@ -93,6 +93,7 @@ const PRIORITY_FILTER_OPTIONS: Array<{
   label: string;
 }> = [
   { value: "all", label: "All priorities" },
+  { value: "critical", label: "Critical" },
   { value: "high", label: "High" },
   { value: "medium", label: "Medium" },
   { value: "low", label: "Low" },
@@ -365,6 +366,7 @@ interface UtilityMonthSnapshot {
 }
 
 const PRIORITY_COLORS: Record<JobPriority, string> = {
+  critical: "#DC2626",
   high: "#F97316",
   medium: "#2563EB",
   low: "#16A34A",

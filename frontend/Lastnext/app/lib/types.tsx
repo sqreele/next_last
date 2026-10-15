@@ -50,7 +50,7 @@ export interface UserContextType {
 }
 
 export type JobStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'waiting_sparepart';
-export type JobPriority = 'low' | 'medium' | 'high';
+export type JobPriority = 'low' | 'medium' | 'high' | 'critical';
 
 export interface JobImage {
   id: number;
@@ -239,9 +239,11 @@ export const PRIORITY_COLORS: Record<JobPriority, string> = {
   low: '#16A34A',
   medium: '#2563EB',
   high: '#F97316',
+  critical: '#DC2626',
 };
 
 export const PRIORITY_VARIANTS = {
+  critical: 'destructive',
   high: 'destructive',
   medium: 'secondary',
   low: 'outline',

@@ -1399,6 +1399,11 @@ class Area(models.Model):
 
 
 class JobImage(models.Model):
+    IMAGE_TYPE_CHOICES = [
+        ('before', 'Before'),
+        ('after', 'After'),
+    ]
+
     # Image size configuration
     MAX_SIZE = (1600, 1600)
     JPEG_QUALITY = 82
@@ -1429,6 +1434,14 @@ class JobImage(models.Model):
     uploaded_at = models.DateTimeField(
         auto_now_add=True,
         help_text="Timestamp when the image was uploaded"
+    )
+
+    image_type = models.CharField(
+        max_length=10,
+        choices=IMAGE_TYPE_CHOICES,
+        default='before',
+        db_index=True,
+        help_text='Whether this image documents the issue before or after work.',
     )
     
     # JPEG version for PDF generation compatibility
@@ -1554,6 +1567,7 @@ class Job(models.Model):
         ('low', 'Low'),
         ('medium', 'Medium'),
         ('high', 'High'),
+        ('critical', 'Critical'),
     ]
    
     job_id = models.CharField(

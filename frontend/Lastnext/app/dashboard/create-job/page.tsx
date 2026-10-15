@@ -5,7 +5,6 @@ import CreateJobForm from '@/app/components/jobs/CreateJobForm';
 import { redirect } from 'next/navigation';
 import { getServerSession } from '@/app/lib/session.server';
 import { PageContainer } from '@/app/components/layout/PageContainer';
-import { PageHeader } from '@/app/components/layout/PageHeader';
 import { Skeleton } from '@/app/components/ui/loading';
 
 export const dynamic = 'force-dynamic';
@@ -45,11 +44,6 @@ export default async function CreateJobPage() {
 
   return (
     <PageContainer>
-      <PageHeader
-        eyebrow="Work orders"
-        title="Create a maintenance job"
-        description="Capture the issue, location, priority, assignee, and supporting photos."
-      />
       <Suspense fallback={
         <div className="space-y-4 rounded-xl border border-border bg-card p-5" aria-label="Loading job form">
           <Skeleton className="h-6 w-48" />

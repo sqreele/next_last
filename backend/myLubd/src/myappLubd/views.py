@@ -3861,8 +3861,11 @@ class TopicViewSet(viewsets.ModelViewSet):
         return selected_properties.distinct()
 
     def get_queryset(self):
-        """
-        Return topics associated with jobs in properties the user can access.
+        """Return the shared visible catalogue used by Create Job.
+
+        Topic rows are global, not tenant-owned. Their availability must not be
+        inferred from existing jobs because a new Property still needs topics
+        for its first work order.
         """
         user = self.request.user
         
@@ -3877,29 +3880,12 @@ class TopicViewSet(viewsets.ModelViewSet):
         if requested_property_filter and not has_property_filter:
             return Topic.objects.none()
 
-        def filter_topics_by_properties(queryset, properties):
-            return queryset.filter(
-                Q(jobs__property__in=properties) |
-                Q(preventive_maintenances__job__property__in=properties)
-            ).distinct()
+        if has_property_filter and not user.is_superuser:
+            accessible_ids = get_accessible_properties(user).values_list('id', flat=True)
+            if not selected_properties.filter(id__in=accessible_ids).exists():
+                return Topic.objects.none()
 
-        # Only the platform break-glass user can access all topics.
-        if user.is_superuser:
-            queryset = Topic.objects.all()
-            if has_property_filter:
-                queryset = filter_topics_by_properties(queryset, selected_properties)
-            if not include_hidden:
-                queryset = queryset.filter(is_visible_in_create_job=True)
-            return queryset
-        
-        # Get properties the user has access to
-        accessible_properties = get_accessible_properties(user)
-        if has_property_filter:
-            accessible_properties = accessible_properties.filter(id__in=selected_properties.values_list('id', flat=True))
-        
-        # Return topics that are used in jobs within user's accessible properties
-        queryset = filter_topics_by_properties(Topic.objects.all(), accessible_properties)
-
+        queryset = Topic.objects.all()
         if not include_hidden:
             queryset = queryset.filter(is_visible_in_create_job=True)
 
@@ -4483,6 +4469,7 @@ class JobViewSet(viewsets.ModelViewSet):
                     JobImage.objects.create(
                         job=job,
                         image=image,
+                        image_type='after',
                         uploaded_by=request.user,
                     )
 
@@ -4723,7 +4710,11 @@ class JobViewSet(viewsets.ModelViewSet):
         if self.request.user.is_authenticated:
             self._validate_operable_scope(serializer)
             tenant = serializer.validated_data['_resolved_property'].tenant
-            incoming_files = self.request.FILES.getlist('images')
+            incoming_files = [
+                *self.request.FILES.getlist('before_images'),
+                *self.request.FILES.getlist('after_images'),
+                *self.request.FILES.getlist('images'),
+            ]
             incoming_bytes = sum(int(getattr(item, 'size', 0) or 0) for item in incoming_files)
             with transaction.atomic():
                 locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]

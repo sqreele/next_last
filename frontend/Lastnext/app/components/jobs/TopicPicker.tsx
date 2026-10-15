@@ -171,6 +171,26 @@ export default function TopicPicker({
         aria-label={t("createJob.chooseCategory")}
         className="mt-2 max-h-[min(55vh,24rem)] space-y-1 overflow-y-auto overscroll-contain pr-1"
       >
+        {query.trim() &&
+          !topics.some(
+            (topic) =>
+              topic.title.toLocaleLowerCase() ===
+              query.trim().toLocaleLowerCase(),
+          ) && (
+            <button
+              type="button"
+              role="option"
+              aria-selected={false}
+              onClick={() => {
+                onChange({ title: query.trim(), description: "" });
+                setOpen(false);
+              }}
+              className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2.5 text-left font-semibold text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Tag className="h-4 w-4" aria-hidden />
+              {t("createJob.useNewCategory").replace("{name}", query.trim())}
+            </button>
+          )}
         {filteredTopics.map((topic, index) => {
           const selected = value.title === topic.title;
           return (
@@ -217,9 +237,9 @@ export default function TopicPicker({
           );
         })}
 
-        {topics.length === 0 && (
+        {topics.length === 0 && !query.trim() && (
           <p className="rounded-xl bg-muted p-4 text-center text-sm text-muted-foreground">
-            {t("createJob.loadingTopics")}
+            {t("createJob.noTopicsYet")}
           </p>
         )}
 

@@ -33,7 +33,6 @@ import {
   Tag,
   CopyPlus,
 } from "lucide-react";
-import { Checkbox } from "@/app/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -61,7 +60,8 @@ import { getStatusConfig } from "@/app/design-system/status-config";
 // Use Next.js API routes for proxying to the backend
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_FILES_PER_STAGE = 20; // Maximum images allowed for before/after sections
+const MAX_BEFORE_FILES = 20;
+const MAX_AFTER_FILES = 5;
 type TFunction = (key: DictKey) => string;
 
 function formatMessage(
@@ -156,9 +156,9 @@ const createValidationSchema = (t: TFunction) =>
       )
       .min(1, t("createJob.validation.imageRequired"))
       .max(
-        MAX_FILES_PER_STAGE,
+        MAX_BEFORE_FILES,
         formatMessage(t("createJob.validation.maxBeforeImages"), {
-          max: MAX_FILES_PER_STAGE,
+          max: MAX_BEFORE_FILES,
         }),
       )
       .required(t("createJob.validation.beforeImageRequired")),
@@ -181,10 +181,17 @@ const createValidationSchema = (t: TFunction) =>
           ),
       )
       .max(
-        MAX_FILES_PER_STAGE,
+        MAX_AFTER_FILES,
         formatMessage(t("createJob.validation.maxAfterImages"), {
-          max: MAX_FILES_PER_STAGE,
+          max: MAX_AFTER_FILES,
         }),
+      )
+      .test(
+        "after-only-when-completed",
+        t("createJob.validation.afterImagesRequireCompleted"),
+        function (value) {
+          return !value?.length || this.parent.status === "completed";
+        },
       ),
     is_defective: Yup.boolean().default(false),
     is_preventivemaintenance: Yup.boolean().default(false),
@@ -630,13 +637,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     [toast, t],
   );
 
-  const validateFiles = (files: File[]) => {
+  const validateFiles = (files: File[], maxFiles: number) => {
     if (!files || files.length === 0) {
       return t("createJob.validation.imageRequired");
     }
-    if (files.length > MAX_FILES_PER_STAGE) {
+    if (files.length > maxFiles) {
       return formatMessage(t("createJob.error.fileMax"), {
-        max: MAX_FILES_PER_STAGE,
+        max: maxFiles,
       });
     }
     for (const file of files) {
@@ -727,7 +734,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         }
       }
 
-      const fileError = validateFiles(values.files);
+      const fileError = validateFiles(values.files, MAX_BEFORE_FILES);
       if (fileError) {
         setError(fileError);
         showErrorToast(fileError);
@@ -737,7 +744,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       }
 
       if (values.afterFiles.length > 0) {
-        const afterFileError = validateFiles(values.afterFiles);
+        const afterFileError = validateFiles(values.afterFiles, MAX_AFTER_FILES);
         if (afterFileError) {
           setError(afterFileError);
           showErrorToast(afterFileError);
@@ -765,7 +772,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       if (values.remarks?.trim()) {
         formData.append("remarks", values.remarks.trim());
       }
-      formData.append("user_id", session.user.id);
       formData.append("property_id", activePropertyId);
       formData.append("is_defective", values.is_defective ? "true" : "false");
       formData.append(
@@ -775,8 +781,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       if (values.area_id != null) {
         formData.append("area_id", String(values.area_id));
       }
-      [...values.files, ...values.afterFiles].forEach((file) => {
-        formData.append("images", file);
+      values.files.forEach((file) => {
+        formData.append("before_images", file);
+      });
+      values.afterFiles.forEach((file) => {
+        formData.append("after_images", file);
       });
 
       await axios.post(`/api/jobs/`, formData, { withCredentials: true });
@@ -819,7 +828,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   };
 
   const fetchRooms = useCallback(
-    async (areaId?: number | null, floor?: string | null) => {
+    async (floor?: string | null) => {
       const requestId = ++roomRequestIdRef.current;
       if (!session?.user || !activePropertyId) {
         setRooms([]);
@@ -833,7 +842,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
           withCredentials: true,
           params: {
             property: activePropertyId,
-            ...(areaId ? { area_id: areaId } : {}),
+            is_active: "true",
             ...(floor ? { floor } : {}),
           },
         });
@@ -869,8 +878,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     ],
   );
 
-  const fetchFloorsForArea = useCallback(
-    async (areaId: number | null) => {
+  const fetchFloors = useCallback(
+    async () => {
       const requestId = ++floorRequestIdRef.current;
       if (!session?.user || !activePropertyId) {
         setFloors([]);
@@ -883,8 +892,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
           withCredentials: true,
           params: {
             floors_only: "true",
-            ...(areaId ? { area_id: areaId } : {}),
             property: activePropertyId,
+            is_active: "true",
           },
         });
         if (requestId !== floorRequestIdRef.current) return;
@@ -954,7 +963,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         await Promise.all([
         axios.get(`/api/rooms/`, {
           withCredentials: true,
-          params: { property: activePropertyId },
+          params: { property: activePropertyId, is_active: "true" },
         }),
         axios.get(`/api/topics/`, {
           withCredentials: true,
@@ -1126,17 +1135,38 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
               setFieldTouched,
               isSubmitting,
             }) => {
+              const completionSteps = [
+                {
+                  target: "cj-step-1",
+                  done:
+                    Boolean(values.description) &&
+                    Boolean(values.priority) &&
+                    Boolean(values.status),
+                },
+                {
+                  target: "cj-step-2",
+                  done: Boolean(values.area_id) || Boolean(values.room?.room_id),
+                },
+                {
+                  target: "cj-step-category",
+                  done: Boolean(values.topic.title),
+                },
+                {
+                  target: "cj-step-4",
+                  done: Array.isArray(values.files) && values.files.length > 0,
+                },
+              ];
               const stepStatus = [
-                Boolean(values.description) && Boolean(values.priority),
-                Boolean(values.area_id) || Boolean(values.room?.room_id),
-                Boolean(values.topic.title),
-                Boolean(values.remarks) ||
-                  values.is_defective ||
-                  values.is_preventivemaintenance,
-                Array.isArray(values.files) && values.files.length > 0,
+                completionSteps[0].done,
+                completionSteps[1].done,
+                completionSteps[2].done,
+                true,
+                completionSteps[3].done,
               ];
               const progress = Math.round(
-                (stepStatus.filter(Boolean).length / stepStatus.length) * 100,
+                (completionSteps.filter((step) => step.done).length /
+                  completionSteps.length) *
+                  100,
               );
 
               return (
@@ -1221,6 +1251,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 value={values.status}
                                 onValueChange={(value) => {
                                   setFieldValue("status", value);
+                                  if (value !== "completed") {
+                                    setFieldValue("afterFiles", []);
+                                  }
                                   setFieldTouched("status", true, false);
                                 }}
                                 disabled={isSubmitting}
@@ -1443,12 +1476,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   setFloors([]);
                                   setRooms([]);
 
-                                  if (nextAreaId) {
-                                    void fetchFloorsForArea(nextAreaId);
-                                    void fetchRooms(nextAreaId, null);
-                                  } else {
-                                    void fetchFloorsForArea(null);
-                                    void fetchRooms(null, null);
+                                  if (!nextAreaId) {
+                                    void fetchFloors();
+                                    void fetchRooms(null);
                                   }
                                 }}
                                 disabled={isSubmitting || !activePropertyId}
@@ -1525,15 +1555,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   setRooms([]);
 
                                   if (nextFloor) {
-                                    void fetchRooms(values.area_id, nextFloor);
+                                    void fetchRooms(nextFloor);
                                   } else {
-                                    void fetchRooms(values.area_id, null);
+                                    void fetchRooms(null);
                                   }
                                 }}
                                 disabled={
                                   isSubmitting ||
                                   isFloorLoading ||
-                                  !activePropertyId
+                                  !activePropertyId ||
+                                  Boolean(values.area_id)
                                 }
                               >
                                 <SelectTrigger
@@ -1570,13 +1601,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   )}
                                 </SelectContent>
                               </Select>
-                              {values.area_id &&
-                                !isFloorLoading &&
-                                floors.length === 0 && (
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    {t("createJob.noFloorsArea")}
-                                  </p>
-                                )}
+                              {values.area_id && (
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  {t("createJob.floorDisabledByArea")}
+                                </p>
+                              )}
                             </div>
 
                             {/* Room Selection */}
@@ -1598,7 +1627,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   setFieldValue("room", selectedRoom);
                                   setFieldTouched("room", true, false);
                                 }}
-                                disabled={isSubmitting || !activePropertyId}
+                                disabled={
+                                  isSubmitting ||
+                                  !activePropertyId ||
+                                  Boolean(values.area_id)
+                                }
                                 loading={isRoomLoading}
                                 emptyText={
                                   values.area_id && values.floor
@@ -1650,6 +1683,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                         setFieldValue("area_id", null);
                                         setFieldValue("floor", null);
                                         setFieldValue("room", null);
+                                        void fetchFloors();
+                                        void fetchRooms(null);
                                       }}
                                       className="inline-flex min-h-11 max-w-full touch-manipulation items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-left text-sm font-semibold text-primary"
                                     >
@@ -1666,6 +1701,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                       onClick={() => {
                                         setFieldValue("floor", null);
                                         setFieldValue("room", null);
+                                        void fetchRooms(null);
                                       }}
                                       className="inline-flex min-h-11 max-w-full touch-manipulation items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-left text-sm font-semibold text-primary"
                                     >
@@ -1783,47 +1819,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 )}
                             </div>
 
-                            {/* Checkboxes */}
-                            <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-                              <div className="flex min-h-12 items-center gap-3 rounded-lg border border-border bg-background p-3">
-                                <Checkbox
-                                  id="is_defective"
-                                  checked={values.is_defective}
-                                  onCheckedChange={(checked) =>
-                                    setFieldValue("is_defective", checked)
-                                  }
-                                  disabled={isSubmitting}
-                                  className="h-5 w-5 rounded-sm border-primary"
-                                />
-                                <Label
-                                  htmlFor="is_defective"
-                                  className="cursor-pointer text-sm font-semibold text-foreground"
-                                >
-                                  {t("createJob.isDefective")}
-                                </Label>
-                              </div>
-
-                              <div className="flex min-h-12 items-center gap-3 rounded-lg border border-border bg-background p-3">
-                                <Checkbox
-                                  id="is_preventivemaintenance"
-                                  checked={values.is_preventivemaintenance}
-                                  onCheckedChange={(checked) =>
-                                    setFieldValue(
-                                      "is_preventivemaintenance",
-                                      checked,
-                                    )
-                                  }
-                                  disabled={isSubmitting}
-                                  className="h-5 w-5 rounded-sm border-primary"
-                                />
-                                <Label
-                                  htmlFor="is_preventivemaintenance"
-                                  className="cursor-pointer text-sm font-semibold text-foreground"
-                                >
-                                  {t("createJob.isPreventiveMaintenance")}
-                                </Label>
-                              </div>
-                            </div>
                           </div>
                         </div>
 
@@ -1842,7 +1837,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             <div className="space-y-2">
                               <Label className="text-sm font-semibold text-foreground">
                                 {formatMessage(t("createJob.beforePhoto"), {
-                                  max: MAX_FILES_PER_STAGE,
+                                  max: MAX_BEFORE_FILES,
                                 })}{" "}
                                 <span className="text-red-500">*</span>
                               </Label>
@@ -1861,44 +1856,50 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   touched.files || submitCount > 0,
                                 )}
                                 disabled={isSubmitting}
-                                maxFiles={MAX_FILES_PER_STAGE}
+                                maxFiles={MAX_BEFORE_FILES}
                               />
                               <p className="text-xs font-medium text-muted-foreground sm:text-sm">
                                 {formatMessage(t("createJob.beforePhotoHint"), {
-                                  max: MAX_FILES_PER_STAGE,
+                                  max: MAX_BEFORE_FILES,
                                 })}
                               </p>
                             </div>
 
-                            <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-foreground">
-                                {formatMessage(t("createJob.afterPhoto"), {
-                                  max: MAX_FILES_PER_STAGE,
-                                })}
-                              </Label>
-                              <FileUpload
-                                onFileSelect={(selectedFiles) => {
-                                  setFieldValue("afterFiles", selectedFiles);
-                                  setFieldTouched("afterFiles", true, false);
-                                }}
-                                error={
-                                  (touched.afterFiles || submitCount > 0) &&
-                                  typeof errors.afterFiles === "string"
-                                    ? errors.afterFiles
-                                    : undefined
-                                }
-                                touched={Boolean(
-                                  touched.afterFiles || submitCount > 0,
-                                )}
-                                disabled={isSubmitting}
-                                maxFiles={MAX_FILES_PER_STAGE}
-                              />
-                              <p className="text-xs font-medium text-muted-foreground sm:text-sm">
-                                {formatMessage(t("createJob.afterPhotoHint"), {
-                                  max: MAX_FILES_PER_STAGE,
-                                })}
-                              </p>
-                            </div>
+                            {values.status === "completed" && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-semibold text-foreground">
+                                  {formatMessage(t("createJob.afterPhoto"), {
+                                    max: MAX_AFTER_FILES,
+                                  })}
+                                </Label>
+                                <FileUpload
+                                  onFileSelect={(selectedFiles) => {
+                                    setFieldValue("afterFiles", selectedFiles);
+                                    setFieldTouched(
+                                      "afterFiles",
+                                      true,
+                                      false,
+                                    );
+                                  }}
+                                  error={
+                                    (touched.afterFiles || submitCount > 0) &&
+                                    typeof errors.afterFiles === "string"
+                                      ? errors.afterFiles
+                                      : undefined
+                                  }
+                                  touched={Boolean(
+                                    touched.afterFiles || submitCount > 0,
+                                  )}
+                                  disabled={isSubmitting}
+                                  maxFiles={MAX_AFTER_FILES}
+                                />
+                                <p className="text-xs font-medium text-muted-foreground sm:text-sm">
+                                  {formatMessage(t("createJob.afterPhotoHint"), {
+                                    max: MAX_AFTER_FILES,
+                                  })}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2042,25 +2043,23 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
                     {/* Submit Button — fixed to the mobile viewport bottom, with progress hint and scroll-to-error */}
                     {(() => {
-                      const stepStatus = [
-                        Boolean(values.description) &&
-                          Boolean(values.priority) &&
-                          Boolean(values.status),
-                        Boolean(values.area_id) ||
-                          Boolean(values.room?.room_id),
-                        Boolean(values.topic.title),
-                        Array.isArray(values.files) && values.files.length > 0,
-                      ];
-                      const completedCount = stepStatus.filter(Boolean).length;
-                      const firstIncomplete =
-                        stepStatus.findIndex((s) => !s) + 1;
-                      const allReady = completedCount === stepStatus.length;
+                      const completedCount = completionSteps.filter(
+                        (step) => step.done,
+                      ).length;
+                      const firstIncompleteIndex = completionSteps.findIndex(
+                        (step) => !step.done,
+                      );
+                      const firstIncomplete = firstIncompleteIndex + 1;
+                      const firstIncompleteTarget =
+                        completionSteps[firstIncompleteIndex]?.target;
+                      const allReady =
+                        completedCount === completionSteps.length;
                       return (
                         <div
-                          className="fixed bottom-[4.5rem] left-0 right-0 z-40 border-t border-border bg-card px-3 py-3 shadow-soft sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
+                          className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card px-3 py-3 shadow-soft sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
                           style={{
-                            bottom:
-                              "calc(4.5rem + env(safe-area-inset-bottom))",
+                            paddingBottom:
+                              "max(0.75rem, env(safe-area-inset-bottom))",
                           }}
                         >
                           <div className="w-full max-w-none md:max-w-none">
@@ -2072,7 +2071,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     t("createJob.mobileProgress"),
                                     {
                                       completed: completedCount,
-                                      total: stepStatus.length,
+                                      total: completionSteps.length,
                                       step: firstIncomplete,
                                     },
                                   )}
@@ -2084,7 +2083,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     if (typeof document !== "undefined") {
                                       document
                                         .getElementById(
-                                          `cj-step-${firstIncomplete}`,
+                                          firstIncompleteTarget || "cj-step-1",
                                         )
                                         ?.scrollIntoView({
                                           behavior: "smooth",
@@ -2113,7 +2112,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   event.preventDefault();
                                   document
                                     .getElementById(
-                                      `cj-step-${firstIncomplete}`,
+                                      firstIncompleteTarget || "cj-step-1",
                                     )
                                     ?.scrollIntoView({
                                       behavior: "smooth",

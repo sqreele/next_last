@@ -744,7 +744,7 @@ class JobImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = JobImage
-        fields = ['id', 'image_url', 'jpeg_url', 'uploaded_by', 'uploaded_at']
+        fields = ['id', 'image_url', 'jpeg_url', 'image_type', 'uploaded_by', 'uploaded_at']
 
     def get_image_url(self, obj):
         """Return the URL for the original uploaded image."""
@@ -969,6 +969,7 @@ class JobSerializer(serializers.ModelSerializer):
     rooms = RoomSummarySerializer(many=True, read_only=True)
     topic_data = serializers.JSONField(write_only=True)
     room_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    remarks = serializers.CharField(required=False, allow_blank=True, default='')
     room_ids = serializers.PrimaryKeyRelatedField(
         queryset=Room.objects.all(), many=True, write_only=True, required=False
     )
@@ -1053,6 +1054,8 @@ class JobSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Validate timestamp fields to ensure logical order"""
         from django.utils import timezone
+
+        request = self.context.get('request')
         
         created_at = data.get('created_at')
         updated_at = data.get('updated_at')
@@ -1115,9 +1118,33 @@ class JobSerializer(serializers.ModelSerializer):
         except ValidationError as exc:
             raise serializers.ValidationError(exc.message_dict) from exc
 
+        if instance is None and not future_rooms and future_area is None:
+            raise serializers.ValidationError({
+                'non_field_errors': 'Either room_id or area_id is required.'
+            })
+
         data['_resolved_property'] = resolved_property
         if room_id or 'room_ids' in data:
             data['_resolved_rooms'] = future_rooms
+
+        if request is not None and instance is None:
+            before_images = [
+                *request.FILES.getlist('before_images'),
+                *request.FILES.getlist('images'),
+            ]
+            after_images = request.FILES.getlist('after_images')
+            if len(before_images) > 20:
+                raise serializers.ValidationError({
+                    'before_images': 'You can upload up to 20 before images.'
+                })
+            if len(after_images) > 5:
+                raise serializers.ValidationError({
+                    'after_images': 'You can upload up to 5 after images.'
+                })
+            if after_images and data.get('status', 'pending') != 'completed':
+                raise serializers.ValidationError({
+                    'after_images': 'After images can only be added to a completed job.'
+                })
 
         return data
 
@@ -1230,12 +1257,7 @@ class JobSerializer(serializers.ModelSerializer):
         # ``room_ids`` is request-only input.  The resolved Room instances are
         # attached through Job.rooms after the Job row exists.
         validated_data.pop('room_ids', None)
-        area = validated_data.get('area')
 
-        if not room_id and not resolved_rooms and not area and not resolved_property:
-            raise serializers.ValidationError(
-                {'non_field_errors': 'Either room_id or area_id is required.'}
-            )
         if not topic_data or 'title' not in topic_data:
             raise serializers.ValidationError({'topic_data': 'This field is required and must include a title.'})
 
@@ -1257,12 +1279,23 @@ class JobSerializer(serializers.ModelSerializer):
                     job.rooms.add(room)
                 job.topics.add(topic)
 
-                images = request.FILES.getlist('images', [])
-                for image in images:
+                before_images = [
+                    *request.FILES.getlist('before_images'),
+                    *request.FILES.getlist('images'),
+                ]
+                for image in before_images:
                     JobImage.objects.create(
                         job=job,
                         image=image,
+                        image_type='before',
                         uploaded_by=request.user
+                    )
+                for image in request.FILES.getlist('after_images'):
+                    JobImage.objects.create(
+                        job=job,
+                        image=image,
+                        image_type='after',
+                        uploaded_by=request.user,
                     )
 
                 job.refresh_from_db()

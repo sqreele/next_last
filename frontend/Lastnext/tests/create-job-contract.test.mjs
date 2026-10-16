@@ -5,10 +5,13 @@ import test from "node:test";
 const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("create job submits distinct before and after image fields", () => {
+test("create job pre-uploads and submits distinct before and after image tokens", () => {
   const form = read("app/components/jobs/CreateJobForm.tsx");
-  assert.match(form, /formData\.append\("before_images", file\)/);
-  assert.match(form, /formData\.append\("after_images", file\)/);
+  const uploader = read("app/components/jobs/ImmediateImageUpload.tsx");
+  assert.match(form, /formData\.append\("before_image_tokens", token\)/);
+  assert.match(form, /formData\.append\("after_image_tokens", token\)/);
+  assert.match(uploader, /"\/api\/jobs\/pending-images"/);
+  assert.match(uploader, /compressImage/);
   assert.doesNotMatch(form, /formData\.append\("user_id"/);
   assert.doesNotMatch(form, /formData\.append\("images", file\)/);
 });

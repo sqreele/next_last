@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 from .models import (
-    Room, Topic, JobImage, Job, Property, UserProfile, Session,
+    Room, Topic, JobImage, PendingJobImage, Job, Property, UserProfile, Session,
     PreventiveMaintenance, PMMasterPlan, Machine, MaintenanceProcedure,
     MaintenanceTaskImage,
     UtilityConsumption, Inventory, InventoryCategory, Area, JobComment, Tenant,
@@ -26,6 +26,7 @@ from django.conf import settings
 from datetime import timedelta
 from pathlib import Path
 import math
+import json
 
 from .timezones import is_valid_timezone, object_timezone
 from .tenancy import (
@@ -1128,23 +1129,58 @@ class JobSerializer(serializers.ModelSerializer):
             data['_resolved_rooms'] = future_rooms
 
         if request is not None and instance is None:
+            def pending_tokens(field_name):
+                values = request.data.getlist(field_name) if hasattr(request.data, 'getlist') else []
+                if not values:
+                    raw = request.data.get(field_name)
+                    values = raw if isinstance(raw, list) else ([raw] if raw else [])
+                if len(values) == 1 and isinstance(values[0], str) and values[0].lstrip().startswith('['):
+                    try:
+                        values = json.loads(values[0])
+                    except (TypeError, ValueError):
+                        raise serializers.ValidationError({field_name: 'Invalid image token list.'})
+                return [str(value) for value in values if value]
+
+            before_tokens = pending_tokens('before_image_tokens')
+            after_tokens = pending_tokens('after_image_tokens')
+            all_tokens = before_tokens + after_tokens
+            if len(all_tokens) != len(set(all_tokens)):
+                raise serializers.ValidationError({'images': 'Duplicate image tokens are not allowed.'})
+
+            if all_tokens:
+                pending = list(PendingJobImage.objects.filter(
+                    token__in=all_tokens,
+                    uploaded_by=request.user,
+                    property=resolved_property,
+                    created_at__gte=timezone.now() - timedelta(hours=24),
+                ))
+                by_token = {str(item.token): item for item in pending}
+                if len(by_token) != len(all_tokens):
+                    raise serializers.ValidationError({'images': 'One or more uploaded images are unavailable.'})
+                if any(by_token[token].image_type != 'before' for token in before_tokens):
+                    raise serializers.ValidationError({'before_image_tokens': 'Invalid before image token.'})
+                if any(by_token[token].image_type != 'after' for token in after_tokens):
+                    raise serializers.ValidationError({'after_image_tokens': 'Invalid after image token.'})
+
             before_images = [
                 *request.FILES.getlist('before_images'),
                 *request.FILES.getlist('images'),
             ]
             after_images = request.FILES.getlist('after_images')
-            if len(before_images) > 20:
+            if len(before_images) + len(before_tokens) > 20:
                 raise serializers.ValidationError({
                     'before_images': 'You can upload up to 20 before images.'
                 })
-            if len(after_images) > 5:
+            if len(after_images) + len(after_tokens) > 5:
                 raise serializers.ValidationError({
                     'after_images': 'You can upload up to 5 after images.'
                 })
-            if after_images and data.get('status', 'pending') != 'completed':
+            if (after_images or after_tokens) and data.get('status', 'pending') != 'completed':
                 raise serializers.ValidationError({
                     'after_images': 'After images can only be added to a completed job.'
                 })
+            data['_pending_before_tokens'] = before_tokens
+            data['_pending_after_tokens'] = after_tokens
 
         return data
 
@@ -1251,6 +1287,8 @@ class JobSerializer(serializers.ModelSerializer):
         validated_data.pop('property_id', None)
         resolved_property = validated_data.pop('_resolved_property')
         resolved_rooms = validated_data.pop('_resolved_rooms', None)
+        pending_before_tokens = validated_data.pop('_pending_before_tokens', [])
+        pending_after_tokens = validated_data.pop('_pending_after_tokens', [])
 
         topic_data = validated_data.pop('topic_data', None)
         room_id = validated_data.pop('room_id', None)
@@ -1297,6 +1335,32 @@ class JobSerializer(serializers.ModelSerializer):
                         image_type='after',
                         uploaded_by=request.user,
                     )
+
+                pending_tokens = pending_before_tokens + pending_after_tokens
+                if pending_tokens:
+                    pending_images = list(
+                        PendingJobImage.objects.select_for_update().filter(
+                            token__in=pending_tokens,
+                            uploaded_by=request.user,
+                            property=resolved_property,
+                            created_at__gte=timezone.now() - timedelta(hours=24),
+                        )
+                    )
+                    pending_by_token = {str(item.token): item for item in pending_images}
+                    if len(pending_by_token) != len(pending_tokens):
+                        raise serializers.ValidationError({
+                            'images': 'One or more uploaded images expired. Please upload them again.'
+                        })
+                    for token in pending_tokens:
+                        pending_image = pending_by_token[token]
+                        JobImage.objects.create(
+                            job=job,
+                            image=pending_image.image.name,
+                            jpeg_path=pending_image.image.name,
+                            image_type=pending_image.image_type,
+                            uploaded_by=request.user,
+                        )
+                    PendingJobImage.objects.filter(token__in=pending_tokens).delete()
 
                 job.refresh_from_db()
                 return job

@@ -7,7 +7,7 @@ from PIL import Image
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Area, Job, Property, Room, Tenant, TenantMembership, Topic
+from .models import Area, Job, JobImage, PendingJobImage, Property, Room, Tenant, TenantMembership, Topic
 
 
 User = get_user_model()
@@ -105,3 +105,55 @@ class CreateJobContractTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
         self.assertIn('after_images', response.data)
+
+    def test_pending_before_upload_is_consumed_when_job_is_created(self):
+        upload = self.client.post(
+            '/api/v1/jobs/pending-images/',
+            {
+                'property_id': self.property.property_id,
+                'image_type': 'before',
+                'image': image_upload('phone-photo.png'),
+            },
+            format='multipart',
+        )
+        self.assertEqual(upload.status_code, status.HTTP_201_CREATED, upload.content)
+        token = upload.data['token']
+        pending = PendingJobImage.objects.get(token=token)
+        self.assertTrue(pending.image.name.endswith('.jpg'))
+
+        response = self.client.post(
+            '/api/v1/jobs/',
+            self.payload(
+                topic_data=json.dumps({'title': self.visible_topic.title}),
+                before_image_tokens=token,
+            ),
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        self.assertFalse(PendingJobImage.objects.filter(token=token).exists())
+        image = JobImage.objects.get(job__job_id=response.data['job_id'])
+        self.assertEqual(image.image_type, 'before')
+        self.assertEqual(image.image.name, pending.image.name)
+
+    def test_pending_after_upload_requires_completed_job(self):
+        upload = self.client.post(
+            '/api/v1/jobs/pending-images/',
+            {
+                'property_id': self.property.property_id,
+                'image_type': 'after',
+                'image': image_upload('after.png'),
+            },
+            format='multipart',
+        )
+        self.assertEqual(upload.status_code, status.HTTP_201_CREATED, upload.content)
+
+        response = self.client.post(
+            '/api/v1/jobs/',
+            self.payload(
+                topic_data=json.dumps({'title': self.visible_topic.title}),
+                after_image_tokens=upload.data['token'],
+            ),
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        self.assertTrue(PendingJobImage.objects.filter(token=upload.data['token']).exists())

@@ -21,7 +21,7 @@ from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models, transaction
 from .models import (
     UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance,
-    PreventiveMaintenanceImage, PMMasterPlan, JobImage, Machine,
+    PreventiveMaintenanceImage, PMMasterPlan, JobImage, PendingJobImage, Machine,
     MaintenanceProcedure, UtilityConsumption, Inventory, InventoryCategory,
     Area, JobComment, PushSubscription, Tenant,
     TenantMembership, LineGroupPairing, SubscriptionPlan, TenantSubscription, UsageMetric,
@@ -45,7 +45,7 @@ from .serializers import (
     TenantMembershipSerializer, SubscriptionPlanSerializer,
     TenantSubscriptionSerializer, UsageMetricSerializer,
 )
-from .job_property import resolve_job_property
+from .job_property import resolve_external_property_reference, resolve_job_property
 from .job_history import log_job_action
 from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -4705,6 +4705,91 @@ class JobViewSet(viewsets.ModelViewSet):
                 raise ValidationError({
                     'area_id': 'Selected area must belong to the Job property.'
                 })
+
+    @action(
+        detail=False,
+        methods=['post', 'delete'],
+        url_path='pending-images',
+        parser_classes=[MultiPartParser, FormParser, JSONParser],
+    )
+    def pending_images(self, request):
+        """Upload or remove optimized evidence before the Job exists."""
+        if request.method == 'DELETE':
+            token = request.data.get('token') or request.query_params.get('token')
+            pending = get_object_or_404(
+                PendingJobImage,
+                token=token,
+                uploaded_by=request.user,
+            )
+            storage = pending.image.storage
+            image_name = pending.image.name
+            pending.delete()
+            if image_name and not JobImage.objects.filter(image=image_name).exists():
+                storage.delete(image_name)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        upload = request.FILES.get('image')
+        image_type = str(request.data.get('image_type') or '').strip().lower()
+        property_id = request.data.get('property_id')
+        if upload is None:
+            raise ValidationError({'image': 'An image is required.'})
+        if image_type not in {'before', 'after'}:
+            raise ValidationError({'image_type': 'Use before or after.'})
+        if int(getattr(upload, 'size', 0) or 0) > 20 * 1024 * 1024:
+            raise ValidationError({'image': 'Each image must be 20 MB or smaller.'})
+
+        try:
+            property_obj = resolve_external_property_reference(property_id)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.message_dict) from exc
+        operable = self._operable_property_ids()
+        if operable is not None and property_obj.pk not in operable:
+            raise PermissionDenied('Your role cannot modify data for this property.')
+
+        expired = PendingJobImage.objects.filter(
+            created_at__lt=timezone.now() - timedelta(hours=24),
+        )
+        for pending_image in expired:
+            storage = pending_image.image.storage
+            image_name = pending_image.image.name
+            pending_image.delete()
+            if image_name and not JobImage.objects.filter(image=image_name).exists():
+                storage.delete(image_name)
+
+        with transaction.atomic():
+            locked_tenant = lock_tenants_for_membership_change(property_obj.tenant)[property_obj.tenant_id]
+            max_count = 20 if image_type == 'before' else 5
+            active_count = PendingJobImage.objects.filter(
+                uploaded_by=request.user,
+                property=property_obj,
+                image_type=image_type,
+            ).count()
+            if active_count >= max_count:
+                raise ValidationError({
+                    'image': f'You can upload up to {max_count} {image_type} images.'
+                })
+            enforce_storage_limit(locked_tenant, int(getattr(upload, 'size', 0) or 0))
+            require_subscription_write(
+                request,
+                locked_tenant,
+                operation='create',
+                resource_type='job',
+            )
+            try:
+                pending = PendingJobImage.objects.create(
+                    uploaded_by=request.user,
+                    property=property_obj,
+                    image=upload,
+                    image_type=image_type,
+                )
+            except DjangoValidationError as exc:
+                raise ValidationError(exc.message_dict) from exc
+
+        return Response({
+            'token': str(pending.token),
+            'image_type': pending.image_type,
+            'size': pending.image.size,
+        }, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:

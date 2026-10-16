@@ -16,6 +16,7 @@ from .models import (
     Machine,
     Inventory,
     JobImage,
+    PendingJobImage,
     PMMasterPlan,
     PreventiveMaintenance,
     Property,
@@ -480,6 +481,10 @@ def get_asset_usage(tenant):
 def _tenant_file_records(tenant):
     """Yield (field file, tenant) for every tenant-owned media family."""
     for image in JobImage.objects.filter(job__property__tenant=tenant).select_related('job__property__tenant'):
+        if image.image:
+            yield image.image
+
+    for image in PendingJobImage.objects.filter(property__tenant=tenant).select_related('property__tenant'):
         if image.image:
             yield image.image
 

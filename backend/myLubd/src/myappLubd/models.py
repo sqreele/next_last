@@ -1512,6 +1512,54 @@ class JobImage(models.Model):
             storage.delete(image_name)
 
 
+class PendingJobImage(models.Model):
+    """Optimized evidence uploaded before its Job has been created."""
+
+    IMAGE_TYPE_CHOICES = JobImage.IMAGE_TYPE_CHOICES
+
+    token = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='pending_job_images',
+    )
+    property = models.ForeignKey(
+        'Property',
+        on_delete=models.CASCADE,
+        related_name='pending_job_images',
+    )
+    image = models.ImageField(upload_to='maintenance_job_images/pending/%Y/%m/')
+    image_type = models.CharField(max_length=10, choices=IMAGE_TYPE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(
+                fields=['uploaded_by', 'property', 'created_at'],
+                name='myappLubd_p_uploade_e231d6_idx',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        should_process = bool(self.image) and not getattr(self.image, '_committed', True)
+        if should_process:
+            from .job_image_processing import optimize_job_image
+            from django.utils.text import slugify
+
+            try:
+                processed = optimize_job_image(self.image)
+            except Exception as exc:
+                raise ValidationError({'image': str(exc)}) from exc
+
+            stem = slugify(Path(getattr(self.image, 'name', '')).stem)[:60] or 'job-image'
+            self.image = ContentFile(
+                processed.getvalue(),
+                name=f'{stem}-{uuid.uuid4().hex}.jpg',
+            )
+        super().save(*args, **kwargs)
+
+
 class JobQuerySet(models.QuerySet):
     """QuerySet helpers for recoverable Job deletion."""
 

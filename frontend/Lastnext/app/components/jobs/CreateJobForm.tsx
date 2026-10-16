@@ -46,7 +46,7 @@ import { useSession, signIn } from "@/app/lib/session.client";
 import { Label } from "@/app/components/ui/label";
 import RoomAutocomplete from "@/app/components/jobs/RoomAutocomplete";
 import TopicPicker from "@/app/components/jobs/TopicPicker";
-import FileUpload from "@/app/components/jobs/FileUpload";
+import ImmediateImageUpload from "@/app/components/jobs/ImmediateImageUpload";
 import { Room, TopicFromAPI, Area, Property, Job } from "@/app/lib/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -88,6 +88,8 @@ interface FormValues {
   floor: string | null;
   files: File[];
   afterFiles: File[];
+  beforeImageTokens: string[];
+  afterImageTokens: string[];
   is_defective: boolean;
   is_preventivemaintenance: boolean;
 }
@@ -249,6 +251,8 @@ const initialValues: FormValues = {
   floor: null,
   files: [],
   afterFiles: [],
+  beforeImageTokens: [],
+  afterImageTokens: [],
   is_defective: false,
   is_preventivemaintenance: false,
 };
@@ -461,6 +465,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [beforeImagesBusy, setBeforeImagesBusy] = useState(false);
+  const [afterImagesBusy, setAfterImagesBusy] = useState(false);
   const [formInitialValues, setFormInitialValues] =
     useState<FormValues>(initialValues);
 
@@ -683,6 +689,15 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     setSuccessMessage(null);
 
     try {
+      if (beforeImagesBusy || afterImagesBusy) {
+        const message = t("createJob.validation.waitForUploads");
+        setError(message);
+        showErrorToast(message);
+        isSubmittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
+
       if (!session?.user) {
         const message = t("createJob.error.loginFirst");
         setError(message);
@@ -781,11 +796,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       if (values.area_id != null) {
         formData.append("area_id", String(values.area_id));
       }
-      values.files.forEach((file) => {
-        formData.append("before_images", file);
+      values.beforeImageTokens.forEach((token) => {
+        formData.append("before_image_tokens", token);
       });
-      values.afterFiles.forEach((file) => {
-        formData.append("after_images", file);
+      values.afterImageTokens.forEach((token) => {
+        formData.append("after_image_tokens", token);
       });
 
       await axios.post(`/api/jobs/`, formData, { withCredentials: true });
@@ -1029,6 +1044,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
           floor: copiedRoom ? getFloorFromRoomName(copiedRoom.name) : null,
           files: [],
           afterFiles: [],
+          beforeImageTokens: [],
+          afterImageTokens: [],
           is_defective: Boolean(copiedJob.is_defective),
           is_preventivemaintenance: Boolean(
             copiedJob.is_preventivemaintenance,
@@ -1252,7 +1269,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 onValueChange={(value) => {
                                   setFieldValue("status", value);
                                   if (value !== "completed") {
+                                    values.afterImageTokens.forEach((token) => {
+                                      void axios.delete(
+                                        `/api/jobs/pending-images?token=${encodeURIComponent(token)}`,
+                                      );
+                                    });
                                     setFieldValue("afterFiles", []);
+                                    setFieldValue("afterImageTokens", []);
                                   }
                                   setFieldTouched("status", true, false);
                                 }}
@@ -1841,11 +1864,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 })}{" "}
                                 <span className="text-red-500">*</span>
                               </Label>
-                              <FileUpload
-                                onFileSelect={(selectedFiles) => {
-                                  setFieldValue("files", selectedFiles);
+                              <ImmediateImageUpload
+                                key={`before:${activePropertyId || "none"}`}
+                                imageType="before"
+                                propertyId={activePropertyId || ""}
+                                onChange={(selectedFiles, tokens) => {
+                                  setFieldValue("files", selectedFiles, false);
+                                  setFieldValue("beforeImageTokens", tokens, false);
                                   setFieldTouched("files", true, false);
                                 }}
+                                onBusyChange={setBeforeImagesBusy}
                                 error={
                                   (touched.files || submitCount > 0) &&
                                   typeof errors.files === "string"
@@ -1855,7 +1883,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 touched={Boolean(
                                   touched.files || submitCount > 0,
                                 )}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || !activePropertyId}
                                 maxFiles={MAX_BEFORE_FILES}
                               />
                               <p className="text-xs font-medium text-muted-foreground sm:text-sm">
@@ -1872,15 +1900,20 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     max: MAX_AFTER_FILES,
                                   })}
                                 </Label>
-                                <FileUpload
-                                  onFileSelect={(selectedFiles) => {
-                                    setFieldValue("afterFiles", selectedFiles);
+                                <ImmediateImageUpload
+                                  key={`after:${activePropertyId || "none"}`}
+                                  imageType="after"
+                                  propertyId={activePropertyId || ""}
+                                  onChange={(selectedFiles, tokens) => {
+                                    setFieldValue("afterFiles", selectedFiles, false);
+                                    setFieldValue("afterImageTokens", tokens, false);
                                     setFieldTouched(
                                       "afterFiles",
                                       true,
                                       false,
                                     );
                                   }}
+                                  onBusyChange={setAfterImagesBusy}
                                   error={
                                     (touched.afterFiles || submitCount > 0) &&
                                     typeof errors.afterFiles === "string"
@@ -1890,7 +1923,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   touched={Boolean(
                                     touched.afterFiles || submitCount > 0,
                                   )}
-                                  disabled={isSubmitting}
+                                  disabled={isSubmitting || !activePropertyId}
                                   maxFiles={MAX_AFTER_FILES}
                                 />
                                 <p className="text-xs font-medium text-muted-foreground sm:text-sm">
@@ -2053,7 +2086,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                       const firstIncompleteTarget =
                         completionSteps[firstIncompleteIndex]?.target;
                       const allReady =
-                        completedCount === completionSteps.length;
+                        completedCount === completionSteps.length &&
+                        !beforeImagesBusy &&
+                        !afterImagesBusy;
                       return (
                         <div
                           className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card px-3 py-3 shadow-soft sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
@@ -2098,7 +2133,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             )}
                             <Button
                               type="submit"
-                              disabled={isSubmitting}
+                              disabled={
+                                isSubmitting || beforeImagesBusy || afterImagesBusy
+                              }
                               aria-busy={isSubmitting}
                               onClick={(event) => {
                                 // If something's missing, jump to the first incomplete step on mobile

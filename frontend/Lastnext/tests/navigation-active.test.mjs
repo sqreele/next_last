@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   getActiveNavigationItem,
   isNavigationItemActive,
+  normalizePathname,
 } from "../app/lib/navigation-active.mjs";
 
 const items = [
@@ -70,4 +71,9 @@ test("the dashboard root is inactive on unowned dashboard routes", () => {
 test("segment boundaries prevent near-prefix collisions", () => {
   assert.equal(getActiveNavigationItem("/dashboard/jobs-archive", items), undefined);
   assert.equal(getActiveNavigationItem("/dashboard/my-jobs-old", items), undefined);
+});
+
+test("pathname normalization removes trailing slashes", () => {
+  assert.equal(normalizePathname("/dashboard/create-job/"), "/dashboard/create-job");
+  assert.equal(normalizePathname("/dashboard/create-job///"), "/dashboard/create-job");
 });

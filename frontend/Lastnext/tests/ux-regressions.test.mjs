@@ -49,6 +49,7 @@ test("machine filtering includes partial machine-name matches", () => {
 
 test("create-job mobile submit bar uses the safe area while its bottom navigation is hidden", () => {
   const form = read("app/components/jobs/CreateJobForm.tsx");
+  const layout = read("app/dashboard/DashboardLayoutClient.tsx");
   const mobileNav = read("app/components/ui/mobile-nav.tsx");
 
   assert.match(
@@ -57,6 +58,8 @@ test("create-job mobile submit bar uses the safe area while its bottom navigatio
   );
   assert.match(form, /fixed bottom-0[^\n]*z-40/);
   assert.match(mobileNav, /fixed inset-x-0 bottom-0 z-50/);
+  assert.match(layout, /normalizePathname\(pathname\)/);
+  assert.match(layout, /!isCreateJobPage && <BottomNav/);
 });
 
 test("desktop navigation constrains its height and scrolls long menu lists", () => {

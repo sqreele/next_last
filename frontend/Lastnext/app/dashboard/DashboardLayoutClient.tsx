@@ -32,7 +32,10 @@ import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import {
   navigationGroups,
 } from "@/app/design-system/navigation-config";
-import { isNavigationItemActive } from "@/app/lib/navigation-active.mjs";
+import {
+  isNavigationItemActive,
+  normalizePathname,
+} from "@/app/lib/navigation-active.mjs";
 import { useScrollDirection } from "@/app/lib/hooks/useScrollDirection";
 import { NotificationBell } from "@/app/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
@@ -67,8 +70,10 @@ export default function DashboardLayoutClient({
     targetRef: mainRef,
   });
   const headerHidden = direction === "down" && !isAtTop;
+  const normalizedPathname = normalizePathname(pathname);
   const isCreateJobPage =
-    pathname === "/dashboard/create-job" || pathname === "/dashboard/createJob";
+    normalizedPathname === "/dashboard/create-job" ||
+    normalizedPathname === "/dashboard/createJob";
 
   const handleRefresh = React.useCallback(async () => {
     router.refresh();

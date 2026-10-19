@@ -1,4 +1,4 @@
-function normalizePathname(pathname) {
+export function normalizePathname(pathname) {
   const path = pathname.split(/[?#]/, 1)[0] || "/";
   return path.length > 1 ? path.replace(/\/+$/, "") : path;
 }

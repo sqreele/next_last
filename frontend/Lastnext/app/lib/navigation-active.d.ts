@@ -4,6 +4,8 @@ export type ActiveNavigationItem = {
   match?: readonly string[];
 };
 
+export function normalizePathname(pathname: string): string;
+
 export function getActiveNavigationItem<T extends ActiveNavigationItem>(
   pathname: string,
   items: readonly T[],

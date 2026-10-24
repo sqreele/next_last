@@ -1,0 +1,2634 @@
+{
+  "schemaVersion": 2,
+  "propertyId": "PE17D8D2C",
+  "propertyName": "Lub d Bangkok Siam",
+  "purpose": "mapping_preparation_only",
+  "sourceMapping": "app/lib/floorplans/siam/room-polygons.json",
+  "sourceCsv": "floorplan-sources/siam/rooms_2026_10_21_1005.csv",
+  "defaultCandidateStatus": "needs_review",
+  "coordinateSpaces": {
+    "L1": {
+      "svg": "public/floorplans/siam/floor-l1.svg",
+      "viewBox": [
+        0,
+        0,
+        1610,
+        915
+      ]
+    },
+    "L2": {
+      "svg": "public/floorplans/siam/floor-l2.svg",
+      "viewBox": [
+        0,
+        0,
+        1475,
+        1060
+      ]
+    },
+    "L3": {
+      "svg": "public/floorplans/siam/floor-l3.svg",
+      "viewBox": [
+        0,
+        0,
+        1475,
+        1050
+      ]
+    },
+    "L4": {
+      "svg": "public/floorplans/siam/floor-l4.svg",
+      "viewBox": [
+        0,
+        0,
+        1505,
+        1090
+      ]
+    }
+  },
+  "activeCandidateCount": 46,
+  "rooms": [
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L1",
+      "roomId": 185,
+      "roomName": "1101",
+      "architecturalLabel": "101",
+      "roomType": "The Sidekick",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l1-room-1101",
+      "points": [
+        [
+          648,
+          82
+        ],
+        [
+          744,
+          82
+        ],
+        [
+          744,
+          260
+        ],
+        [
+          648,
+          260
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "185",
+        "data-room-name": "1101",
+        "data-floor": "L1"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1610 915",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L1",
+      "roomId": 186,
+      "roomName": "1102",
+      "architecturalLabel": "102",
+      "roomType": "The Sidekick",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l1-room-1102",
+      "points": [
+        [
+          758,
+          82
+        ],
+        [
+          860,
+          82
+        ],
+        [
+          860,
+          260
+        ],
+        [
+          758,
+          260
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "186",
+        "data-room-name": "1102",
+        "data-floor": "L1"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1610 915",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L1",
+      "roomId": 187,
+      "roomName": "1103",
+      "architecturalLabel": "103",
+      "roomType": "The Sidekick",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l1-room-1103",
+      "points": [
+        [
+          875,
+          82
+        ],
+        [
+          960,
+          82
+        ],
+        [
+          960,
+          260
+        ],
+        [
+          875,
+          260
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "187",
+        "data-room-name": "1103",
+        "data-floor": "L1"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1610 915",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L1",
+      "roomId": 188,
+      "roomName": "1104",
+      "architecturalLabel": "104",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l1-room-1104",
+      "points": [
+        [
+          972,
+          82
+        ],
+        [
+          1042,
+          82
+        ],
+        [
+          1042,
+          260
+        ],
+        [
+          972,
+          260
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "188",
+        "data-room-name": "1104",
+        "data-floor": "L1"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1610 915",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L1",
+      "roomId": 189,
+      "roomName": "1105",
+      "architecturalLabel": "105",
+      "roomType": "The Sidekick",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l1-room-1105",
+      "points": [
+        [
+          1087,
+          82
+        ],
+        [
+          1198,
+          82
+        ],
+        [
+          1198,
+          260
+        ],
+        [
+          1087,
+          260
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "189",
+        "data-room-name": "1105",
+        "data-floor": "L1"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1610 915",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 159,
+      "roomName": "1201",
+      "architecturalLabel": "201",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1201",
+      "points": [
+        [
+          1255,
+          656
+        ],
+        [
+          1408,
+          656
+        ],
+        [
+          1408,
+          899
+        ],
+        [
+          1255,
+          899
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "159",
+        "data-room-name": "1201",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 160,
+      "roomName": "1202",
+      "architecturalLabel": "202",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1202",
+      "points": [
+        [
+          1083,
+          656
+        ],
+        [
+          1242,
+          656
+        ],
+        [
+          1242,
+          899
+        ],
+        [
+          1083,
+          899
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "160",
+        "data-room-name": "1202",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 161,
+      "roomName": "1203",
+      "architecturalLabel": "203",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1203",
+      "points": [
+        [
+          907,
+          656
+        ],
+        [
+          1064,
+          656
+        ],
+        [
+          1064,
+          899
+        ],
+        [
+          907,
+          899
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "161",
+        "data-room-name": "1203",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 162,
+      "roomName": "1204",
+      "architecturalLabel": "204",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1204",
+      "points": [
+        [
+          744,
+          656
+        ],
+        [
+          895,
+          656
+        ],
+        [
+          895,
+          899
+        ],
+        [
+          744,
+          899
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "162",
+        "data-room-name": "1204",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 163,
+      "roomName": "1205",
+      "architecturalLabel": "205",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1205",
+      "points": [
+        [
+          59,
+          24
+        ],
+        [
+          224,
+          24
+        ],
+        [
+          224,
+          277
+        ],
+        [
+          59,
+          277
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "163",
+        "data-room-name": "1205",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 164,
+      "roomName": "1206",
+      "architecturalLabel": "206",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1206",
+      "points": [
+        [
+          230,
+          24
+        ],
+        [
+          400,
+          24
+        ],
+        [
+          400,
+          277
+        ],
+        [
+          230,
+          277
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "164",
+        "data-room-name": "1206",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 165,
+      "roomName": "1207",
+      "architecturalLabel": "207",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1207",
+      "points": [
+        [
+          410,
+          24
+        ],
+        [
+          562,
+          24
+        ],
+        [
+          562,
+          277
+        ],
+        [
+          410,
+          277
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "165",
+        "data-room-name": "1207",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 166,
+      "roomName": "1208",
+      "architecturalLabel": "208",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1208",
+      "points": [
+        [
+          570,
+          24
+        ],
+        [
+          733,
+          24
+        ],
+        [
+          733,
+          277
+        ],
+        [
+          570,
+          277
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "166",
+        "data-room-name": "1208",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 167,
+      "roomName": "1209",
+      "architecturalLabel": "209",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1209",
+      "points": [
+        [
+          744,
+          24
+        ],
+        [
+          895,
+          24
+        ],
+        [
+          895,
+          277
+        ],
+        [
+          744,
+          277
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "167",
+        "data-room-name": "1209",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 168,
+      "roomName": "1210",
+      "architecturalLabel": "210",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1210",
+      "points": [
+        [
+          906,
+          24
+        ],
+        [
+          1078,
+          24
+        ],
+        [
+          1078,
+          277
+        ],
+        [
+          906,
+          277
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "168",
+        "data-room-name": "1210",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 169,
+      "roomName": "1211",
+      "architecturalLabel": "211",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1211",
+      "points": [
+        [
+          1090,
+          24
+        ],
+        [
+          1249,
+          24
+        ],
+        [
+          1249,
+          277
+        ],
+        [
+          1090,
+          277
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "169",
+        "data-room-name": "1211",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L2",
+      "roomId": 170,
+      "roomName": "1212",
+      "architecturalLabel": "212",
+      "roomType": "The Upgrade",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l2-room-1212",
+      "points": [
+        [
+          1257,
+          24
+        ],
+        [
+          1408,
+          24
+        ],
+        [
+          1408,
+          277
+        ],
+        [
+          1257,
+          277
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "170",
+        "data-room-name": "1212",
+        "data-floor": "L2"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1060",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 134,
+      "roomName": "1301",
+      "architecturalLabel": "301",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1301",
+      "points": [
+        [
+          839,
+          656
+        ],
+        [
+          958,
+          656
+        ],
+        [
+          958,
+          918
+        ],
+        [
+          839,
+          918
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "134",
+        "data-room-name": "1301",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 135,
+      "roomName": "1302",
+      "architecturalLabel": "302",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1302",
+      "points": [
+        [
+          709,
+          656
+        ],
+        [
+          827,
+          656
+        ],
+        [
+          827,
+          918
+        ],
+        [
+          709,
+          918
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "135",
+        "data-room-name": "1302",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 137,
+      "roomName": "1303",
+      "architecturalLabel": "303",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1303",
+      "points": [
+        [
+          575,
+          656
+        ],
+        [
+          697,
+          656
+        ],
+        [
+          697,
+          918
+        ],
+        [
+          575,
+          918
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "137",
+        "data-room-name": "1303",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 136,
+      "roomName": "1304",
+      "architecturalLabel": "304",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1304",
+      "points": [
+        [
+          445,
+          656
+        ],
+        [
+          558,
+          656
+        ],
+        [
+          558,
+          918
+        ],
+        [
+          445,
+          918
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "136",
+        "data-room-name": "1304",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 138,
+      "roomName": "1305",
+      "architecturalLabel": "305",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1305",
+      "points": [
+        [
+          314,
+          656
+        ],
+        [
+          430,
+          656
+        ],
+        [
+          430,
+          918
+        ],
+        [
+          314,
+          918
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "138",
+        "data-room-name": "1305",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 139,
+      "roomName": "1306",
+      "architecturalLabel": "306",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1306",
+      "points": [
+        [
+          182,
+          656
+        ],
+        [
+          298,
+          656
+        ],
+        [
+          298,
+          918
+        ],
+        [
+          182,
+          918
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "139",
+        "data-room-name": "1306",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 140,
+      "roomName": "1307",
+      "architecturalLabel": "307",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1307",
+      "points": [
+        [
+          52,
+          656
+        ],
+        [
+          170,
+          656
+        ],
+        [
+          170,
+          918
+        ],
+        [
+          52,
+          918
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "140",
+        "data-room-name": "1307",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 141,
+      "roomName": "1308",
+      "architecturalLabel": "308",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1308",
+      "points": [
+        [
+          52,
+          21
+        ],
+        [
+          170,
+          21
+        ],
+        [
+          170,
+          275
+        ],
+        [
+          52,
+          275
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "141",
+        "data-room-name": "1308",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 142,
+      "roomName": "1309",
+      "architecturalLabel": "309",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1309",
+      "points": [
+        [
+          182,
+          21
+        ],
+        [
+          297,
+          21
+        ],
+        [
+          297,
+          275
+        ],
+        [
+          182,
+          275
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "142",
+        "data-room-name": "1309",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 143,
+      "roomName": "1310",
+      "architecturalLabel": "310",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1310",
+      "points": [
+        [
+          313,
+          21
+        ],
+        [
+          430,
+          21
+        ],
+        [
+          430,
+          275
+        ],
+        [
+          313,
+          275
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "143",
+        "data-room-name": "1310",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 144,
+      "roomName": "1311",
+      "architecturalLabel": "311",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1311",
+      "points": [
+        [
+          445,
+          21
+        ],
+        [
+          560,
+          21
+        ],
+        [
+          560,
+          275
+        ],
+        [
+          445,
+          275
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "144",
+        "data-room-name": "1311",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 145,
+      "roomName": "1312",
+      "architecturalLabel": "312",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1312",
+      "points": [
+        [
+          574,
+          21
+        ],
+        [
+          696,
+          21
+        ],
+        [
+          696,
+          275
+        ],
+        [
+          574,
+          275
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "145",
+        "data-room-name": "1312",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 146,
+      "roomName": "1313",
+      "architecturalLabel": null,
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": false,
+      "polygonId": null,
+      "points": null,
+      "dataAttributes": null,
+      "mappingStatus": "excluded_not_in_use",
+      "validationNotes": [
+        "Business exclusion: room is not in use.",
+        "CSV still marks the record active.",
+        "No architectural room 313 is shown and no interactive polygon is created."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 147,
+      "roomName": "1314",
+      "architecturalLabel": "314",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1314",
+      "points": [
+        [
+          708,
+          21
+        ],
+        [
+          828,
+          21
+        ],
+        [
+          828,
+          275
+        ],
+        [
+          708,
+          275
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "147",
+        "data-room-name": "1314",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L3",
+      "roomId": 191,
+      "roomName": "1315",
+      "architecturalLabel": "315",
+      "roomType": "Tribe Hideout (4Shared-Beds)",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l3-room-1315",
+      "points": [
+        [
+          839,
+          21
+        ],
+        [
+          959,
+          21
+        ],
+        [
+          959,
+          275
+        ],
+        [
+          839,
+          275
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "191",
+        "data-room-name": "1315",
+        "data-floor": "L3"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1475 1050",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 148,
+      "roomName": "1401",
+      "architecturalLabel": "401",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1401",
+      "points": [
+        [
+          1088,
+          677
+        ],
+        [
+          1422,
+          677
+        ],
+        [
+          1422,
+          946
+        ],
+        [
+          1088,
+          946
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "148",
+        "data-room-name": "1401",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 153,
+      "roomName": "1402",
+      "architecturalLabel": "402",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1402",
+      "points": [
+        [
+          970,
+          677
+        ],
+        [
+          1075,
+          677
+        ],
+        [
+          1075,
+          946
+        ],
+        [
+          970,
+          946
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "153",
+        "data-room-name": "1402",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 154,
+      "roomName": "1403",
+      "architecturalLabel": "403",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1403",
+      "points": [
+        [
+          713,
+          677
+        ],
+        [
+          960,
+          677
+        ],
+        [
+          960,
+          946
+        ],
+        [
+          713,
+          946
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "154",
+        "data-room-name": "1403",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 149,
+      "roomName": "1404",
+      "architecturalLabel": "404",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1404",
+      "points": [
+        [
+          580,
+          677
+        ],
+        [
+          698,
+          677
+        ],
+        [
+          698,
+          946
+        ],
+        [
+          580,
+          946
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "149",
+        "data-room-name": "1404",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 150,
+      "roomName": "1405",
+      "architecturalLabel": "405",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1405",
+      "points": [
+        [
+          453,
+          677
+        ],
+        [
+          571,
+          677
+        ],
+        [
+          571,
+          946
+        ],
+        [
+          453,
+          946
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "150",
+        "data-room-name": "1405",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 151,
+      "roomName": "1406",
+      "architecturalLabel": "406",
+      "roomType": "The Duo",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1406",
+      "points": [
+        [
+          325,
+          677
+        ],
+        [
+          444,
+          677
+        ],
+        [
+          444,
+          946
+        ],
+        [
+          325,
+          946
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "151",
+        "data-room-name": "1406",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 155,
+      "roomName": "1407",
+      "architecturalLabel": "407",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1407",
+      "points": [
+        [
+          62,
+          677
+        ],
+        [
+          318,
+          677
+        ],
+        [
+          318,
+          946
+        ],
+        [
+          62,
+          946
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "155",
+        "data-room-name": "1407",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 156,
+      "roomName": "1408",
+      "architecturalLabel": "408",
+      "roomType": "The Triplex",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1408",
+      "points": [
+        [
+          63,
+          35
+        ],
+        [
+          188,
+          35
+        ],
+        [
+          188,
+          305
+        ],
+        [
+          63,
+          305
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "156",
+        "data-room-name": "1408",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 157,
+      "roomName": "1409",
+      "architecturalLabel": "409",
+      "roomType": "The Triplex",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1409",
+      "points": [
+        [
+          194,
+          35
+        ],
+        [
+          318,
+          35
+        ],
+        [
+          318,
+          305
+        ],
+        [
+          194,
+          305
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "157",
+        "data-room-name": "1409",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 158,
+      "roomName": "1410",
+      "architecturalLabel": "410",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1410",
+      "points": [
+        [
+          325,
+          35
+        ],
+        [
+          444,
+          35
+        ],
+        [
+          444,
+          305
+        ],
+        [
+          325,
+          305
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "158",
+        "data-room-name": "1410",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 152,
+      "roomName": "1411",
+      "architecturalLabel": "411",
+      "roomType": "The Duo",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1411",
+      "points": [
+        [
+          453,
+          35
+        ],
+        [
+          571,
+          35
+        ],
+        [
+          571,
+          305
+        ],
+        [
+          453,
+          305
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "152",
+        "data-room-name": "1411",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 190,
+      "roomName": "1412",
+      "architecturalLabel": "412",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1412",
+      "points": [
+        [
+          580,
+          35
+        ],
+        [
+          698,
+          35
+        ],
+        [
+          698,
+          305
+        ],
+        [
+          580,
+          305
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "190",
+        "data-room-name": "1412",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 182,
+      "roomName": "1414",
+      "architecturalLabel": "414",
+      "roomType": "The Duo",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1414",
+      "points": [
+        [
+          713,
+          35
+        ],
+        [
+          960,
+          35
+        ],
+        [
+          960,
+          305
+        ],
+        [
+          713,
+          305
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "182",
+        "data-room-name": "1414",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 183,
+      "roomName": "1415",
+      "architecturalLabel": "415",
+      "roomType": "The Compact",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1415",
+      "points": [
+        [
+          970,
+          35
+        ],
+        [
+          1075,
+          35
+        ],
+        [
+          1075,
+          305
+        ],
+        [
+          970,
+          305
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "183",
+        "data-room-name": "1415",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    },
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L4",
+      "roomId": 184,
+      "roomName": "1416",
+      "architecturalLabel": "416",
+      "roomType": "The Duo",
+      "isActiveInCsv": true,
+      "interactive": true,
+      "polygonId": "siam-l4-room-1416",
+      "points": [
+        [
+          1088,
+          35
+        ],
+        [
+          1422,
+          35
+        ],
+        [
+          1422,
+          305
+        ],
+        [
+          1088,
+          305
+        ]
+      ],
+      "dataAttributes": {
+        "data-property-id": "PE17D8D2C",
+        "data-room-id": "184",
+        "data-room-name": "1416",
+        "data-floor": "L4"
+      },
+      "mappingStatus": "needs_review",
+      "geometryValidation": {
+        "coordinateSystem": "0 0 1505 1090",
+        "pointCount": 4,
+        "implicitlyClosedBySvgPolygon": true,
+        "selfIntersectionCount": 0,
+        "withinViewBox": true,
+        "duplicatePolygon": false,
+        "overlapWithGuestPolygonIds": [],
+        "grossVisualAlignment": "candidate_matches_intended_room",
+        "wallFaceContainment": "manual_approval_required",
+        "corridorIntrusion": "not_detected_in_overlay_manual_approval_required",
+        "doorAndBathroomBoundary": "manual_approval_required"
+      },
+      "validationNotes": [
+        "Coordinates preserved without modification from room-polygons.json.",
+        "Identity matches the supplied CSV record.",
+        "Gross overlay alignment passes; architectural wall-face certification is pending.",
+        "Do not promote to verified without explicit architectural approval."
+      ]
+    }
+  ],
+  "unmappedArchitecturalRooms": [
+    {
+      "propertyId": "PE17D8D2C",
+      "floor": "L1",
+      "roomId": null,
+      "roomName": null,
+      "architecturalLabel": "106",
+      "interactive": false,
+      "polygonId": null,
+      "points": [
+        [
+          1207,
+          82
+        ],
+        [
+          1290,
+          82
+        ],
+        [
+          1290,
+          260
+        ],
+        [
+          1207,
+          260
+        ]
+      ],
+      "dataAttributes": null,
+      "mappingStatus": "unmapped",
+      "validationNotes": [
+        "Visible as a sixth private room on the architectural plan, but no PE17D8D2C CSV record corresponds to 1106.",
+        "No room ID or interactive identity has been invented."
+      ]
+    }
+  ]
+}

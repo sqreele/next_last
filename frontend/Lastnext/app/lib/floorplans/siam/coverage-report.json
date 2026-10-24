@@ -1,0 +1,53 @@
+{
+  "property_id": "PE17D8D2C",
+  "scope": "Preparation only; no Dashboard integration",
+  "floors": {
+    "L1": {
+      "eligible_guest_records": 5,
+      "mapped_guest_records": 5,
+      "guest_coverage_percent": 100,
+      "architectural_guest_labels": 6,
+      "architectural_unmapped": ["106"],
+      "operational_mapped_noninteractive": [],
+      "needs_review_room_ids": [172, 173]
+    },
+    "L2": {
+      "eligible_guest_records": 12,
+      "mapped_guest_records": 12,
+      "guest_coverage_percent": 100,
+      "architectural_guest_labels": 12,
+      "architectural_unmapped": [],
+      "operational_mapped_noninteractive": [],
+      "needs_review_room_ids": [174]
+    },
+    "L3": {
+      "eligible_guest_records": 14,
+      "mapped_guest_records": 14,
+      "guest_coverage_percent": 100,
+      "architectural_guest_labels": 14,
+      "architectural_unmapped": [],
+      "excluded_room_ids": [146],
+      "operational_mapped_noninteractive": [198],
+      "needs_review_room_ids": []
+    },
+    "L4": {
+      "eligible_guest_records": 15,
+      "mapped_guest_records": 15,
+      "guest_coverage_percent": 100,
+      "architectural_guest_labels": 15,
+      "architectural_unmapped": [],
+      "operational_mapped_noninteractive": [],
+      "needs_review_room_ids": [175]
+    }
+  },
+  "totals": {
+    "eligible_guest_records": 46,
+    "mapped_guest_records": 46,
+    "guest_coverage_percent": 100,
+    "excluded_guest_records": 1,
+    "operational_records": 5,
+    "operational_mapped_noninteractive": 1,
+    "operational_needs_review_or_unmapped": 4,
+    "architectural_guest_rooms_without_database_record": 1
+  }
+}

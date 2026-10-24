@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "property_id": "PE17D8D2C",
+  "property_name": "Lub d Bangkok Siam",
+  "source_csv": "floorplan-sources/siam/rooms_2026_10_21_1005.csv",
+  "coordinate_spaces": {
+    "L1": { "svg": "public/floorplans/siam/floor-l1.svg", "viewBox": [0, 0, 1610, 915] },
+    "L2": { "svg": "public/floorplans/siam/floor-l2.svg", "viewBox": [0, 0, 1475, 1060] },
+    "L3": { "svg": "public/floorplans/siam/floor-l3.svg", "viewBox": [0, 0, 1475, 1050] },
+    "L4": { "svg": "public/floorplans/siam/floor-l4.svg", "viewBox": [0, 0, 1505, 1090] }
+  },
+  "geometry_policy": "Conservative polygons trace the usable room interior just inside visible wall faces. They intentionally omit wall thickness and corridor door-swing areas.",
+  "rooms": [
+    { "floor": "L1", "room_id": 185, "name": "1101", "plan_label": "101", "room_type": "The Sidekick", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[648,82],[744,82],[744,260],[648,260]] },
+    { "floor": "L1", "room_id": 186, "name": "1102", "plan_label": "102", "room_type": "The Sidekick", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[758,82],[860,82],[860,260],[758,260]] },
+    { "floor": "L1", "room_id": 187, "name": "1103", "plan_label": "103", "room_type": "The Sidekick", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[875,82],[960,82],[960,260],[875,260]] },
+    { "floor": "L1", "room_id": 188, "name": "1104", "plan_label": "104", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[972,82],[1042,82],[1042,260],[972,260]] },
+    { "floor": "L1", "room_id": 189, "name": "1105", "plan_label": "105", "room_type": "The Sidekick", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[1087,82],[1198,82],[1198,260],[1087,260]] },
+
+    { "floor": "L2", "room_id": 159, "name": "1201", "plan_label": "201", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[1255,656],[1408,656],[1408,899],[1255,899]] },
+    { "floor": "L2", "room_id": 160, "name": "1202", "plan_label": "202", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[1083,656],[1242,656],[1242,899],[1083,899]] },
+    { "floor": "L2", "room_id": 161, "name": "1203", "plan_label": "203", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[907,656],[1064,656],[1064,899],[907,899]] },
+    { "floor": "L2", "room_id": 162, "name": "1204", "plan_label": "204", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[744,656],[895,656],[895,899],[744,899]] },
+    { "floor": "L2", "room_id": 163, "name": "1205", "plan_label": "205", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[59,24],[224,24],[224,277],[59,277]] },
+    { "floor": "L2", "room_id": 164, "name": "1206", "plan_label": "206", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[230,24],[400,24],[400,277],[230,277]] },
+    { "floor": "L2", "room_id": 165, "name": "1207", "plan_label": "207", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[410,24],[562,24],[562,277],[410,277]] },
+    { "floor": "L2", "room_id": 166, "name": "1208", "plan_label": "208", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[570,24],[733,24],[733,277],[570,277]] },
+    { "floor": "L2", "room_id": 167, "name": "1209", "plan_label": "209", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[744,24],[895,24],[895,277],[744,277]] },
+    { "floor": "L2", "room_id": 168, "name": "1210", "plan_label": "210", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[906,24],[1078,24],[1078,277],[906,277]] },
+    { "floor": "L2", "room_id": 169, "name": "1211", "plan_label": "211", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[1090,24],[1249,24],[1249,277],[1090,277]] },
+    { "floor": "L2", "room_id": 170, "name": "1212", "plan_label": "212", "room_type": "The Upgrade", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[1257,24],[1408,24],[1408,277],[1257,277]] },
+
+    { "floor": "L3", "room_id": 134, "name": "1301", "plan_label": "301", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[839,656],[958,656],[958,918],[839,918]] },
+    { "floor": "L3", "room_id": 135, "name": "1302", "plan_label": "302", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[709,656],[827,656],[827,918],[709,918]] },
+    { "floor": "L3", "room_id": 137, "name": "1303", "plan_label": "303", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[575,656],[697,656],[697,918],[575,918]] },
+    { "floor": "L3", "room_id": 136, "name": "1304", "plan_label": "304", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[445,656],[558,656],[558,918],[445,918]] },
+    { "floor": "L3", "room_id": 138, "name": "1305", "plan_label": "305", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[314,656],[430,656],[430,918],[314,918]] },
+    { "floor": "L3", "room_id": 139, "name": "1306", "plan_label": "306", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[182,656],[298,656],[298,918],[182,918]] },
+    { "floor": "L3", "room_id": 140, "name": "1307", "plan_label": "307", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[52,656],[170,656],[170,918],[52,918]] },
+    { "floor": "L3", "room_id": 141, "name": "1308", "plan_label": "308", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[52,21],[170,21],[170,275],[52,275]] },
+    { "floor": "L3", "room_id": 142, "name": "1309", "plan_label": "309", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[182,21],[297,21],[297,275],[182,275]] },
+    { "floor": "L3", "room_id": 143, "name": "1310", "plan_label": "310", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[313,21],[430,21],[430,275],[313,275]] },
+    { "floor": "L3", "room_id": 144, "name": "1311", "plan_label": "311", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[445,21],[560,21],[560,275],[445,275]] },
+    { "floor": "L3", "room_id": 145, "name": "1312", "plan_label": "312", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[574,21],[696,21],[696,275],[574,275]] },
+    { "floor": "L3", "room_id": 146, "name": "1313", "plan_label": null, "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": false, "status": "excluded", "polygon": null, "notes": "Explicitly out of use. The database record is preserved and no 313 room appears on the verified plan." },
+    { "floor": "L3", "room_id": 147, "name": "1314", "plan_label": "314", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[708,21],[828,21],[828,275],[708,275]] },
+    { "floor": "L3", "room_id": 191, "name": "1315", "plan_label": "315", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[839,21],[959,21],[959,275],[839,275]] },
+
+    { "floor": "L4", "room_id": 148, "name": "1401", "plan_label": "401", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[1088,677],[1422,677],[1422,946],[1088,946]] },
+    { "floor": "L4", "room_id": 153, "name": "1402", "plan_label": "402", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[970,677],[1075,677],[1075,946],[970,946]] },
+    { "floor": "L4", "room_id": 154, "name": "1403", "plan_label": "403", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[713,677],[960,677],[960,946],[713,946]] },
+    { "floor": "L4", "room_id": 149, "name": "1404", "plan_label": "404", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[580,677],[698,677],[698,946],[580,946]] },
+    { "floor": "L4", "room_id": 150, "name": "1405", "plan_label": "405", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[453,677],[571,677],[571,946],[453,946]] },
+    { "floor": "L4", "room_id": 151, "name": "1406", "plan_label": "406", "room_type": "The Duo", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[325,677],[444,677],[444,946],[325,946]] },
+    { "floor": "L4", "room_id": 155, "name": "1407", "plan_label": "407", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[62,677],[318,677],[318,946],[62,946]] },
+    { "floor": "L4", "room_id": 156, "name": "1408", "plan_label": "408", "room_type": "The Triplex", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[63,35],[188,35],[188,305],[63,305]] },
+    { "floor": "L4", "room_id": 157, "name": "1409", "plan_label": "409", "room_type": "The Triplex", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[194,35],[318,35],[318,305],[194,305]] },
+    { "floor": "L4", "room_id": 158, "name": "1410", "plan_label": "410", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[325,35],[444,35],[444,305],[325,305]] },
+    { "floor": "L4", "room_id": 152, "name": "1411", "plan_label": "411", "room_type": "The Duo", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[453,35],[571,35],[571,305],[453,305]] },
+    { "floor": "L4", "room_id": 190, "name": "1412", "plan_label": "412", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[580,35],[698,35],[698,305],[580,305]] },
+    { "floor": "L4", "room_id": 182, "name": "1414", "plan_label": "414", "room_type": "The Duo", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[713,35],[960,35],[960,305],[713,305]] },
+    { "floor": "L4", "room_id": 183, "name": "1415", "plan_label": "415", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[970,35],[1075,35],[1075,305],[970,305]] },
+    { "floor": "L4", "room_id": 184, "name": "1416", "plan_label": "416", "room_type": "The Duo", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[1088,35],[1422,35],[1422,305],[1088,305]] }
+  ],
+  "operational_records": [
+    { "floor": "L1", "room_id": 172, "name": "1000", "room_type": "Lobby Area", "is_active": true, "interactive": false, "status": "needs_review", "polygon": null, "notes": "LOBBY AREA is labeled, but it is continuous with BAR AREA and circulation with no complete room boundary." },
+    { "floor": "L1", "room_id": 173, "name": "1100", "room_type": "Bath Room  Floor  1 st", "is_active": true, "interactive": false, "status": "needs_review", "polygon": null, "notes": "The plan has separate MALE and FEMALE rooms; the CSV supplies one singular record, so assignment would be ambiguous." },
+    { "floor": null, "room_id": 174, "name": "1200", "room_type": "Bath Room  Floor  3st", "is_active": true, "interactive": false, "status": "needs_review", "polygon": null, "notes": "Name prefix suggests L2 while room type says floor 3; no safe floor assignment." },
+    { "floor": "L4", "room_id": 175, "name": "1400", "room_type": "Kitchen Room", "is_active": true, "interactive": false, "status": "unmapped", "polygon": null, "notes": "No independently bounded KITCHEN ROOM label is present on L4; do not assume a kitchenette inside a guest suite is this record." },
+    { "floor": "L3", "room_id": 198, "name": "1300", "room_type": "Share bashroom men.", "is_active": true, "interactive": false, "status": "mapped_noninteractive", "polygon": [[970,21],[1400,21],[1400,275],[970,275]], "notes": "Matches the bounded WC MEN area. Retained as a non-guest operational mapping." }
+  ],
+  "architectural_unmapped": [
+    { "floor": "L1", "plan_label": "106", "status": "unmapped", "polygon": [[1207,82],[1290,82],[1290,260],[1207,260]], "notes": "Visible as a sixth private room on the architectural plan, but no PE17D8D2C CSV record corresponds to 1106." }
+  ]
+}

@@ -1,5 +1,7 @@
 # Siam SVG Room Mapping Validation Report
 
+> Historical certification snapshot. The current product mapping supersedes the 106/1313 and operational-area decisions here; see `app/lib/floorplans/siam/validation-report.md` and `room-mapping.phase2.json`.
+
 **Property:** Lub d Bangkok Siam  
 **Property ID:** `PE17D8D2C`  
 **Branch audited:** `feature/siam-accurate-svg-floorplan` at `c4949169`  

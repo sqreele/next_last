@@ -1644,25 +1644,6 @@
     {
       "propertyId": "PE17D8D2C",
       "floor": "L3",
-      "roomId": 146,
-      "roomName": "1313",
-      "architecturalLabel": null,
-      "roomType": "Tribe Hideout (4Shared-Beds)",
-      "isActiveInCsv": true,
-      "interactive": false,
-      "polygonId": null,
-      "points": null,
-      "dataAttributes": null,
-      "mappingStatus": "excluded_not_in_use",
-      "validationNotes": [
-        "Business exclusion: room is not in use.",
-        "CSV still marks the record active.",
-        "No architectural room 313 is shown and no interactive polygon is created."
-      ]
-    },
-    {
-      "propertyId": "PE17D8D2C",
-      "floor": "L3",
       "roomId": 147,
       "roomName": "1314",
       "architecturalLabel": "314",
@@ -2596,39 +2577,60 @@
       ]
     }
   ],
-  "unmappedArchitecturalRooms": [
+  "operationalAreas": [
     {
       "propertyId": "PE17D8D2C",
       "floor": "L1",
-      "roomId": null,
-      "roomName": null,
-      "architecturalLabel": "106",
-      "interactive": false,
-      "polygonId": null,
+      "zoneId": "siam-l1-lobby",
+      "architecturalLabel": "LOBBY AREA",
+      "roomId": 172,
+      "roomName": "1000",
+      "roomType": "Lobby Area",
+      "interactive": true,
+      "polygonId": "siam-l1-lobby",
       "points": [
-        [
-          1207,
-          82
-        ],
-        [
-          1290,
-          82
-        ],
-        [
-          1290,
-          260
-        ],
-        [
-          1207,
-          260
-        ]
+        [570, 305], [1018, 305], [1018, 500], [910, 500],
+        [910, 535], [690, 535], [690, 500], [570, 500]
       ],
-      "dataAttributes": null,
-      "mappingStatus": "unmapped",
+      "dataAttributes": { "data-property-id": "PE17D8D2C", "data-room-id": "172", "data-room-name": "1000", "data-floor": "L1" },
+      "mappingStatus": "mapped",
       "validationNotes": [
-        "Visible as a sixth private room on the architectural plan, but no PE17D8D2C CSV record corresponds to 1106.",
-        "No room ID or interactive identity has been invented."
+        "Product-defined lobby hit area follows the labeled upper public zone and stops before BAR AREA.",
+        "The lobby/bar plan is physically open, so the lower split is an operational UI boundary."
       ]
+    },
+    {
+      "propertyId": "PE17D8D2C", "floor": "L1", "zoneId": "siam-l1-wc-male", "architecturalLabel": "WC MALE",
+      "roomId": 173, "roomName": "1100", "roomType": "Bath Room Floor 1 st", "interactive": true,
+      "polygonId": "siam-l1-wc-male", "points": [[1300,82],[1402,82],[1402,260],[1300,260]],
+      "dataAttributes": { "data-property-id": "PE17D8D2C", "data-room-id": "173", "data-room-name": "1100", "data-floor": "L1" },
+      "mappingStatus": "mapped_shared_room",
+      "validationNotes": ["Separate male SVG zone; shares Room ID 173 with WC FEMALE because the database has one L1 bathroom record."]
+    },
+    {
+      "propertyId": "PE17D8D2C", "floor": "L1", "zoneId": "siam-l1-wc-female", "architecturalLabel": "WC FEMALE",
+      "roomId": 173, "roomName": "1100", "roomType": "Bath Room Floor 1 st", "interactive": true,
+      "polygonId": "siam-l1-wc-female", "points": [[1410,82],[1515,82],[1515,260],[1410,260]],
+      "dataAttributes": { "data-property-id": "PE17D8D2C", "data-room-id": "173", "data-room-name": "1100", "data-floor": "L1" },
+      "mappingStatus": "mapped_shared_room",
+      "validationNotes": ["Separate female SVG zone; shares Room ID 173 with WC MALE because the database has one L1 bathroom record."]
+    },
+    {
+      "propertyId": "PE17D8D2C", "floor": "L3", "zoneId": "siam-l3-wc-male", "architecturalLabel": "WC MEN",
+      "roomId": 198, "roomName": "1300", "roomType": "Share bathroom men", "interactive": true,
+      "polygonId": "siam-l3-wc-male", "points": [[970,21],[1400,21],[1400,275],[970,275]],
+      "dataAttributes": { "data-property-id": "PE17D8D2C", "data-room-id": "198", "data-room-name": "1300", "data-floor": "L3" },
+      "mappingStatus": "mapped",
+      "validationNotes": ["Bounded WC MEN area mapped to database Room ID 198."]
+    },
+    {
+      "propertyId": "PE17D8D2C", "floor": "L3", "zoneId": "siam-l3-wc-female", "architecturalLabel": "WC WOMEN",
+      "roomId": null, "roomName": null, "roomType": "Shared bathroom women", "interactive": false,
+      "polygonId": "siam-l3-wc-female", "points": [[970,656],[1400,656],[1400,918],[970,918]],
+      "dataAttributes": null,
+      "mappingStatus": "mapped_no_database_room",
+      "validationNotes": ["Bounded WC WOMEN architectural zone; no matching database room exists, so no room identity was invented."]
     }
-  ]
+  ],
+  "unmappedArchitecturalRooms": []
 }

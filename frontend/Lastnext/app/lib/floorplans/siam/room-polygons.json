@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "property_id": "PE17D8D2C",
   "property_name": "Lub d Bangkok Siam",
   "source_csv": "floorplan-sources/siam/rooms_2026_10_21_1005.csv",
@@ -42,7 +42,6 @@
     { "floor": "L3", "room_id": 143, "name": "1310", "plan_label": "310", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[313,21],[430,21],[430,275],[313,275]] },
     { "floor": "L3", "room_id": 144, "name": "1311", "plan_label": "311", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[445,21],[560,21],[560,275],[445,275]] },
     { "floor": "L3", "room_id": 145, "name": "1312", "plan_label": "312", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[574,21],[696,21],[696,275],[574,275]] },
-    { "floor": "L3", "room_id": 146, "name": "1313", "plan_label": null, "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": false, "status": "excluded", "polygon": null, "notes": "Explicitly out of use. The database record is preserved and no 313 room appears on the verified plan." },
     { "floor": "L3", "room_id": 147, "name": "1314", "plan_label": "314", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[708,21],[828,21],[828,275],[708,275]] },
     { "floor": "L3", "room_id": 191, "name": "1315", "plan_label": "315", "room_type": "Tribe Hideout (4Shared-Beds)", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[839,21],[959,21],[959,275],[839,275]] },
 
@@ -62,14 +61,15 @@
     { "floor": "L4", "room_id": 183, "name": "1415", "plan_label": "415", "room_type": "The Compact", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[970,35],[1075,35],[1075,305],[970,305]] },
     { "floor": "L4", "room_id": 184, "name": "1416", "plan_label": "416", "room_type": "The Duo", "is_active": true, "interactive": true, "status": "mapped", "polygon": [[1088,35],[1422,35],[1422,305],[1088,305]] }
   ],
-  "operational_records": [
-    { "floor": "L1", "room_id": 172, "name": "1000", "room_type": "Lobby Area", "is_active": true, "interactive": false, "status": "needs_review", "polygon": null, "notes": "LOBBY AREA is labeled, but it is continuous with BAR AREA and circulation with no complete room boundary." },
-    { "floor": "L1", "room_id": 173, "name": "1100", "room_type": "Bath Room  Floor  1 st", "is_active": true, "interactive": false, "status": "needs_review", "polygon": null, "notes": "The plan has separate MALE and FEMALE rooms; the CSV supplies one singular record, so assignment would be ambiguous." },
-    { "floor": null, "room_id": 174, "name": "1200", "room_type": "Bath Room  Floor  3st", "is_active": true, "interactive": false, "status": "needs_review", "polygon": null, "notes": "Name prefix suggests L2 while room type says floor 3; no safe floor assignment." },
-    { "floor": "L4", "room_id": 175, "name": "1400", "room_type": "Kitchen Room", "is_active": true, "interactive": false, "status": "unmapped", "polygon": null, "notes": "No independently bounded KITCHEN ROOM label is present on L4; do not assume a kitchenette inside a guest suite is this record." },
-    { "floor": "L3", "room_id": 198, "name": "1300", "room_type": "Share bashroom men.", "is_active": true, "interactive": false, "status": "mapped_noninteractive", "polygon": [[970,21],[1400,21],[1400,275],[970,275]], "notes": "Matches the bounded WC MEN area. Retained as a non-guest operational mapping." }
+  "operational_areas": [
+    { "floor": "L1", "zone_id": "siam-l1-lobby", "plan_label": "LOBBY AREA", "room_id": 172, "name": "1000", "room_type": "Lobby Area", "interactive": true, "status": "mapped", "polygon": [[570,305],[1018,305],[1018,500],[910,500],[910,535],[690,535],[690,500],[570,500]], "notes": "Product-defined lobby hit area follows the labeled upper public zone and stops before the BAR AREA label; the lobby/bar plan is physically open." },
+    { "floor": "L1", "zone_id": "siam-l1-wc-male", "plan_label": "WC MALE", "room_id": 173, "name": "1100", "room_type": "Bath Room Floor 1 st", "interactive": true, "status": "mapped_shared_room", "polygon": [[1300,82],[1402,82],[1402,260],[1300,260]], "notes": "Male architectural zone. Shares database Room ID 173 with the separate female zone because the source data has one L1 bathroom record." },
+    { "floor": "L1", "zone_id": "siam-l1-wc-female", "plan_label": "WC FEMALE", "room_id": 173, "name": "1100", "room_type": "Bath Room Floor 1 st", "interactive": true, "status": "mapped_shared_room", "polygon": [[1410,82],[1515,82],[1515,260],[1410,260]], "notes": "Female architectural zone. Shares database Room ID 173 with the separate male zone because the source data has one L1 bathroom record." },
+    { "floor": "L3", "zone_id": "siam-l3-wc-male", "plan_label": "WC MEN", "room_id": 198, "name": "1300", "room_type": "Share bathroom men", "interactive": true, "status": "mapped", "polygon": [[970,21],[1400,21],[1400,275],[970,275]], "notes": "Bounded L3 WC MEN area mapped to database Room ID 198." },
+    { "floor": "L3", "zone_id": "siam-l3-wc-female", "plan_label": "WC WOMEN", "room_id": null, "name": null, "room_type": "Shared bathroom women", "interactive": false, "status": "mapped_no_database_room", "polygon": [[970,656],[1400,656],[1400,918],[970,918]], "notes": "Bounded L3 WC WOMEN architectural zone. No matching database room exists, so no room identity was invented." }
   ],
-  "architectural_unmapped": [
-    { "floor": "L1", "plan_label": "106", "status": "unmapped", "polygon": [[1207,82],[1290,82],[1290,260],[1207,260]], "notes": "Visible as a sixth private room on the architectural plan, but no PE17D8D2C CSV record corresponds to 1106." }
+  "unmapped_operational_records": [
+    { "floor": null, "room_id": 174, "name": "1200", "room_type": "Bath Room Floor 3st", "status": "needs_review", "notes": "Name prefix suggests L2 while room type says floor 3; no safe floor assignment." },
+    { "floor": "L4", "room_id": 175, "name": "1400", "room_type": "Kitchen Room", "status": "unmapped", "notes": "No independently bounded KITCHEN ROOM label is present on L4; do not assume a kitchenette inside a guest suite is this record." }
   ]
 }

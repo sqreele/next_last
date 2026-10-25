@@ -1,85 +1,28 @@
 {
   "propertyId": "PE17D8D2C",
-  "excludedRooms": [
+  "cancelledMappings": [
     {
-      "propertyId": "PE17D8D2C",
+      "floor": "L1",
+      "architecturalLabel": "106",
+      "roomId": null,
+      "reason": "Cancelled by product decision; omitted from all active mapping collections."
+    },
+    {
       "floor": "L3",
+      "architecturalLabel": "313",
       "roomId": 146,
       "roomName": "1313",
-      "architecturalLabel": null,
-      "roomType": "Tribe Hideout (4Shared-Beds)",
-      "isActiveInCsv": true,
-      "interactive": false,
-      "polygonId": null,
-      "points": null,
-      "dataAttributes": null,
-      "mappingStatus": "excluded_not_in_use",
-      "validationNotes": [
-        "Business exclusion: room is not in use.",
-        "CSV still marks the record active.",
-        "No architectural room 313 is shown and no interactive polygon is created."
-      ]
+      "reason": "Cancelled by product decision; omitted from all active mapping collections. The source CSV/database record was not modified."
     }
   ],
-  "unmappedArchitecturalRooms": [
-    {
-      "propertyId": "PE17D8D2C",
-      "floor": "L1",
-      "roomId": null,
-      "roomName": null,
-      "architecturalLabel": "106",
-      "interactive": false,
-      "polygonId": null,
-      "points": [
-        [
-          1207,
-          82
-        ],
-        [
-          1290,
-          82
-        ],
-        [
-          1290,
-          260
-        ],
-        [
-          1207,
-          260
-        ]
-      ],
-      "dataAttributes": null,
-      "mappingStatus": "unmapped",
-      "validationNotes": [
-        "Visible as a sixth private room on the architectural plan, but no PE17D8D2C CSV record corresponds to 1106.",
-        "No room ID or interactive identity has been invented."
-      ]
-    }
-  ],
+  "excludedRooms": [],
+  "unmappedArchitecturalRooms": [],
   "operationalRecordsRequiringReview": [
     {
-      "floor": "L1",
-      "roomId": 172,
-      "roomName": "1000",
-      "roomType": "Lobby Area",
-      "mappingStatus": "needs_review",
-      "interactive": false,
-      "notes": "LOBBY AREA is labeled, but it is continuous with BAR AREA and circulation with no complete room boundary."
-    },
-    {
-      "floor": "L1",
-      "roomId": 173,
-      "roomName": "1100",
-      "roomType": "Bath Room  Floor  1 st",
-      "mappingStatus": "needs_review",
-      "interactive": false,
-      "notes": "The plan has separate MALE and FEMALE rooms; the CSV supplies one singular record, so assignment would be ambiguous."
-    },
-    {
-      "floor": null,
+      "floor": "L2_or_L3",
       "roomId": 174,
       "roomName": "1200",
-      "roomType": "Bath Room  Floor  3st",
+      "roomType": "Bath Room Floor 3st",
       "mappingStatus": "needs_review",
       "interactive": false,
       "notes": "Name prefix suggests L2 while room type says floor 3; no safe floor assignment."
@@ -91,16 +34,41 @@
       "roomType": "Kitchen Room",
       "mappingStatus": "unmapped",
       "interactive": false,
-      "notes": "No independently bounded KITCHEN ROOM label is present on L4; do not assume a kitchenette inside a guest suite is this record."
+      "notes": "No independently bounded L4 kitchen room label."
+    }
+  ],
+  "resolvedOperationalMappings": [
+    {
+      "floor": "L1",
+      "roomId": 172,
+      "roomName": "1000",
+      "zones": ["LOBBY AREA"],
+      "mappingStatus": "mapped",
+      "interactive": true
+    },
+    {
+      "floor": "L1",
+      "roomId": 173,
+      "roomName": "1100",
+      "zones": ["WC MALE", "WC FEMALE"],
+      "mappingStatus": "mapped_shared_room",
+      "interactive": true
     },
     {
       "floor": "L3",
       "roomId": 198,
       "roomName": "1300",
-      "roomType": "Share bashroom men.",
-      "mappingStatus": "mapped_noninteractive",
-      "interactive": false,
-      "notes": "Matches the bounded WC MEN area. Retained as a non-guest operational mapping."
+      "zones": ["WC MEN"],
+      "mappingStatus": "mapped",
+      "interactive": true
+    },
+    {
+      "floor": "L3",
+      "roomId": null,
+      "roomName": null,
+      "zones": ["WC WOMEN"],
+      "mappingStatus": "mapped_no_database_room",
+      "interactive": false
     }
   ]
 }

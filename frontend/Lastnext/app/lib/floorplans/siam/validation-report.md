@@ -1,7 +1,7 @@
 # Lub d Bangkok Siam floor-plan validation
 
 Property ID: `PE17D8D2C`  
-Scope: preparation and validation only; no Dashboard, API, authentication, or database integration.
+Scope: SVG mapping preparation and validation; no Dashboard deployment or database mutation.
 
 ## Source decision
 
@@ -31,9 +31,9 @@ All source SVGs are path/group-only vector exports: no `<image>` elements, data 
 
 | Floor | Drawing evidence | Confirmed guest labels | Vertical circulation and operational features | Remaining annotations |
 | --- | --- | --- | --- | --- |
-| L1 | Title fragment says L1; room labels are 101–106 | 101, 102, 103, 104, 105, **106** | central lift; stair by bar/lobby; terrace ramp; male/female WCs; lobby, bar, service, office, maid, linen, pump and electric rooms | grids, dimensions, level marker, F.H.C., furniture/fixture tags, title/scale fragment |
+| L1 | Title fragment says L1; room labels are 101–106 | 101, 102, 103, 104, 105; **106 cancelled from mapping** | central lift; stair by bar/lobby; terrace ramp; mapped lobby and male/female WCs; bar, service, office, maid, linen, pump and electric rooms | grids, dimensions, level marker, F.H.C., furniture/fixture tags, title/scale fragment |
 | L2 | Room labels are 201–212 | 201–212 | central lift; two stair zones; corridors; theater room | grids, dimensions, level callouts, F.H.C., door/window/fixture tags |
-| L3 | Room labels are 301–312, 314–315; no 313 | 301–312, 314, 315 | central lift; two stair zones; corridors; WC MEN and WC WOMEN | grids, dimensions, level callouts, F.H.C., `SEE DETAIL ST.1`, door/window/fixture tags |
+| L3 | Room labels are 301–312, 314–315; no 313 | 301–312, 314, 315; database room **1313 cancelled from mapping** | central lift; two stair zones; corridors; mapped WC MEN and WC WOMEN | grids, dimensions, level callouts, F.H.C., `SEE DETAIL ST.1`, door/window/fixture tags |
 | L4 | Distinct plan with 4xx labels | 401–412, 414–416 | central lift; stairs; corridors; in-room wet areas | grids, fixture/furniture tags, F.H.C., title fragment; no bounded room labeled Kitchen Room |
 
 Walls, room partitions, door leaves/swings, stairs, lifts, sanitary fixtures, and room boundaries remain vector geometry. No architectural geometry was edited or simplified.
@@ -48,41 +48,46 @@ Only rows whose `Properties` value begins with `PE17D8D2C - Lub d Bangkok Siam` 
 - `Is Active` → boolean (`Yes`)
 - `Properties` → property ID/name
 
-All 52 rows in the supplied CSV belong to the requested property and are active. They comprise 47 guest-room records and five operational records. Room ID 146 (`1313`) is preserved in the mapping source with `interactive: false`, `status: excluded`, and no polygon.
+All 52 rows in the supplied CSV belong to the requested property and are active. They comprise 47 guest-room records and five operational records. Product scope cancels room ID 146 (`1313`) from all active mapping collections without changing its CSV/database record, leaving 46 mapped guest rooms.
 
 ## Mapping coverage
 
 | Floor | Eligible guest records | Mapped | Coverage | Exceptions |
 | --- | ---: | ---: | ---: | --- |
-| L1 | 5 | 5 | 100% | Architectural room 106 has no DB record; IDs 172 and 173 need review |
+| L1 | 5 | 5 | 100% | 106 cancelled; Lobby ID 172 mapped; WC MALE and WC FEMALE mapped as separate zones sharing ID 173 |
 | L2 | 12 | 12 | 100% | Operational ID 174 has conflicting floor evidence |
-| L3 | 14 | 14 | 100% | ID 146/1313 excluded; operational ID 198 mapped noninteractively to WC MEN |
+| L3 | 14 | 14 | 100% | ID 146/1313 cancelled; WC MEN mapped to ID 198; WC WOMEN mapped without a DB room identity |
 | L4 | 15 | 15 | 100% | Operational ID 175/Kitchen Room is unmapped |
-| **Total** | **46** | **46** | **100%** | One excluded guest DB record; one unmatched architectural guest room |
+| **Total** | **46** | **46** | **100%** | Two cancelled mappings (106 and 1313); five operational SVG zones mapped |
 
 The 46 eligible guest polygons are mutually non-overlapping and all vertices lie inside their floor viewBox. They use the source SVG coordinate systems and are inset from visible outer wall faces. Door swings, corridors, neighboring guest rooms, and open common areas are excluded. Larger L4 guest suites use their outer suite boundary and include their own en-suite/internal zones, not adjacent circulation.
 
-## Manual verification and unresolved records
+## Operational mapping decisions
 
-- Architectural L1 room **106** is real and bounded, but no `1106` row exists in the supplied property CSV. Its outline is shown as unmapped and has no invented database ID.
-- ID **172 / 1000 / Lobby Area** matches an L1 label, but the lobby is open to the bar and circulation without a complete room boundary. No polygon is assigned.
-- ID **173 / 1100 / Bath Room Floor 1 st** cannot safely be assigned because the L1 plan has distinct MALE and FEMALE rooms while the CSV supplies one singular record.
-- ID **174 / 1200 / Bath Room Floor 3st** is internally inconsistent: the name namespace suggests L2 while the room type says floor 3. No floor or polygon is assigned.
-- ID **175 / 1400 / Kitchen Room** has no independently bounded `KITCHEN ROOM` label on the L4 plan. It is not assigned to a guest-suite kitchenette.
-- ID **198 / 1300 / Share bashroom men.** is a clear match for L3 `WC MEN`; it is mapped as a noninteractive operational area.
-- ID **146 / 1313** remains active in the CSV/database source but is explicitly excluded from interactive mapping. The plan has no 313 label.
+- **L1 Lobby Area:** `siam-l1-lobby` is mapped to Room ID **172 / 1000**. Because Lobby and Bar are physically open, the lower edge is an explicit product/UI boundary rather than a closed architectural wall.
+- **L1 WC MALE:** `siam-l1-wc-male` is mapped to Room ID **173 / 1100**.
+- **L1 WC FEMALE:** `siam-l1-wc-female` is also mapped to Room ID **173 / 1100**. The two SVG zones intentionally share one database identity because only one L1 bathroom record exists.
+- **L3 WC MEN:** `siam-l3-wc-male` is mapped to Room ID **198 / 1300**.
+- **L3 WC WOMEN:** `siam-l3-wc-female` has validated SVG geometry but remains noninteractive because no matching database Room ID exists. No identity was invented.
+
+## Cancelled and unresolved records
+
+- Architectural L1 room **106** is cancelled from all active mapping collections by product decision. The drawing itself is not modified.
+- Database room **146 / 1313** is cancelled from all active mapping collections by product decision. Its CSV/database row is not modified, and no 313 exists on the drawing.
+- ID **174 / 1200 / Bath Room Floor 3st** remains unresolved: the name namespace suggests L2 while the room type says floor 3. No floor or polygon is assigned.
+- ID **175 / 1400 / Kitchen Room** remains unresolved because no independently bounded `KITCHEN ROOM` label exists on L4.
 
 ## Prepared artifacts
 
-- `room-polygons.json`: database associations, statuses, native-coordinate polygons, operational records, and architectural-only room 106
+- `room-polygons.json`: database associations and native-coordinate polygons for 46 guest rooms plus five operational SVG zones
 - `coverage-report.json`: machine-readable coverage totals by floor
-- `preview-l1.svg`, `preview-l2.svg`, `preview-l3.svg`, `preview-l4.svg`: separate validation overlays with green mapped rooms, red unmapped geometry, blue operational geometry, and review markers
+- `preview-l1.svg`, `preview-l2.svg`, `preview-l3.svg`, `preview-l4.svg`: separate validation overlays with green guest rooms, blue operational geometry, and remaining review markers
 - `generate-previews.mjs`: deterministic preview generator; it references the unmodified public SVGs
 
 ## Remaining work before integration
 
-1. Resolve the five source/data questions listed above with property operations or an architect, especially L1 room 106 and the ambiguous operational records.
-2. Obtain sign-off on the conservative wall insets and suite extents using the original CAD/PDF source at architectural scale.
-3. Decide whether operational spaces should ever be interactive; the preparation currently treats them separately from guest rooms.
-4. If previews must be portable outside this repository, package or inline the source SVGs; the current preview files intentionally reference the original public assets to avoid duplicating or altering architecture.
-5. Only after review, define the Dashboard rendering/hit-testing contract. No application code has been changed in this task.
+1. Create a dedicated database Room record for L3 WC WOMEN if it must query jobs or become interactive; do not reuse WC MEN ID 198.
+2. Resolve the floor identity of ID 174 and the missing L4 Kitchen Room boundary for ID 175.
+3. Obtain sign-off on guest-room wall insets, the product-defined Lobby/Bar split, and the four WC boundaries.
+4. If previews must be portable outside this repository, package or inline the source SVGs; the current preview files intentionally reference the original public assets.
+5. Define and test the Dashboard rendering/hit-testing contract before production integration.

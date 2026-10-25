@@ -7,15 +7,13 @@ const mapping = JSON.parse(readFileSync(join(outputDir, "room-polygons.json"), "
 
 const floorNotes = {
   L1: [
-    { x: 742, y: 450, text: "REVIEW ID 172: lobby/bar boundary", tone: "review" },
-    { x: 1375, y: 180, text: "REVIEW ID 173: one DB record / two WCs", tone: "review" }
+    { x: 570, y: 570, text: "MAPPED: Lobby ID 172; WC MALE/FEMALE share ID 173", tone: "info" }
   ],
   L2: [
     { x: 60, y: 1030, text: "REVIEW ID 174: CSV floor conflict (1200 vs Floor 3)", tone: "review" }
   ],
   L3: [
-    { x: 980, y: 315, text: "ID 198 / 1300 mapped to WC MEN (noninteractive)", tone: "info" },
-    { x: 60, y: 1020, text: "EXCLUDED ID 146 / 1313: out of use; no 313 on plan", tone: "excluded" }
+    { x: 980, y: 315, text: "MAPPED: WC MEN ID 198; WC WOMEN has no DB room", tone: "info" }
   ],
   L4: [
     { x: 60, y: 1055, text: "UNMAPPED ID 175 / 1400: no bounded Kitchen Room", tone: "unmapped" }
@@ -38,17 +36,18 @@ const center = (polygon) => {
 for (const [floor, space] of Object.entries(mapping.coordinate_spaces)) {
   const [minX, minY, width, height] = space.viewBox;
   const mapped = mapping.rooms.filter((room) => room.floor === floor && room.status === "mapped");
-  const operational = mapping.operational_records.filter((room) => room.floor === floor && room.polygon);
-  const unmapped = mapping.architectural_unmapped.filter((room) => room.floor === floor && room.polygon);
+  const operational = mapping.operational_areas.filter((area) => area.floor === floor && area.polygon);
+  const unmapped = [];
 
   const mappedMarkup = mapped.map((room) => {
     const [x, y] = center(room.polygon);
     return `<g class="mapped"><polygon points="${points(room.polygon)}"/><text x="${x}" y="${y - 7}">${esc(room.plan_label)}</text><text class="id" x="${x}" y="${y + 10}">ID ${room.room_id}</text></g>`;
   }).join("\n");
 
-  const operationalMarkup = operational.map((room) => {
-    const [x, y] = center(room.polygon);
-    return `<g class="operational"><polygon points="${points(room.polygon)}"/><text x="${x}" y="${y}">ID ${room.room_id} · ${esc(room.name)}</text></g>`;
+  const operationalMarkup = operational.map((area) => {
+    const [x, y] = center(area.polygon);
+    const identity = area.room_id == null ? "NO DB ROOM" : `ID ${area.room_id}`;
+    return `<g class="operational"><polygon points="${points(area.polygon)}"/><text x="${x}" y="${y - 7}">${esc(area.plan_label)}</text><text class="id" x="${x}" y="${y + 10}">${identity}</text></g>`;
   }).join("\n");
 
   const unmappedMarkup = unmapped.map((room) => {
@@ -69,7 +68,7 @@ for (const [floor, space] of Object.entries(mapping.coordinate_spaces)) {
   <style>
     .mapped polygon { fill:#22c55e; fill-opacity:.10; stroke:#078232; stroke-width:3; vector-effect:non-scaling-stroke }
     .mapped text, .operational text, .unmapped text { font:700 14px sans-serif; text-anchor:middle; paint-order:stroke; stroke:#fff; stroke-width:4; stroke-linejoin:round; fill:#064e3b }
-    .mapped text.id, .unmapped text.id { font-size:11px }
+    .mapped text.id, .operational text.id, .unmapped text.id { font-size:11px }
     .operational polygon { fill:#3b82f6; fill-opacity:.08; stroke:#1d4ed8; stroke-width:3; stroke-dasharray:10 6; vector-effect:non-scaling-stroke }
     .operational text { fill:#1e3a8a }
     .unmapped polygon { fill:#ef4444; fill-opacity:.10; stroke:#dc2626; stroke-width:3; stroke-dasharray:9 6; vector-effect:non-scaling-stroke }

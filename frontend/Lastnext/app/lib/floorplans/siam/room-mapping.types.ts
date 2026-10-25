@@ -82,6 +82,27 @@ export interface FloorCoordinateSpace {
   viewBox: readonly [minX: number, minY: number, width: number, height: number];
 }
 
+export type OperationalAreaMappingStatus =
+  | "mapped"
+  | "mapped_shared_room"
+  | "mapped_no_database_room";
+
+export interface OperationalAreaMapping {
+  propertyId: string;
+  floor: SiamFloor;
+  zoneId: string;
+  architecturalLabel: string;
+  roomId: number | null;
+  roomName: string | null;
+  roomType: string;
+  interactive: boolean;
+  polygonId: string;
+  points: SvgPoint[];
+  dataAttributes: RoomIdentityDataAttributes | null;
+  mappingStatus: OperationalAreaMappingStatus;
+  validationNotes: string[];
+}
+
 export interface SiamRoomMappingConfiguration {
   schemaVersion: 2;
   propertyId: string;
@@ -93,6 +114,7 @@ export interface SiamRoomMappingConfiguration {
   coordinateSpaces: Record<SiamFloor, FloorCoordinateSpace>;
   activeCandidateCount: number;
   rooms: Array<ActiveRoomPolygonCandidate | ExcludedRoomMapping>;
+  operationalAreas: OperationalAreaMapping[];
   unmappedArchitecturalRooms: UnmappedArchitecturalRoom[];
 }
 

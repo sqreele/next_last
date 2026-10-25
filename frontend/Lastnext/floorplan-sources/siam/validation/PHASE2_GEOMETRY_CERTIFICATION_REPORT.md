@@ -1,5 +1,7 @@
 # Siam SVG Room Polygon Certification — Phase 2
 
+> Historical Phase 2 snapshot. Current product decisions cancel mappings 106 and 1313 and add Lobby/WC operational zones; see `app/lib/floorplans/siam/validation-report.md`.
+
 Property: Lub d Bangkok Siam  
 Property ID: `PE17D8D2C`  
 Purpose: mapping preparation only; no application integration  

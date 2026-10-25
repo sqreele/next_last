@@ -1,5 +1,7 @@
 # Siam Unmapped and Excluded Rooms
 
+> Historical exception snapshot. Current product decisions cancel mappings 106 and 1313 and resolve Lobby/L1 WC/L3 WC mapping as documented in `app/lib/floorplans/siam/validation-report.md`.
+
 Property ID: `PE17D8D2C`
 
 ## Excluded guestroom

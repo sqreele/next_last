@@ -5,7 +5,7 @@
   <style>
     .mapped polygon { fill:#22c55e; fill-opacity:.10; stroke:#078232; stroke-width:3; vector-effect:non-scaling-stroke }
     .mapped text, .operational text, .unmapped text { font:700 14px sans-serif; text-anchor:middle; paint-order:stroke; stroke:#fff; stroke-width:4; stroke-linejoin:round; fill:#064e3b }
-    .mapped text.id, .unmapped text.id { font-size:11px }
+    .mapped text.id, .operational text.id, .unmapped text.id { font-size:11px }
     .operational polygon { fill:#3b82f6; fill-opacity:.08; stroke:#1d4ed8; stroke-width:3; stroke-dasharray:10 6; vector-effect:non-scaling-stroke }
     .operational text { fill:#1e3a8a }
     .unmapped polygon { fill:#ef4444; fill-opacity:.10; stroke:#dc2626; stroke-width:3; stroke-dasharray:9 6; vector-effect:non-scaling-stroke }

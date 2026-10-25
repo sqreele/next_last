@@ -1,5 +1,7 @@
 # Phase 3 — Siam Floor Plan Visual & Architectural Review
 
+> Historical Phase 3 snapshot. Current product decisions cancel mappings 106 and 1313 and add Lobby/WC operational zones; see `app/lib/floorplans/siam/validation-report.md`.
+
 Property: Lub d Bangkok Siam  
 Property ID: `PE17D8D2C`  
 Date: 2026-10-24  

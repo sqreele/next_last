@@ -5,7 +5,7 @@
   <style>
     .mapped polygon { fill:#22c55e; fill-opacity:.10; stroke:#078232; stroke-width:3; vector-effect:non-scaling-stroke }
     .mapped text, .operational text, .unmapped text { font:700 14px sans-serif; text-anchor:middle; paint-order:stroke; stroke:#fff; stroke-width:4; stroke-linejoin:round; fill:#064e3b }
-    .mapped text.id, .unmapped text.id { font-size:11px }
+    .mapped text.id, .operational text.id, .unmapped text.id { font-size:11px }
     .operational polygon { fill:#3b82f6; fill-opacity:.08; stroke:#1d4ed8; stroke-width:3; stroke-dasharray:10 6; vector-effect:non-scaling-stroke }
     .operational text { fill:#1e3a8a }
     .unmapped polygon { fill:#ef4444; fill-opacity:.10; stroke:#dc2626; stroke-width:3; stroke-dasharray:9 6; vector-effect:non-scaling-stroke }
@@ -25,8 +25,9 @@
 <g class="mapped"><polygon points="875,82 960,82 960,260 875,260"/><text x="917.5" y="164">103</text><text class="id" x="917.5" y="181">ID 187</text></g>
 <g class="mapped"><polygon points="972,82 1042,82 1042,260 972,260"/><text x="1007" y="164">104</text><text class="id" x="1007" y="181">ID 188</text></g>
 <g class="mapped"><polygon points="1087,82 1198,82 1198,260 1087,260"/><text x="1142.5" y="164">105</text><text class="id" x="1142.5" y="181">ID 189</text></g>
+  <g class="operational"><polygon points="570,305 1018,305 1018,500 910,500 910,535 690,535 690,500 570,500"/><text x="794" y="413">LOBBY AREA</text><text class="id" x="794" y="430">ID 172</text></g>
+<g class="operational"><polygon points="1300,82 1402,82 1402,260 1300,260"/><text x="1351" y="164">WC MALE</text><text class="id" x="1351" y="181">ID 173</text></g>
+<g class="operational"><polygon points="1410,82 1515,82 1515,260 1410,260"/><text x="1462.5" y="164">WC FEMALE</text><text class="id" x="1462.5" y="181">ID 173</text></g>
   
-  <g class="unmapped"><polygon points="1207,82 1290,82 1290,260 1207,260"/><text x="1248.5" y="164">106</text><text class="id" x="1248.5" y="181">NO DB ROOM</text></g>
-  <g class="note review" transform="translate(742 450)"><circle r="8"/><text x="13" y="4">REVIEW ID 172: lobby/bar boundary</text></g>
-<g class="note review" transform="translate(1375 180)"><circle r="8"/><text x="13" y="4">REVIEW ID 173: one DB record / two WCs</text></g>
+  <g class="note info" transform="translate(570 570)"><circle r="8"/><text x="13" y="4">MAPPED: Lobby ID 172; WC MALE/FEMALE share ID 173</text></g>
 </svg>

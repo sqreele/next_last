@@ -3122,7 +3122,11 @@ class RoomAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['property'].required = True
+        # Django removes ModelAdmin readonly fields from the generated form.
+        # ``property`` is editable when adding a Room but readonly when editing
+        # one, so it is intentionally absent from existing-room forms.
+        if 'property' in self.fields:
+            self.fields['property'].required = True
 
     def clean_property(self):
         property_obj = self.cleaned_data['property']

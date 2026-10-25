@@ -3,6 +3,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib import admin
 from django.test import RequestFactory
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -153,6 +154,21 @@ class RoomPropertyWriteEnforcementTests(APITestCase):
 
         room = Room.objects.create(name='RW-ADMIN', room_type='Standard', property=self.chinatown)
         self.assertIn('property', model_admin.get_readonly_fields(request, room))
+
+        # Regression: readonly fields are excluded from Django's generated
+        # change form. Instantiating that form must not assume ``property`` is
+        # still present (the former behavior raised KeyError and returned 500).
+        change_form_class = model_admin.get_form(request, room)
+        change_form = change_form_class(instance=room)
+        self.assertNotIn('property', change_form.fields)
+
+        self.client.force_authenticate(user=None)
+        self.client.force_login(admin_user)
+        response = self.client.get(
+            reverse('admin:myappLubd_room_change', args=[room.pk]),
+            {'_changelist_filters': f'property__id__exact={self.chinatown.pk}'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
 
     def test_admin_display_uses_canonical_property_without_legacy_relation(self):
         room = Room.objects.create(name='RW-ADMIN-DISPLAY', room_type='Standard', property=self.chinatown)

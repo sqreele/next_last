@@ -48,15 +48,15 @@ Only rows whose `Properties` value begins with `PE17D8D2C - Lub d Bangkok Siam` 
 - `Is Active` → boolean (`Yes`)
 - `Properties` → property ID/name
 
-All 52 rows in the supplied CSV belong to the requested property and are active. They comprise 47 guest-room records and five operational records. Product scope cancels room ID 146 (`1313`) from all active mapping collections without changing its CSV/database record, leaving 46 mapped guest rooms.
+All 53 rows in the updated CSV belong to the requested property and are active. They comprise 47 guest-room records and six operational records. Product scope cancels room ID 146 (`1313`) from all active mapping collections without changing its CSV/database record, leaving 46 mapped guest rooms. Room ID 198 remains in the source data but is no longer attached to an SVG zone after the confirmed WC MEN update.
 
 ## Mapping coverage
 
 | Floor | Eligible guest records | Mapped | Coverage | Exceptions |
 | --- | ---: | ---: | ---: | --- |
 | L1 | 5 | 5 | 100% | 106 cancelled; Lobby ID 172 mapped; WC MALE and WC FEMALE mapped as separate zones sharing ID 173 |
-| L2 | 12 | 12 | 100% | Operational ID 174 has conflicting floor evidence |
-| L3 | 14 | 14 | 100% | ID 146/1313 cancelled; WC MEN mapped to ID 198; WC WOMEN mapped without a DB room identity |
+| L2 | 12 | 12 | 100% | No operational exceptions |
+| L3 | 14 | 14 | 100% | ID 146/1313 cancelled; WC MEN mapped to ID 174; WC WOMEN mapped to ID 199; former WC MEN ID 198 superseded |
 | L4 | 15 | 15 | 100% | Operational ID 175/Kitchen Room is unmapped |
 | **Total** | **46** | **46** | **100%** | Two cancelled mappings (106 and 1313); five operational SVG zones mapped |
 
@@ -64,17 +64,26 @@ The 46 eligible guest polygons are mutually non-overlapping and all vertices lie
 
 ## Operational mapping decisions
 
-- **L1 Lobby Area:** `siam-l1-lobby` is mapped to Room ID **172 / 1000**. Because Lobby and Bar are physically open, the lower edge is an explicit product/UI boundary rather than a closed architectural wall.
-- **L1 WC MALE:** `siam-l1-wc-male` is mapped to Room ID **173 / 1100**.
-- **L1 WC FEMALE:** `siam-l1-wc-female` is also mapped to Room ID **173 / 1100**. The two SVG zones intentionally share one database identity because only one L1 bathroom record exists.
-- **L3 WC MEN:** `siam-l3-wc-male` is mapped to Room ID **198 / 1300**.
-- **L3 WC WOMEN:** `siam-l3-wc-female` has validated SVG geometry but remains noninteractive because no matching database Room ID exists. No identity was invented.
+| Floor | SVG zone | Plan label | Room ID / name | Polygon points | Interactive | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| L1 | `siam-l1-lobby` | LOBBY AREA | `172 / 1000` | `(570,305) (1018,305) (1018,500) (910,500) (910,535) (690,535) (690,500) (570,500)` | Yes | Mapped |
+| L1 | `siam-l1-wc-male` | WC MALE | `173 / 1100` | `(1300,82) (1402,82) (1402,260) (1300,260)` | Yes | Mapped; shared DB room |
+| L1 | `siam-l1-wc-female` | WC FEMALE | `173 / 1100` | `(1410,82) (1515,82) (1515,260) (1410,260)` | Yes | Mapped; shared DB room |
+| L3 | `siam-l3-wc-male` | WC MEN | `174 / 1200` | `(970,21) (1400,21) (1400,275) (970,275)` | Yes | Mapped |
+| L3 | `siam-l3-wc-female` | WC WOMEN | `199 / 3210` | `(970,656) (1400,656) (1400,918) (970,918)` | Yes | Mapped |
+
+The L1 Lobby polygon is a product-defined selectable boundary because Lobby and Bar are physically open. The separate L1 male and female WC polygons intentionally share Room ID `173 / 1100` because the database supplies one L1 bathroom record. The L3 mappings use the confirmed records `174 / 1200` (`Men’s Bathroom – 3rd Floor`) and `199 / 3210` (`She’s Bathroom – 3rd Floor`).
 
 ## Cancelled and unresolved records
 
-- Architectural L1 room **106** is cancelled from all active mapping collections by product decision. The drawing itself is not modified.
-- Database room **146 / 1313** is cancelled from all active mapping collections by product decision. Its CSV/database row is not modified, and no 313 exists on the drawing.
-- ID **174 / 1200 / Bath Room Floor 3st** remains unresolved: the name namespace suggests L2 while the room type says floor 3. No floor or polygon is assigned.
+| Floor | Architectural label | Room ID / name | Status | Effect |
+| --- | --- | --- | --- | --- |
+| L1 | `106` | No database room | Cancelled | No active polygon, no Room ID, and not interactive; source drawing remains unchanged |
+| L3 | `313` | `146 / 1313` | Cancelled | Removed from active mapping and not interactive; CSV/database row remains unchanged |
+
+Both cancellations are now recorded explicitly in `room-polygons.json`, `room-mapping.phase2.json`, and `unmapped-excluded-rooms.json`; neither entry appears in an active room or operational-area collection.
+
+- ID **198 / 1300** is retained in the source data but is no longer attached to an SVG zone; the confirmed WC MEN mapping is now ID **174 / 1200**.
 - ID **175 / 1400 / Kitchen Room** remains unresolved because no independently bounded `KITCHEN ROOM` label exists on L4.
 
 ## Prepared artifacts
@@ -86,8 +95,7 @@ The 46 eligible guest polygons are mutually non-overlapping and all vertices lie
 
 ## Remaining work before integration
 
-1. Create a dedicated database Room record for L3 WC WOMEN if it must query jobs or become interactive; do not reuse WC MEN ID 198.
-2. Resolve the floor identity of ID 174 and the missing L4 Kitchen Room boundary for ID 175.
-3. Obtain sign-off on guest-room wall insets, the product-defined Lobby/Bar split, and the four WC boundaries.
-4. If previews must be portable outside this repository, package or inline the source SVGs; the current preview files intentionally reference the original public assets.
-5. Define and test the Dashboard rendering/hit-testing contract before production integration.
+1. Resolve the missing L4 Kitchen Room boundary for ID 175.
+2. Obtain sign-off on guest-room wall insets, the product-defined Lobby/Bar split, and the four WC boundaries.
+3. If previews must be portable outside this repository, package or inline the source SVGs; the current preview files intentionally reference the original public assets.
+4. Define and test the Dashboard rendering/hit-testing contract before production integration.

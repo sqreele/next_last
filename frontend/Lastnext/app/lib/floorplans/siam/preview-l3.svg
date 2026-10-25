@@ -34,8 +34,8 @@
 <g class="mapped"><polygon points="574,21 696,21 696,275 574,275"/><text x="635" y="141">312</text><text class="id" x="635" y="158">ID 145</text></g>
 <g class="mapped"><polygon points="708,21 828,21 828,275 708,275"/><text x="768" y="141">314</text><text class="id" x="768" y="158">ID 147</text></g>
 <g class="mapped"><polygon points="839,21 959,21 959,275 839,275"/><text x="899" y="141">315</text><text class="id" x="899" y="158">ID 191</text></g>
-  <g class="operational"><polygon points="970,21 1400,21 1400,275 970,275"/><text x="1185" y="141">WC MEN</text><text class="id" x="1185" y="158">ID 198</text></g>
-<g class="operational"><polygon points="970,656 1400,656 1400,918 970,918"/><text x="1185" y="780">WC WOMEN</text><text class="id" x="1185" y="797">NO DB ROOM</text></g>
-  
-  <g class="note info" transform="translate(980 315)"><circle r="8"/><text x="13" y="4">MAPPED: WC MEN ID 198; WC WOMEN has no DB room</text></g>
+  <g class="operational"><polygon points="970,21 1400,21 1400,275 970,275"/><text x="1185" y="141">WC MEN</text><text class="id" x="1185" y="158">ID 174</text></g>
+<g class="operational"><polygon points="970,656 1400,656 1400,918 970,918"/><text x="1185" y="780">WC WOMEN</text><text class="id" x="1185" y="797">ID 199</text></g>
+
+  <g class="note info" transform="translate(980 315)"><circle r="8"/><text x="13" y="4">MAPPED: WC MEN ID 174; WC WOMEN ID 199</text></g>
 </svg>

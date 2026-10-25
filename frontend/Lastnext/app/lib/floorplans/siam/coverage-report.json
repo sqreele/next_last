@@ -19,7 +19,7 @@
       "architectural_guest_labels": 12,
       "architectural_unmapped": [],
       "operational_mapped_noninteractive": [],
-      "needs_review_room_ids": [174]
+      "needs_review_room_ids": []
     },
     "L3": {
       "eligible_guest_records": 14,
@@ -28,9 +28,10 @@
       "architectural_guest_labels": 14,
       "architectural_unmapped": [],
       "cancelled_room_ids": [146],
-      "operational_mapped_room_ids": [198],
+      "operational_mapped_room_ids": [174, 199],
       "operational_mapped_zones": ["WC MEN", "WC WOMEN"],
-      "architectural_zones_without_database_room": ["WC WOMEN"],
+      "superseded_operational_room_ids": [198],
+      "architectural_zones_without_database_room": [],
       "needs_review_room_ids": []
     },
     "L4": {
@@ -48,10 +49,10 @@
     "mapped_guest_records": 46,
     "guest_coverage_percent": 100,
     "cancelled_guest_records": 1,
-    "operational_records": 5,
+    "operational_records": 6,
     "operational_mapped_zones": 5,
     "operational_needs_review_or_unmapped": 2,
-    "architectural_zones_without_database_record": 1,
+    "architectural_zones_without_database_record": 0,
     "cancelled_architectural_labels": 1
   }
 }

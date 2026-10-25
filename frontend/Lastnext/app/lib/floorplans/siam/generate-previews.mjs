@@ -9,11 +9,9 @@ const floorNotes = {
   L1: [
     { x: 570, y: 570, text: "MAPPED: Lobby ID 172; WC MALE/FEMALE share ID 173", tone: "info" }
   ],
-  L2: [
-    { x: 60, y: 1030, text: "REVIEW ID 174: CSV floor conflict (1200 vs Floor 3)", tone: "review" }
-  ],
+  L2: [],
   L3: [
-    { x: 980, y: 315, text: "MAPPED: WC MEN ID 198; WC WOMEN has no DB room", tone: "info" }
+    { x: 980, y: 315, text: "MAPPED: WC MEN ID 174; WC WOMEN ID 199", tone: "info" }
   ],
   L4: [
     { x: 60, y: 1055, text: "UNMAPPED ID 175 / 1400: no bounded Kitchen Room", tone: "unmapped" }
@@ -25,6 +23,8 @@ const esc = (value) => String(value)
   .replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;")
   .replaceAll('"', "&quot;");
+
+const block = (markup) => markup ? `  ${markup}` : "";
 
 const points = (polygon) => polygon.map(([x, y]) => `${x},${y}`).join(" ");
 const center = (polygon) => {
@@ -83,10 +83,10 @@ for (const [floor, space] of Object.entries(mapping.coordinate_spaces)) {
     .note.excluded text { fill:#111827 }
   </style>
   <image href="${sourceHref}" xlink:href="${sourceHref}" x="0" y="0" width="${width}" height="${height}"/>
-  ${mappedMarkup}
-  ${operationalMarkup}
-  ${unmappedMarkup}
-  ${noteMarkup}
+${block(mappedMarkup)}
+${block(operationalMarkup)}
+${block(unmappedMarkup)}
+${block(noteMarkup)}
 </svg>
 `;
   writeFileSync(join(outputDir, fileName), svg);

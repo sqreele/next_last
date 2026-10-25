@@ -103,6 +103,17 @@ export interface OperationalAreaMapping {
   validationNotes: string[];
 }
 
+export interface CancelledMapping {
+  propertyId: string;
+  floor: SiamFloor;
+  architecturalLabel: string;
+  roomId: number | null;
+  roomName: string | null;
+  interactive: false;
+  mappingStatus: "cancelled";
+  reason: string;
+}
+
 export interface SiamRoomMappingConfiguration {
   schemaVersion: 2;
   propertyId: string;
@@ -115,6 +126,7 @@ export interface SiamRoomMappingConfiguration {
   activeCandidateCount: number;
   rooms: Array<ActiveRoomPolygonCandidate | ExcludedRoomMapping>;
   operationalAreas: OperationalAreaMapping[];
+  cancelledMappings: CancelledMapping[];
   unmappedArchitecturalRooms: UnmappedArchitecturalRoom[];
 }
 

@@ -28,6 +28,6 @@
   <g class="operational"><polygon points="570,305 1018,305 1018,500 910,500 910,535 690,535 690,500 570,500"/><text x="794" y="413">LOBBY AREA</text><text class="id" x="794" y="430">ID 172</text></g>
 <g class="operational"><polygon points="1300,82 1402,82 1402,260 1300,260"/><text x="1351" y="164">WC MALE</text><text class="id" x="1351" y="181">ID 173</text></g>
 <g class="operational"><polygon points="1410,82 1515,82 1515,260 1410,260"/><text x="1462.5" y="164">WC FEMALE</text><text class="id" x="1462.5" y="181">ID 173</text></g>
-  
+
   <g class="note info" transform="translate(570 570)"><circle r="8"/><text x="13" y="4">MAPPED: Lobby ID 172; WC MALE/FEMALE share ID 173</text></g>
 </svg>

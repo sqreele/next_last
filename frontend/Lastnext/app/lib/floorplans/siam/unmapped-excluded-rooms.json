@@ -19,15 +19,6 @@
   "unmappedArchitecturalRooms": [],
   "operationalRecordsRequiringReview": [
     {
-      "floor": "L2_or_L3",
-      "roomId": 174,
-      "roomName": "1200",
-      "roomType": "Bath Room Floor 3st",
-      "mappingStatus": "needs_review",
-      "interactive": false,
-      "notes": "Name prefix suggests L2 while room type says floor 3; no safe floor assignment."
-    },
-    {
       "floor": "L4",
       "roomId": 175,
       "roomName": "1400",
@@ -35,6 +26,17 @@
       "mappingStatus": "unmapped",
       "interactive": false,
       "notes": "No independently bounded L4 kitchen room label."
+    }
+  ],
+  "supersededOperationalMappings": [
+    {
+      "floor": "L3",
+      "roomId": 198,
+      "roomName": "1300",
+      "roomType": "Share bashroom men.",
+      "mappingStatus": "superseded",
+      "interactive": false,
+      "notes": "Not attached to an SVG zone after WC MEN was confirmed as Room ID 174."
     }
   ],
   "resolvedOperationalMappings": [
@@ -56,19 +58,19 @@
     },
     {
       "floor": "L3",
-      "roomId": 198,
-      "roomName": "1300",
+      "roomId": 174,
+      "roomName": "1200",
       "zones": ["WC MEN"],
       "mappingStatus": "mapped",
       "interactive": true
     },
     {
       "floor": "L3",
-      "roomId": null,
-      "roomName": null,
+      "roomId": 199,
+      "roomName": "3210",
       "zones": ["WC WOMEN"],
-      "mappingStatus": "mapped_no_database_room",
-      "interactive": false
+      "mappingStatus": "mapped",
+      "interactive": true
     }
   ]
 }

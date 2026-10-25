@@ -32,7 +32,7 @@
 <g class="mapped"><polygon points="906,24 1078,24 1078,277 906,277"/><text x="992" y="143.5">210</text><text class="id" x="992" y="160.5">ID 168</text></g>
 <g class="mapped"><polygon points="1090,24 1249,24 1249,277 1090,277"/><text x="1169.5" y="143.5">211</text><text class="id" x="1169.5" y="160.5">ID 169</text></g>
 <g class="mapped"><polygon points="1257,24 1408,24 1408,277 1257,277"/><text x="1332.5" y="143.5">212</text><text class="id" x="1332.5" y="160.5">ID 170</text></g>
-  
-  
-  <g class="note review" transform="translate(60 1030)"><circle r="8"/><text x="13" y="4">REVIEW ID 174: CSV floor conflict (1200 vs Floor 3)</text></g>
+
+
+
 </svg>

@@ -1,0 +1,76 @@
+{
+  "propertyId": "PE17D8D2C",
+  "cancelledMappings": [
+    {
+      "floor": "L1",
+      "architecturalLabel": "106",
+      "roomId": null,
+      "reason": "Cancelled by product decision; omitted from all active mapping collections."
+    },
+    {
+      "floor": "L3",
+      "architecturalLabel": "313",
+      "roomId": 146,
+      "roomName": "1313",
+      "reason": "Cancelled by product decision; omitted from all active mapping collections. The source CSV/database record was not modified."
+    }
+  ],
+  "excludedRooms": [],
+  "unmappedArchitecturalRooms": [],
+  "operationalRecordsRequiringReview": [
+    {
+      "floor": "L4",
+      "roomId": 175,
+      "roomName": "1400",
+      "roomType": "Kitchen Room",
+      "mappingStatus": "unmapped",
+      "interactive": false,
+      "notes": "No independently bounded L4 kitchen room label."
+    }
+  ],
+  "supersededOperationalMappings": [
+    {
+      "floor": "L3",
+      "roomId": 198,
+      "roomName": "1300",
+      "roomType": "Share bashroom men.",
+      "mappingStatus": "superseded",
+      "interactive": false,
+      "notes": "Not attached to an SVG zone after WC MEN was confirmed as Room ID 174."
+    }
+  ],
+  "resolvedOperationalMappings": [
+    {
+      "floor": "L1",
+      "roomId": 172,
+      "roomName": "1000",
+      "zones": ["LOBBY AREA"],
+      "mappingStatus": "mapped",
+      "interactive": true
+    },
+    {
+      "floor": "L1",
+      "roomId": 173,
+      "roomName": "1100",
+      "zones": ["WC MALE", "WC FEMALE"],
+      "mappingStatus": "mapped_shared_room",
+      "interactive": true
+    },
+    {
+      "floor": "L3",
+      "roomId": 174,
+      "roomName": "1200",
+      "zones": ["WC MEN"],
+      "mappingStatus": "mapped",
+      "interactive": true
+    },
+    {
+      "floor": "L3",
+      "roomId": 199,
+      "roomName": "3210",
+      "zones": ["WC WOMEN"],
+      "mappingStatus": "mapped",
+      "interactive": true
+    }
+  ]
+}

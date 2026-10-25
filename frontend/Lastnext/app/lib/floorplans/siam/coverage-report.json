@@ -1,6 +1,6 @@
 {
   "property_id": "PE17D8D2C",
-  "scope": "Preparation only; no Dashboard integration",
+  "scope": "Validated runtime API delivery; no Dashboard UI integration",
   "floors": {
     "L1": {
       "eligible_guest_records": 5,

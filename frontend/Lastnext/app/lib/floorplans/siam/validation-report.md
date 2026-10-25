@@ -1,7 +1,7 @@
 # Lub d Bangkok Siam floor-plan validation
 
 Property ID: `PE17D8D2C`  
-Scope: SVG mapping preparation and validation; no Dashboard deployment or database mutation.
+Scope: SVG mapping preparation, validation, and authenticated runtime API delivery; no Dashboard UI deployment or database mutation.
 
 ## Source decision
 
@@ -92,10 +92,22 @@ Both cancellations are now recorded explicitly in `room-polygons.json`, `room-ma
 - `coverage-report.json`: machine-readable coverage totals by floor
 - `preview-l1.svg`, `preview-l2.svg`, `preview-l3.svg`, `preview-l4.svg`: separate validation overlays with green guest rooms, blue operational geometry, and remaining review markers
 - `generate-previews.mjs`: deterministic preview generator; it references the unmodified public SVGs
+- `app/lib/floorplans/runtime.mjs`: validated, immutable runtime loader that groups the source mapping by floor and converts public SVG paths to browser URLs
+- `GET /api/floorplans/[propertyId]`: authenticated API route that verifies Property access with Django before returning floor geometry, operational zones, cancellations, and unresolved records
+
+## Runtime API contract
+
+`GET /api/floorplans/PE17D8D2C` requires an authenticated session. The route first calls the property-scoped Django detail endpoint with the user's access token; unauthorized users cannot use the floor-plan endpoint to discover whether a Property has a prepared mapping. Successful responses use `Cache-Control: private, no-store` and include:
+
+- Property identity and mapping schema version
+- Four ordered floors (`L1`–`L4`) with public `svg_url` and native `view_box`
+- Interactive guest-room polygons and operational-area polygons grouped by floor
+- Explicit cancelled mappings for `106` and `1313`
+- Superseded or unresolved operational records, including ID `198` and Kitchen ID `175`
 
 ## Remaining work before integration
 
 1. Resolve the missing L4 Kitchen Room boundary for ID 175.
 2. Obtain sign-off on guest-room wall insets, the product-defined Lobby/Bar split, and the four WC boundaries.
 3. If previews must be portable outside this repository, package or inline the source SVGs; the current preview files intentionally reference the original public assets.
-4. Define and test the Dashboard rendering/hit-testing contract before production integration.
+4. Build and test the Dashboard renderer, hit-testing, selection, and room-detail navigation against the runtime API.

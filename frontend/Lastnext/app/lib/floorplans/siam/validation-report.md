@@ -1,7 +1,7 @@
 # Lub d Bangkok Siam floor-plan validation
 
 Property ID: `PE17D8D2C`  
-Scope: SVG mapping preparation, validation, and authenticated runtime API delivery; no Dashboard UI deployment or database mutation.
+Scope: SVG mapping preparation, validation, authenticated runtime API delivery, and responsive Dashboard UI integration; no database mutation.
 
 ## Source decision
 
@@ -94,6 +94,7 @@ Both cancellations are now recorded explicitly in `room-polygons.json`, `room-ma
 - `generate-previews.mjs`: deterministic preview generator; it references the unmodified public SVGs
 - `app/lib/floorplans/runtime.mjs`: validated, immutable runtime loader that groups the source mapping by floor and converts public SVG paths to browser URLs
 - `GET /api/floorplans/[propertyId]`: authenticated API route that verifies Property access with Django before returning floor geometry, operational zones, cancellations, and unresolved records
+- `/dashboard/floor-plan`: responsive floor selector and interactive SVG viewer linked from desktop navigation, the mobile drawer, and the mobile More menu
 
 ## Runtime API contract
 
@@ -105,9 +106,9 @@ Both cancellations are now recorded explicitly in `room-polygons.json`, `room-ma
 - Explicit cancelled mappings for `106` and `1313`
 - Superseded or unresolved operational records, including ID `198` and Kitchen ID `175`
 
-## Remaining work before integration
+## Remaining work before production sign-off
 
 1. Resolve the missing L4 Kitchen Room boundary for ID 175.
 2. Obtain sign-off on guest-room wall insets, the product-defined Lobby/Bar split, and the four WC boundaries.
 3. If previews must be portable outside this repository, package or inline the source SVGs; the current preview files intentionally reference the original public assets.
-4. Build and test the Dashboard renderer, hit-testing, selection, and room-detail navigation against the runtime API.
+4. Complete authenticated browser acceptance testing with production-like Property memberships and room-detail data.

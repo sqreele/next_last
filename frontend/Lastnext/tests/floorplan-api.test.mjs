@@ -80,3 +80,26 @@ test("floor-plan route authenticates and authorizes before returning mappings", 
   assert.match(source, /private, no-store/);
 });
 
+test("floor plan is reachable from desktop and mobile navigation", async () => {
+  const navigation = await readFile(
+    new URL("../app/design-system/navigation-config.ts", import.meta.url),
+    "utf8",
+  );
+  const mobileNavigation = await readFile(
+    new URL("../app/components/ui/mobile-nav.tsx", import.meta.url),
+    "utf8",
+  );
+  const page = await readFile(
+    new URL("../app/dashboard/floor-plan/FloorPlanView.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(navigation, /name: "Floor Plan"/);
+  assert.match(navigation, /href: "\/dashboard\/floor-plan"/);
+  assert.match(navigation, /labelKey: "nav\.floorPlan"/);
+  assert.match(mobileNavigation, /pathname\.includes\("\/floor-plan"\)/);
+  assert.match(page, /\/api\/floorplans\/\$\{encodeURIComponent\(selectedPropertyId\)\}/);
+  assert.match(page, /role="tablist"/);
+  assert.match(page, /Swipe horizontally to inspect the full drawing/);
+});
+

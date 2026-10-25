@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileText,
   Home,
+  Map,
   MapPin,
   Package,
   Plus,
@@ -82,6 +83,7 @@ export const navigationGroups: readonly NavigationGroup[] = [
     labelKey: "nav.property",
     items: [
       { name: "Rooms", labelKey: "nav.rooms", href: "/dashboard/rooms", icon: Building2 },
+      { name: "Floor Plan", labelKey: "nav.floorPlan", href: "/dashboard/floor-plan", icon: Map },
       { name: "Machines", labelKey: "nav.machines", href: "/dashboard/machines", icon: Wrench },
       { name: "Areas", labelKey: "nav.areas", href: "/dashboard/areas", icon: MapPin },
       { name: "Inventory", labelKey: "nav.inventory", href: "/dashboard/inventory", icon: Package },

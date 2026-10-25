@@ -213,6 +213,7 @@ export function MobileTopBar({ className }: MobileNavProps) {
     if (pathname.includes("/create-job") || pathname.includes("/createJob"))
       return t("nav.createJob");
     if (pathname.includes("/profile")) return t("nav.profile");
+    if (pathname.includes("/floor-plan")) return t("nav.floorPlan");
     if (pathname.includes("/machines")) return t("nav.machines");
     if (pathname.includes("/preventive-maintenance")) return t("nav.preventiveMaintenance");
     return t("nav.dashboard");

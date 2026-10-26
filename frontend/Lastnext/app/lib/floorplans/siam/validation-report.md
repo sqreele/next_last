@@ -83,6 +83,10 @@ The L1 Lobby polygon is a product-defined selectable boundary because Lobby and 
 
 Both cancellations are now recorded explicitly in `room-polygons.json`, `room-mapping.phase2.json`, and `unmapped-excluded-rooms.json`; neither entry appears in an active room or operational-area collection.
 
+Rooms 106 and 1313 (Room ID 146) are intentional noninteractive cancellations and require no further room-mapping investigation.
+
+Keep the current public SVGs in place. Deploying the clean-v3 SVGs requires the documented per-floor coordinate translations, regenerated overlays, and renewed architectural approval.
+
 - ID **198 / 1300** is retained in the source data but is no longer attached to an SVG zone; the confirmed WC MEN mapping is now ID **174 / 1200**.
 - ID **175 / 1400 / Kitchen Room** remains unresolved because no independently bounded `KITCHEN ROOM` label exists on L4.
 
@@ -94,6 +98,7 @@ Both cancellations are now recorded explicitly in `room-polygons.json`, `room-ma
 - `generate-previews.mjs`: deterministic preview generator; it references the unmodified public SVGs
 - `app/lib/floorplans/runtime.mjs`: validated, immutable runtime loader that groups the source mapping by floor and converts public SVG paths to browser URLs
 - `GET /api/floorplans/[propertyId]`: authenticated API route that verifies Property access with Django before returning floor geometry, operational zones, cancellations, and unresolved records
+- `/dashboard/floor-plan`: responsive floor selector and interactive SVG viewer linked from desktop navigation, the mobile drawer, and the mobile More menu
 
 ## Runtime API contract
 
@@ -105,9 +110,9 @@ Both cancellations are now recorded explicitly in `room-polygons.json`, `room-ma
 - Explicit cancelled mappings for `106` and `1313`
 - Superseded or unresolved operational records, including ID `198` and Kitchen ID `175`
 
-## Remaining work before integration
+## Remaining work before production sign-off
 
 1. Resolve the missing L4 Kitchen Room boundary for ID 175.
 2. Obtain sign-off on guest-room wall insets, the product-defined Lobby/Bar split, and the four WC boundaries.
 3. If previews must be portable outside this repository, package or inline the source SVGs; the current preview files intentionally reference the original public assets.
-4. Build and test the Dashboard renderer, hit-testing, selection, and room-detail navigation against the runtime API.
+4. Complete authenticated browser acceptance testing with production-like Property memberships and room-detail data.

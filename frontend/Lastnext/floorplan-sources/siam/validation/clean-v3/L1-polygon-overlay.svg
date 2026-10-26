@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1543.6744" height="806.4651" viewBox="0 0 1543.6744 806.4651">
+<title>L1 clean-v3 coordinate compatibility overlay — validation only</title>
+<desc>New clean architectural SVG with unchanged legacy polygons in red and translation-corrected candidate outlines in green. No polygon is architecturally approved by this preview.</desc>
+<image href="source-floor-l1.svg" xlink:href="source-floor-l1.svg" x="0" y="0" width="1543.6744" height="806.4651"/>
+<style>
+  .legacy polygon { fill:#ef4444; fill-opacity:.23; stroke:#b91c1c; stroke-width:3; vector-effect:non-scaling-stroke; }
+  .translated polygon { fill:#22c55e; fill-opacity:.16; stroke:#047857; stroke-width:3; stroke-dasharray:9 5; vector-effect:non-scaling-stroke; }
+  .translated text { fill:#064e3b; font:700 15px sans-serif; text-anchor:middle; dominant-baseline:middle; paint-order:stroke; stroke:white; stroke-width:3px; }
+  .reference polygon { fill:#94a3b8; fill-opacity:.12; stroke:#475569; stroke-width:3; stroke-dasharray:4 5; vector-effect:non-scaling-stroke; }
+  .reference text { fill:#334155; font:700 12px sans-serif; text-anchor:middle; dominant-baseline:middle; paint-order:stroke; stroke:white; stroke-width:3px; }
+  .legend { font:700 14px sans-serif; paint-order:stroke; stroke:white; stroke-width:4px; stroke-linejoin:round; }
+</style>
+<g class="legacy" pointer-events="none"><polygon points="648,82 744,82 744,260 648,260"><title>1101 / architectural 101 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="758,82 860,82 860,260 758,260"><title>1102 / architectural 102 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="875,82 960,82 960,260 875,260"><title>1103 / architectural 103 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="972,82 1042,82 1042,260 972,260"><title>1104 / architectural 104 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="1087,82 1198,82 1198,260 1087,260"><title>1105 / architectural 105 — unchanged legacy coordinates (misaligned)</title></polygon></g>
+<g class="translated" pointer-events="none"><g><polygon points="606.11626,105.9302 702.11626,105.9302 702.11626,283.9302 606.11626,283.9302"><title>1101 / architectural 101 — translated candidate, not architecturally approved</title></polygon><text x="654.11626" y="194.9302">101</text></g>
+<g><polygon points="716.11626,105.9302 818.11626,105.9302 818.11626,283.9302 716.11626,283.9302"><title>1102 / architectural 102 — translated candidate, not architecturally approved</title></polygon><text x="767.11626" y="194.9302">102</text></g>
+<g><polygon points="833.11626,105.9302 918.11626,105.9302 918.11626,283.9302 833.11626,283.9302"><title>1103 / architectural 103 — translated candidate, not architecturally approved</title></polygon><text x="875.61626" y="194.9302">103</text></g>
+<g><polygon points="930.11626,105.9302 1000.11626,105.9302 1000.11626,283.9302 930.11626,283.9302"><title>1104 / architectural 104 — translated candidate, not architecturally approved</title></polygon><text x="965.11626" y="194.9302">104</text></g>
+<g><polygon points="1045.11626,105.9302 1156.11626,105.9302 1156.11626,283.9302 1045.11626,283.9302"><title>1105 / architectural 105 — translated candidate, not architecturally approved</title></polygon><text x="1100.61626" y="194.9302">105</text></g></g>
+<g class="reference" pointer-events="none"><g><polygon points="1165.11626,105.9302 1248.11626,105.9302 1248.11626,283.9302 1165.11626,283.9302"><title>Architectural 106 — noninteractive reference only</title></polygon><text x="1206.61626" y="194.9302">106 NONINTERACTIVE</text></g></g>
+<g class="legend" pointer-events="none" transform="translate(18 24)">
+  <rect x="-8" y="-18" width="520" height="66" rx="5" fill="white" fill-opacity=".88" stroke="#64748b" stroke-width="1"/>
+  <text x="0" y="0" fill="#b91c1c">RED = existing coordinates reused unchanged (misaligned)</text>
+  <text x="0" y="22" fill="#047857">GREEN DASH = translated candidate (x_new = x_old - 41.88374; y_new = y_old + 23.9302)</text>
+  <text x="0" y="43" fill="#334155">Validation only — no architectural approval</text>
+</g>
+</svg>

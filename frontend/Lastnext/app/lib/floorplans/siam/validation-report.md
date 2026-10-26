@@ -83,6 +83,10 @@ The L1 Lobby polygon is a product-defined selectable boundary because Lobby and 
 
 Both cancellations are now recorded explicitly in `room-polygons.json`, `room-mapping.phase2.json`, and `unmapped-excluded-rooms.json`; neither entry appears in an active room or operational-area collection.
 
+Rooms 106 and 1313 (Room ID 146) are intentional noninteractive cancellations and require no further room-mapping investigation.
+
+Keep the current public SVGs in place. Deploying the clean-v3 SVGs requires the documented per-floor coordinate translations, regenerated overlays, and renewed architectural approval.
+
 - ID **198 / 1300** is retained in the source data but is no longer attached to an SVG zone; the confirmed WC MEN mapping is now ID **174 / 1200**.
 - ID **175 / 1400 / Kitchen Room** remains unresolved because no independently bounded `KITCHEN ROOM` label exists on L4.
 

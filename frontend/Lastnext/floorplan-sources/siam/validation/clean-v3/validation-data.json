@@ -1,0 +1,2233 @@
+{
+  "generatedAt": "2026-10-26T15:23:37.297Z",
+  "propertyId": "PE17D8D2C",
+  "mappingSha256": "c2c196e8089ff2e38fab393320a754e1d091416db28231d9d0a7504b8cd29d67",
+  "floors": {
+    "L1": {
+      "assignment": "floor-l1.svg",
+      "old": {
+        "width": 1610,
+        "height": 915,
+        "viewBox": "0 0 1610 915",
+        "counts": {
+          "path": 26083,
+          "g": 769,
+          "clipPath": 11,
+          "use": 186,
+          "image": 0,
+          "text": 0,
+          "polygon": 0,
+          "polyline": 0,
+          "line": 0,
+          "circle": 0,
+          "ellipse": 0,
+          "rect": 0
+        },
+        "bytes": 4963126,
+        "sha256": "1e0b4307bc77e08b8f613c144a61fae1345aa42c52b8d248bd0eca87ccf12796"
+      },
+      "new": {
+        "width": 1543.6744,
+        "height": 806.4651,
+        "viewBox": "0 0 1543.6744 806.4651",
+        "counts": {
+          "path": 26084,
+          "g": 770,
+          "clipPath": 12,
+          "use": 186,
+          "image": 0,
+          "text": 0,
+          "polygon": 0,
+          "polyline": 0,
+          "line": 0,
+          "circle": 0,
+          "ellipse": 0,
+          "rect": 0
+        },
+        "bytes": 5238037,
+        "sha256": "a581f2bd335a31196a039f920c6b9fb94fa318477716dd34ccb9551c87acb1ac"
+      },
+      "transform": {
+        "formula": "x_new = x_old - 41.88374; y_new = y_old + 23.9302",
+        "dx": -41.88373999999999,
+        "dy": 23.930200000000013,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotationDegrees": 0
+      },
+      "geometry": {
+        "exactPathInstancesShared": 26082,
+        "oldPathInstances": 26083,
+        "uniquePathDefinitionsShared": 16872,
+        "oldUniquePathDefinitions": 16873,
+        "newUniquePathDefinitions": 16874
+      },
+      "rooms": [
+        {
+          "roomId": 185,
+          "roomName": "1101",
+          "architecturalLabel": "101",
+          "originalPoints": [
+            [
+              648,
+              82
+            ],
+            [
+              744,
+              82
+            ],
+            [
+              744,
+              260
+            ],
+            [
+              648,
+              260
+            ]
+          ],
+          "transformedPoints": [
+            [
+              606.11626,
+              105.93020000000001
+            ],
+            [
+              702.11626,
+              105.93020000000001
+            ],
+            [
+              702.11626,
+              283.9302
+            ],
+            [
+              606.11626,
+              283.9302
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 186,
+          "roomName": "1102",
+          "architecturalLabel": "102",
+          "originalPoints": [
+            [
+              758,
+              82
+            ],
+            [
+              860,
+              82
+            ],
+            [
+              860,
+              260
+            ],
+            [
+              758,
+              260
+            ]
+          ],
+          "transformedPoints": [
+            [
+              716.11626,
+              105.93020000000001
+            ],
+            [
+              818.11626,
+              105.93020000000001
+            ],
+            [
+              818.11626,
+              283.9302
+            ],
+            [
+              716.11626,
+              283.9302
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 187,
+          "roomName": "1103",
+          "architecturalLabel": "103",
+          "originalPoints": [
+            [
+              875,
+              82
+            ],
+            [
+              960,
+              82
+            ],
+            [
+              960,
+              260
+            ],
+            [
+              875,
+              260
+            ]
+          ],
+          "transformedPoints": [
+            [
+              833.11626,
+              105.93020000000001
+            ],
+            [
+              918.11626,
+              105.93020000000001
+            ],
+            [
+              918.11626,
+              283.9302
+            ],
+            [
+              833.11626,
+              283.9302
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 188,
+          "roomName": "1104",
+          "architecturalLabel": "104",
+          "originalPoints": [
+            [
+              972,
+              82
+            ],
+            [
+              1042,
+              82
+            ],
+            [
+              1042,
+              260
+            ],
+            [
+              972,
+              260
+            ]
+          ],
+          "transformedPoints": [
+            [
+              930.11626,
+              105.93020000000001
+            ],
+            [
+              1000.11626,
+              105.93020000000001
+            ],
+            [
+              1000.11626,
+              283.9302
+            ],
+            [
+              930.11626,
+              283.9302
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 189,
+          "roomName": "1105",
+          "architecturalLabel": "105",
+          "originalPoints": [
+            [
+              1087,
+              82
+            ],
+            [
+              1198,
+              82
+            ],
+            [
+              1198,
+              260
+            ],
+            [
+              1087,
+              260
+            ]
+          ],
+          "transformedPoints": [
+            [
+              1045.11626,
+              105.93020000000001
+            ],
+            [
+              1156.11626,
+              105.93020000000001
+            ],
+            [
+              1156.11626,
+              283.9302
+            ],
+            [
+              1045.11626,
+              283.9302
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        }
+      ]
+    },
+    "L2": {
+      "assignment": "floor-l2.svg",
+      "old": {
+        "width": 1475,
+        "height": 1060,
+        "viewBox": "0 0 1475 1060",
+        "counts": {
+          "path": 22071,
+          "g": 813,
+          "clipPath": 9,
+          "use": 137,
+          "image": 0,
+          "text": 0,
+          "polygon": 0,
+          "polyline": 0,
+          "line": 0,
+          "circle": 0,
+          "ellipse": 0,
+          "rect": 0
+        },
+        "bytes": 4245564,
+        "sha256": "e181e906191eb3bc5eab0a7e12923e3aceaa110e65fa3ba92d8335ae56175be8"
+      },
+      "new": {
+        "width": 1443.6744,
+        "height": 1073.907,
+        "viewBox": "0 0 1443.6744 1073.907",
+        "counts": {
+          "path": 22072,
+          "g": 814,
+          "clipPath": 10,
+          "use": 137,
+          "image": 0,
+          "text": 0,
+          "polygon": 0,
+          "polyline": 0,
+          "line": 0,
+          "circle": 0,
+          "ellipse": 0,
+          "rect": 0
+        },
+        "bytes": 4456719,
+        "sha256": "a9c39ad3706ffa34986707722eeacb0bdcf94f420dd151a799cfd41d6f39bac7"
+      },
+      "transform": {
+        "formula": "x_new = x_old + 4.51165; y_new = y_old + 17.186",
+        "dx": 4.511649999999975,
+        "dy": 17.185999999999922,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotationDegrees": 0
+      },
+      "geometry": {
+        "exactPathInstancesShared": 22070,
+        "oldPathInstances": 22071,
+        "uniquePathDefinitionsShared": 19518,
+        "oldUniquePathDefinitions": 19519,
+        "newUniquePathDefinitions": 19520
+      },
+      "rooms": [
+        {
+          "roomId": 159,
+          "roomName": "1201",
+          "architecturalLabel": "201",
+          "originalPoints": [
+            [
+              1255,
+              656
+            ],
+            [
+              1408,
+              656
+            ],
+            [
+              1408,
+              899
+            ],
+            [
+              1255,
+              899
+            ]
+          ],
+          "transformedPoints": [
+            [
+              1259.51165,
+              673.1859999999999
+            ],
+            [
+              1412.51165,
+              673.1859999999999
+            ],
+            [
+              1412.51165,
+              916.1859999999999
+            ],
+            [
+              1259.51165,
+              916.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 160,
+          "roomName": "1202",
+          "architecturalLabel": "202",
+          "originalPoints": [
+            [
+              1083,
+              656
+            ],
+            [
+              1242,
+              656
+            ],
+            [
+              1242,
+              899
+            ],
+            [
+              1083,
+              899
+            ]
+          ],
+          "transformedPoints": [
+            [
+              1087.51165,
+              673.1859999999999
+            ],
+            [
+              1246.51165,
+              673.1859999999999
+            ],
+            [
+              1246.51165,
+              916.1859999999999
+            ],
+            [
+              1087.51165,
+              916.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 161,
+          "roomName": "1203",
+          "architecturalLabel": "203",
+          "originalPoints": [
+            [
+              907,
+              656
+            ],
+            [
+              1064,
+              656
+            ],
+            [
+              1064,
+              899
+            ],
+            [
+              907,
+              899
+            ]
+          ],
+          "transformedPoints": [
+            [
+              911.5116499999999,
+              673.1859999999999
+            ],
+            [
+              1068.51165,
+              673.1859999999999
+            ],
+            [
+              1068.51165,
+              916.1859999999999
+            ],
+            [
+              911.5116499999999,
+              916.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 162,
+          "roomName": "1204",
+          "architecturalLabel": "204",
+          "originalPoints": [
+            [
+              744,
+              656
+            ],
+            [
+              895,
+              656
+            ],
+            [
+              895,
+              899
+            ],
+            [
+              744,
+              899
+            ]
+          ],
+          "transformedPoints": [
+            [
+              748.5116499999999,
+              673.1859999999999
+            ],
+            [
+              899.5116499999999,
+              673.1859999999999
+            ],
+            [
+              899.5116499999999,
+              916.1859999999999
+            ],
+            [
+              748.5116499999999,
+              916.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 163,
+          "roomName": "1205",
+          "architecturalLabel": "205",
+          "originalPoints": [
+            [
+              59,
+              24
+            ],
+            [
+              224,
+              24
+            ],
+            [
+              224,
+              277
+            ],
+            [
+              59,
+              277
+            ]
+          ],
+          "transformedPoints": [
+            [
+              63.511649999999975,
+              41.18599999999992
+            ],
+            [
+              228.51164999999997,
+              41.18599999999992
+            ],
+            [
+              228.51164999999997,
+              294.1859999999999
+            ],
+            [
+              63.511649999999975,
+              294.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 164,
+          "roomName": "1206",
+          "architecturalLabel": "206",
+          "originalPoints": [
+            [
+              230,
+              24
+            ],
+            [
+              400,
+              24
+            ],
+            [
+              400,
+              277
+            ],
+            [
+              230,
+              277
+            ]
+          ],
+          "transformedPoints": [
+            [
+              234.51164999999997,
+              41.18599999999992
+            ],
+            [
+              404.51165,
+              41.18599999999992
+            ],
+            [
+              404.51165,
+              294.1859999999999
+            ],
+            [
+              234.51164999999997,
+              294.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 165,
+          "roomName": "1207",
+          "architecturalLabel": "207",
+          "originalPoints": [
+            [
+              410,
+              24
+            ],
+            [
+              562,
+              24
+            ],
+            [
+              562,
+              277
+            ],
+            [
+              410,
+              277
+            ]
+          ],
+          "transformedPoints": [
+            [
+              414.51165,
+              41.18599999999992
+            ],
+            [
+              566.5116499999999,
+              41.18599999999992
+            ],
+            [
+              566.5116499999999,
+              294.1859999999999
+            ],
+            [
+              414.51165,
+              294.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 166,
+          "roomName": "1208",
+          "architecturalLabel": "208",
+          "originalPoints": [
+            [
+              570,
+              24
+            ],
+            [
+              733,
+              24
+            ],
+            [
+              733,
+              277
+            ],
+            [
+              570,
+              277
+            ]
+          ],
+          "transformedPoints": [
+            [
+              574.5116499999999,
+              41.18599999999992
+            ],
+            [
+              737.5116499999999,
+              41.18599999999992
+            ],
+            [
+              737.5116499999999,
+              294.1859999999999
+            ],
+            [
+              574.5116499999999,
+              294.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 167,
+          "roomName": "1209",
+          "architecturalLabel": "209",
+          "originalPoints": [
+            [
+              744,
+              24
+            ],
+            [
+              895,
+              24
+            ],
+            [
+              895,
+              277
+            ],
+            [
+              744,
+              277
+            ]
+          ],
+          "transformedPoints": [
+            [
+              748.5116499999999,
+              41.18599999999992
+            ],
+            [
+              899.5116499999999,
+              41.18599999999992
+            ],
+            [
+              899.5116499999999,
+              294.1859999999999
+            ],
+            [
+              748.5116499999999,
+              294.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 168,
+          "roomName": "1210",
+          "architecturalLabel": "210",
+          "originalPoints": [
+            [
+              906,
+              24
+            ],
+            [
+              1078,
+              24
+            ],
+            [
+              1078,
+              277
+            ],
+            [
+              906,
+              277
+            ]
+          ],
+          "transformedPoints": [
+            [
+              910.5116499999999,
+              41.18599999999992
+            ],
+            [
+              1082.51165,
+              41.18599999999992
+            ],
+            [
+              1082.51165,
+              294.1859999999999
+            ],
+            [
+              910.5116499999999,
+              294.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 169,
+          "roomName": "1211",
+          "architecturalLabel": "211",
+          "originalPoints": [
+            [
+              1090,
+              24
+            ],
+            [
+              1249,
+              24
+            ],
+            [
+              1249,
+              277
+            ],
+            [
+              1090,
+              277
+            ]
+          ],
+          "transformedPoints": [
+            [
+              1094.51165,
+              41.18599999999992
+            ],
+            [
+              1253.51165,
+              41.18599999999992
+            ],
+            [
+              1253.51165,
+              294.1859999999999
+            ],
+            [
+              1094.51165,
+              294.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 170,
+          "roomName": "1212",
+          "architecturalLabel": "212",
+          "originalPoints": [
+            [
+              1257,
+              24
+            ],
+            [
+              1408,
+              24
+            ],
+            [
+              1408,
+              277
+            ],
+            [
+              1257,
+              277
+            ]
+          ],
+          "transformedPoints": [
+            [
+              1261.51165,
+              41.18599999999992
+            ],
+            [
+              1412.51165,
+              41.18599999999992
+            ],
+            [
+              1412.51165,
+              294.1859999999999
+            ],
+            [
+              1261.51165,
+              294.1859999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        }
+      ]
+    },
+    "L3": {
+      "assignment": "floor-l3.svg",
+      "old": {
+        "width": 1475,
+        "height": 1050,
+        "viewBox": "0 0 1475 1050",
+        "counts": {
+          "path": 18802,
+          "g": 447,
+          "clipPath": 9,
+          "use": 162,
+          "image": 0,
+          "text": 0,
+          "polygon": 0,
+          "polyline": 0,
+          "line": 0,
+          "circle": 0,
+          "ellipse": 0,
+          "rect": 0
+        },
+        "bytes": 3588634,
+        "sha256": "a0ec2b1970dfb3c7887d56137a37fec6aa9296c25a0f15373701be120e581925"
+      },
+      "new": {
+        "width": 1448.3256,
+        "height": 1066.9302,
+        "viewBox": "0 0 1448.3256 1066.9302",
+        "counts": {
+          "path": 18803,
+          "g": 448,
+          "clipPath": 10,
+          "use": 162,
+          "image": 0,
+          "text": 0,
+          "polygon": 0,
+          "polyline": 0,
+          "line": 0,
+          "circle": 0,
+          "ellipse": 0,
+          "rect": 0
+        },
+        "bytes": 3787703,
+        "sha256": "d1d22b85d63c4d0a197f5c039ab6ae554e3fd0476129a1ee12031137e7cf5d7c"
+      },
+      "transform": {
+        "formula": "x_new = x_old + 4.51165; y_new = y_old + 6.6046",
+        "dx": 4.511649999999975,
+        "dy": 6.604599999999891,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotationDegrees": 0
+      },
+      "geometry": {
+        "exactPathInstancesShared": 18801,
+        "oldPathInstances": 18802,
+        "uniquePathDefinitionsShared": 16643,
+        "oldUniquePathDefinitions": 16644,
+        "newUniquePathDefinitions": 16645
+      },
+      "rooms": [
+        {
+          "roomId": 134,
+          "roomName": "1301",
+          "architecturalLabel": "301",
+          "originalPoints": [
+            [
+              839,
+              656
+            ],
+            [
+              958,
+              656
+            ],
+            [
+              958,
+              918
+            ],
+            [
+              839,
+              918
+            ]
+          ],
+          "transformedPoints": [
+            [
+              843.5116499999999,
+              662.6045999999999
+            ],
+            [
+              962.5116499999999,
+              662.6045999999999
+            ],
+            [
+              962.5116499999999,
+              924.6045999999999
+            ],
+            [
+              843.5116499999999,
+              924.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 135,
+          "roomName": "1302",
+          "architecturalLabel": "302",
+          "originalPoints": [
+            [
+              709,
+              656
+            ],
+            [
+              827,
+              656
+            ],
+            [
+              827,
+              918
+            ],
+            [
+              709,
+              918
+            ]
+          ],
+          "transformedPoints": [
+            [
+              713.5116499999999,
+              662.6045999999999
+            ],
+            [
+              831.5116499999999,
+              662.6045999999999
+            ],
+            [
+              831.5116499999999,
+              924.6045999999999
+            ],
+            [
+              713.5116499999999,
+              924.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 137,
+          "roomName": "1303",
+          "architecturalLabel": "303",
+          "originalPoints": [
+            [
+              575,
+              656
+            ],
+            [
+              697,
+              656
+            ],
+            [
+              697,
+              918
+            ],
+            [
+              575,
+              918
+            ]
+          ],
+          "transformedPoints": [
+            [
+              579.5116499999999,
+              662.6045999999999
+            ],
+            [
+              701.5116499999999,
+              662.6045999999999
+            ],
+            [
+              701.5116499999999,
+              924.6045999999999
+            ],
+            [
+              579.5116499999999,
+              924.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 136,
+          "roomName": "1304",
+          "architecturalLabel": "304",
+          "originalPoints": [
+            [
+              445,
+              656
+            ],
+            [
+              558,
+              656
+            ],
+            [
+              558,
+              918
+            ],
+            [
+              445,
+              918
+            ]
+          ],
+          "transformedPoints": [
+            [
+              449.51165,
+              662.6045999999999
+            ],
+            [
+              562.5116499999999,
+              662.6045999999999
+            ],
+            [
+              562.5116499999999,
+              924.6045999999999
+            ],
+            [
+              449.51165,
+              924.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 138,
+          "roomName": "1305",
+          "architecturalLabel": "305",
+          "originalPoints": [
+            [
+              314,
+              656
+            ],
+            [
+              430,
+              656
+            ],
+            [
+              430,
+              918
+            ],
+            [
+              314,
+              918
+            ]
+          ],
+          "transformedPoints": [
+            [
+              318.51165,
+              662.6045999999999
+            ],
+            [
+              434.51165,
+              662.6045999999999
+            ],
+            [
+              434.51165,
+              924.6045999999999
+            ],
+            [
+              318.51165,
+              924.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 139,
+          "roomName": "1306",
+          "architecturalLabel": "306",
+          "originalPoints": [
+            [
+              182,
+              656
+            ],
+            [
+              298,
+              656
+            ],
+            [
+              298,
+              918
+            ],
+            [
+              182,
+              918
+            ]
+          ],
+          "transformedPoints": [
+            [
+              186.51164999999997,
+              662.6045999999999
+            ],
+            [
+              302.51165,
+              662.6045999999999
+            ],
+            [
+              302.51165,
+              924.6045999999999
+            ],
+            [
+              186.51164999999997,
+              924.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 140,
+          "roomName": "1307",
+          "architecturalLabel": "307",
+          "originalPoints": [
+            [
+              52,
+              656
+            ],
+            [
+              170,
+              656
+            ],
+            [
+              170,
+              918
+            ],
+            [
+              52,
+              918
+            ]
+          ],
+          "transformedPoints": [
+            [
+              56.511649999999975,
+              662.6045999999999
+            ],
+            [
+              174.51164999999997,
+              662.6045999999999
+            ],
+            [
+              174.51164999999997,
+              924.6045999999999
+            ],
+            [
+              56.511649999999975,
+              924.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 141,
+          "roomName": "1308",
+          "architecturalLabel": "308",
+          "originalPoints": [
+            [
+              52,
+              21
+            ],
+            [
+              170,
+              21
+            ],
+            [
+              170,
+              275
+            ],
+            [
+              52,
+              275
+            ]
+          ],
+          "transformedPoints": [
+            [
+              56.511649999999975,
+              27.60459999999989
+            ],
+            [
+              174.51164999999997,
+              27.60459999999989
+            ],
+            [
+              174.51164999999997,
+              281.6045999999999
+            ],
+            [
+              56.511649999999975,
+              281.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 142,
+          "roomName": "1309",
+          "architecturalLabel": "309",
+          "originalPoints": [
+            [
+              182,
+              21
+            ],
+            [
+              297,
+              21
+            ],
+            [
+              297,
+              275
+            ],
+            [
+              182,
+              275
+            ]
+          ],
+          "transformedPoints": [
+            [
+              186.51164999999997,
+              27.60459999999989
+            ],
+            [
+              301.51165,
+              27.60459999999989
+            ],
+            [
+              301.51165,
+              281.6045999999999
+            ],
+            [
+              186.51164999999997,
+              281.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 143,
+          "roomName": "1310",
+          "architecturalLabel": "310",
+          "originalPoints": [
+            [
+              313,
+              21
+            ],
+            [
+              430,
+              21
+            ],
+            [
+              430,
+              275
+            ],
+            [
+              313,
+              275
+            ]
+          ],
+          "transformedPoints": [
+            [
+              317.51165,
+              27.60459999999989
+            ],
+            [
+              434.51165,
+              27.60459999999989
+            ],
+            [
+              434.51165,
+              281.6045999999999
+            ],
+            [
+              317.51165,
+              281.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 144,
+          "roomName": "1311",
+          "architecturalLabel": "311",
+          "originalPoints": [
+            [
+              445,
+              21
+            ],
+            [
+              560,
+              21
+            ],
+            [
+              560,
+              275
+            ],
+            [
+              445,
+              275
+            ]
+          ],
+          "transformedPoints": [
+            [
+              449.51165,
+              27.60459999999989
+            ],
+            [
+              564.5116499999999,
+              27.60459999999989
+            ],
+            [
+              564.5116499999999,
+              281.6045999999999
+            ],
+            [
+              449.51165,
+              281.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 145,
+          "roomName": "1312",
+          "architecturalLabel": "312",
+          "originalPoints": [
+            [
+              574,
+              21
+            ],
+            [
+              696,
+              21
+            ],
+            [
+              696,
+              275
+            ],
+            [
+              574,
+              275
+            ]
+          ],
+          "transformedPoints": [
+            [
+              578.5116499999999,
+              27.60459999999989
+            ],
+            [
+              700.5116499999999,
+              27.60459999999989
+            ],
+            [
+              700.5116499999999,
+              281.6045999999999
+            ],
+            [
+              578.5116499999999,
+              281.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 147,
+          "roomName": "1314",
+          "architecturalLabel": "314",
+          "originalPoints": [
+            [
+              708,
+              21
+            ],
+            [
+              828,
+              21
+            ],
+            [
+              828,
+              275
+            ],
+            [
+              708,
+              275
+            ]
+          ],
+          "transformedPoints": [
+            [
+              712.5116499999999,
+              27.60459999999989
+            ],
+            [
+              832.5116499999999,
+              27.60459999999989
+            ],
+            [
+              832.5116499999999,
+              281.6045999999999
+            ],
+            [
+              712.5116499999999,
+              281.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 191,
+          "roomName": "1315",
+          "architecturalLabel": "315",
+          "originalPoints": [
+            [
+              839,
+              21
+            ],
+            [
+              959,
+              21
+            ],
+            [
+              959,
+              275
+            ],
+            [
+              839,
+              275
+            ]
+          ],
+          "transformedPoints": [
+            [
+              843.5116499999999,
+              27.60459999999989
+            ],
+            [
+              963.5116499999999,
+              27.60459999999989
+            ],
+            [
+              963.5116499999999,
+              281.6045999999999
+            ],
+            [
+              843.5116499999999,
+              281.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        }
+      ]
+    },
+    "L4": {
+      "assignment": "floor-l4.svg",
+      "old": {
+        "width": 1505,
+        "height": 1090,
+        "viewBox": "0 0 1505 1090",
+        "counts": {
+          "path": 40465,
+          "g": 698,
+          "clipPath": 11,
+          "use": 110,
+          "image": 0,
+          "text": 0,
+          "polygon": 0,
+          "polyline": 0,
+          "line": 0,
+          "circle": 0,
+          "ellipse": 0,
+          "rect": 0
+        },
+        "bytes": 7263164,
+        "sha256": "60a9bae50d0fbfd2f9720eec4a3a9cb3485bf209801ab54a0656d3635ed7641d"
+      },
+      "new": {
+        "width": 1434.3721,
+        "height": 973.907,
+        "viewBox": "0 0 1434.3721 973.907",
+        "counts": {
+          "path": 40466,
+          "g": 699,
+          "clipPath": 12,
+          "use": 110,
+          "image": 0,
+          "text": 0,
+          "polygon": 0,
+          "polyline": 0,
+          "line": 0,
+          "circle": 0,
+          "ellipse": 0,
+          "rect": 0
+        },
+        "bytes": 7654183,
+        "sha256": "4a4274ce80737a1859d9883d0ac21b17535e24a6690f97c7f993eb9b3d6c5afa"
+      },
+      "transform": {
+        "formula": "x_new = x_old - 32.4651; y_new = y_old - 3.3954",
+        "dx": -32.46510000000001,
+        "dy": -3.3954000000001088,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotationDegrees": 0
+      },
+      "geometry": {
+        "exactPathInstancesShared": 40464,
+        "oldPathInstances": 40465,
+        "uniquePathDefinitionsShared": 30387,
+        "oldUniquePathDefinitions": 30388,
+        "newUniquePathDefinitions": 30389
+      },
+      "rooms": [
+        {
+          "roomId": 148,
+          "roomName": "1401",
+          "architecturalLabel": "401",
+          "originalPoints": [
+            [
+              1088,
+              677
+            ],
+            [
+              1422,
+              677
+            ],
+            [
+              1422,
+              946
+            ],
+            [
+              1088,
+              946
+            ]
+          ],
+          "transformedPoints": [
+            [
+              1055.5349,
+              673.6045999999999
+            ],
+            [
+              1389.5349,
+              673.6045999999999
+            ],
+            [
+              1389.5349,
+              942.6045999999999
+            ],
+            [
+              1055.5349,
+              942.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 153,
+          "roomName": "1402",
+          "architecturalLabel": "402",
+          "originalPoints": [
+            [
+              970,
+              677
+            ],
+            [
+              1075,
+              677
+            ],
+            [
+              1075,
+              946
+            ],
+            [
+              970,
+              946
+            ]
+          ],
+          "transformedPoints": [
+            [
+              937.5349,
+              673.6045999999999
+            ],
+            [
+              1042.5349,
+              673.6045999999999
+            ],
+            [
+              1042.5349,
+              942.6045999999999
+            ],
+            [
+              937.5349,
+              942.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 154,
+          "roomName": "1403",
+          "architecturalLabel": "403",
+          "originalPoints": [
+            [
+              713,
+              677
+            ],
+            [
+              960,
+              677
+            ],
+            [
+              960,
+              946
+            ],
+            [
+              713,
+              946
+            ]
+          ],
+          "transformedPoints": [
+            [
+              680.5349,
+              673.6045999999999
+            ],
+            [
+              927.5349,
+              673.6045999999999
+            ],
+            [
+              927.5349,
+              942.6045999999999
+            ],
+            [
+              680.5349,
+              942.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 149,
+          "roomName": "1404",
+          "architecturalLabel": "404",
+          "originalPoints": [
+            [
+              580,
+              677
+            ],
+            [
+              698,
+              677
+            ],
+            [
+              698,
+              946
+            ],
+            [
+              580,
+              946
+            ]
+          ],
+          "transformedPoints": [
+            [
+              547.5349,
+              673.6045999999999
+            ],
+            [
+              665.5349,
+              673.6045999999999
+            ],
+            [
+              665.5349,
+              942.6045999999999
+            ],
+            [
+              547.5349,
+              942.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 150,
+          "roomName": "1405",
+          "architecturalLabel": "405",
+          "originalPoints": [
+            [
+              453,
+              677
+            ],
+            [
+              571,
+              677
+            ],
+            [
+              571,
+              946
+            ],
+            [
+              453,
+              946
+            ]
+          ],
+          "transformedPoints": [
+            [
+              420.5349,
+              673.6045999999999
+            ],
+            [
+              538.5349,
+              673.6045999999999
+            ],
+            [
+              538.5349,
+              942.6045999999999
+            ],
+            [
+              420.5349,
+              942.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 151,
+          "roomName": "1406",
+          "architecturalLabel": "406",
+          "originalPoints": [
+            [
+              325,
+              677
+            ],
+            [
+              444,
+              677
+            ],
+            [
+              444,
+              946
+            ],
+            [
+              325,
+              946
+            ]
+          ],
+          "transformedPoints": [
+            [
+              292.5349,
+              673.6045999999999
+            ],
+            [
+              411.5349,
+              673.6045999999999
+            ],
+            [
+              411.5349,
+              942.6045999999999
+            ],
+            [
+              292.5349,
+              942.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 155,
+          "roomName": "1407",
+          "architecturalLabel": "407",
+          "originalPoints": [
+            [
+              62,
+              677
+            ],
+            [
+              318,
+              677
+            ],
+            [
+              318,
+              946
+            ],
+            [
+              62,
+              946
+            ]
+          ],
+          "transformedPoints": [
+            [
+              29.534899999999993,
+              673.6045999999999
+            ],
+            [
+              285.5349,
+              673.6045999999999
+            ],
+            [
+              285.5349,
+              942.6045999999999
+            ],
+            [
+              29.534899999999993,
+              942.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 156,
+          "roomName": "1408",
+          "architecturalLabel": "408",
+          "originalPoints": [
+            [
+              63,
+              35
+            ],
+            [
+              188,
+              35
+            ],
+            [
+              188,
+              305
+            ],
+            [
+              63,
+              305
+            ]
+          ],
+          "transformedPoints": [
+            [
+              30.534899999999993,
+              31.60459999999989
+            ],
+            [
+              155.5349,
+              31.60459999999989
+            ],
+            [
+              155.5349,
+              301.6045999999999
+            ],
+            [
+              30.534899999999993,
+              301.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 157,
+          "roomName": "1409",
+          "architecturalLabel": "409",
+          "originalPoints": [
+            [
+              194,
+              35
+            ],
+            [
+              318,
+              35
+            ],
+            [
+              318,
+              305
+            ],
+            [
+              194,
+              305
+            ]
+          ],
+          "transformedPoints": [
+            [
+              161.5349,
+              31.60459999999989
+            ],
+            [
+              285.5349,
+              31.60459999999989
+            ],
+            [
+              285.5349,
+              301.6045999999999
+            ],
+            [
+              161.5349,
+              301.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 158,
+          "roomName": "1410",
+          "architecturalLabel": "410",
+          "originalPoints": [
+            [
+              325,
+              35
+            ],
+            [
+              444,
+              35
+            ],
+            [
+              444,
+              305
+            ],
+            [
+              325,
+              305
+            ]
+          ],
+          "transformedPoints": [
+            [
+              292.5349,
+              31.60459999999989
+            ],
+            [
+              411.5349,
+              31.60459999999989
+            ],
+            [
+              411.5349,
+              301.6045999999999
+            ],
+            [
+              292.5349,
+              301.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 152,
+          "roomName": "1411",
+          "architecturalLabel": "411",
+          "originalPoints": [
+            [
+              453,
+              35
+            ],
+            [
+              571,
+              35
+            ],
+            [
+              571,
+              305
+            ],
+            [
+              453,
+              305
+            ]
+          ],
+          "transformedPoints": [
+            [
+              420.5349,
+              31.60459999999989
+            ],
+            [
+              538.5349,
+              31.60459999999989
+            ],
+            [
+              538.5349,
+              301.6045999999999
+            ],
+            [
+              420.5349,
+              301.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 190,
+          "roomName": "1412",
+          "architecturalLabel": "412",
+          "originalPoints": [
+            [
+              580,
+              35
+            ],
+            [
+              698,
+              35
+            ],
+            [
+              698,
+              305
+            ],
+            [
+              580,
+              305
+            ]
+          ],
+          "transformedPoints": [
+            [
+              547.5349,
+              31.60459999999989
+            ],
+            [
+              665.5349,
+              31.60459999999989
+            ],
+            [
+              665.5349,
+              301.6045999999999
+            ],
+            [
+              547.5349,
+              301.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 182,
+          "roomName": "1414",
+          "architecturalLabel": "414",
+          "originalPoints": [
+            [
+              713,
+              35
+            ],
+            [
+              960,
+              35
+            ],
+            [
+              960,
+              305
+            ],
+            [
+              713,
+              305
+            ]
+          ],
+          "transformedPoints": [
+            [
+              680.5349,
+              31.60459999999989
+            ],
+            [
+              927.5349,
+              31.60459999999989
+            ],
+            [
+              927.5349,
+              301.6045999999999
+            ],
+            [
+              680.5349,
+              301.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 183,
+          "roomName": "1415",
+          "architecturalLabel": "415",
+          "originalPoints": [
+            [
+              970,
+              35
+            ],
+            [
+              1075,
+              35
+            ],
+            [
+              1075,
+              305
+            ],
+            [
+              970,
+              305
+            ]
+          ],
+          "transformedPoints": [
+            [
+              937.5349,
+              31.60459999999989
+            ],
+            [
+              1042.5349,
+              31.60459999999989
+            ],
+            [
+              1042.5349,
+              301.6045999999999
+            ],
+            [
+              937.5349,
+              301.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        },
+        {
+          "roomId": 184,
+          "roomName": "1416",
+          "architecturalLabel": "416",
+          "originalPoints": [
+            [
+              1088,
+              35
+            ],
+            [
+              1422,
+              35
+            ],
+            [
+              1422,
+              305
+            ],
+            [
+              1088,
+              305
+            ]
+          ],
+          "transformedPoints": [
+            [
+              1055.5349,
+              31.60459999999989
+            ],
+            [
+              1389.5349,
+              31.60459999999989
+            ],
+            [
+              1389.5349,
+              301.6045999999999
+            ],
+            [
+              1055.5349,
+              301.6045999999999
+            ]
+          ],
+          "originalWithinNewViewBox": true,
+          "transformedWithinNewViewBox": true
+        }
+      ]
+    }
+  }
+}

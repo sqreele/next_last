@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1434.3721" height="973.907" viewBox="0 0 1434.3721 973.907">
+<title>L4 clean-v3 coordinate compatibility overlay — validation only</title>
+<desc>New clean architectural SVG with unchanged legacy polygons in red and translation-corrected candidate outlines in green. No polygon is architecturally approved by this preview.</desc>
+<image href="source-floor-l4.svg" xlink:href="source-floor-l4.svg" x="0" y="0" width="1434.3721" height="973.907"/>
+<style>
+  .legacy polygon { fill:#ef4444; fill-opacity:.23; stroke:#b91c1c; stroke-width:3; vector-effect:non-scaling-stroke; }
+  .translated polygon { fill:#22c55e; fill-opacity:.16; stroke:#047857; stroke-width:3; stroke-dasharray:9 5; vector-effect:non-scaling-stroke; }
+  .translated text { fill:#064e3b; font:700 15px sans-serif; text-anchor:middle; dominant-baseline:middle; paint-order:stroke; stroke:white; stroke-width:3px; }
+  .reference polygon { fill:#94a3b8; fill-opacity:.12; stroke:#475569; stroke-width:3; stroke-dasharray:4 5; vector-effect:non-scaling-stroke; }
+  .reference text { fill:#334155; font:700 12px sans-serif; text-anchor:middle; dominant-baseline:middle; paint-order:stroke; stroke:white; stroke-width:3px; }
+  .legend { font:700 14px sans-serif; paint-order:stroke; stroke:white; stroke-width:4px; stroke-linejoin:round; }
+</style>
+<g class="legacy" pointer-events="none"><polygon points="1088,677 1422,677 1422,946 1088,946"><title>1401 / architectural 401 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="970,677 1075,677 1075,946 970,946"><title>1402 / architectural 402 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="713,677 960,677 960,946 713,946"><title>1403 / architectural 403 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="580,677 698,677 698,946 580,946"><title>1404 / architectural 404 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="453,677 571,677 571,946 453,946"><title>1405 / architectural 405 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="325,677 444,677 444,946 325,946"><title>1406 / architectural 406 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="62,677 318,677 318,946 62,946"><title>1407 / architectural 407 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="63,35 188,35 188,305 63,305"><title>1408 / architectural 408 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="194,35 318,35 318,305 194,305"><title>1409 / architectural 409 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="325,35 444,35 444,305 325,305"><title>1410 / architectural 410 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="453,35 571,35 571,305 453,305"><title>1411 / architectural 411 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="580,35 698,35 698,305 580,305"><title>1412 / architectural 412 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="713,35 960,35 960,305 713,305"><title>1414 / architectural 414 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="970,35 1075,35 1075,305 970,305"><title>1415 / architectural 415 — unchanged legacy coordinates (misaligned)</title></polygon>
+<polygon points="1088,35 1422,35 1422,305 1088,305"><title>1416 / architectural 416 — unchanged legacy coordinates (misaligned)</title></polygon></g>
+<g class="translated" pointer-events="none"><g><polygon points="1055.5349,673.6046 1389.5349,673.6046 1389.5349,942.6046 1055.5349,942.6046"><title>1401 / architectural 401 — translated candidate, not architecturally approved</title></polygon><text x="1222.5349" y="808.1046">401</text></g>
+<g><polygon points="937.5349,673.6046 1042.5349,673.6046 1042.5349,942.6046 937.5349,942.6046"><title>1402 / architectural 402 — translated candidate, not architecturally approved</title></polygon><text x="990.0349" y="808.1046">402</text></g>
+<g><polygon points="680.5349,673.6046 927.5349,673.6046 927.5349,942.6046 680.5349,942.6046"><title>1403 / architectural 403 — translated candidate, not architecturally approved</title></polygon><text x="804.0349" y="808.1046">403</text></g>
+<g><polygon points="547.5349,673.6046 665.5349,673.6046 665.5349,942.6046 547.5349,942.6046"><title>1404 / architectural 404 — translated candidate, not architecturally approved</title></polygon><text x="606.5349" y="808.1046">404</text></g>
+<g><polygon points="420.5349,673.6046 538.5349,673.6046 538.5349,942.6046 420.5349,942.6046"><title>1405 / architectural 405 — translated candidate, not architecturally approved</title></polygon><text x="479.5349" y="808.1046">405</text></g>
+<g><polygon points="292.5349,673.6046 411.5349,673.6046 411.5349,942.6046 292.5349,942.6046"><title>1406 / architectural 406 — translated candidate, not architecturally approved</title></polygon><text x="352.0349" y="808.1046">406</text></g>
+<g><polygon points="29.5349,673.6046 285.5349,673.6046 285.5349,942.6046 29.5349,942.6046"><title>1407 / architectural 407 — translated candidate, not architecturally approved</title></polygon><text x="157.5349" y="808.1046">407</text></g>
+<g><polygon points="30.5349,31.6046 155.5349,31.6046 155.5349,301.6046 30.5349,301.6046"><title>1408 / architectural 408 — translated candidate, not architecturally approved</title></polygon><text x="93.0349" y="166.6046">408</text></g>
+<g><polygon points="161.5349,31.6046 285.5349,31.6046 285.5349,301.6046 161.5349,301.6046"><title>1409 / architectural 409 — translated candidate, not architecturally approved</title></polygon><text x="223.5349" y="166.6046">409</text></g>
+<g><polygon points="292.5349,31.6046 411.5349,31.6046 411.5349,301.6046 292.5349,301.6046"><title>1410 / architectural 410 — translated candidate, not architecturally approved</title></polygon><text x="352.0349" y="166.6046">410</text></g>
+<g><polygon points="420.5349,31.6046 538.5349,31.6046 538.5349,301.6046 420.5349,301.6046"><title>1411 / architectural 411 — translated candidate, not architecturally approved</title></polygon><text x="479.5349" y="166.6046">411</text></g>
+<g><polygon points="547.5349,31.6046 665.5349,31.6046 665.5349,301.6046 547.5349,301.6046"><title>1412 / architectural 412 — translated candidate, not architecturally approved</title></polygon><text x="606.5349" y="166.6046">412</text></g>
+<g><polygon points="680.5349,31.6046 927.5349,31.6046 927.5349,301.6046 680.5349,301.6046"><title>1414 / architectural 414 — translated candidate, not architecturally approved</title></polygon><text x="804.0349" y="166.6046">414</text></g>
+<g><polygon points="937.5349,31.6046 1042.5349,31.6046 1042.5349,301.6046 937.5349,301.6046"><title>1415 / architectural 415 — translated candidate, not architecturally approved</title></polygon><text x="990.0349" y="166.6046">415</text></g>
+<g><polygon points="1055.5349,31.6046 1389.5349,31.6046 1389.5349,301.6046 1055.5349,301.6046"><title>1416 / architectural 416 — translated candidate, not architecturally approved</title></polygon><text x="1222.5349" y="166.6046">416</text></g></g>
+<g class="reference" pointer-events="none"></g>
+<g class="legend" pointer-events="none" transform="translate(18 24)">
+  <rect x="-8" y="-18" width="520" height="66" rx="5" fill="white" fill-opacity=".88" stroke="#64748b" stroke-width="1"/>
+  <text x="0" y="0" fill="#b91c1c">RED = existing coordinates reused unchanged (misaligned)</text>
+  <text x="0" y="22" fill="#047857">GREEN DASH = translated candidate (x_new = x_old - 32.4651; y_new = y_old - 3.3954)</text>
+  <text x="0" y="43" fill="#334155">Validation only — no architectural approval</text>
+</g>
+</svg>

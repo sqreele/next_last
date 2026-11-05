@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const layout = read("../app/demo/layout.tsx");
 const shell = read("../app/demo/DemoShell.tsx");
 const provider = read("../app/demo/DemoProvider.tsx");
+const languageProvider = read("../app/demo/DemoLanguageProvider.tsx");
 const dashboard = read("../app/demo/DemoDashboardClient.tsx");
 const createJob = read("../app/demo/create-job/DemoCreateJobClient.tsx");
 const jobs = read("../app/demo/jobs/DemoJobsClient.tsx");
@@ -14,10 +15,22 @@ const report = read("../app/demo/report/DemoReportClient.tsx");
 
 test("public demo uses a production-style workspace without a login guard", () => {
   assert.match(layout, /DemoProvider/);
+  assert.match(layout, /DemoLanguageProvider/);
   assert.match(layout, /DemoShell/);
   assert.doesNotMatch(`${layout}${shell}${provider}`, /useSessionGuard/);
   for (const route of ["Dashboard", "All Jobs", "My Jobs", "Create Job", "Reports"]) assert.match(shell, new RegExp(route));
   assert.match(shell, /Sandbox · No login/);
+});
+
+test("public demo supports persistent Thai and English language switching", () => {
+  assert.match(languageProvider, /DemoLanguage.*"th".*"en"/s);
+  assert.match(languageProvider, /staymaint-demo-language/);
+  assert.match(languageProvider, /localStorage/);
+  assert.match(languageProvider, /document\.documentElement\.lang/);
+  assert.match(languageProvider, /setLocale/);
+  assert.match(shell, /setLanguage\("th"\)/);
+  assert.match(shell, /setLanguage\("en"\)/);
+  assert.match(shell, /aria-pressed/);
 });
 
 test("demo provider owns the isolated workflow API", () => {
@@ -29,10 +42,10 @@ test("demo provider owns the isolated workflow API", () => {
 });
 
 test("create job mirrors production form sections and redirects to My Jobs", () => {
-  assert.match(createJob, /1\. Job Information/);
-  assert.match(createJob, /2\. Location/);
-  assert.match(createJob, /3\. Category & Additional Details/);
-  assert.match(createJob, /4\. Evidence/);
+  assert.match(createJob, /Job Information/);
+  assert.match(createJob, /Location/);
+  assert.match(createJob, /Category & Additional Details/);
+  assert.match(createJob, /Evidence/);
   assert.match(createJob, /before_image/);
   assert.match(createJob, /after_image/);
   assert.match(createJob, /router\.push\(`\/demo\/my-jobs/);
@@ -56,5 +69,5 @@ test("dashboard and reports remain backed by live demo data", () => {
   assert.match(report, /Export CSV/);
   assert.match(report, /Print \/ PDF/);
   assert.match(report, /Work Order Detail/);
-  assert.match(report, /งานตาม Category/);
+  assert.match(report, /Jobs by Category/);
 });

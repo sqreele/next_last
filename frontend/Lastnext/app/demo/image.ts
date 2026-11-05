@@ -19,9 +19,9 @@ export async function compressDemoImage(file: File) {
   }
 }
 
-export function validateDemoImage(file: File | null) {
-  if (!file) return "กรุณาเพิ่มรูป Before อย่างน้อย 1 รูป";
-  if (!file.type.startsWith("image/")) return "รองรับเฉพาะไฟล์รูปภาพ";
-  if (file.size > 20 * 1024 * 1024) return "รูปต้นฉบับต้องมีขนาดไม่เกิน 20 MB";
+export function validateDemoImage(file: File | null, language: "th" | "en" = "th") {
+  if (!file) return language === "th" ? "กรุณาเพิ่มรูปก่อนซ่อมอย่างน้อย 1 รูป" : "Please add at least one before photo";
+  if (!file.type.startsWith("image/")) return language === "th" ? "รองรับเฉพาะไฟล์รูปภาพ" : "Only image files are supported";
+  if (file.size > 20 * 1024 * 1024) return language === "th" ? "รูปต้นฉบับต้องมีขนาดไม่เกิน 20 MB" : "The original image must not exceed 20 MB";
   return "";
 }

@@ -54,25 +54,33 @@ export const statusLabels: Record<DemoStatus, string> = {
   cancelled: "Cancelled",
 };
 
-export function categoryLabel(value: string) {
+export const statusLabelsThai: Record<DemoStatus, string> = {
+  pending: "รอดำเนินการ",
+  in_progress: "กำลังดำเนินการ",
+  waiting_sparepart: "รออะไหล่",
+  completed: "เสร็จแล้ว",
+  cancelled: "ยกเลิก",
+};
+
+export function categoryLabel(value: string, language: "th" | "en" = "th") {
   const normalized = value.toLowerCase();
-  if (normalized.includes("air-condition")) return "เครื่องปรับอากาศ";
-  if (normalized.includes("barth") || normalized.includes("bath")) return "ห้องน้ำ";
-  if (normalized.includes("door")) return "ประตู";
-  if (normalized.includes("internet")) return "อินเทอร์เน็ต / ทีวี";
-  if (normalized.includes("ligth") || normalized.includes("light")) return "แสงสว่าง";
-  if (normalized.includes("wall") || normalized.includes("paint")) return "ผนัง / งานสี";
-  if (normalized.includes("water leask")) return "น้ำรั่ว";
-  if (normalized.includes("hot water")) return "น้ำร้อน / น้ำเย็น";
+  if (normalized.includes("air-condition")) return language === "th" ? "เครื่องปรับอากาศ" : "Air Conditioning";
+  if (normalized.includes("barth") || normalized.includes("bath")) return language === "th" ? "ห้องน้ำ" : "Bathroom";
+  if (normalized.includes("door")) return language === "th" ? "ประตู" : "Door";
+  if (normalized.includes("internet")) return language === "th" ? "อินเทอร์เน็ต / ทีวี" : "Internet / TV";
+  if (normalized.includes("ligth") || normalized.includes("light")) return language === "th" ? "แสงสว่าง" : "Lighting";
+  if (normalized.includes("wall") || normalized.includes("paint")) return language === "th" ? "ผนัง / งานสี" : "Wall / Painting";
+  if (normalized.includes("water leask")) return language === "th" ? "น้ำรั่ว" : "Water Leak";
+  if (normalized.includes("hot water")) return language === "th" ? "น้ำร้อน / น้ำเย็น" : "Hot / Cold Water";
   if (normalized.startsWith("pm")) return "Preventive Maintenance";
-  if (normalized.includes("orther") || normalized.includes("other")) return "อาการอื่นๆ";
+  if (normalized.includes("orther") || normalized.includes("other")) return language === "th" ? "อาการอื่นๆ" : "Other";
   return value;
 }
 
-export function displayDate(value: string | null) {
+export function displayDate(value: string | null, language: "th" | "en" = "th") {
   if (!value) return "—";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(language === "th" ? "th-TH" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function floorOf(room: string) {

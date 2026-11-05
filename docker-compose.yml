@@ -156,6 +156,8 @@ services:
       dockerfile: Dockerfile
     container_name: django-demo-backend
     restart: unless-stopped
+    volumes:
+      - demo_media_volume:/app/media
     environment:
       DJANGO_SETTINGS_MODULE: myLubd.settings
       PYTHONPATH: /app
@@ -294,6 +296,9 @@ volumes:
   media_volume:
     driver: local
     name: pcms_media_volume
+  demo_media_volume:
+    driver: local
+    name: pcms_demo_media_volume
   backup_volume:
     driver: local
     name: pcms_backup_volume

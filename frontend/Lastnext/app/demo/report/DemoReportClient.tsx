@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -29,7 +30,9 @@ type DemoJob = {
   technician: string;
   status: DemoStatus;
   priority: DemoPriority;
+  category?: string;
   updated: string;
+  images?: Array<{ id: number | string; image_type: "before" | "after"; image_url: string }>;
 };
 type DemoInventory = { item_id: string; name: string; quantity: number; status: string };
 type DemoMaintenance = { pm_id: string; pmtitle: string; status: string; scheduled_date: string; quality_score: number | null };
@@ -82,6 +85,11 @@ function displayDate(value: string) {
   return Number.isNaN(date.getTime())
     ? value
     : date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function categoryLabel(value: string) {
+  const thai = value.match(/\(([^()]*)\)\s*$/)?.[1]?.trim();
+  return thai || value.split("(", 1)[0].trim();
 }
 
 function DistributionBars({
@@ -151,14 +159,21 @@ export default function DemoReportClient() {
         .sort((left, right) => right[1] - left[1])
         .slice(0, 6)
         .map(([label, value]) => ({ label, value, color: "bg-teal-500" })),
+      categoryRows: [...new Set(jobs.map((job) => job.category).filter((value): value is string => Boolean(value)))]
+        .map((category) => ({
+          label: categoryLabel(category),
+          value: jobs.filter((job) => job.category === category).length,
+          color: "bg-indigo-500",
+        }))
+        .sort((left, right) => right.value - left.value),
     };
   }, [snapshot]);
 
   const exportCsv = () => {
     if (!snapshot) return;
-    const header = ["Job ID", "Title", "Room/Area", "Technician", "Status", "Priority", "Updated"];
+    const header = ["Job ID", "Title", "Room/Area", "Category", "Technician", "Status", "Priority", "Updated"];
     const rows = snapshot.jobs.map((job) => [
-      job.id, job.title, job.room, job.technician, statusLabels[job.status], priorityLabels[job.priority], displayDate(job.updated),
+      job.id, job.title, job.room, job.category || "", job.technician, statusLabels[job.status], priorityLabels[job.priority], displayDate(job.updated),
     ]);
     const csv = `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -219,7 +234,7 @@ export default function DemoReportClient() {
           ))}
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-5 font-semibold">งานตามสถานะ</h2>
             <DistributionBars rows={report.statusRows} />
@@ -231,6 +246,10 @@ export default function DemoReportClient() {
           <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-5 font-semibold">พื้นที่ที่มีงานสูงสุด</h2>
             <DistributionBars rows={report.roomRows} />
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-5 font-semibold">งานตาม Category</h2>
+            <DistributionBars rows={report.categoryRows} />
           </article>
         </section>
 
@@ -264,14 +283,18 @@ export default function DemoReportClient() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>{["Job ID", "รายละเอียด", "ห้อง/พื้นที่", "ผู้รับผิดชอบ", "สถานะ", "Priority", "อัปเดต"].map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr>
+                <tr>{["รูป", "Job ID", "รายละเอียด", "ห้อง/พื้นที่", "Category", "ผู้รับผิดชอบ", "สถานะ", "Priority", "อัปเดต"].map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {snapshot?.jobs.map((job) => (
                   <tr key={job.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      {job.images?.[0]?.image_url ? <div className="relative h-12 w-16 overflow-hidden rounded-lg border border-slate-200 bg-slate-100"><Image src={job.images[0].image_url} alt="" fill unoptimized className="object-cover" /></div> : null}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-teal-700">{job.id}</td>
                     <td className="px-4 py-3 font-medium">{job.title}</td>
                     <td className="px-4 py-3">{job.room}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{job.category ? categoryLabel(job.category) : "—"}</td>
                     <td className="whitespace-nowrap px-4 py-3">{job.technician}</td>
                     <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={job.status} size="sm" /></td>
                     <td className="whitespace-nowrap px-4 py-3"><PriorityBadge priority={job.priority} size="sm" /></td>

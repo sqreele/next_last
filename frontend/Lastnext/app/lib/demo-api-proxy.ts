@@ -2,7 +2,7 @@ import 'server-only';
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const MAX_BODY_BYTES = 8 * 1024;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 function errorResponse(status: number, detail: string) {
   return NextResponse.json({ detail }, { status, headers: { 'cache-control': 'no-store' } });
@@ -31,7 +31,8 @@ export async function proxyDemoRequest(
     }
     const body = await request.arrayBuffer();
     if (body.byteLength > MAX_BODY_BYTES) return errorResponse(413, 'Request body is too large.');
-    headers.set('content-type', 'application/json');
+    const contentType = request.headers.get('content-type') || 'application/json';
+    headers.set('content-type', contentType);
     init.body = body;
   }
 

@@ -2,7 +2,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from myappLubd.models import Area, Job, Machine, Property, Room, Tenant, TenantMembership, Topic, User
+from myappLubd.models import Area, Job, JobImage, Machine, Property, Room, Tenant, TenantMembership, Topic, User
 
 
 PROPERTY_ID = 'PB749146D'
@@ -101,7 +101,10 @@ class Command(BaseCommand):
 
         has_demo_data = property_obj.jobs.filter(job_id__startswith='DEMO-CT-').exists()
         if options['reset']:
-            Job.all_objects.filter(property=property_obj, job_id__startswith='DWEB').hard_delete()
+            public_jobs = Job.all_objects.filter(property=property_obj, job_id__startswith='DWEB')
+            for image in JobImage.objects.filter(job__in=public_jobs):
+                image.delete()
+            public_jobs.hard_delete()
             if has_demo_data:
                 call_command('seed_presentation_demo', property_id=PROPERTY_ID, cleanup=True, verbosity=0)
                 has_demo_data = False

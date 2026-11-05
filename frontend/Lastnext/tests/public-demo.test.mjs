@@ -20,6 +20,13 @@ test("public demo provides interactive workflow and sample operations data", () 
   assert.match(source, /advanceJob/);
   assert.match(source, /Preventive Maintenance/);
   assert.match(source, /Inventory/);
+  assert.match(source, /ค้นหางานตามห้อง/);
+  assert.match(source, /selectedRoom/);
+  assert.match(source, /matchesRoom/);
+  assert.match(source, /ห้อง\/พื้นที่/);
+  assert.match(source, /selectedCategory/);
+  assert.match(source, /matchesCategory/);
+  assert.match(source, /เลือกหมวดหมู่งาน/);
 });
 
 test("public demo can create a local work order and show it immediately", () => {
@@ -27,6 +34,9 @@ test("public demo can create a local work order and show it immediately", () => 
   assert.match(source, /const createJob =/);
   assert.match(source, /method: "POST"/);
   assert.match(source, /setJobs\(\(current\) => \[result, \.\.\.current\]\)/);
+  assert.match(source, /compressDemoImage/);
+  assert.match(source, /body\.append\("image"/);
+  assert.match(source, /รูปก่อนดำเนินงาน/);
 });
 
 test("public demo report uses live demo data and supports presentation exports", () => {
@@ -35,6 +45,8 @@ test("public demo report uses live demo data and supports presentation exports",
   assert.match(report, /Export CSV/);
   assert.match(report, /Print \/ PDF/);
   assert.match(report, /Work Order Detail/);
+  assert.match(report, /job\.images/);
+  assert.match(report, /งานตาม Category/);
   assert.doesNotMatch(report, /useSessionGuard/);
   assert.match(reportPage, /robots: \{ index: false, follow: false \}/);
 });

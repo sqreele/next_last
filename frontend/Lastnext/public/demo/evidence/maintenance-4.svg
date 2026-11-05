@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="title desc">
+  <title id="title">Door maintenance evidence</title><desc id="desc">Illustrated hotel room door hardware inspection</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#e2e8f0"/><stop offset="1" stop-color="#cbd5e1"/></linearGradient><linearGradient id="door" x2="1"><stop stop-color="#a66a42"/><stop offset="1" stop-color="#78472f"/></linearGradient></defs>
+  <rect width="640" height="480" fill="url(#bg)"/><rect x="132" y="32" width="376" height="423" rx="8" fill="#f8fafc" stroke="#64748b" stroke-width="8"/><rect x="164" y="66" width="312" height="389" fill="url(#door)" stroke="#5f3828" stroke-width="6"/>
+  <rect x="200" y="104" width="240" height="124" rx="5" fill="none" stroke="#c49168" stroke-width="8"/><rect x="200" y="263" width="240" height="147" rx="5" fill="none" stroke="#c49168" stroke-width="8"/>
+  <circle cx="415" cy="246" r="25" fill="#f5d27b" stroke="#8b691d" stroke-width="6"/><path d="M415 246h62" stroke="#f5d27b" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="105" cy="363" r="42" fill="#0f766e"/><path d="M87 363h36M105 345v36" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+</svg>

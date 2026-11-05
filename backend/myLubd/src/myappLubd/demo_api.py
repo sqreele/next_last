@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from .models import Inventory, Job, JobImage, PreventiveMaintenance, Property, Room, TenantMembership, Topic
+from .models import Area, Inventory, Job, JobComment, JobImage, PreventiveMaintenance, Property, Room, TenantMembership, Topic
 
 
 DEMO_PROPERTY_ID = 'PB749146D'
@@ -44,7 +44,9 @@ def _demo_jobs():
     for prefix in DEMO_JOB_PREFIXES:
         clause = Q(job_id__startswith=prefix)
         prefix_query = clause if prefix_query is None else prefix_query | clause
-    return query.filter(prefix_query).select_related('user', 'area').prefetch_related('rooms', 'topics', 'job_images')
+    return query.filter(prefix_query).select_related('user', 'area').prefetch_related(
+        'rooms', 'topics', 'job_images', 'comments__author',
+    )
 
 
 def _serialize_job(job):
@@ -75,7 +77,21 @@ def _serialize_job(job):
         'priority': job.priority,
         'category': topic.title if topic else 'Orther (อาการอื่นๆ)',
         'updated': job.updated_at.isoformat(),
+        'created': job.created_at.isoformat(),
+        'completed': job.completed_at.isoformat() if job.completed_at else None,
+        'remarks': job.remarks.replace('[DEMO-PUBLIC-DATABASE]', '').replace('[DEMO-PRESENTATION-CHINATOWN]', '').strip(),
+        'is_defective': job.is_defective,
+        'is_preventive_maintenance': job.is_preventivemaintenance,
         'images': images,
+        'comments': [
+            {
+                'id': comment.pk,
+                'author': comment.author.get_human_display_name() if comment.author else 'Demo user',
+                'comment': comment.comment.removeprefix('[DEMO] ').strip(),
+                'created': comment.created_at.isoformat(),
+            }
+            for comment in job.comments.all()
+        ],
     }
 
 
@@ -100,6 +116,11 @@ def demo_snapshot():
             .values_list('name', flat=True)
         ),
         'categories': list(Topic.objects.order_by('title').values_list('title', flat=True)),
+        'areas': list(
+            Area.objects.filter(property__property_id=DEMO_PROPERTY_ID, is_active=True)
+            .order_by('name')
+            .values_list('name', flat=True)
+        ),
         'jobs': [_serialize_job(job) for job in jobs],
         'inventory': inventory,
         'maintenance': maintenance,
@@ -124,22 +145,36 @@ class DemoSnapshotView(APIView):
 
         title = str(request.data.get('title') or '').strip()
         room_name = str(request.data.get('room') or '').strip()
+        area_name = str(request.data.get('area') or '').strip()
         priority = str(request.data.get('priority') or 'medium').strip().lower()
         category = str(request.data.get('category') or 'Orther (อาการอื่นๆ)').strip()
-        upload = request.FILES.get('image')
+        requested_status = str(request.data.get('status') or 'pending').strip().lower()
+        remarks = str(request.data.get('remarks') or '').strip()
+        upload = request.FILES.get('before_image') or request.FILES.get('image')
+        after_upload = request.FILES.get('after_image')
         if not 3 <= len(title) <= 160:
             return Response({'detail': 'Title must contain 3 to 160 characters.'}, status=400)
-        if not room_name or len(room_name) > 100:
-            return Response({'detail': 'A valid room is required.'}, status=400)
+        if bool(room_name) == bool(area_name):
+            return Response({'detail': 'Select either one room or one area.'}, status=400)
+        if len(room_name) > 100 or len(area_name) > 100:
+            return Response({'detail': 'Invalid demo location.'}, status=400)
         if priority not in ALLOWED_PRIORITIES:
             return Response({'detail': 'Invalid priority.'}, status=400)
+        if requested_status not in {'pending', 'in_progress', 'completed'}:
+            return Response({'detail': 'Invalid initial status.'}, status=400)
+        if len(remarks) > 1000:
+            return Response({'detail': 'Remarks must be 1000 characters or fewer.'}, status=400)
         topic = Topic.objects.filter(title=category).first()
         if topic is None:
             return Response({'detail': 'Select a category from the demo category list.'}, status=400)
-        if upload is not None:
-            if int(getattr(upload, 'size', 0) or 0) > 3 * 1024 * 1024:
+        if after_upload is not None and requested_status != 'completed':
+            return Response({'detail': 'After evidence is only available for completed jobs.'}, status=400)
+        for candidate in (upload, after_upload):
+            if candidate is None:
+                continue
+            if int(getattr(candidate, 'size', 0) or 0) > 3 * 1024 * 1024:
                 return Response({'detail': 'Demo image must be 3 MB or smaller.'}, status=400)
-            if str(getattr(upload, 'content_type', '')).lower() not in {
+            if str(getattr(candidate, 'content_type', '')).lower() not in {
                 'image/jpeg', 'image/png', 'image/webp',
             }:
                 return Response({'detail': 'Demo image must be JPEG, PNG, or WebP.'}, status=400)
@@ -147,9 +182,12 @@ class DemoSnapshotView(APIView):
         property_obj = Property.objects.filter(property_id=DEMO_PROPERTY_ID).first()
         if property_obj is None:
             return Response({'detail': 'Demo dataset is unavailable.'}, status=503)
-        room = Room.objects.filter(property=property_obj, name=room_name, is_active=True).first()
-        if room is None:
+        room = Room.objects.filter(property=property_obj, name=room_name, is_active=True).first() if room_name else None
+        area = Area.objects.filter(property=property_obj, name=area_name, is_active=True).first() if area_name else None
+        if room_name and room is None:
             return Response({'detail': 'Select a room from the demo room list.'}, status=400)
+        if area_name and area is None:
+            return Response({'detail': 'Select an area from the demo area list.'}, status=400)
         membership = (
             TenantMembership.objects.filter(
                 tenant=property_obj.tenant,
@@ -173,22 +211,33 @@ class DemoSnapshotView(APIView):
                     user=membership.user,
                     updated_by=membership.user,
                     property=property_obj,
+                    area=area,
                     description=f'[DEMO] {title}',
-                    remarks='[DEMO-PUBLIC-DATABASE]',
-                    status='pending',
+                    remarks=f'[DEMO-PUBLIC-DATABASE] {remarks}'.strip(),
+                    status=requested_status,
                     priority=priority,
-                    is_defective=True,
+                    is_defective=str(request.data.get('is_defective') or 'true').lower() == 'true',
+                    is_preventivemaintenance=str(request.data.get('is_preventive_maintenance') or 'false').lower() == 'true',
                     created_at=now,
                     updated_at=now,
+                    completed_at=now if requested_status == 'completed' else None,
                 )
                 Job.objects.bulk_create([job])
-                Job.rooms.through.objects.create(job_id=job.pk, room_id=room.pk)
+                if room is not None:
+                    Job.rooms.through.objects.create(job_id=job.pk, room_id=room.pk)
                 Job.topics.through.objects.create(job_id=job.pk, topic_id=topic.pk)
                 if upload is not None:
                     JobImage.objects.create(
                         job=job,
                         image=upload,
                         image_type='before',
+                        uploaded_by=membership.user,
+                    )
+                if after_upload is not None:
+                    JobImage.objects.create(
+                        job=job,
+                        image=after_upload,
+                        image_type='after',
                         uploaded_by=membership.user,
                     )
         except DjangoValidationError as exc:
@@ -220,8 +269,15 @@ class DemoImageView(APIView):
 class DemoJobView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    parser_classes = [JSONParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     throttle_classes = [DemoApiThrottle]
+
+    def get(self, request, job_id):
+        _require_demo_mode()
+        job = _demo_jobs().filter(job_id=job_id).first()
+        if job is None:
+            raise Http404
+        return Response(_serialize_job(job))
 
     def patch(self, request, job_id):
         _require_demo_mode()
@@ -231,13 +287,50 @@ class DemoJobView(APIView):
         requested_status = str(request.data.get('status') or '').strip()
         if requested_status not in ALLOWED_TRANSITIONS.get(job.status, set()):
             return Response({'detail': 'This demo status transition is not allowed.'}, status=400)
+        after_upload = request.FILES.get('after_image')
+        if after_upload is not None:
+            if requested_status != 'completed':
+                return Response({'detail': 'After evidence is only available when closing a job.'}, status=400)
+            if int(getattr(after_upload, 'size', 0) or 0) > 3 * 1024 * 1024:
+                return Response({'detail': 'Demo image must be 3 MB or smaller.'}, status=400)
+            if str(getattr(after_upload, 'content_type', '')).lower() not in {
+                'image/jpeg', 'image/png', 'image/webp',
+            }:
+                return Response({'detail': 'Demo image must be JPEG, PNG, or WebP.'}, status=400)
         now = timezone.now()
         updates = {'status': requested_status, 'updated_at': now}
         if requested_status == 'completed':
             updates['completed_at'] = now
-        Job.all_objects.filter(pk=job.pk).update(**updates)
+        try:
+            with transaction.atomic():
+                Job.all_objects.filter(pk=job.pk).update(**updates)
+                if after_upload is not None:
+                    JobImage.objects.create(
+                        job=job, image=after_upload, image_type='after', uploaded_by=job.user,
+                    )
+        except DjangoValidationError as exc:
+            return Response({'detail': '; '.join(exc.messages)}, status=400)
         job = _demo_jobs().get(pk=job.pk)
         return Response(_serialize_job(job))
+
+
+class DemoJobCommentView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    parser_classes = [JSONParser]
+    throttle_classes = [DemoApiThrottle]
+
+    def post(self, request, job_id):
+        _require_demo_mode()
+        job = _demo_jobs().filter(job_id=job_id).first()
+        if job is None:
+            raise Http404
+        comment = str(request.data.get('comment') or '').strip()
+        if not 2 <= len(comment) <= 500:
+            return Response({'detail': 'Comment must contain 2 to 500 characters.'}, status=400)
+        JobComment.objects.create(job=job, author=job.user, comment=f'[DEMO] {comment}')
+        job = _demo_jobs().get(pk=job.pk)
+        return Response(_serialize_job(job), status=status.HTTP_201_CREATED)
 
 
 class DemoResetView(APIView):

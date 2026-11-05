@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
   Boxes,
   CheckCircle2,
   Clock3,
@@ -16,7 +14,6 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { Logo } from "@/app/components/branding/Logo";
 import { PriorityBadge } from "@/app/components/PriorityBadge";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import { Button } from "@/app/components/ui/button";
@@ -185,17 +182,7 @@ export default function DemoReportClient() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="border-b border-slate-200 bg-white print:hidden">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/" aria-label="StayMaint home"><Logo variant="horizontal" markClassName="size-8" /></Link>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/demo/"><ArrowLeft className="mr-1.5 h-4 w-4" />กลับ Demo</Link>
-          </Button>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+    <div className="space-y-6 text-slate-950">
         <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
             <p className="text-sm font-semibold text-teal-700">Live data · Isolated Demo Database</p>
@@ -307,7 +294,6 @@ export default function DemoReportClient() {
         </section>
 
         <p className="text-center text-xs text-slate-500">รายงานนี้ใช้ข้อมูลทดลองเท่านั้น ข้อมูลจะรีเซ็ตอัตโนมัติทุก {snapshot?.reset_interval_minutes ?? 30} นาที</p>
-      </div>
-    </main>
+    </div>
   );
 }

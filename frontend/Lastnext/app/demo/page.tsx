@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import DemoClient from "./DemoClient";
+import DemoDashboardClient from "./DemoDashboardClient";
 
 export const metadata: Metadata = {
   title: "Live Demo",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function DemoPage() {
-  return <DemoClient />;
+  return <DemoDashboardClient />;
 }

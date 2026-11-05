@@ -2,51 +2,59 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const source = readFileSync(new URL("../app/demo/DemoClient.tsx", import.meta.url), "utf8");
-const page = readFileSync(new URL("../app/demo/page.tsx", import.meta.url), "utf8");
-const report = readFileSync(new URL("../app/demo/report/DemoReportClient.tsx", import.meta.url), "utf8");
-const reportPage = readFileSync(new URL("../app/demo/report/page.tsx", import.meta.url), "utf8");
+const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+const layout = read("../app/demo/layout.tsx");
+const shell = read("../app/demo/DemoShell.tsx");
+const provider = read("../app/demo/DemoProvider.tsx");
+const dashboard = read("../app/demo/DemoDashboardClient.tsx");
+const createJob = read("../app/demo/create-job/DemoCreateJobClient.tsx");
+const jobs = read("../app/demo/jobs/DemoJobsClient.tsx");
+const detail = read("../app/demo/jobs/[jobId]/DemoJobDetailClient.tsx");
+const report = read("../app/demo/report/DemoReportClient.tsx");
 
-test("public demo is no-login and connects only through the isolated demo API", () => {
-  assert.doesNotMatch(source, /useSessionGuard/);
-  assert.match(source, /fetch\("\/api\/demo\//);
-  assert.match(source, /Sandbox Demo/);
-  assert.match(source, /Demo DB connected/);
-  assert.match(page, /robots: \{ index: false, follow: false \}/);
+test("public demo uses a production-style workspace without a login guard", () => {
+  assert.match(layout, /DemoProvider/);
+  assert.match(layout, /DemoShell/);
+  assert.doesNotMatch(`${layout}${shell}${provider}`, /useSessionGuard/);
+  for (const route of ["Dashboard", "All Jobs", "My Jobs", "Create Job", "Reports"]) assert.match(shell, new RegExp(route));
+  assert.match(shell, /Sandbox · No login/);
 });
 
-test("public demo provides interactive workflow and sample operations data", () => {
-  assert.match(source, /DEMO-CT-0001/);
-  assert.match(source, /advanceJob/);
-  assert.match(source, /Preventive Maintenance/);
-  assert.match(source, /Inventory/);
-  assert.match(source, /ค้นหางานตามห้อง/);
-  assert.match(source, /selectedRoom/);
-  assert.match(source, /matchesRoom/);
-  assert.match(source, /ห้อง\/พื้นที่/);
-  assert.match(source, /selectedCategory/);
-  assert.match(source, /matchesCategory/);
-  assert.match(source, /เลือกหมวดหมู่งาน/);
+test("demo provider owns the isolated workflow API", () => {
+  assert.match(provider, /fetch\("\/api\/demo\//);
+  assert.match(provider, /createJob/);
+  assert.match(provider, /updateStatus/);
+  assert.match(provider, /addComment/);
+  assert.match(provider, /reset/);
 });
 
-test("public demo can create a local work order and show it immediately", () => {
-  assert.match(source, /Create Demo Job/);
-  assert.match(source, /const createJob =/);
-  assert.match(source, /method: "POST"/);
-  assert.match(source, /setJobs\(\(current\) => \[result, \.\.\.current\]\)/);
-  assert.match(source, /compressDemoImage/);
-  assert.match(source, /body\.append\("image"/);
-  assert.match(source, /รูปก่อนดำเนินงาน/);
+test("create job mirrors production form sections and redirects to My Jobs", () => {
+  assert.match(createJob, /1\. Job Information/);
+  assert.match(createJob, /2\. Location/);
+  assert.match(createJob, /3\. Category & Additional Details/);
+  assert.match(createJob, /4\. Evidence/);
+  assert.match(createJob, /before_image/);
+  assert.match(createJob, /after_image/);
+  assert.match(createJob, /router\.push\(`\/demo\/my-jobs/);
 });
 
-test("public demo report uses live demo data and supports presentation exports", () => {
-  assert.match(source, /href="\/demo\/report\/"/);
-  assert.match(report, /fetch\("\/api\/demo\//);
+test("job list and detail support the production navigation flow", () => {
+  assert.match(jobs, /All priorities/);
+  assert.match(jobs, /All rooms \/ areas/);
+  assert.match(jobs, /All categories/);
+  assert.match(jobs, /demo\/jobs\/\$\{job\.id\}/);
+  assert.match(detail, /Before \/ After Evidence/);
+  assert.match(detail, /Start Job/);
+  assert.match(detail, /Complete Job/);
+  assert.match(detail, /Comments/);
+});
+
+test("dashboard and reports remain backed by live demo data", () => {
+  assert.match(dashboard, /Recent Maintenance Jobs/);
+  assert.match(dashboard, /Preventive Maintenance/);
+  assert.match(dashboard, /Inventory Alerts/);
   assert.match(report, /Export CSV/);
   assert.match(report, /Print \/ PDF/);
   assert.match(report, /Work Order Detail/);
-  assert.match(report, /job\.images/);
   assert.match(report, /งานตาม Category/);
-  assert.doesNotMatch(report, /useSessionGuard/);
-  assert.match(reportPage, /robots: \{ index: false, follow: false \}/);
 });

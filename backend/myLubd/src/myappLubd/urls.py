@@ -19,7 +19,7 @@ from .invitations import (
 from .billing.views import StripeCheckoutView, StripePortalView, StripeWebhookView
 from .line_integration import LineWebhookView
 from .contact import ContactSubmissionView
-from .demo_api import DemoImageView, DemoJobView, DemoResetView, DemoSnapshotView
+from .demo_api import DemoImageView, DemoJobCommentView, DemoJobView, DemoResetView, DemoSnapshotView
 from .platform_api import (
     PlatformSummaryView, PlatformTenantDetailView, PlatformTenantsView,
     PlatformSubscriptionDetailView, PlatformSubscriptionsView, PlatformUsageView,
@@ -72,6 +72,7 @@ urlpatterns = [
     path('api/v1/demo/', DemoSnapshotView.as_view(), name='public-demo'),
     path('api/v1/demo/reset/', DemoResetView.as_view(), name='public-demo-reset'),
     path('api/v1/demo/jobs/<str:job_id>/', DemoJobView.as_view(), name='public-demo-job'),
+    path('api/v1/demo/jobs/<str:job_id>/comments/', DemoJobCommentView.as_view(), name='public-demo-job-comment'),
     path('api/v1/demo/images/<int:image_id>/', DemoImageView.as_view(), name='public-demo-image'),
 
     # Internal platform operations APIs. These intentionally remain outside

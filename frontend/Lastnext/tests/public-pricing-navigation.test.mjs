@@ -46,7 +46,13 @@ test('homepage Product footer uses localized Pricing and preserves existing link
     /<Link href="\/pricing\/" className="hover:text-white">\s*\{t\("nav\.pricing"\)\}\s*<\/Link>/,
   );
   assert.match(homepage, /<Link href="#features" className="hover:text-white">\s*Features\s*<\/Link>/);
-  assert.match(homepage, /<Link href="#demo" className="hover:text-white">\s*Demo\s*<\/Link>/);
+  assert.match(homepage, /<Link href=\{demoHref\} className="hover:text-white">\s*Live Demo\s*<\/Link>/);
+});
+
+test('homepage Live Demo links open the public demo without login', () => {
+  assert.match(homepage, /const demoHref = "\/demo"/);
+  assert.match(homepage, /<Link href=\{demoHref\}>\s*<Play[\s\S]*?Live Demo\s*<\/Link>/);
+  assert.match(homepage, /<Link href=\{demoHref\}>\s*<Play[\s\S]*?Try Live Demo\s*<\/Link>/);
 });
 
 test('existing public Home, Contact, Sign in, and Register routes remain present', () => {

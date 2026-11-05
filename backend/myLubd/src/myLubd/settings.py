@@ -321,6 +321,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return os.getenv(name, str(default)).strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
+DEMO_MODE = _env_flag('DEMO_MODE')
 LEGACY_APP_AUTH_ENABLED = DEBUG and _env_flag('LEGACY_APP_AUTH_ENABLED')
 SELF_SERVICE_TENANT_CREATION_ENABLED = DEBUG and _env_flag(
     'SELF_SERVICE_TENANT_CREATION_ENABLED'

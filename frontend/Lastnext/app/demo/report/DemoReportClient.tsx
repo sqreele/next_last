@@ -1,0 +1,290 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Boxes,
+  CheckCircle2,
+  Clock3,
+  Download,
+  Loader2,
+  Printer,
+  RefreshCw,
+  Wrench,
+} from "lucide-react";
+
+import { Logo } from "@/app/components/branding/Logo";
+import { PriorityBadge } from "@/app/components/PriorityBadge";
+import { StatusBadge } from "@/app/components/StatusBadge";
+import { Button } from "@/app/components/ui/button";
+
+type DemoStatus = "pending" | "in_progress" | "waiting_sparepart" | "completed" | "cancelled";
+type DemoPriority = "low" | "medium" | "high" | "critical";
+type DemoJob = {
+  id: string;
+  title: string;
+  room: string;
+  technician: string;
+  status: DemoStatus;
+  priority: DemoPriority;
+  updated: string;
+};
+type DemoInventory = { item_id: string; name: string; quantity: number; status: string };
+type DemoMaintenance = { pm_id: string; pmtitle: string; status: string; scheduled_date: string; quality_score: number | null };
+type DemoSnapshot = {
+  property: { property_id: string; name: string };
+  jobs: DemoJob[];
+  inventory: DemoInventory[];
+  maintenance: DemoMaintenance[];
+  reset_interval_minutes: number;
+};
+
+const statusLabels: Record<DemoStatus, string> = {
+  pending: "รอดำเนินการ",
+  in_progress: "กำลังดำเนินการ",
+  waiting_sparepart: "รออะไหล่",
+  completed: "เสร็จแล้ว",
+  cancelled: "ยกเลิก",
+};
+
+const priorityLabels: Record<DemoPriority, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  critical: "Critical",
+};
+
+const statusColors: Record<DemoStatus, string> = {
+  pending: "bg-amber-500",
+  in_progress: "bg-blue-500",
+  waiting_sparepart: "bg-violet-500",
+  completed: "bg-emerald-500",
+  cancelled: "bg-slate-400",
+};
+
+const priorityColors: Record<DemoPriority, string> = {
+  low: "bg-slate-400",
+  medium: "bg-sky-500",
+  high: "bg-orange-500",
+  critical: "bg-rose-500",
+};
+
+function csvCell(value: unknown) {
+  let text = String(value ?? "");
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function displayDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function DistributionBars({
+  rows,
+}: {
+  rows: Array<{ label: string; value: number; color: string }>;
+}) {
+  const max = Math.max(...rows.map((row) => row.value), 1);
+  return (
+    <div className="space-y-3">
+      {rows.map((row) => (
+        <div key={row.label} className="grid grid-cols-[110px_minmax(0,1fr)_32px] items-center gap-3 text-sm">
+          <span className="truncate text-slate-600">{row.label}</span>
+          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+            <div className={`h-full rounded-full ${row.color}`} style={{ width: `${(row.value / max) * 100}%` }} />
+          </div>
+          <span className="text-right font-semibold tabular-nums">{row.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function DemoReportClient() {
+  const [snapshot, setSnapshot] = useState<DemoSnapshot | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadReport = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/demo/", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Unable to load demo report");
+      setSnapshot(result);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Unable to load demo report");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadReport();
+  }, []);
+
+  const report = useMemo(() => {
+    const jobs = snapshot?.jobs ?? [];
+    const countStatus = (status: DemoStatus) => jobs.filter((job) => job.status === status).length;
+    const byRoom = new Map<string, number>();
+    jobs.forEach((job) => byRoom.set(job.room, (byRoom.get(job.room) ?? 0) + 1));
+    return {
+      total: jobs.length,
+      open: jobs.filter((job) => ["pending", "in_progress", "waiting_sparepart"].includes(job.status)).length,
+      completed: countStatus("completed"),
+      urgent: jobs.filter((job) => ["high", "critical"].includes(job.priority) && job.status !== "completed").length,
+      statusRows: (Object.keys(statusLabels) as DemoStatus[]).map((status) => ({
+        label: statusLabels[status], value: countStatus(status), color: statusColors[status],
+      })),
+      priorityRows: (Object.keys(priorityLabels) as DemoPriority[]).map((priority) => ({
+        label: priorityLabels[priority],
+        value: jobs.filter((job) => job.priority === priority).length,
+        color: priorityColors[priority],
+      })),
+      roomRows: [...byRoom.entries()]
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 6)
+        .map(([label, value]) => ({ label, value, color: "bg-teal-500" })),
+    };
+  }, [snapshot]);
+
+  const exportCsv = () => {
+    if (!snapshot) return;
+    const header = ["Job ID", "Title", "Room/Area", "Technician", "Status", "Priority", "Updated"];
+    const rows = snapshot.jobs.map((job) => [
+      job.id, job.title, job.room, job.technician, statusLabels[job.status], priorityLabels[job.priority], displayDate(job.updated),
+    ]);
+    const csv = `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `staymaint-demo-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-50 text-slate-950">
+      <header className="border-b border-slate-200 bg-white print:hidden">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+          <Link href="/" aria-label="StayMaint home"><Logo variant="horizontal" markClassName="size-8" /></Link>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/demo/"><ArrowLeft className="mr-1.5 h-4 w-4" />กลับ Demo</Link>
+          </Button>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+        <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="text-sm font-semibold text-teal-700">Live data · Isolated Demo Database</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Maintenance Demo Report</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              {snapshot?.property.name ?? "StayMaint Demo Hotel - Chinatown"} · อัปเดต ณ {new Date().toLocaleString("th-TH")}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <Button variant="outline" onClick={() => void loadReport()} disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Refresh
+            </Button>
+            <Button variant="outline" onClick={exportCsv} disabled={!snapshot}>
+              <Download className="mr-2 h-4 w-4" />Export CSV
+            </Button>
+            <Button onClick={() => window.print()} disabled={!snapshot}>
+              <Printer className="mr-2 h-4 w-4" />Print / PDF
+            </Button>
+          </div>
+        </section>
+
+        {error ? <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p> : null}
+
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "งานทั้งหมด", value: report.total, icon: Wrench, tone: "bg-blue-50 text-blue-700" },
+            { label: "งานที่เปิดอยู่", value: report.open, icon: Clock3, tone: "bg-amber-50 text-amber-700" },
+            { label: "เสร็จแล้ว", value: report.completed, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-700" },
+            { label: "High / Critical ที่ยังเปิด", value: report.urgent, icon: AlertTriangle, tone: "bg-rose-50 text-rose-700" },
+          ].map(({ label, value, icon: Icon, tone }) => (
+            <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className={`mb-4 inline-flex rounded-xl p-2.5 ${tone}`}><Icon className="h-5 w-5" /></div>
+              <p className="text-3xl font-bold tabular-nums">{loading ? "—" : value}</p>
+              <p className="text-sm text-slate-600">{label}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-3">
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-5 font-semibold">งานตามสถานะ</h2>
+            <DistributionBars rows={report.statusRows} />
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-5 font-semibold">งานตาม Priority</h2>
+            <DistributionBars rows={report.priorityRows} />
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-5 font-semibold">พื้นที่ที่มีงานสูงสุด</h2>
+            <DistributionBars rows={report.roomRows} />
+          </article>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2">
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-2"><Wrench className="h-5 w-5 text-teal-600" /><h2 className="font-semibold">Preventive Maintenance</h2></div>
+            <div className="space-y-3">
+              {snapshot?.maintenance.map((item) => (
+                <div key={item.pm_id} className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 p-3 text-sm">
+                  <div><p className="font-medium">{item.pmtitle.replace("[DEMO] ", "")}</p><p className="mt-1 text-slate-500">กำหนด {item.scheduled_date}</p></div>
+                  <span className="whitespace-nowrap font-semibold capitalize text-teal-700">{item.status.replaceAll("_", " ")}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-2"><Boxes className="h-5 w-5 text-blue-600" /><h2 className="font-semibold">Inventory Status</h2></div>
+            <div className="space-y-3">
+              {snapshot?.inventory.map((item) => (
+                <div key={item.item_id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 text-sm">
+                  <span className="font-medium">{item.name.replace("[DEMO] ", "")}</span>
+                  <span className={`font-semibold ${item.status === "available" ? "text-emerald-700" : item.status === "low_stock" ? "text-amber-700" : "text-rose-700"}`}>{item.quantity} · {item.status.replaceAll("_", " ")}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 p-5"><h2 className="font-semibold">Work Order Detail</h2><p className="text-sm text-slate-500">ข้อมูลล่าสุดจาก Demo Database</p></div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[850px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>{["Job ID", "รายละเอียด", "ห้อง/พื้นที่", "ผู้รับผิดชอบ", "สถานะ", "Priority", "อัปเดต"].map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {snapshot?.jobs.map((job) => (
+                  <tr key={job.id} className="hover:bg-slate-50">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-teal-700">{job.id}</td>
+                    <td className="px-4 py-3 font-medium">{job.title}</td>
+                    <td className="px-4 py-3">{job.room}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{job.technician}</td>
+                    <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={job.status} size="sm" /></td>
+                    <td className="whitespace-nowrap px-4 py-3"><PriorityBadge priority={job.priority} size="sm" /></td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">{displayDate(job.updated)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <p className="text-center text-xs text-slate-500">รายงานนี้ใช้ข้อมูลทดลองเท่านั้น ข้อมูลจะรีเซ็ตอัตโนมัติทุก {snapshot?.reset_interval_minutes ?? 30} นาที</p>
+      </div>
+    </main>
+  );
+}

@@ -86,6 +86,7 @@ export default function HomepageClient() {
     requireAuth: false,
     showToast: false,
   });
+  const demoHref = "/demo";
 
   return (
     <div className="min-h-screen bg-[var(--pcms-app-bg)]">
@@ -100,6 +101,17 @@ export default function HomepageClient() {
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="hidden md:inline-flex"
+            >
+              <Link href={demoHref}>
+                <Play className="mr-1.5 h-4 w-4" />
+                Live Demo
+              </Link>
+            </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/pricing/">{t("nav.pricing")}</Link>
             </Button>
@@ -176,9 +188,9 @@ export default function HomepageClient() {
                   asChild
                   className="text-base"
                 >
-                  <Link href="#demo">
+                  <Link href={demoHref}>
                     <Play className="mr-2 h-4 w-4" />
-                    Watch Demo
+                    Try Live Demo
                   </Link>
                 </Button>
               </>
@@ -386,8 +398,8 @@ export default function HomepageClient() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#demo" className="hover:text-white">
-                    Demo
+                  <Link href={demoHref} className="hover:text-white">
+                    Live Demo
                   </Link>
                 </li>
               </ul>

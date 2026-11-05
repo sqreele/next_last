@@ -77,6 +77,7 @@ names = (
     'LINE_CHANNEL_ACCESS_TOKEN',
     'LINE_MESSAGING_TIMEOUT_SECONDS',
     'LINE_MONTHLY_MESSAGE_LIMIT',
+    'DEMO_MODE',
 )
 
 flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
@@ -95,15 +96,28 @@ with os.fdopen(fd, 'w', encoding='utf-8') as env_file:
         env_file.write(f'export {name}={shlex.quote(value)}\n')
 PY
 
-{
-    echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    echo "CRON_TZ=Asia/Bangkok"
-    # One daily run handles today's and tomorrow's PM reminders.
-    echo "0 9 * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py send_pm_line_reminders >> /var/log/cron.log 2>&1"
-    # Schedule: run daily at 23:00 Asia/Bangkok (includes the /etc/cron.d user column)
-    echo "0 23 * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
-} > /etc/cron.d/daily_summary
-chmod 0644 /etc/cron.d/daily_summary
+case "$(printf '%s' "${DEMO_MODE:-false}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on)
+        python manage.py seed_public_demo --reset
+        {
+            echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            echo "CRON_TZ=Asia/Bangkok"
+            echo "*/30 * * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py seed_public_demo --reset >> /var/log/cron.log 2>&1"
+        } > /etc/cron.d/demo_reset
+        chmod 0644 /etc/cron.d/demo_reset
+        ;;
+    *)
+        {
+            echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            echo "CRON_TZ=Asia/Bangkok"
+            # One daily run handles today's and tomorrow's PM reminders.
+            echo "0 9 * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py send_pm_line_reminders >> /var/log/cron.log 2>&1"
+            # Schedule: run daily at 23:00 Asia/Bangkok (includes the /etc/cron.d user column)
+            echo "0 23 * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
+        } > /etc/cron.d/daily_summary
+        chmod 0644 /etc/cron.d/daily_summary
+        ;;
+esac
 
 # Start cron service
 service cron start

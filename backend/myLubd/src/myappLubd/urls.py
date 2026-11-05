@@ -19,6 +19,7 @@ from .invitations import (
 from .billing.views import StripeCheckoutView, StripePortalView, StripeWebhookView
 from .line_integration import LineWebhookView
 from .contact import ContactSubmissionView
+from .demo_api import DemoJobView, DemoResetView, DemoSnapshotView
 from .platform_api import (
     PlatformSummaryView, PlatformTenantDetailView, PlatformTenantsView,
     PlatformSubscriptionDetailView, PlatformSubscriptionsView, PlatformUsageView,
@@ -68,6 +69,9 @@ urlpatterns = [
     path('api/v1/commercial-plans/', PublicCommercialPlansView.as_view(), name='commercial-plans'),
     path('api/v1/integrations/line/webhook/', LineWebhookView.as_view(), name='line-webhook'),
     path('api/v1/public/contact/', ContactSubmissionView.as_view(), name='public-contact'),
+    path('api/v1/demo/', DemoSnapshotView.as_view(), name='public-demo'),
+    path('api/v1/demo/reset/', DemoResetView.as_view(), name='public-demo-reset'),
+    path('api/v1/demo/jobs/<str:job_id>/', DemoJobView.as_view(), name='public-demo-job'),
 
     # Internal platform operations APIs. These intentionally remain outside
     # tenant-scoped routers and implement GET only.

@@ -38,6 +38,8 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
+      # Server-side only. Public demo requests are proxied to an isolated backend.
+      DEMO_API_URL: http://demo-backend:8000
       # Internal only. Auth session records are kept in Redis; the browser only
       # receives an opaque reference cookie.
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -148,6 +150,51 @@ services:
           - backend
           - django-backend
 
+  demo-backend:
+    build:
+      context: ./backend/myLubd
+      dockerfile: Dockerfile
+    container_name: django-demo-backend
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: myLubd.settings
+      PYTHONPATH: /app
+      DEBUG: "False"
+      DEMO_MODE: "True"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 demo-backend django-demo-backend
+      SQL_ENGINE: django.db.backends.postgresql
+      SQL_DATABASE: mylubd_demo
+      SQL_USER: ${POSTGRES_USER:-mylubd_user}
+      SQL_PASSWORD: ${POSTGRES_PASSWORD:-mylubd_password}
+      SQL_HOST: db-demo
+      SQL_PORT: "5432"
+      POSTGRES_DB: mylubd_demo
+      POSTGRES_USER: ${POSTGRES_USER:-mylubd_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mylubd_password}
+      POSTGRES_HOST: db-demo
+      POSTGRES_PORT: "5432"
+      EMAIL_REQUIRE_AUTH: "False"
+      DAILY_SUMMARY_RECIPIENTS: ""
+      LINE_CHANNEL_ACCESS_TOKEN: ""
+      REDIS_URL: ""
+    healthcheck:
+      test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/', headers={'X-Forwarded-Proto': 'https'}); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    expose:
+      - "8000"
+    depends_on:
+      db-demo:
+        condition: service_healthy
+    networks:
+      app-network:
+        aliases:
+          - demo-backend
+          - django-demo-backend
+
   db:
     image: postgres:17-alpine
     container_name: db
@@ -166,6 +213,26 @@ services:
       timeout: 5s
       retries: 5
     # PostgreSQL is only available inside the Docker network.
+    expose:
+      - "5432"
+    networks:
+      - app-network
+
+  db-demo:
+    image: postgres:17-alpine
+    container_name: db-demo
+    restart: unless-stopped
+    volumes:
+      - postgres_demo_data_v17:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_DB: mylubd_demo
+      POSTGRES_USER: ${POSTGRES_USER:-mylubd_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mylubd_password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mylubd_user} -d mylubd_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     expose:
       - "5432"
     networks:
@@ -215,6 +282,9 @@ volumes:
   postgres_data_v17:
     driver: local
     name: pcms_postgres_data_v17
+  postgres_demo_data_v17:
+    driver: local
+    name: pcms_postgres_demo_data_v17
   redis_data:
     driver: local
     name: pcms_redis_data

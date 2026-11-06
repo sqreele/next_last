@@ -2,6 +2,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from myappLubd.demo_categories import MACHINE_CATEGORIES
+from myappLubd.demo_machines import seed_demo_machines
 
 from myappLubd.models import Area, Job, JobImage, Machine, Property, Room, Tenant, TenantMembership, Topic, User, DemoJobDocument
 
@@ -115,4 +116,6 @@ class Command(BaseCommand):
                 has_demo_data = False
         if not has_demo_data:
             call_command('seed_presentation_demo', property_id=PROPERTY_ID, apply=True, verbosity=0)
+        technicians = list(User.objects.filter(username__in=['demo-somchai', 'demo-narin', 'demo-krit']).order_by('username'))
+        seed_demo_machines(property_obj, technicians)
         self.stdout.write(self.style.SUCCESS('Public demo database is ready.'))

@@ -278,7 +278,7 @@ networks:
     driver: bridge
   redis-network:
     name: next_last_redis-network
-    external: true
+    driver: bridge
 
 volumes:
   postgres_data_v17:

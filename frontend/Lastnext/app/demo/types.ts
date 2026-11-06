@@ -35,7 +35,11 @@ export type DemoJob = {
 };
 
 export type DemoInventory = { item_id: string; name: string; quantity: number; status: string };
-export type DemoMaintenance = { pm_id: string; pmtitle: string; status: string; scheduled_date: string; quality_score: number | null };
+export type DemoMaintenance = {
+  pm_id: string; pmtitle: string; status: string; scheduled_date: string; quality_score: number | null;
+  next_due_date?: string | null; frequency?: string; procedure?: string | null;
+  estimated_duration?: number | null; assigned_to?: string | null; machine_ids?: string[];
+};
 
 export type DemoSnapshot = {
   machine_categories?: string[];

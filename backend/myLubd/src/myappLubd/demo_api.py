@@ -112,6 +112,7 @@ def _serialize_job(job):
 
 
 def demo_snapshot():
+    property_pk = Property.objects.filter(property_id=DEMO_PROPERTY_ID).values_list('pk', flat=True).first()
     jobs = list(_demo_jobs().order_by('-created_at'))
     inventory = list(
         Inventory.objects.filter(
@@ -119,11 +120,21 @@ def demo_snapshot():
             item_id__startswith='DEMO-CT-INV-',
         ).values('item_id', 'name', 'quantity', 'status')
     )
-    maintenance = list(
+    maintenance = [
+        {
+            'pm_id': item.pm_id, 'pmtitle': item.pmtitle, 'status': item.status,
+            'scheduled_date': item.scheduled_date, 'quality_score': item.quality_score,
+            'next_due_date': item.next_due_date, 'frequency': item.frequency,
+            'procedure': item.procedure, 'estimated_duration': item.estimated_duration,
+            'assigned_to': item.assigned_to.get_human_display_name() if item.assigned_to else None,
+            'machine_ids': [machine.machine_id for machine in item.machines.all() if machine.property_id == property_pk],
+        }
+        for item in
         PreventiveMaintenance.objects.filter(pm_id__startswith='DEMOCTPM')
+        .filter(machines__property__property_id=DEMO_PROPERTY_ID).distinct()
+        .select_related('assigned_to').prefetch_related('machines')
         .order_by('scheduled_date')
-        .values('pm_id', 'pmtitle', 'status', 'scheduled_date', 'quality_score')
-    )
+    ]
     return {
         'property': {'property_id': DEMO_PROPERTY_ID, 'name': 'StayMaint Demo Hotel - Chinatown'},
         'rooms': list(

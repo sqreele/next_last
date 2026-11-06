@@ -102,7 +102,11 @@ case "$(printf '%s' "${DEMO_MODE:-false}" | tr '[:upper:]' '[:lower:]')" in
         {
             echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             echo "CRON_TZ=Asia/Bangkok"
-            echo "*/30 * * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py seed_public_demo --reset >> /var/log/cron.log 2>&1"
+            # Keep a full 45-minute interval across hour boundaries:
+            # 00:00, 00:45, 01:30, 02:15, 03:00, ...
+            for reset_schedule in '0,45 0-23/3' '30 1-23/3' '15 2-23/3'; do
+                echo "$reset_schedule * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py seed_public_demo --reset >> /var/log/cron.log 2>&1"
+            done
         } > /etc/cron.d/demo_reset
         chmod 0644 /etc/cron.d/demo_reset
         ;;

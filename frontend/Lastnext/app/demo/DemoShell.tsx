@@ -46,7 +46,7 @@ export default function DemoShell({ children }: { children: React.ReactNode }) {
         <Link href="/" className="mb-6 flex h-12 items-center"><Logo variant="horizontal" markClassName="size-9" /></Link>
         <div className="mb-5 rounded-xl border border-teal-100 bg-teal-50 p-3"><p className="text-xs font-bold uppercase tracking-wide text-teal-700">Public Demo</p><p className="mt-1 truncate text-sm font-semibold">{snapshot?.property.name || "StayMaint Demo Hotel"}</p><p className="mt-1 text-xs text-slate-500">{text("ฐานข้อมูลทดลองแยกจากระบบจริง", "Isolated sandbox database")}</p></div>
         <DemoNav />
-        <div className="absolute bottom-4 left-4 right-4"><Button variant="outline" className="w-full" onClick={() => void reset()} disabled={loading}><RotateCcw className="mr-2 h-4 w-4" />{text("รีเซ็ต Demo", "Reset Demo")}</Button><p className="mt-2 text-center text-[11px] text-slate-400">{text("รีเซ็ตอัตโนมัติทุก 30 นาที", "Auto reset every 30 minutes")}</p></div>
+        <div className="absolute bottom-4 left-4 right-4"><Button variant="outline" className="w-full" onClick={() => void reset()} disabled={loading}><RotateCcw className="mr-2 h-4 w-4" />{text("รีเซ็ต Demo", "Reset Demo")}</Button><p className="mt-2 text-center text-[11px] text-slate-400">{text("รีเซ็ตอัตโนมัติทุก 45 นาที", "Auto reset every 45 minutes")}</p></div>
       </aside>
       <div className="min-w-0 flex-1 print:pl-0 lg:pl-64">
         <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur print:hidden sm:px-6">

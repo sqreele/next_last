@@ -390,7 +390,7 @@ export default function DemoReportClient() {
           {!loading && !error && filteredJobs.length === 0 ? <p className="p-8 text-center text-sm text-slate-500">{text("ไม่พบงานตามคำค้นหาหรือตัวกรอง ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง", "No jobs match your search or filters. Try another search or clear the filters.")}</p> : null}
         </section>
 
-        <p className="text-center text-xs text-slate-500">{text(`รายงานนี้ใช้ข้อมูลทดลองเท่านั้น ข้อมูลจะรีเซ็ตอัตโนมัติทุก ${snapshot?.reset_interval_minutes ?? 30} นาที`, `This report uses demo data only. Data resets automatically every ${snapshot?.reset_interval_minutes ?? 30} minutes.`)}</p>
+        <p className="text-center text-xs text-slate-500">{text(`รายงานนี้ใช้ข้อมูลทดลองเท่านั้น ข้อมูลจะรีเซ็ตอัตโนมัติทุก ${snapshot?.reset_interval_minutes ?? 45} นาที`, `This report uses demo data only. Data resets automatically every ${snapshot?.reset_interval_minutes ?? 45} minutes.`)}</p>
     </div>
   );
 }

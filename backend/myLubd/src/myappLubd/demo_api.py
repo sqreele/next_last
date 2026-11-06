@@ -153,7 +153,7 @@ def demo_snapshot():
         'inventory': inventory,
         'machines': [_serialize_machine(machine) for machine in Machine.objects.filter(property__property_id=DEMO_PROPERTY_ID).order_by('name')],
         'maintenance': maintenance,
-        'reset_interval_minutes': 30,
+        'reset_interval_minutes': 45,
     }
 
 

@@ -21,6 +21,7 @@ import { Button } from "@/app/components/ui/button";
 import { useDemoLanguage } from "../DemoLanguageProvider";
 import { categoryLabel, displayDate } from "../types";
 import { imageLinks } from "./export-excel";
+import DemoFilters, { DemoFilterSelect } from "../DemoFilters";
 import ReportCharts from "./ReportCharts";
 import { jobPeriod } from "./analytics.mjs";
 
@@ -165,6 +166,18 @@ export default function DemoReportClient() {
     void loadReport();
   }, [loadReport]);
 
+  const clearFilters = () => { setSearch(""); setStatusFilter("all"); setPriorityFilter("all"); setRoomFilter("all"); setCategoryFilter("all"); setYearFilter("latest"); setTechnicianFilter("all"); };
+  const priorityNames = language === "th" ? { low: "ต่ำ", medium: "ปานกลาง", high: "สูง", critical: "วิกฤต" } : priorityLabels;
+  const activeFilters = [
+    ...(search.trim() ? [{ key: "search", label: text("ค้นหา", "Search"), value: search.trim(), remove: () => setSearch("") }] : []),
+    ...(selectedYear !== (years[0] ?? String(new Date().getFullYear())) ? [{ key: "year", label: text("ปี", "Year"), value: selectedYear, remove: () => setYearFilter("latest") }] : []),
+    ...(technicianFilter !== "all" ? [{ key: "technician", label: text("ช่าง", "Technician"), value: technicianFilter, remove: () => setTechnicianFilter("all") }] : []),
+    ...(statusFilter !== "all" ? [{ key: "status", label: text("สถานะ", "Status"), value: (language === "th" ? statusLabelsThai : statusLabels)[statusFilter as DemoStatus], remove: () => setStatusFilter("all") }] : []),
+    ...(priorityFilter !== "all" ? [{ key: "priority", label: text("ความสำคัญ", "Priority"), value: priorityNames[priorityFilter as DemoPriority], remove: () => setPriorityFilter("all") }] : []),
+    ...(roomFilter !== "all" ? [{ key: "room", label: text("ห้อง / พื้นที่", "Room / Area"), value: roomFilter, remove: () => setRoomFilter("all") }] : []),
+    ...(categoryFilter !== "all" ? [{ key: "category", label: text("หมวดหมู่", "Category"), value: categoryLabel(categoryFilter, language), remove: () => setCategoryFilter("all") }] : []),
+  ];
+
   const report = useMemo(() => {
     const jobs = filteredJobs;
     const countStatus = (status: DemoStatus) => jobs.filter((job) => job.status === status).length;
@@ -265,39 +278,18 @@ export default function DemoReportClient() {
         {error ? <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p> : null}
         {exportMessage ? <p role="status" className="rounded-xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900 print:hidden">{exportMessage}</p> : null}
 
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <form role="search" onSubmit={(event) => event.preventDefault()} className="space-y-4">
-            <label className="block space-y-2 text-sm font-semibold">
-              <span>{text("ค้นหางานหรือรายละเอียด", "Search jobs or descriptions")}</span>
-              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
-                placeholder={text("รหัสงาน รายละเอียด ห้อง หมวดหมู่ หรือช่าง…", "Job ID, description, room, category or technician…")}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-normal focus-visible:outline-teal-600" />
-            </label>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="space-y-2 text-sm font-semibold"><span>{text("ปีที่สร้างงาน", "Creation year")}</span><select value={selectedYear} onChange={(event) => setYearFilter(event.target.value)} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal">{(years.length ? years : [selectedYear]).map((year) => <option key={year} value={year}>{year}</option>)}</select></label>
-              {[
-                { label: text("ช่างผู้รับผิดชอบ", "Technician"), value: technicianFilter, set: setTechnicianFilter,
-                  options: [...new Set((snapshot?.jobs ?? []).map((job) => job.technician))].sort().map((name) => [name, name]) },
-                { label: text("สถานะ", "Status"), value: statusFilter, set: setStatusFilter,
-                  options: Object.entries(language === "th" ? statusLabelsThai : statusLabels) },
-                { label: text("ความสำคัญ", "Priority"), value: priorityFilter, set: setPriorityFilter,
-                  options: Object.entries(language === "th" ? { low: "ต่ำ", medium: "ปานกลาง", high: "สูง", critical: "วิกฤต" } : priorityLabels) },
-                { label: text("ห้อง / พื้นที่", "Room / Area"), value: roomFilter, set: setRoomFilter,
-                  options: [...new Set((snapshot?.jobs ?? []).map((job) => job.room))].sort().map((room) => [room, room]) },
-                { label: text("หมวดหมู่", "Category"), value: categoryFilter, set: setCategoryFilter,
-                  options: [...new Set((snapshot?.jobs ?? []).map((job) => job.category).filter((value): value is string => Boolean(value)))].sort().map((category) => [category, categoryLabel(category, language)]) },
-              ].map((filter) => <label key={filter.label} className="space-y-2 text-sm font-semibold">
-                <span>{filter.label}</span>
-                <select value={filter.value} onChange={(event) => filter.set(event.target.value)} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal">
-                  <option value="all">{text("ทั้งหมด", "All")}</option>
-                  {filter.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-              </label>)}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p role="status" className="text-sm text-slate-600">{loading ? text("กำลังโหลด…", "Loading…") : text(`พบ ${filteredJobs.length} จาก ${snapshot?.jobs.length ?? 0} งาน`, `${filteredJobs.length} of ${snapshot?.jobs.length ?? 0} jobs`)} · {text("ตัวกรองใช้กับ KPI กราฟ รายการงาน และ CSV", "Filters apply to KPIs, charts, jobs and CSV")}</p>
-              <Button type="button" variant="outline" className="print:hidden" onClick={() => { setSearch(""); setStatusFilter("all"); setPriorityFilter("all"); setRoomFilter("all"); setCategoryFilter("all"); setYearFilter("latest"); setTechnicianFilter("all"); }}>{text("ล้างตัวกรอง", "Clear filters")}</Button>
-            </div>
+            <label className="block space-y-2 text-sm font-semibold"><span>{text("ค้นหางานหรือรายละเอียด", "Search jobs or descriptions")}</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={text("รหัสงาน รายละเอียด ห้อง หรือช่าง…", "Job ID, description, room or technician…")} className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base font-normal focus-visible:outline-teal-600" /></label>
+            <DemoFilters active={activeFilters} clear={clearFilters} count={filteredJobs.length} total={snapshot?.jobs.length ?? 0} loading={loading} context={text(`ปี ${selectedYear}`, `Year ${selectedYear}`)}>
+              <DemoFilterSelect label={text("ปีที่สร้างงาน", "Creation year")} value={selectedYear} onChange={setYearFilter} active={selectedYear !== years[0]} options={(years.length ? years : [selectedYear]).map((year) => [year, year])} />
+              <DemoFilterSelect label={text("ช่างผู้รับผิดชอบ", "Technician")} value={technicianFilter} onChange={setTechnicianFilter} allLabel={text("ช่างทุกคน", "All technicians")} options={[...new Set((snapshot?.jobs ?? []).map((job) => job.technician))].sort().map((name) => [name, name])} />
+              <DemoFilterSelect label={text("สถานะงาน", "Job status")} value={statusFilter} onChange={setStatusFilter} allLabel={text("ทุกสถานะ", "All statuses")} options={Object.entries(language === "th" ? statusLabelsThai : statusLabels)} />
+              <DemoFilterSelect label={text("ความสำคัญ", "Priority")} value={priorityFilter} onChange={setPriorityFilter} allLabel={text("ทุกระดับความสำคัญ", "All priorities")} options={Object.entries(priorityNames)} />
+              <DemoFilterSelect label={text("ห้อง / พื้นที่ / เครื่องจักร", "Room / Area / Machine")} value={roomFilter} onChange={setRoomFilter} allLabel={text("ทุกห้อง / พื้นที่", "All rooms / areas")} options={[...new Set((snapshot?.jobs ?? []).map((job) => job.room))].sort().map((room) => [room, room])} />
+              <DemoFilterSelect label={text("หมวดหมู่งาน", "Job category")} value={categoryFilter} onChange={setCategoryFilter} allLabel={text("ทุกหมวดหมู่", "All categories")} options={[...new Set((snapshot?.jobs ?? []).map((job) => job.category).filter((value): value is string => Boolean(value)))].sort().map((category) => [category, categoryLabel(category, language)])} />
+            </DemoFilters>
+            <p className="text-xs leading-5 text-slate-500">{text("ตัวกรองใช้กับ KPI กราฟ รายการงาน CSV และ Excel", "Filters apply to KPIs, charts, jobs, CSV and Excel")}</p>
           </form>
         </section>
 

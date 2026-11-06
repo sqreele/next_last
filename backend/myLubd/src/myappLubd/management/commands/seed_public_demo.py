@@ -2,7 +2,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from myappLubd.models import Area, Job, JobImage, Machine, Property, Room, Tenant, TenantMembership, Topic, User
+from myappLubd.models import Area, Job, JobImage, Machine, Property, Room, Tenant, TenantMembership, Topic, User, DemoJobDocument
 
 
 PROPERTY_ID = 'PB749146D'
@@ -75,6 +75,7 @@ class Command(BaseCommand):
         Area.objects.get_or_create(property=property_obj, name='Lobby', defaults={'is_active': True})
 
         topic_titles = [
+            'PMMs Rooms',
             'Air-Conditions(ระบบทำความเย็น)',
             'Barth Room(ห้องน้ำ)',
             'Door( ประตู)',
@@ -102,6 +103,9 @@ class Command(BaseCommand):
         has_demo_data = property_obj.jobs.filter(job_id__startswith='DEMO-CT-').exists()
         if options['reset']:
             public_jobs = Job.all_objects.filter(property=property_obj, job_id__startswith='DWEB')
+            for document in DemoJobDocument.objects.filter(job__in=public_jobs):
+                document.file.delete(save=False)
+                document.delete()
             for image in JobImage.objects.filter(job__in=public_jobs):
                 image.delete()
             public_jobs.hard_delete()

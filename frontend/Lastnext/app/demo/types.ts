@@ -15,6 +15,8 @@ export type DemoComment = {
 };
 
 export type DemoJob = {
+  machine?: DemoMachine | null;
+  documents?: Array<{ id: number; name: string; size: number; url: string }>;
   id: string;
   title: string;
   room: string;
@@ -36,6 +38,7 @@ export type DemoInventory = { item_id: string; name: string; quantity: number; s
 export type DemoMaintenance = { pm_id: string; pmtitle: string; status: string; scheduled_date: string; quality_score: number | null };
 
 export type DemoSnapshot = {
+  machines?: DemoMachine[];
   property: { property_id: string; name: string };
   rooms: string[];
   areas: string[];
@@ -44,6 +47,13 @@ export type DemoSnapshot = {
   inventory: DemoInventory[];
   maintenance: DemoMaintenance[];
   reset_interval_minutes: number;
+};
+
+export type DemoMachine = {
+  machine_id: string; name: string; brand: string | null; serial_number: string | null;
+  category: string | null; location: string | null; status: string; description: string | null;
+  asset_tag: string | null; installation_date: string | null;
+  last_maintenance_date: string | null; warranty_end_date: string | null;
 };
 
 export const statusLabels: Record<DemoStatus, string> = {
@@ -64,6 +74,7 @@ export const statusLabelsThai: Record<DemoStatus, string> = {
 
 export function categoryLabel(value: string, language: "th" | "en" = "th") {
   const normalized = value.toLowerCase();
+  if (normalized === "pmms rooms") return language === "th" ? "PMM ห้องพัก" : "PMMs Rooms";
   if (normalized.includes("air-condition")) return language === "th" ? "เครื่องปรับอากาศ" : "Air Conditioning";
   if (normalized.includes("barth") || normalized.includes("bath")) return language === "th" ? "ห้องน้ำ" : "Bathroom";
   if (normalized.includes("door")) return language === "th" ? "ประตู" : "Door";

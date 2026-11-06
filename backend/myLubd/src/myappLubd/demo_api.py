@@ -1,3 +1,5 @@
+import uuid
+from pathlib import Path
 from django.conf import settings
 from django.core.management import call_command
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -12,10 +14,12 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from .models import Area, Inventory, Job, JobComment, JobImage, PreventiveMaintenance, Property, Room, TenantMembership, Topic
+from .models import Area, Inventory, Job, JobComment, JobImage, PreventiveMaintenance, Property, Room, TenantMembership, Topic, Machine, DemoJobMachine, DemoJobDocument
+from .demo_documents import validate_documents
 
 
 DEMO_PROPERTY_ID = 'PB749146D'
+ROOM_PMM_CATEGORY = 'PMMs Rooms'
 DEMO_JOB_PREFIXES = ('DEMO-CT-', 'DWEB')
 ALLOWED_PRIORITIES = {'low', 'medium', 'high', 'critical'}
 ALLOWED_TRANSITIONS = {
@@ -45,11 +49,20 @@ def _demo_jobs():
         clause = Q(job_id__startswith=prefix)
         prefix_query = clause if prefix_query is None else prefix_query | clause
     return query.filter(prefix_query).select_related('user', 'area').prefetch_related(
-        'rooms', 'topics', 'job_images', 'comments__author',
+        'rooms', 'topics', 'job_images', 'comments__author', 'demo_documents', 'demo_machine__machine',
     )
 
 
+def _serialize_machine(machine):
+    return {key: getattr(machine, key) for key in (
+        'machine_id', 'name', 'brand', 'serial_number', 'category', 'location',
+        'status', 'description', 'asset_tag', 'installation_date',
+        'last_maintenance_date', 'warranty_end_date',
+    )}
+
+
 def _serialize_job(job):
+    machine_link = getattr(job, 'demo_machine', None)
     room = job.rooms.first()
     topic = job.topics.first()
     images = [
@@ -71,7 +84,7 @@ def _serialize_job(job):
     return {
         'id': job.job_id,
         'title': job.description.removeprefix('[DEMO] ').strip(),
-        'room': room.name if room else (job.area.name if job.area_id else 'Unassigned'),
+        'room': machine_link.machine.name if machine_link else (room.name if room else (job.area.name if job.area_id else 'Unassigned')),
         'technician': job.user.get_human_display_name(),
         'status': job.status,
         'priority': job.priority,
@@ -83,6 +96,8 @@ def _serialize_job(job):
         'is_defective': job.is_defective,
         'is_preventive_maintenance': job.is_preventivemaintenance,
         'images': images,
+        'machine': _serialize_machine(machine_link.machine) if machine_link else None,
+        'documents': [{'id': doc.pk, 'name': doc.name, 'size': doc.size, 'url': f'/api/demo/documents/{doc.pk}/'} for doc in job.demo_documents.all()],
         'comments': [
             {
                 'id': comment.pk,
@@ -115,7 +130,7 @@ def demo_snapshot():
             .order_by('name')
             .values_list('name', flat=True)
         ),
-        'categories': list(Topic.objects.order_by('title').values_list('title', flat=True)),
+        'categories': sorted(set(Topic.objects.values_list('title', flat=True)) | {ROOM_PMM_CATEGORY}),
         'areas': list(
             Area.objects.filter(property__property_id=DEMO_PROPERTY_ID, is_active=True)
             .order_by('name')
@@ -123,6 +138,7 @@ def demo_snapshot():
         ),
         'jobs': [_serialize_job(job) for job in jobs],
         'inventory': inventory,
+        'machines': [_serialize_machine(machine) for machine in Machine.objects.filter(property__property_id=DEMO_PROPERTY_ID).order_by('name')],
         'maintenance': maintenance,
         'reset_interval_minutes': 30,
     }
@@ -150,12 +166,23 @@ class DemoSnapshotView(APIView):
         category = str(request.data.get('category') or 'Orther (อาการอื่นๆ)').strip()
         requested_status = str(request.data.get('status') or 'pending').strip().lower()
         remarks = str(request.data.get('remarks') or '').strip()
-        upload = request.FILES.get('before_image') or request.FILES.get('image')
-        after_upload = request.FILES.get('after_image')
+        machine_id = str(request.data.get('machine_id') or '').strip()
+        documents = request.FILES.getlist('documents')
+        if documents and not machine_id:
+            return Response({'detail': 'PDF documents require a selected machine.'}, status=400)
+        document_error = validate_documents(documents)
+        if document_error:
+            return Response({'detail': document_error}, status=400)
+        before_uploads = [*request.FILES.getlist('before_images'), *request.FILES.getlist('before_image'), *request.FILES.getlist('image')]
+        after_uploads = [*request.FILES.getlist('after_images'), *request.FILES.getlist('after_image')]
+        if sum(upload.size for _, uploads in request.FILES.lists() for upload in uploads) > 3.5 * 1024 * 1024:
+            return Response({'detail': 'Combined attachments must be under 3.5 MB.'}, status=400)
+        if len(before_uploads) + len(after_uploads) > 5:
+            return Response({'detail': 'A demo job can contain up to 5 photos in total.'}, status=400)
         if not 3 <= len(title) <= 160:
             return Response({'detail': 'Title must contain 3 to 160 characters.'}, status=400)
-        if bool(room_name) == bool(area_name):
-            return Response({'detail': 'Select either one room or one area.'}, status=400)
+        if sum(bool(value) for value in (room_name, area_name, machine_id)) != 1:
+            return Response({'detail': 'Select exactly one room, area or machine.'}, status=400)
         if len(room_name) > 100 or len(area_name) > 100:
             return Response({'detail': 'Invalid demo location.'}, status=400)
         if priority not in ALLOWED_PRIORITIES:
@@ -165,13 +192,13 @@ class DemoSnapshotView(APIView):
         if len(remarks) > 1000:
             return Response({'detail': 'Remarks must be 1000 characters or fewer.'}, status=400)
         topic = Topic.objects.filter(title=category).first()
-        if topic is None:
+        if topic is None and category != ROOM_PMM_CATEGORY:
             return Response({'detail': 'Select a category from the demo category list.'}, status=400)
-        if after_upload is not None and requested_status != 'completed':
+        if category == ROOM_PMM_CATEGORY and not room_name:
+            return Response({'detail': 'PMMs Rooms requires a room location.'}, status=400)
+        if after_uploads and requested_status != 'completed':
             return Response({'detail': 'After evidence is only available for completed jobs.'}, status=400)
-        for candidate in (upload, after_upload):
-            if candidate is None:
-                continue
+        for candidate in before_uploads + after_uploads:
             if int(getattr(candidate, 'size', 0) or 0) > 3 * 1024 * 1024:
                 return Response({'detail': 'Demo image must be 3 MB or smaller.'}, status=400)
             if str(getattr(candidate, 'content_type', '')).lower() not in {
@@ -182,6 +209,9 @@ class DemoSnapshotView(APIView):
         property_obj = Property.objects.filter(property_id=DEMO_PROPERTY_ID).first()
         if property_obj is None:
             return Response({'detail': 'Demo dataset is unavailable.'}, status=503)
+        machine = Machine.objects.filter(property=property_obj, machine_id=machine_id).first() if machine_id else None
+        if machine_id and machine is None:
+            return Response({'detail': 'Select a machine from this demo property.'}, status=400)
         room = Room.objects.filter(property=property_obj, name=room_name, is_active=True).first() if room_name else None
         area = Area.objects.filter(property=property_obj, name=area_name, is_active=True).first() if area_name else None
         if room_name and room is None:
@@ -203,8 +233,11 @@ class DemoSnapshotView(APIView):
         if membership is None:
             return Response({'detail': 'Demo technician is unavailable.'}, status=503)
 
+        created_documents = []
         try:
             with transaction.atomic():
+                if category == ROOM_PMM_CATEGORY:
+                    topic, _ = Topic.objects.get_or_create(title=ROOM_PMM_CATEGORY)
                 now = timezone.now()
                 job = Job(
                     job_id=f"DWEB{get_random_string(8, allowed_chars='0123456789ABCDEF')}",
@@ -216,32 +249,43 @@ class DemoSnapshotView(APIView):
                     remarks=f'[DEMO-PUBLIC-DATABASE] {remarks}'.strip(),
                     status=requested_status,
                     priority=priority,
-                    is_defective=str(request.data.get('is_defective') or 'true').lower() == 'true',
-                    is_preventivemaintenance=str(request.data.get('is_preventive_maintenance') or 'false').lower() == 'true',
+                    is_defective=category != ROOM_PMM_CATEGORY and str(request.data.get('is_defective') or 'true').lower() == 'true',
+                    is_preventivemaintenance=category == ROOM_PMM_CATEGORY or str(request.data.get('is_preventive_maintenance') or 'false').lower() == 'true',
                     created_at=now,
                     updated_at=now,
                     completed_at=now if requested_status == 'completed' else None,
                 )
                 Job.objects.bulk_create([job])
+                if machine:
+                    DemoJobMachine.objects.create(job=job, machine=machine)
+                for document in documents:
+                    doc = DemoJobDocument(job=job, name=Path(document.name).name[:200], size=document.size)
+                    doc.file.save(f'{uuid.uuid4().hex}.pdf', document, save=False)
+                    created_documents.append((doc.file.storage, doc.file.name))
+                    doc.save()
                 if room is not None:
                     Job.rooms.through.objects.create(job_id=job.pk, room_id=room.pk)
                 Job.topics.through.objects.create(job_id=job.pk, topic_id=topic.pk)
-                if upload is not None:
+                for upload in before_uploads:
                     JobImage.objects.create(
                         job=job,
                         image=upload,
                         image_type='before',
                         uploaded_by=membership.user,
                     )
-                if after_upload is not None:
+                for after_upload in after_uploads:
                     JobImage.objects.create(
                         job=job,
                         image=after_upload,
                         image_type='after',
                         uploaded_by=membership.user,
                     )
-        except DjangoValidationError as exc:
-            return Response({'detail': '; '.join(exc.messages)}, status=400)
+        except Exception as exc:
+            for storage, name in created_documents:
+                storage.delete(name)
+            if isinstance(exc, DjangoValidationError):
+                return Response({'detail': '; '.join(exc.messages)}, status=400)
+            raise
         job = _demo_jobs().get(pk=job.pk)
         return Response(_serialize_job(job), status=status.HTTP_201_CREATED)
 
@@ -289,6 +333,8 @@ class DemoJobView(APIView):
             return Response({'detail': 'This demo status transition is not allowed.'}, status=400)
         after_upload = request.FILES.get('after_image')
         if after_upload is not None:
+            if job.job_images.count() >= 5:
+                return Response({'detail': 'A demo job can contain up to 5 photos in total.'}, status=400)
             if requested_status != 'completed':
                 return Response({'detail': 'After evidence is only available when closing a job.'}, status=400)
             if int(getattr(after_upload, 'size', 0) or 0) > 3 * 1024 * 1024:
@@ -343,3 +389,24 @@ class DemoResetView(APIView):
         _require_demo_mode()
         call_command('seed_public_demo', reset=True, verbosity=0)
         return Response(demo_snapshot())
+
+
+
+class DemoDocumentView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [DemoApiThrottle]
+
+    def get(self, request, document_id):
+        _require_demo_mode()
+        document = DemoJobDocument.objects.filter(pk=document_id, job__in=_demo_jobs()).first()
+        if document is None:
+            raise Http404
+        try:
+            document.file.open('rb')
+        except (FileNotFoundError, OSError):
+            raise Http404
+        response = FileResponse(document.file, content_type='application/pdf', as_attachment=True, filename=document.name)
+        response['Cache-Control'] = 'no-store'
+        response['X-Content-Type-Options'] = 'nosniff'
+        return response

@@ -43,6 +43,8 @@ export async function proxyDemoRequest(
       headers: {
         'cache-control': 'no-store',
         'content-type': response.headers.get('content-type') || 'application/json',
+        ...(response.headers.get('content-disposition') ? { 'content-disposition': response.headers.get('content-disposition')! } : {}),
+        'x-content-type-options': 'nosniff',
       },
     });
   } catch {

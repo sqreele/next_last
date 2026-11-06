@@ -20,6 +20,9 @@ import { StatusBadge } from "@/app/components/StatusBadge";
 import { Button } from "@/app/components/ui/button";
 import { useDemoLanguage } from "../DemoLanguageProvider";
 import { categoryLabel, displayDate } from "../types";
+import { imageLinks } from "./export-excel";
+import ReportCharts from "./ReportCharts";
+import { jobPeriod } from "./analytics.mjs";
 
 type DemoStatus = "pending" | "in_progress" | "waiting_sparepart" | "completed" | "cancelled";
 type DemoPriority = "low" | "medium" | "high" | "critical";
@@ -32,6 +35,7 @@ type DemoJob = {
   priority: DemoPriority;
   category?: string;
   updated: string;
+  created?: string;
   images?: Array<{ id: number | string; image_type: "before" | "after"; image_url: string }>;
 };
 type DemoInventory = { item_id: string; name: string; quantity: number; status: string };
@@ -114,6 +118,33 @@ export default function DemoReportClient() {
   const [snapshot, setSnapshot] = useState<DemoSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [roomFilter, setRoomFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportMessage, setExportMessage] = useState("");
+  const [yearFilter, setYearFilter] = useState("latest");
+  const [technicianFilter, setTechnicianFilter] = useState("all");
+  const years = useMemo(() => [...new Set((snapshot?.jobs ?? []).map((job) => jobPeriod(job)?.year).filter((year): year is string => Boolean(year)))].sort().reverse(), [snapshot]);
+  const selectedYear = yearFilter === "latest" ? years[0] ?? String(new Date().getFullYear()) : yearFilter;
+
+  const filteredJobs = useMemo(() => {
+    const terms = search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    return (snapshot?.jobs ?? []).filter((job) => {
+      const searchable = [job.id, job.title, job.room, job.category, job.technician,
+        job.category ? categoryLabel(job.category, language) : ""]
+        .filter(Boolean).join(" ").toLocaleLowerCase();
+      return terms.every((term) => searchable.includes(term))
+        && (statusFilter === "all" || job.status === statusFilter)
+        && (priorityFilter === "all" || job.priority === priorityFilter)
+        && (roomFilter === "all" || job.room === roomFilter)
+        && jobPeriod(job)?.year === selectedYear
+        && (technicianFilter === "all" || job.technician === technicianFilter)
+        && (categoryFilter === "all" || job.category === categoryFilter);
+    });
+  }, [snapshot, search, statusFilter, priorityFilter, roomFilter, categoryFilter, language, selectedYear, technicianFilter]);
 
   const loadReport = useCallback(async () => {
     setLoading(true);
@@ -135,7 +166,7 @@ export default function DemoReportClient() {
   }, [loadReport]);
 
   const report = useMemo(() => {
-    const jobs = snapshot?.jobs ?? [];
+    const jobs = filteredJobs;
     const countStatus = (status: DemoStatus) => jobs.filter((job) => job.status === status).length;
     const byRoom = new Map<string, number>();
     jobs.forEach((job) => byRoom.set(job.room, (byRoom.get(job.room) ?? 0) + 1));
@@ -164,14 +195,37 @@ export default function DemoReportClient() {
         }))
         .sort((left, right) => right.value - left.value),
     };
-  }, [language, snapshot]);
+  }, [language, filteredJobs]);
+
+  const exportHeaders = () => language === "th" ? ["รหัสงาน", "รายละเอียด", "ห้อง/พื้นที่", "หมวดหมู่", "ช่าง", "สถานะ", "ความสำคัญ", "อัปเดต", "ลิงก์รูปก่อนซ่อม", "ลิงก์รูปหลังซ่อม"] : ["Job ID", "Description", "Room/Area", "Category", "Technician", "Status", "Priority", "Updated", "Before photo links", "After photo links"];
+  const exportRows = () => filteredJobs.map((job) => [
+      job.id, job.title, job.room, job.category || "", job.technician, language === "th" ? statusLabelsThai[job.status] : statusLabels[job.status], priorityLabels[job.priority], displayDate(job.updated, language),
+      imageLinks(job.images, "before", window.location.origin).join("\n"),
+      imageLinks(job.images, "after", window.location.origin).join("\n"),
+    ]);
+
+  const exportExcel = async () => {
+    setExportingExcel(true);
+    setExportMessage("");
+    try {
+      const { exportDemoExcel } = await import("./export-excel");
+      const failed = await exportDemoExcel(
+        [...exportHeaders(), text("รูปก่อนซ่อม", "Before photos"), text("รูปหลังซ่อม", "After photos")],
+        exportRows(), filteredJobs.map((job) => job.images ?? []),
+        `staymaint-demo-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      setExportMessage(failed ? text(`ส่งออกแล้ว แต่โหลดรูปไม่ได้ ${failed} รูป โดยยังเก็บลิงก์ไว้`, `Exported with ${failed} unavailable images; photo links are retained.`) : text("ส่งออก Excel พร้อมรูปภาพแล้ว", "Excel exported with embedded photos."));
+    } catch {
+      setExportMessage(text("ส่งออก Excel ไม่สำเร็จ กรุณาลองใหม่", "Excel export failed. Please try again."));
+    } finally {
+      setExportingExcel(false);
+    }
+  };
 
   const exportCsv = () => {
     if (!snapshot) return;
-    const header = language === "th" ? ["รหัสงาน", "รายละเอียด", "ห้อง/พื้นที่", "หมวดหมู่", "ช่าง", "สถานะ", "ความสำคัญ", "อัปเดต"] : ["Job ID", "Title", "Room/Area", "Category", "Technician", "Status", "Priority", "Updated"];
-    const rows = snapshot.jobs.map((job) => [
-      job.id, job.title, job.room, job.category || "", job.technician, language === "th" ? statusLabelsThai[job.status] : statusLabels[job.status], priorityLabels[job.priority], displayDate(job.updated, language),
-    ]);
+    const header = exportHeaders();
+    const rows = exportRows();
     const csv = `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
@@ -198,6 +252,9 @@ export default function DemoReportClient() {
             <Button variant="outline" onClick={exportCsv} disabled={!snapshot} className="h-11">
               <Download className="mr-2 h-4 w-4" />{text("ส่งออก CSV", "Export CSV")}
             </Button>
+            <Button variant="outline" onClick={() => void exportExcel()} disabled={!snapshot || loading || exportingExcel || filteredJobs.length === 0} className="h-11">
+              {exportingExcel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}{exportingExcel ? text("กำลังสร้าง Excel…", "Building Excel…") : text("ส่งออก Excel พร้อมรูป", "Excel with photos")}
+            </Button>
             <Button onClick={() => window.print()} disabled={!snapshot} className="col-span-2 h-11 sm:col-span-1">
               <Printer className="mr-2 h-4 w-4" />{text("พิมพ์ / PDF", "Print / PDF")}
             </Button>
@@ -205,6 +262,43 @@ export default function DemoReportClient() {
         </section>
 
         {error ? <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p> : null}
+        {exportMessage ? <p role="status" className="rounded-xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900 print:hidden">{exportMessage}</p> : null}
+
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <form role="search" onSubmit={(event) => event.preventDefault()} className="space-y-4">
+            <label className="block space-y-2 text-sm font-semibold">
+              <span>{text("ค้นหางานหรือรายละเอียด", "Search jobs or descriptions")}</span>
+              <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
+                placeholder={text("รหัสงาน รายละเอียด ห้อง หมวดหมู่ หรือช่าง…", "Job ID, description, room, category or technician…")}
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base font-normal focus-visible:outline-teal-600" />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="space-y-2 text-sm font-semibold"><span>{text("ปีที่สร้างงาน", "Creation year")}</span><select value={selectedYear} onChange={(event) => setYearFilter(event.target.value)} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal">{(years.length ? years : [selectedYear]).map((year) => <option key={year} value={year}>{year}</option>)}</select></label>
+              {[
+                { label: text("ช่างผู้รับผิดชอบ", "Technician"), value: technicianFilter, set: setTechnicianFilter,
+                  options: [...new Set((snapshot?.jobs ?? []).map((job) => job.technician))].sort().map((name) => [name, name]) },
+                { label: text("สถานะ", "Status"), value: statusFilter, set: setStatusFilter,
+                  options: Object.entries(language === "th" ? statusLabelsThai : statusLabels) },
+                { label: text("ความสำคัญ", "Priority"), value: priorityFilter, set: setPriorityFilter,
+                  options: Object.entries(language === "th" ? { low: "ต่ำ", medium: "ปานกลาง", high: "สูง", critical: "วิกฤต" } : priorityLabels) },
+                { label: text("ห้อง / พื้นที่", "Room / Area"), value: roomFilter, set: setRoomFilter,
+                  options: [...new Set((snapshot?.jobs ?? []).map((job) => job.room))].sort().map((room) => [room, room]) },
+                { label: text("หมวดหมู่", "Category"), value: categoryFilter, set: setCategoryFilter,
+                  options: [...new Set((snapshot?.jobs ?? []).map((job) => job.category).filter((value): value is string => Boolean(value)))].sort().map((category) => [category, categoryLabel(category, language)]) },
+              ].map((filter) => <label key={filter.label} className="space-y-2 text-sm font-semibold">
+                <span>{filter.label}</span>
+                <select value={filter.value} onChange={(event) => filter.set(event.target.value)} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal">
+                  <option value="all">{text("ทั้งหมด", "All")}</option>
+                  {filter.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>)}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p role="status" className="text-sm text-slate-600">{loading ? text("กำลังโหลด…", "Loading…") : text(`พบ ${filteredJobs.length} จาก ${snapshot?.jobs.length ?? 0} งาน`, `${filteredJobs.length} of ${snapshot?.jobs.length ?? 0} jobs`)} · {text("ตัวกรองใช้กับ KPI กราฟ รายการงาน และ CSV", "Filters apply to KPIs, charts, jobs and CSV")}</p>
+              <Button type="button" variant="outline" className="print:hidden" onClick={() => { setSearch(""); setStatusFilter("all"); setPriorityFilter("all"); setRoomFilter("all"); setCategoryFilter("all"); setYearFilter("latest"); setTechnicianFilter("all"); }}>{text("ล้างตัวกรอง", "Clear filters")}</Button>
+            </div>
+          </form>
+        </section>
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
@@ -219,6 +313,8 @@ export default function DemoReportClient() {
             </article>
           ))}
         </section>
+
+        <ReportCharts jobs={filteredJobs} loading={loading} year={selectedYear} />
 
         <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
           <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5">
@@ -267,7 +363,7 @@ export default function DemoReportClient() {
         <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:rounded-2xl">
           <div className="border-b border-slate-200 p-5"><h2 className="font-semibold">{text("รายละเอียดใบสั่งงาน", "Work Order Detail")}</h2><p className="text-sm text-slate-500">{text("ข้อมูลล่าสุดจากฐานข้อมูล Demo", "Latest data from the Demo Database")}</p></div>
           <div className="divide-y md:hidden">
-            {snapshot?.jobs.map((job) => (
+            {filteredJobs.map((job) => (
               <Link key={job.id} href={`/demo/jobs/${job.id}/`} className="flex min-h-24 gap-3 p-3.5 active:bg-slate-50">
                 {job.images?.[0]?.image_url ? <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-100"><Image src={job.images[0].image_url} alt="" fill unoptimized className="object-cover" /></div> : <div className="h-20 w-20 shrink-0 rounded-lg bg-slate-100" />}
                 <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="font-mono text-xs font-semibold text-teal-700">{job.id}</span><StatusBadge status={job.status} size="sm" /></div><p className="mt-1 line-clamp-2 text-sm font-semibold leading-5">{job.title}</p><div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-500"><span className="truncate">{job.room} · {job.category ? categoryLabel(job.category, language) : "—"}</span><PriorityBadge priority={job.priority} size="sm" /></div></div>
@@ -280,7 +376,7 @@ export default function DemoReportClient() {
                 <tr>{(language === "th" ? ["รูป", "รหัสงาน", "รายละเอียด", "ห้อง/พื้นที่", "หมวดหมู่", "ผู้รับผิดชอบ", "สถานะ", "ความสำคัญ", "อัปเดต"] : ["Image", "Job ID", "Description", "Room/Area", "Category", "Technician", "Status", "Priority", "Updated"]).map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {snapshot?.jobs.map((job) => (
+                {filteredJobs.map((job) => (
                   <tr key={job.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
                       {job.images?.[0]?.image_url ? <div className="relative h-12 w-16 overflow-hidden rounded-lg border border-slate-200 bg-slate-100"><Image src={job.images[0].image_url} alt="" fill unoptimized className="object-cover" /></div> : null}
@@ -298,6 +394,7 @@ export default function DemoReportClient() {
               </tbody>
             </table>
           </div>
+          {!loading && !error && filteredJobs.length === 0 ? <p className="p-8 text-center text-sm text-slate-500">{text("ไม่พบงานตามคำค้นหาหรือตัวกรอง ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง", "No jobs match your search or filters. Try another search or clear the filters.")}</p> : null}
         </section>
 
         <p className="text-center text-xs text-slate-500">{text(`รายงานนี้ใช้ข้อมูลทดลองเท่านั้น ข้อมูลจะรีเซ็ตอัตโนมัติทุก ${snapshot?.reset_interval_minutes ?? 30} นาที`, `This report uses demo data only. Data resets automatically every ${snapshot?.reset_interval_minutes ?? 30} minutes.`)}</p>

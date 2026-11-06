@@ -1967,6 +1967,20 @@ def save_user_profile(sender, instance, **kwargs):
     instance.userprofile.save()
 
 
+class DemoJobMachine(models.Model):
+    """Machine context for isolated public-demo Jobs only."""
+    job = models.OneToOneField('Job', on_delete=models.CASCADE, related_name='demo_machine')
+    machine = models.ForeignKey('Machine', on_delete=models.PROTECT)
+
+
+class DemoJobDocument(models.Model):
+    job = models.ForeignKey('Job', on_delete=models.CASCADE, related_name='demo_documents')
+    file = models.FileField(upload_to='demo_documents/%Y/%m/')
+    name = models.CharField(max_length=200)
+    size = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class Session(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sessions')
     session_token = models.CharField(max_length=255, unique=True)

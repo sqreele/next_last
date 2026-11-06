@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Building2, ClipboardList, Home, Menu, Plus, RotateCcw, UserRound } from "lucide-react";
+import { BarChart3, Building2, ClipboardList, Home, Mail, Menu, Plus, RotateCcw, UserRound } from "lucide-react";
 
 import { Logo } from "@/app/components/branding/Logo";
 import { Button } from "@/app/components/ui/button";
@@ -18,6 +18,7 @@ const navigation = [
   { href: "/demo/my-jobs/", en: "My Jobs", th: "งานของฉัน", icon: UserRound },
   { href: "/demo/create-job/", en: "Create Job", th: "สร้างงาน", icon: Plus },
   { href: "/demo/report/", en: "Reports", th: "รายงาน", icon: BarChart3 },
+  { href: "/demo/email-reports/", en: "Email Reports", th: "อีเมลรายงาน", icon: Mail },
 ];
 
 function DemoNav({ mobile = false }: { mobile?: boolean }) {
@@ -54,7 +55,7 @@ export default function DemoShell({ children }: { children: React.ReactNode }) {
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2"><div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="group" aria-label={text("เลือกภาษา", "Select language")}><button type="button" onClick={() => setLanguage("th")} aria-pressed={language === "th"} className={cn("min-h-9 rounded-md px-2 text-xs font-bold transition", language === "th" ? "bg-white text-teal-700 shadow-sm" : "text-slate-500")}>TH</button><button type="button" onClick={() => setLanguage("en")} aria-pressed={language === "en"} className={cn("min-h-9 rounded-md px-2 text-xs font-bold transition", language === "en" ? "bg-white text-teal-700 shadow-sm" : "text-slate-500")}>EN</button></div><span className="hidden rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 md:inline">{text("Sandbox · ไม่ต้องล็อกอิน", "Sandbox · No login")}</span><Button size="sm" asChild className="hidden h-10 px-3 text-xs sm:inline-flex sm:px-4 sm:text-sm"><Link href="/auth/register">{text("ทดลองใช้ฟรี", "Start Free Trial")}</Link></Button></div>
         </header>
         <main className="mx-auto w-full max-w-[1500px] px-3 pb-28 pt-4 print:max-w-none print:p-0 sm:p-6 lg:p-8">{children}</main>
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-slate-200 bg-white/95 px-1 pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur print:hidden lg:hidden" style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))" }} aria-label="Demo mobile navigation">{navigation.map((item) => { const Icon = item.icon; const active = item.exact ? pathname === "/demo" || pathname === "/demo/" : pathname.startsWith(item.href.replace(/\/$/, "")); return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("relative flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[10px] font-semibold transition", active ? "text-teal-700" : "text-slate-500")}><Icon className={cn("h-5 w-5", active && "stroke-[2.5]")} /><span className="max-w-full truncate">{language === "th" ? item.th : item.en.replace(" Job", "")}</span>{active ? <span className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-teal-600" /> : null}</Link>; })}</nav>
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-slate-200 bg-white/95 px-1 pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur print:hidden lg:hidden" style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom))" }} aria-label="Demo mobile navigation">{navigation.filter((item) => item.href !== "/demo/email-reports/").map((item) => { const Icon = item.icon; const active = item.exact ? pathname === "/demo" || pathname === "/demo/" : pathname.startsWith(item.href.replace(/\/$/, "")); return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn("relative flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-lg px-1 text-[10px] font-semibold transition", active ? "text-teal-700" : "text-slate-500")}><Icon className={cn("h-5 w-5", active && "stroke-[2.5]")} /><span className="max-w-full truncate">{language === "th" ? item.th : item.en.replace(" Job", "")}</span>{active ? <span className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-teal-600" /> : null}</Link>; })}</nav>
       </div>
     </div>
   );

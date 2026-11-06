@@ -246,6 +246,7 @@ export default function DemoReportClient() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 print:hidden sm:flex sm:flex-wrap">
+            <Button variant="outline" asChild className="h-11"><Link href="/demo/email-reports/">{text("ตัวอย่างอีเมล", "Email templates")}</Link></Button>
             <Button variant="outline" onClick={() => void loadReport()} disabled={loading} className="h-11">
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}{text("รีเฟรช", "Refresh")}
             </Button>

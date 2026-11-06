@@ -20,6 +20,7 @@ from .billing.views import StripeCheckoutView, StripePortalView, StripeWebhookVi
 from .line_integration import LineWebhookView
 from .contact import ContactSubmissionView
 from .demo_api import DemoImageView, DemoJobCommentView, DemoJobView, DemoResetView, DemoSnapshotView, DemoDocumentView
+from .demo_email_preview import DemoEmailPreviewView
 from .platform_api import (
     PlatformSummaryView, PlatformTenantDetailView, PlatformTenantsView,
     PlatformSubscriptionDetailView, PlatformSubscriptionsView, PlatformUsageView,
@@ -70,6 +71,7 @@ urlpatterns = [
     path('api/v1/integrations/line/webhook/', LineWebhookView.as_view(), name='line-webhook'),
     path('api/v1/public/contact/', ContactSubmissionView.as_view(), name='public-contact'),
     path('api/v1/demo/', DemoSnapshotView.as_view(), name='public-demo'),
+    path('api/v1/demo/email-preview/', DemoEmailPreviewView.as_view(), name='public-demo-email-preview'),
     path('api/v1/demo/reset/', DemoResetView.as_view(), name='public-demo-reset'),
     path('api/v1/demo/jobs/<str:job_id>/', DemoJobView.as_view(), name='public-demo-job'),
     path('api/v1/demo/jobs/<str:job_id>/comments/', DemoJobCommentView.as_view(), name='public-demo-job-comment'),

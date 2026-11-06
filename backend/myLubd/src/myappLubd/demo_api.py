@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from .models import Area, Inventory, Job, JobComment, JobImage, PreventiveMaintenance, Property, Room, TenantMembership, Topic, Machine, DemoJobMachine, DemoJobDocument
 from .demo_documents import validate_documents
+from .demo_categories import MACHINE_CATEGORIES, machine_category_flags
 
 
 DEMO_PROPERTY_ID = 'PB749146D'
@@ -131,6 +132,7 @@ def demo_snapshot():
             .values_list('name', flat=True)
         ),
         'categories': sorted(set(Topic.objects.values_list('title', flat=True)) | {ROOM_PMM_CATEGORY}),
+        'machine_categories': list(MACHINE_CATEGORIES),
         'areas': list(
             Area.objects.filter(property__property_id=DEMO_PROPERTY_ID, is_active=True)
             .order_by('name')
@@ -167,6 +169,14 @@ class DemoSnapshotView(APIView):
         requested_status = str(request.data.get('status') or 'pending').strip().lower()
         remarks = str(request.data.get('remarks') or '').strip()
         machine_id = str(request.data.get('machine_id') or '').strip()
+        machine_flags = None
+        if machine_id:
+            try:
+                machine_flags = machine_category_flags(category)
+            except ValueError as exc:
+                return Response({'detail': str(exc)}, status=400)
+        elif category in MACHINE_CATEGORIES:
+            return Response({'detail': 'Machine work categories require a machine location.'}, status=400)
         documents = request.FILES.getlist('documents')
         if documents and not machine_id:
             return Response({'detail': 'PDF documents require a selected machine.'}, status=400)
@@ -192,7 +202,7 @@ class DemoSnapshotView(APIView):
         if len(remarks) > 1000:
             return Response({'detail': 'Remarks must be 1000 characters or fewer.'}, status=400)
         topic = Topic.objects.filter(title=category).first()
-        if topic is None and category != ROOM_PMM_CATEGORY:
+        if topic is None and category != ROOM_PMM_CATEGORY and not machine_id:
             return Response({'detail': 'Select a category from the demo category list.'}, status=400)
         if category == ROOM_PMM_CATEGORY and not room_name:
             return Response({'detail': 'PMMs Rooms requires a room location.'}, status=400)
@@ -236,8 +246,8 @@ class DemoSnapshotView(APIView):
         created_documents = []
         try:
             with transaction.atomic():
-                if category == ROOM_PMM_CATEGORY:
-                    topic, _ = Topic.objects.get_or_create(title=ROOM_PMM_CATEGORY)
+                if category == ROOM_PMM_CATEGORY or machine_id:
+                    topic, _ = Topic.objects.get_or_create(title=category)
                 now = timezone.now()
                 job = Job(
                     job_id=f"DWEB{get_random_string(8, allowed_chars='0123456789ABCDEF')}",
@@ -255,6 +265,9 @@ class DemoSnapshotView(APIView):
                     updated_at=now,
                     completed_at=now if requested_status == 'completed' else None,
                 )
+                if machine_flags is not None:
+                    job.is_preventivemaintenance = machine_flags['is_preventivemaintenance']
+                    job.is_defective = machine_flags['is_defective']
                 Job.objects.bulk_create([job])
                 if machine:
                     DemoJobMachine.objects.create(job=job, machine=machine)

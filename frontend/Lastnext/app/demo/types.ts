@@ -38,6 +38,7 @@ export type DemoInventory = { item_id: string; name: string; quantity: number; s
 export type DemoMaintenance = { pm_id: string; pmtitle: string; status: string; scheduled_date: string; quality_score: number | null };
 
 export type DemoSnapshot = {
+  machine_categories?: string[];
   machines?: DemoMachine[];
   property: { property_id: string; name: string };
   rooms: string[];
@@ -72,7 +73,16 @@ export const statusLabelsThai: Record<DemoStatus, string> = {
   cancelled: "ยกเลิก",
 };
 
+export const MACHINE_CATEGORIES = ["PM", "Repair", "Preventive Monthly", "Preventive Weekly", "Preventive Yearly", "Change Part", "Service Contract", "Other"];
+
 export function categoryLabel(value: string, language: "th" | "en" = "th") {
+  const machineLabels: Record<string, string> = {
+    PM: "PM / บำรุงรักษา", Repair: "ซ่อมแซม",
+    "Preventive Monthly": "บำรุงรักษารายเดือน", "Preventive Weekly": "บำรุงรักษารายสัปดาห์",
+    "Preventive Yearly": "บำรุงรักษารายปี", "Change Part": "เปลี่ยนอะไหล่", Other: "อื่น ๆ",
+    "Service Contract": "สัญญาบริการ",
+  };
+  if (value in machineLabels) return language === "th" ? machineLabels[value] : value;
   const normalized = value.toLowerCase();
   if (normalized === "pmms rooms") return language === "th" ? "PMM ห้องพัก" : "PMMs Rooms";
   if (normalized.includes("air-condition")) return language === "th" ? "เครื่องปรับอากาศ" : "Air Conditioning";

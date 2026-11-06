@@ -1,6 +1,7 @@
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from myappLubd.demo_categories import MACHINE_CATEGORIES
 
 from myappLubd.models import Area, Job, JobImage, Machine, Property, Room, Tenant, TenantMembership, Topic, User, DemoJobDocument
 
@@ -87,7 +88,7 @@ class Command(BaseCommand):
             'Water Leasks (น้ำรั่ว)',
             'Water and Hot water (น้ำร้อน,น้ำเย็น)',
         ]
-        for title in topic_titles:
+        for title in [*topic_titles, *MACHINE_CATEGORIES]:
             Topic.objects.get_or_create(title=title)
         Machine.objects.get_or_create(
             machine_id='DEMO-HVAC-001',

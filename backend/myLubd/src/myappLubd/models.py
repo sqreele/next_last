@@ -1602,6 +1602,10 @@ class DeletedJobManager(models.Manager.from_queryset(JobQuerySet)):
 
 
 class Job(models.Model):
+    machine = models.ForeignKey(
+        'Machine', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='jobs', help_text='Equipment selected for this work order',
+    )
     is_preventivemaintenance = models.BooleanField(default=False, db_index=True)
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -1724,6 +1728,8 @@ class Job(models.Model):
 
     def clean(self):
         super().clean()
+        if self.machine_id and self.property_id != self.machine.property_id:
+            raise ValidationError({'machine': 'Selected machine must belong to the Job property.'})
         if self.property_id and self.area_id and self.area.property_id != self.property_id:
             raise ValidationError({
                 'area': 'Selected area must belong to the Job property.',
@@ -1965,6 +1971,14 @@ def save_user_profile(sender, instance, **kwargs):
     if not hasattr(instance, 'userprofile'):
         UserProfile.objects.create(user=instance)
     instance.userprofile.save()
+
+
+class JobDocument(models.Model):
+    job = models.ForeignKey('Job', on_delete=models.CASCADE, related_name='documents')
+    file = models.FileField(upload_to='job_documents/%Y/%m/')
+    name = models.CharField(max_length=200)
+    size = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class DemoJobMachine(models.Model):

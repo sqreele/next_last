@@ -67,6 +67,7 @@ function formatDate(dateString: string | null | undefined, locale: Locale, t: Tr
 
 function getLocation(job: Job, fallback = "Unassigned location"): string {
   return (
+    job.machine?.name ||
     job.area?.name ||
     job.area_name ||
     job.rooms?.[0]?.name ||

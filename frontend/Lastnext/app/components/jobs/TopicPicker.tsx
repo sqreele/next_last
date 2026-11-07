@@ -29,6 +29,7 @@ interface TopicPickerProps {
   onChange: (topic: TopicValue) => void;
   disabled?: boolean;
   invalid?: boolean;
+  allowCustom?: boolean;
 }
 
 const EMPTY_TOPIC: TopicValue = { title: "", description: "" };
@@ -38,6 +39,7 @@ export default function TopicPicker({
   value,
   onChange,
   disabled = false,
+  allowCustom = true,
   invalid = false,
 }: TopicPickerProps) {
   const t = useT();
@@ -171,7 +173,7 @@ export default function TopicPicker({
         aria-label={t("createJob.chooseCategory")}
         className="mt-2 max-h-[min(55vh,24rem)] space-y-1 overflow-y-auto overscroll-contain pr-1"
       >
-        {query.trim() &&
+        {allowCustom && query.trim() &&
           !topics.some(
             (topic) =>
               topic.title.toLocaleLowerCase() ===

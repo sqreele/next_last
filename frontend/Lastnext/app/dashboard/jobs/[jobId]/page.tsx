@@ -268,10 +268,25 @@ export default async function JobPage({ params, searchParams }: Props) {
             ) : null}
           </section>
 
+          {Boolean(job.documents?.length) && (
+            <Card>
+              <CardHeader><h2 className="text-base font-semibold">Documents / เอกสารแนบ (PDF)</h2></CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {job.documents?.map((document) => (
+                    <li key={document.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                      <a href={document.url} className="break-all text-primary underline">{document.name}</a>
+                      <span className="text-muted-foreground">{(document.size / 1024).toFixed(0)} KB</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
           {(displayedProperties.length > 0 ||
             (job.rooms && job.rooms.length > 0) ||
             job.area ||
-            job.area_name) && (
+            job.area_name || job.machine) && (
             <Card>
               <CardHeader>
                 <h2 className="text-base font-semibold leading-6 text-card-foreground">
@@ -338,6 +353,19 @@ export default async function JobPage({ params, searchParams }: Props) {
                     </div>
                   )}
 
+                  {job.machine && (
+                    <div className="min-w-0">
+                      <dt className="text-xs font-semibold uppercase text-muted-foreground">Machine / เครื่องจักร</dt>
+                      <dd className="mt-1.5 text-sm font-medium">
+                        <Link href={`/dashboard/machines/${encodeURIComponent(job.machine.machine_id)}`} className="text-primary underline">
+                          {job.machine.machine_id} · {job.machine.name}
+                        </Link>
+                        {job.machine.brand && <p>{job.machine.brand}</p>}
+                        {job.machine.serial_number && <p>S/N: {job.machine.serial_number}</p>}
+                        {job.machine.location && <p>{job.machine.location}</p>}
+                      </dd>
+                    </div>
+                  )}
                   {(job.area || job.area_name) && (
                     <div className="min-w-0">
                       <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

@@ -480,6 +480,11 @@ def get_asset_usage(tenant):
 
 def _tenant_file_records(tenant):
     """Yield (field file, tenant) for every tenant-owned media family."""
+    from .models import JobDocument
+    for document in JobDocument.objects.filter(job__property__tenant=tenant):
+        if document.file:
+            yield document.file
+
     for image in JobImage.objects.filter(job__property__tenant=tenant).select_related('job__property__tenant'):
         if image.image:
             yield image.image

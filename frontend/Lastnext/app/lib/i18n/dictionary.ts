@@ -16,6 +16,17 @@ export const SUPPORTED_LOCALES = ['en', 'th'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 const en = {
+  'createJob.machine': 'Machine',
+  'createJob.roomOrArea': 'Room / Area',
+  'createJob.selectMachine': 'Select a machine at this property',
+  'createJob.noMachines': 'No machines available at this property.',
+  'createJob.machineRequired': 'Please select a machine.',
+  'createJob.pdfTitle': 'Machine manuals / inspection sheets (PDF)',
+  'createJob.pdfHint': 'Up to 3 PDF files, 2 MB per file.',
+  'createJob.pdfInvalid': 'Attach up to 3 PDF files, 2 MB or less per file.',
+  'createJob.pdfLimit': 'Attach up to 3 PDF files.',
+  'createJob.removeDocument': 'Remove document',
+
   // App chrome
   'app.title': 'StayMaint',
   'app.tagline': 'Hotel maintenance management',
@@ -221,8 +232,8 @@ const en = {
   'createJob.type.defectDesc': 'Fault or issue found',
   'createJob.type.pm': 'Preventive Maintenance',
   'createJob.type.pmDesc': 'Planned recurring care',
-  'createJob.section.locationDesc': 'Choose an area, floor, and room within the active property.',
-  'createJob.locationHint': 'Choose an area, floor, and room within the active property.',
+  'createJob.section.locationDesc': 'Choose a room, area or machine within the active property.',
+  'createJob.locationHint': 'Choose a room, area or machine within the active property.',
   'createJob.activePropertyContext': 'Creating this job for: {property}',
   'createJob.property': 'Property',
   'createJob.selectProperty': 'Select property',
@@ -302,7 +313,7 @@ const en = {
   'createJob.validation.categoryRequired': 'Category is required',
   'createJob.validation.invalidRoom': 'Invalid Room ID',
   'createJob.validation.roomRequired': 'Room must be selected',
-  'createJob.validation.roomOrArea': 'Select either a room or an area',
+  'createJob.validation.roomOrArea': 'Select a room, area or machine',
   'createJob.validation.fileTooLarge': 'File too large (max 5MB)',
   'createJob.validation.onlyImages': 'Only image files allowed',
   'createJob.validation.imageRequired': 'At least one image is required',
@@ -1113,6 +1124,17 @@ const en = {
 type DictKey = keyof typeof en;
 
 const th: Record<DictKey, string> = {
+  'createJob.machine': 'เครื่องจักร',
+  'createJob.roomOrArea': 'ห้อง / พื้นที่',
+  'createJob.selectMachine': 'เลือกเครื่องจักรในที่พักนี้',
+  'createJob.noMachines': 'ยังไม่มีเครื่องจักรในที่พักนี้',
+  'createJob.machineRequired': 'กรุณาเลือกเครื่องจักร',
+  'createJob.pdfTitle': 'คู่มือ / ใบตรวจเครื่อง (PDF)',
+  'createJob.pdfHint': 'แนบ PDF ได้สูงสุด 3 ไฟล์ ไฟล์ละไม่เกิน 2 MB',
+  'createJob.pdfInvalid': 'กรุณาแนบ PDF สูงสุด 3 ไฟล์ ไฟล์ละไม่เกิน 2 MB',
+  'createJob.pdfLimit': 'แนบ PDF ได้สูงสุด 3 ไฟล์',
+  'createJob.removeDocument': 'ลบเอกสาร',
+
   'app.title': 'StayMaint',
   'app.tagline': 'ระบบจัดการงานซ่อมบำรุงโรงแรม',
 
@@ -1305,8 +1327,8 @@ const th: Record<DictKey, string> = {
   'createJob.type.defectDesc': 'พบความเสียหายหรือปัญหา',
   'createJob.type.pm': 'บำรุงรักษาเชิงป้องกัน',
   'createJob.type.pmDesc': 'งานดูแลตามแผน',
-  'createJob.section.locationDesc': 'เลือกพื้นที่ ชั้น และห้องภายใน property ที่กำลังใช้งาน',
-  'createJob.locationHint': 'เลือกพื้นที่ ชั้น และห้องภายใน property ที่กำลังใช้งาน',
+  'createJob.section.locationDesc': 'เลือกห้อง พื้นที่ หรือเครื่องจักรภายในที่พักที่กำลังใช้งาน',
+  'createJob.locationHint': 'เลือกห้อง พื้นที่ หรือเครื่องจักรภายในที่พักที่กำลังใช้งาน',
   'createJob.activePropertyContext': 'กำลังสร้างงานสำหรับ: {property}',
   'createJob.property': 'Property',
   'createJob.selectProperty': 'เลือก property',
@@ -1385,7 +1407,7 @@ const th: Record<DictKey, string> = {
   'createJob.validation.categoryRequired': 'กรุณาเลือกหมวดหมู่',
   'createJob.validation.invalidRoom': 'รหัสห้องไม่ถูกต้อง',
   'createJob.validation.roomRequired': 'กรุณาเลือกห้อง',
-  'createJob.validation.roomOrArea': 'กรุณาเลือกห้องหรือพื้นที่อย่างใดอย่างหนึ่ง',
+  'createJob.validation.roomOrArea': 'กรุณาเลือกห้อง พื้นที่ หรือเครื่องจักรอย่างใดอย่างหนึ่ง',
   'createJob.validation.fileTooLarge': 'ไฟล์ใหญ่เกินไป (สูงสุด 5MB)',
   'createJob.validation.onlyImages': 'อนุญาตเฉพาะไฟล์รูปภาพ',
   'createJob.validation.imageRequired': 'กรุณาอัปโหลดรูปอย่างน้อย 1 รูป',

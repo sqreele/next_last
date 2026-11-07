@@ -302,6 +302,8 @@ export default function JobList({
           j.rooms?.[0]?.name,
           j.area?.name,
           j.area_name,
+          j.machine?.name,
+          j.machine?.machine_id,
         ]
           .filter(Boolean)
           .join(" ")

@@ -11,6 +11,8 @@ import {
   SectionCard,
   StatusBadge,
 } from "@/app/components/pcms-ui";
+import MachineService, { type Machine } from "@/app/lib/MachineService";
+import { MACHINE_WORK_CATEGORIES } from "@/app/lib/machine-work";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import type { DictKey } from "@/app/lib/i18n/dictionary";
 import { Textarea } from "@/app/components/ui/textarea";
@@ -83,6 +85,9 @@ interface FormValues {
     title: string;
     description: string;
   };
+  locationType: "location" | "machine";
+  machine_id: string;
+  documents: File[];
   room: Room | null;
   area_id: number | null;
   floor: string | null;
@@ -109,7 +114,17 @@ const createValidationSchema = (t: TFunction) =>
         ),
         description: Yup.string(),
       })
-      .required(),
+      .required()
+      .test("machine-category", t("createJob.validation.categoryRequired"), function (topic) {
+        if (this.parent.locationType !== "machine" || MACHINE_WORK_CATEGORIES.includes(topic.title)) return true;
+        return this.createError({ path: `${this.path}.title`, message: t("createJob.validation.categoryRequired") });
+      }),
+    machine_id: Yup.string().test("machine-required", t("createJob.machineRequired"), function (value) {
+      return this.parent.locationType !== "machine" || Boolean(value);
+    }),
+    documents: Yup.array().of(Yup.mixed<File>().test("pdf", t("createJob.pdfInvalid"), (file) =>
+      !file || (file.size <= 2 * 1024 * 1024 && /\.pdf$/i.test(file.name))
+    )).max(3, t("createJob.pdfLimit")),
     room: Yup.object()
       .nullable()
       .shape({
@@ -122,6 +137,7 @@ const createValidationSchema = (t: TFunction) =>
         "room-or-area",
         t("createJob.validation.roomOrArea"),
         function (value) {
+          if (this.parent.locationType === "machine") return true;
           const areaId = this.parent.area_id;
           if (areaId) return true;
           return Boolean(value && (value as { room_id?: number }).room_id);
@@ -133,6 +149,7 @@ const createValidationSchema = (t: TFunction) =>
         "area-or-room",
         t("createJob.validation.roomOrArea"),
         function (value) {
+          if (this.parent.locationType === "machine") return true;
           const room = this.parent.room as { room_id?: number } | null;
           if (room && room.room_id) return true;
           return value != null;
@@ -246,6 +263,9 @@ const initialValues: FormValues = {
   priority: "medium",
   remarks: "",
   topic: { title: "", description: "" },
+  locationType: "location",
+  machine_id: "",
+  documents: [],
   room: null,
   area_id: null,
   floor: null,
@@ -459,6 +479,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [floors, setFloors] = useState<string[]>([]);
   const [isFloorLoading, setIsFloorLoading] = useState(false);
   const [isRoomLoading, setIsRoomLoading] = useState(false);
@@ -719,7 +740,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
       const hasRoom = Boolean(values.room && values.room.room_id);
       const hasArea = values.area_id != null;
-      if (!hasRoom && !hasArea) {
+      const hasMachine = values.locationType === "machine" && machines.some((machine) => machine.machine_id === values.machine_id);
+      if (!hasRoom && !hasArea && !hasMachine) {
         const message = t("createJob.validation.roomOrArea");
         setError(message);
         showErrorToast(message);
@@ -795,6 +817,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       );
       if (values.area_id != null) {
         formData.append("area_id", String(values.area_id));
+      }
+      if (hasMachine) {
+        formData.append("machine_id", values.machine_id);
+        values.documents.forEach((file) => formData.append("documents", file));
       }
       values.beforeImageTokens.forEach((token) => {
         formData.append("before_image_tokens", token);
@@ -952,6 +978,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     if (!session?.user || !activePropertyId) {
       setRooms([]);
       setAreas([]);
+      setMachines([]);
       setTopics([]);
       setFloors([]);
       loaderShownAtRef.current = null;
@@ -974,7 +1001,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         throw new Error(t("createJob.copyPropertyMismatch"));
       }
 
-      const [roomsResponse, topicsResponse, areasResponse, copiedJobResponse] =
+      const [roomsResponse, topicsResponse, areasResponse, copiedJobResponse, machinesResponse] =
         await Promise.all([
         axios.get(`/api/rooms/`, {
           withCredentials: true,
@@ -997,6 +1024,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
               params: { property_id: activePropertyId },
             })
           : Promise.resolve(null),
+        new MachineService().getMachines(activePropertyId),
       ]);
       if (requestId !== dataRequestIdRef.current) return;
       const initialRooms = normalizeRoomsResponse(roomsResponse.data).filter(
@@ -1010,6 +1038,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         : areasData?.results || [];
       const propertyAreas = areasList.filter(areaBelongsToActiveProperty);
       setAreas(propertyAreas);
+      setMachines(machinesResponse.data || []);
       setFloors(deriveFloorsFromRooms(initialRooms));
 
       if (copiedJobResponse) {
@@ -1039,6 +1068,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
             title: copiedTopic?.title || "",
             description: copiedTopic?.description || "",
           },
+          locationType: copiedJob.machine ? "machine" : "location",
+          machine_id: copiedJob.machine?.machine_id || "",
+          documents: [],
           room: copiedRoom,
           area_id: copiedArea?.id ?? null,
           floor: copiedRoom ? getFloorFromRoomName(copiedRoom.name) : null,
@@ -1162,7 +1194,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                 },
                 {
                   target: "cj-step-2",
-                  done: Boolean(values.area_id) || Boolean(values.room?.room_id),
+                  done: Boolean(values.area_id) || Boolean(values.room?.room_id) || Boolean(values.machine_id),
                 },
                 {
                   target: "cj-step-category",
@@ -1186,6 +1218,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                   100,
               );
 
+              const selectedMachine = machines.find((machine) => machine.machine_id === values.machine_id);
               return (
                 <Form className="relative space-y-4" noValidate>
                   <CreateJobHeader
@@ -1404,7 +1437,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                       type="button"
                                       role="radio"
                                       aria-checked={active}
-                                      disabled={isSubmitting}
+                                      disabled={isSubmitting || values.locationType === "machine"}
                                       onClick={() => {
                                         setFieldValue(
                                           "is_defective",
@@ -1470,6 +1503,47 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             </span>
                           </div>
 
+                          <div className="mb-5 flex gap-2" role="group" aria-label={t("createJob.step.location")}>
+                            {(["location", "machine"] as const).map((kind) => (
+                              <button type="button" key={kind} disabled={isSubmitting} aria-pressed={values.locationType === kind}
+                                className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold ${values.locationType === kind ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
+                                onClick={() => {
+                                  if (values.locationType === kind) return;
+                                  setFieldValue("locationType", kind);
+                                  setFieldValue("machine_id", "");
+                                  setFieldValue("documents", []);
+                                  setFieldValue("room", null);
+                                  setFieldValue("area_id", null);
+                                  setFieldValue("floor", null);
+                                  setFieldValue("topic", { title: "", description: "" });
+                                  setFieldValue("is_defective", false);
+                                  setFieldValue("is_preventivemaintenance", false);
+                                  void fetchFloors();
+                                  void fetchRooms(null);
+                                }}>
+                                {t(kind === "machine" ? "createJob.machine" : "createJob.roomOrArea")}
+                              </button>
+                            ))}
+                          </div>
+                          {values.locationType === "machine" ? (
+                            <div className="space-y-3">
+                              <Label htmlFor="machine_id">{t("createJob.machine")} <RequiredMark /></Label>
+                              <select id="machine_id" name="machine_id" value={values.machine_id} disabled={isSubmitting || !activePropertyId}
+                                className={`h-11 w-full rounded-lg px-3 ${FIELD_BASE_CLASS}`}
+                                onChange={(event) => setFieldValue("machine_id", event.target.value)}
+                                onBlur={() => setFieldTouched("machine_id", true)}>
+                                <option value="">{t("createJob.selectMachine")}</option>
+                                {machines.map((machine) => <option key={machine.machine_id} value={machine.machine_id}>{machine.machine_id} · {machine.name}</option>)}
+                              </select>
+                              {!machines.length && <p className="text-sm text-muted-foreground">{t("createJob.noMachines")}</p>}
+                              {(touched.machine_id || submitCount > 0) && errors.machine_id && <p role="alert" className="text-sm text-destructive">{errors.machine_id}</p>}
+                              {selectedMachine && (
+                                <p className="rounded-lg bg-muted p-3 text-sm">
+                                  {selectedMachine.description || selectedMachine.name}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
                           <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                             {/* Area Selection - required if no room selected */}
                             <div className="space-y-2">
@@ -1753,6 +1827,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                               </div>
                             )}
                           </div>
+                          )}
                         </div>
 
                         {/* Step 3: Category */}
@@ -1779,10 +1854,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                               </div>
 
                               <TopicPicker
-                                topics={topics}
+                                allowCustom={values.locationType !== "machine"}
+                                topics={values.locationType === "machine"
+                                  ? MACHINE_WORK_CATEGORIES.map((title, index) => ({ id: -(index + 1), title, description: "" }))
+                                  : topics.filter((topic) => !MACHINE_WORK_CATEGORIES.includes(topic.title))}
                                 value={values.topic}
                                 onChange={(topic) => {
                                   setFieldValue("topic", topic);
+                                  if (values.locationType === "machine") {
+                                    setFieldValue("is_defective", topic.title === "Repair");
+                                    setFieldValue("is_preventivemaintenance", topic.title === "PM" || topic.title.startsWith("Preventive "));
+                                  }
                                   setFieldTouched("topic.title", true, false);
                                 }}
                                 disabled={isSubmitting}
@@ -1803,6 +1885,32 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                           </div>
                         </div>
 
+                        {values.locationType === "machine" && (
+                          <div className={SECTION_CARD_CLASS}>
+                            <Label htmlFor="documents">{t("createJob.pdfTitle")}</Label>
+                            <p id="documents-hint" className="my-2 text-sm text-muted-foreground">{t("createJob.pdfHint")}</p>
+                            <input key={values.documents.map((file) => `${file.name}:${file.size}`).join("|")} id="documents" type="file" multiple accept=".pdf,application/pdf" disabled={isSubmitting}
+                              aria-describedby="documents-hint" className="block w-full text-sm"
+                              onChange={(event) => {
+                                const files = [...values.documents, ...Array.from(event.currentTarget.files || [])];
+                                setFieldTouched("documents", true, false);
+                                if (files.length > 3 || files.some((file) => file.size > 2 * 1024 * 1024 || !/\.pdf$/i.test(file.name))) {
+                                  showErrorToast(t("createJob.pdfInvalid"));
+                                  event.currentTarget.value = "";
+                                  return;
+                                }
+                                setFieldValue("documents", files);
+                              }} />
+                            <ul className="mt-3 space-y-2">
+                              {values.documents.map((file, index) => <li key={`${file.name}:${index}`} className="flex items-center justify-between gap-3 text-sm">
+                                <span className="min-w-0 break-all">{file.name} · {(file.size / 1024).toFixed(0)} KB</span>
+                                <button type="button" disabled={isSubmitting} aria-label={`${t("createJob.removeDocument")} ${file.name}`} className="min-h-11 px-3 text-destructive"
+                                  onClick={() => setFieldValue("documents", values.documents.filter((_, i) => i !== index))}><X className="h-4 w-4" /></button>
+                              </li>)}
+                            </ul>
+                            {typeof errors.documents === "string" && <p role="alert" className="text-sm text-destructive">{errors.documents}</p>}
+                          </div>
+                        )}
                         {/* Step 4: Additional Details */}
                         <div id="cj-step-3" className={SECTION_CARD_CLASS}>
                           <SectionTitle
@@ -1943,6 +2051,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             description={t("createJob.summary.desc")}
                           >
                             <dl className="space-y-3 text-sm">
+                              {values.locationType === "machine" && <div className="flex justify-between gap-3">
+                                <dt className="text-muted-foreground">{t("createJob.machine")}</dt>
+                                <dd className="text-right font-semibold">{selectedMachine?.name || "—"}</dd>
+                              </div>}
                               <div className="flex items-center justify-between gap-3">
                                 <dt className="text-muted-foreground">
                                   {t("createJob.property")}

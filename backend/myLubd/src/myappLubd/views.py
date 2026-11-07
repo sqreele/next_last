@@ -63,7 +63,7 @@ from calendar import monthrange
 from contextvars import ContextVar
 from django.http import JsonResponse, HttpResponseRedirect, StreamingHttpResponse
 import os
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, FileResponse
 from django.conf import settings
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_http_methods
@@ -3898,7 +3898,7 @@ class JobViewSet(viewsets.ModelViewSet):
     lookup_field = 'job_id'
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['description', 'job_id', 'rooms__name']
+    search_fields = ['description', 'job_id', 'rooms__name', 'machine__name', 'machine__machine_id']
     ordering_fields = ['created_at', 'updated_at', 'status', 'priority']
     ordering = ['-created_at']
 
@@ -3916,10 +3916,12 @@ class JobViewSet(viewsets.ModelViewSet):
             'property',       # Canonical Job ownership
             'area',           # Foreign key to Area
             'area__property',
+            'machine',
         ).prefetch_related(
             'rooms__property',
             'topics',            # Many-to-many relationship
             'job_images',        # Reverse foreign key to JobImage
+            'documents',
             'preventivemaintenance_set'  # Reverse foreign key
         )
 
@@ -4007,6 +4009,7 @@ class JobViewSet(viewsets.ModelViewSet):
             )
 
         jobs = Job.objects.filter(property=active_property).select_related(
+            'machine',
             'user', 'property', 'area', 'area__property'
         ).prefetch_related('rooms', 'rooms__property', 'topics', 'job_images')
 
@@ -4037,6 +4040,8 @@ class JobViewSet(viewsets.ModelViewSet):
                 | Q(remarks__icontains=search_term)
                 | Q(rooms__name__icontains=search_term)
                 | Q(area__name__icontains=search_term)
+                | Q(machine__name__icontains=search_term)
+                | Q(machine__machine_id__icontains=search_term)
                 | Q(topics__title__icontains=search_term)
                 | Q(user__username__icontains=search_term)
                 | Q(user__first_name__icontains=search_term)
@@ -4475,6 +4480,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
                 job.status = status_value
                 job.save()
+                JobSerializer.record_machine_completion(job)
         except DjangoValidationError as exc:
             detail = getattr(exc, 'message_dict', None) or {'after_images': exc.messages}
             raise ValidationError(detail) from exc
@@ -4538,9 +4544,9 @@ class JobViewSet(viewsets.ModelViewSet):
             user=target_user,
             property=active_property,
         ).select_related(
-            'user', 'updated_by', 'property', 'area', 'area__property'
+            'user', 'updated_by', 'property', 'area', 'area__property', 'machine'
         ).prefetch_related(
-            'rooms', 'rooms__property', 'topics', 'job_images', 'job_images__uploaded_by'
+            'documents', 'rooms', 'rooms__property', 'topics', 'job_images', 'job_images__uploaded_by'
         )
 
         # Apply additional filters if provided
@@ -4799,6 +4805,7 @@ class JobViewSet(viewsets.ModelViewSet):
                 *self.request.FILES.getlist('before_images'),
                 *self.request.FILES.getlist('after_images'),
                 *self.request.FILES.getlist('images'),
+                *self.request.FILES.getlist('documents'),
             ]
             incoming_bytes = sum(int(getattr(item, 'size', 0) or 0) for item in incoming_files)
             with transaction.atomic():
@@ -4880,6 +4887,20 @@ class JobViewSet(viewsets.ModelViewSet):
         )
         # Invalidate cache after deleting job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
+
+    @action(detail=True, methods=['get'], url_path=r'documents/(?P<document_id>[^/.]+)')
+    def document(self, request, job_id=None, document_id=None):
+        job = self.get_object()
+        document = get_object_or_404(job.documents, pk=document_id)
+        try:
+            document.file.open('rb')
+        except (FileNotFoundError, OSError):
+            raise Http404('Document not found.')
+        response = FileResponse(document.file, content_type='application/pdf',
+                                as_attachment=True, filename=document.name)
+        response['Cache-Control'] = 'private, no-store'
+        response['X-Content-Type-Options'] = 'nosniff'
+        return response
 
     @action(detail=True, methods=['get', 'post'], url_path='comments')
     def comments(self, request, job_id=None):

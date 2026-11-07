@@ -115,6 +115,16 @@ export interface Job {
   area?: AreaSummary | null;
   area_id?: number | null;
   area_name?: string | null;
+  machine?: {
+    machine_id: string;
+    name: string;
+    brand?: string | null;
+    serial_number?: string | null;
+    location?: string | null;
+    description?: string | null;
+    asset_tag?: string | null;
+  } | null;
+  documents?: Array<{ id: number; name: string; size: number; url: string }>;
   comments_count?: number;
   can_operate?: boolean;
   can_assign?: boolean;

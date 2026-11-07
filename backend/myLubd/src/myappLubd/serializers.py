@@ -1,7 +1,10 @@
 from rest_framework import serializers
+from .demo_documents import validate_documents
+from .demo_categories import MACHINE_CATEGORIES, machine_category_flags
+import uuid
 from rest_framework.exceptions import PermissionDenied
 from .models import (
-    Room, Topic, JobImage, PendingJobImage, Job, Property, UserProfile, Session,
+    Room, Topic, JobImage, PendingJobImage, Job, JobDocument, Property, UserProfile, Session,
     PreventiveMaintenance, PMMasterPlan, Machine, MaintenanceProcedure,
     MaintenanceTaskImage,
     UtilityConsumption, Inventory, InventoryCategory, Area, JobComment, Tenant,
@@ -885,7 +888,15 @@ class JobDashboardImageSerializer(JobImageSerializer):
         fields = ['image_url', 'jpeg_url', 'uploaded_at']
 
 
+class JobMachineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Machine
+        fields = ['machine_id', 'name', 'brand', 'category', 'serial_number',
+                  'location', 'description', 'asset_tag', 'last_maintenance_date']
+
+
 class JobDashboardSerializer(serializers.ModelSerializer):
+    machine = JobMachineSerializer(read_only=True)
     user_name = serializers.SerializerMethodField()
     technician_name = serializers.SerializerMethodField()
     images = JobDashboardImageSerializer(source='job_images', many=True, read_only=True)
@@ -904,7 +915,7 @@ class JobDashboardSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'completed_at', 'is_defective',
             'is_preventivemaintenance', 'property_id', 'rooms', 'topics',
             'images', 'area', 'area_name', 'user_name', 'technician_name',
-            'can_operate', 'can_assign',
+            'can_operate', 'can_assign', 'machine',
         ]
         read_only_fields = fields
 
@@ -946,6 +957,28 @@ class JobDashboardSerializer(serializers.ModelSerializer):
 
 # Job serializer
 class JobSerializer(serializers.ModelSerializer):
+    machine = JobMachineSerializer(read_only=True)
+    machine_id = serializers.SlugRelatedField(
+        source='machine', slug_field='machine_id', queryset=Machine.objects.all(),
+        write_only=True, required=False, allow_null=True,
+    )
+    documents = serializers.SerializerMethodField()
+
+    def get_documents(self, obj):
+        # Files are always fetched through the authorized Job endpoint.
+        return [{
+            'id': doc.pk, 'name': doc.name, 'size': doc.size,
+            'url': f'/api/jobs/{obj.job_id}/documents/{doc.pk}?property_id={obj.property.property_id}',
+        } for doc in obj.documents.all()]
+
+    @staticmethod
+    def record_machine_completion(job):
+        if job.machine_id and job.status == 'completed' and job.completed_at:
+            Machine.objects.filter(pk=job.machine_id).filter(
+                Q(last_maintenance_date__isnull=True) | Q(last_maintenance_date__lt=job.completed_at)
+            ).update(last_maintenance_date=job.completed_at)
+            job._state.fields_cache.pop('machine', None)
+
     updated_by = serializers.SlugRelatedField(
         slug_field='username',
         queryset=User.objects.all(),
@@ -996,6 +1029,7 @@ class JobSerializer(serializers.ModelSerializer):
             'rooms', 'topics', 'images', 'profile_image', 'room_type', 'name',
             'topic_data', 'room_id', 'room_ids', 'property_id', 'image_urls', 'is_preventivemaintenance',
             'area', 'area_id', 'area_name', 'comments_count', 'can_operate', 'can_assign',
+            'machine', 'machine_id', 'documents',
         ]
         read_only_fields = [
             'id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name',
@@ -1119,9 +1153,36 @@ class JobSerializer(serializers.ModelSerializer):
         except ValidationError as exc:
             raise serializers.ValidationError(exc.message_dict) from exc
 
-        if instance is None and not future_rooms and future_area is None:
+        future_machine = data.get('machine', instance.machine if instance is not None else None)
+        if future_machine:
+            if future_machine.property_id != resolved_property.pk:
+                raise serializers.ValidationError({'machine_id': 'Select a machine from the active property.'})
+            if future_rooms or future_area:
+                raise serializers.ValidationError({'machine_id': 'Select a machine, room or area, not multiple location types.'})
+            topic_data = data.get('topic_data')
+            category = topic_data.get('title') if topic_data else (
+                instance.topics.values_list('title', flat=True).first() if instance else None
+            )
+            try:
+                data.update(machine_category_flags(category))
+            except ValueError as exc:
+                raise serializers.ValidationError({'topic_data': str(exc)})
+        elif data.get('topic_data', {}).get('title') in MACHINE_CATEGORIES:
+            raise serializers.ValidationError({'topic_data': 'Machine work categories require a machine.'})
+
+        documents = request.FILES.getlist('documents') if request else []
+        if documents:
+            if instance is not None:
+                raise serializers.ValidationError({'documents': 'Attach documents when creating a machine job.'})
+            if not future_machine:
+                raise serializers.ValidationError({'documents': 'PDF documents require a selected machine.'})
+            document_error = validate_documents(documents)
+            if document_error:
+                raise serializers.ValidationError({'documents': document_error})
+
+        if instance is None and not future_rooms and future_area is None and future_machine is None:
             raise serializers.ValidationError({
-                'non_field_errors': 'Either room_id or area_id is required.'
+                'non_field_errors': 'Either room_id, area_id or machine_id is required.'
             })
 
         data['_resolved_property'] = resolved_property
@@ -1299,6 +1360,7 @@ class JobSerializer(serializers.ModelSerializer):
         if not topic_data or 'title' not in topic_data:
             raise serializers.ValidationError({'topic_data': 'This field is required and must include a title.'})
 
+        stored_documents = []
         try:
             with transaction.atomic():
                 room = Room.objects.get(room_id=room_id) if room_id else None
@@ -1362,11 +1424,19 @@ class JobSerializer(serializers.ModelSerializer):
                         )
                     PendingJobImage.objects.filter(token__in=pending_tokens).delete()
 
+                for upload in request.FILES.getlist('documents'):
+                    doc = JobDocument(job=job, name=Path(upload.name).name[:200], size=upload.size)
+                    doc.file.save(f'{uuid.uuid4().hex}.pdf', upload, save=False)
+                    stored_documents.append((doc.file.storage, doc.file.name))
+                    doc.save()
+                self.record_machine_completion(job)
                 job.refresh_from_db()
                 return job
         except Room.DoesNotExist:
             raise serializers.ValidationError({'room_id': 'Invalid room ID'})
         except Exception as e:
+            for storage, name in stored_documents:
+                storage.delete(name)
             raise serializers.ValidationError({'detail': str(e)})
 
     def update(self, instance, validated_data):
@@ -1381,6 +1451,7 @@ class JobSerializer(serializers.ModelSerializer):
             instance = super().update(instance, validated_data)
             if resolved_rooms is not None:
                 instance.rooms.set(resolved_rooms)
+            self.record_machine_completion(instance)
         return instance
 
     def to_representation(self, instance):

@@ -16,6 +16,23 @@ export const SUPPORTED_LOCALES = ['en', 'th'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 const en = {
+  'inventory.filterJob': 'Filter by job',
+  'inventory.filterPm': 'Filter by PM',
+  'picker.search': 'Search by code or name…',
+  'picker.clearSearch': 'Clear search',
+  'picker.noMatches': 'No matching options. Try another search.',
+  'picker.noOptions': 'No options available.',
+  'picker.hint': 'Search by code or name, then tap to select.',
+  'inventory.noJobLink': 'Do not link to a job',
+  'inventory.noPmLink': 'Do not link to a PM',
+  'inventory.gridView': 'Show inventory as cards',
+  'inventory.listView': 'Show inventory as a list',
+  'inventory.view': 'Inventory view',
+
+  'createJob.clearMachineSearch': 'Clear machine search',
+  'createJob.machinePickerHint': 'Search by ID or name, then tap a machine to select it.',
+  'createJob.searchMachines': 'Search by machine ID or name…',
+  'createJob.noMachineMatches': 'No machines match your search.',
   'createJob.machine': 'Machine',
   'createJob.roomOrArea': 'Room / Area',
   'createJob.selectMachine': 'Select a machine at this property',
@@ -1124,6 +1141,23 @@ const en = {
 type DictKey = keyof typeof en;
 
 const th: Record<DictKey, string> = {
+  'inventory.filterJob': 'กรองตามงาน',
+  'inventory.filterPm': 'กรองตาม PM',
+  'picker.search': 'ค้นหาจากรหัสหรือชื่อ…',
+  'picker.clearSearch': 'ล้างคำค้นหา',
+  'picker.noMatches': 'ไม่พบรายการ ลองเปลี่ยนคำค้นหา',
+  'picker.noOptions': 'ไม่มีรายการให้เลือก',
+  'picker.hint': 'ค้นหาจากรหัสหรือชื่อ แล้วแตะรายการที่ต้องการ',
+  'inventory.noJobLink': 'ไม่เชื่อมโยงงาน',
+  'inventory.noPmLink': 'ไม่เชื่อมโยง PM',
+  'inventory.gridView': 'แสดงคลังแบบการ์ด',
+  'inventory.listView': 'แสดงคลังแบบรายการ',
+  'inventory.view': 'รูปแบบการแสดงคลัง',
+
+  'createJob.clearMachineSearch': 'ล้างคำค้นหาเครื่องจักร',
+  'createJob.machinePickerHint': 'ค้นหาจากรหัสหรือชื่อ แล้วแตะเครื่องจักรที่ต้องการเลือก',
+  'createJob.searchMachines': 'ค้นหาจากรหัสหรือชื่อเครื่องจักร…',
+  'createJob.noMachineMatches': 'ไม่พบเครื่องจักรที่ตรงกับการค้นหา',
   'createJob.machine': 'เครื่องจักร',
   'createJob.roomOrArea': 'ห้อง / พื้นที่',
   'createJob.selectMachine': 'เลือกเครื่องจักรในที่พักนี้',

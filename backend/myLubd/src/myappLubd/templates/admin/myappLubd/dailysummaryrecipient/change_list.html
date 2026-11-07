@@ -1,0 +1,9 @@
+{% extends "admin/change_list.html" %}
+{% block content %}
+  <div class="module" style="padding: 12px 16px; margin-bottom: 16px;">
+    <p>Active recipients receive the default daily cron summary covering <strong>all properties</strong>, in addition to the existing configured recipients. An account is not required.</p>
+    <p>These addresses do not receive property-specific or <code>--all-properties</code> reports. Explicit <code>--to</code> overrides this list. Disabling removes an address from this additional list; existing user/environment recipients may still receive reports. Saving a recipient does not send an email immediately.</p>
+    <p><a href="{% url 'admin:myappLubd_scheduledtaskrun_changelist' %}">Cron &amp; email status</a></p>
+  </div>
+  {{ block.super }}
+{% endblock %}

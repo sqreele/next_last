@@ -7042,3 +7042,6 @@ class UsageMetricAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+# Operational history has a separate read-only, superuser-only admin module.
+from . import admin_monitoring  # noqa: E402,F401

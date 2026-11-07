@@ -1,3 +1,4 @@
+from myappLubd.operations_monitoring import monitored_task
 import logging
 import os
 from datetime import timedelta
@@ -379,7 +380,8 @@ class Command(BaseCommand):
                         to_email=to_email,
                         subject=subject,
                         body=body,
-                        html_body=html_body
+                        html_body=html_body,
+                        property_id=property_id,
                     )
                 except Exception:
                     logger.exception(
@@ -409,6 +411,7 @@ class Command(BaseCommand):
             )
             raise
 
+    @monitored_task('send_pending_jobs_summary')
     def handle(self, *args, **options):
         try:
             days = options.get('days', 30)

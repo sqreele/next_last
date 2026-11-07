@@ -12,6 +12,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.core.validators import validate_email
 from django.template.loader import render_to_string
 
+from .operations_monitoring import tracked_email, record_email_transport
+
 logger = logging.getLogger(__name__)
 
 MAILERSEND_EMAIL_ENDPOINT = 'https://api.mailersend.com/v1/email'
@@ -123,12 +125,14 @@ def _send_via_mailersend(
             timeout=MAILERSEND_TIMEOUT_SECONDS,
         )
         provider_status = response.status_code
+        record_email_transport("mailersend", http_status=provider_status)
         if 200 <= provider_status < 300:
             message_id = _safe_provider_value(
                 response.headers.get('X-Message-Id'),
                 api_token,
                 128,
             )
+            record_email_transport('mailersend', http_status=provider_status, message_id=message_id)
             logger.info(
                 'Email accepted by MailerSend status=%s message_id=%s',
                 provider_status,
@@ -137,6 +141,7 @@ def _send_via_mailersend(
             return True
 
         metadata = _mailersend_error_metadata(response, api_token)
+        record_email_transport('mailersend', http_status=provider_status, error_code=metadata['error_code'])
         logger.error(
             'MailerSend email rejected status=%s error_code=%s error_name=%s '
             'request_id=%s message=%s',
@@ -147,11 +152,13 @@ def _send_via_mailersend(
             metadata['message'],
         )
     except requests.RequestException as exc:
+        record_email_transport('mailersend', error_code=type(exc).__name__)
         logger.error(
             'MailerSend email request failed status=unavailable error_type=%s',
             type(exc).__name__,
         )
     except Exception as exc:
+        record_email_transport('mailersend', error_code=type(exc).__name__)
         logger.error(
             'MailerSend email request failed status=unavailable error_type=%s',
             type(exc).__name__,
@@ -159,6 +166,7 @@ def _send_via_mailersend(
     return False
 
 
+@tracked_email
 def send_email(
     to_email: str,
     subject: str,
@@ -166,6 +174,7 @@ def send_email(
     from_email: Optional[str] = None,
     html_body: Optional[str] = None,
     reply_to: Optional[str] = None,
+    property_id: Optional[int] = None,
 ) -> bool:
     """Send an email via MailerSend when configured, then SMTP as fallback.
 
@@ -173,12 +182,14 @@ def send_email(
     """
     recipients = normalize_email_addresses([to_email])
     if not recipients:
+        record_email_transport("", error_code="invalid_recipient")
         logger.warning("Email transport rejected an invalid recipient")
         return False
     to_email = recipients[0]
 
     reply_to_addresses = normalize_email_addresses([reply_to]) if reply_to else []
     if reply_to and not reply_to_addresses:
+        record_email_transport('', error_code='invalid_reply_to')
         logger.warning('Email transport rejected an invalid Reply-To address')
         return False
 
@@ -202,6 +213,7 @@ def send_email(
         ):
             return True
 
+    record_email_transport('smtp')
     # SMTP fallback using Django's send_mail
     # Enforce SMTP auth when required to avoid 530 Authentication errors (e.g., Gmail)
     email_host = getattr(settings, 'EMAIL_HOST', '')
@@ -210,6 +222,7 @@ def send_email(
     require_auth = os.getenv('EMAIL_REQUIRE_AUTH', 'True').lower() in ('true', '1', 'yes')
 
     if require_auth and (not email_user or not email_password):
+        record_email_transport("smtp", error_code="smtp_auth_not_configured")
         logger.error("SMTP auth not configured (set EMAIL_HOST_USER and EMAIL_HOST_PASSWORD).")
         return False
     try:
@@ -227,6 +240,7 @@ def send_email(
             logger.info("Email sent via SMTP")
             return True
     except Exception as e:
+        record_email_transport("smtp", error_code=type(e).__name__)
         logger.error("SMTP send failed (%s)", type(e).__name__)
 
     return False

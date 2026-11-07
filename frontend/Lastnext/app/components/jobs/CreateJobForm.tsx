@@ -46,6 +46,7 @@ import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useSession, signIn } from "@/app/lib/session.client";
 import { Label } from "@/app/components/ui/label";
+import MachineAutocomplete from "@/app/components/jobs/MachineAutocomplete";
 import RoomAutocomplete from "@/app/components/jobs/RoomAutocomplete";
 import TopicPicker from "@/app/components/jobs/TopicPicker";
 import ImmediateImageUpload from "@/app/components/jobs/ImmediateImageUpload";
@@ -1528,15 +1529,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                           {values.locationType === "machine" ? (
                             <div className="space-y-3">
                               <Label htmlFor="machine_id">{t("createJob.machine")} <RequiredMark /></Label>
-                              <select id="machine_id" name="machine_id" value={values.machine_id} disabled={isSubmitting || !activePropertyId}
-                                className={`h-11 w-full rounded-lg px-3 ${FIELD_BASE_CLASS}`}
-                                onChange={(event) => setFieldValue("machine_id", event.target.value)}
-                                onBlur={() => setFieldTouched("machine_id", true)}>
-                                <option value="">{t("createJob.selectMachine")}</option>
-                                {machines.map((machine) => <option key={machine.machine_id} value={machine.machine_id}>{machine.machine_id} · {machine.name}</option>)}
-                              </select>
+                              <MachineAutocomplete
+                                machines={machines}
+                                value={values.machine_id}
+                                onSelect={(machineId) => setFieldValue("machine_id", machineId)}
+                                onBlur={() => setFieldTouched("machine_id", true, false)}
+                                disabled={isSubmitting || !activePropertyId}
+                                invalid={Boolean((touched.machine_id || submitCount > 0) && errors.machine_id)}
+                              />
                               {!machines.length && <p className="text-sm text-muted-foreground">{t("createJob.noMachines")}</p>}
-                              {(touched.machine_id || submitCount > 0) && errors.machine_id && <p role="alert" className="text-sm text-destructive">{errors.machine_id}</p>}
+                              {(touched.machine_id || submitCount > 0) && errors.machine_id && <p id="machine-error" role="alert" className="text-sm text-destructive">{errors.machine_id}</p>}
                               {selectedMachine && (
                                 <p className="rounded-lg bg-muted p-3 text-sm">
                                   {selectedMachine.description || selectedMachine.name}

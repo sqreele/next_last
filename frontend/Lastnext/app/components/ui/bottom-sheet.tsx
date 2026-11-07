@@ -31,6 +31,7 @@ interface BottomSheetContentProps extends React.ComponentPropsWithoutRef<
 > {
   showHandle?: boolean;
   showClose?: boolean;
+  bodyClassName?: string;
 }
 
 const BottomSheetContent = React.forwardRef<
@@ -38,7 +39,7 @@ const BottomSheetContent = React.forwardRef<
   BottomSheetContentProps
 >(
   (
-    { className, children, showHandle = true, showClose = true, ...props },
+    { className, children, showHandle = true, showClose = true, bodyClassName, ...props },
     ref,
   ) => {
     const startY = React.useRef<number | null>(null);
@@ -110,7 +111,7 @@ const BottomSheetContent = React.forwardRef<
               <div className="h-1.5 w-12 rounded-full bg-slate-300" />
             </div>
           )}
-          <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-4">
+          <div className={cn("flex-1 overflow-y-auto overscroll-contain px-5 pb-4", bodyClassName)}>
             {children}
           </div>
           {showClose && (

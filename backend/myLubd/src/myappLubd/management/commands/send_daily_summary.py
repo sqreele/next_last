@@ -1,3 +1,4 @@
+from myappLubd.operations_monitoring import monitored_task
 import logging
 from datetime import timedelta
 from collections import defaultdict
@@ -12,6 +13,7 @@ from myappLubd.models import Job, Property
 from myappLubd.email_utils import normalize_email_addresses, send_email
 from myappLubd.timezones import local_date_bounds, localtime_for, object_timezone
 from myappLubd.tenancy import get_property_summary_email_users
+from myappLubd.summary_recipients import active_daily_summary_emails
 
 
 logger = logging.getLogger(__name__)
@@ -204,6 +206,7 @@ class Command(BaseCommand):
             help="Resolve and render summaries without sending email",
         )
 
+    @monitored_task('send_daily_summary')
     def handle(self, *args, **options):
         try:
             # Handle --all-properties flag
@@ -434,10 +437,15 @@ class Command(BaseCommand):
                     users_qs.values_list("email", flat=True)
                 )
 
-                if not recipients:
-                    fallback = getattr(settings, "SERVER_EMAIL", None) or getattr(settings, "DEFAULT_FROM_EMAIL", None)
-                    if fallback:
-                        recipients = normalize_email_addresses([fallback])
+            if not explicit_to and not property_id:
+                recipients = normalize_email_addresses([
+                    *recipients, *active_daily_summary_emails(options.get("exclude_emails")),
+                ])
+
+            if not recipients and not explicit_to and not env_recipients:
+                fallback = getattr(settings, "SERVER_EMAIL", None) or getattr(settings, "DEFAULT_FROM_EMAIL", None)
+                if fallback:
+                    recipients = normalize_email_addresses([fallback])
 
             if options.get("dry_run"):
                 self.stdout.write("DRY RUN - no email will be sent")
@@ -464,7 +472,7 @@ class Command(BaseCommand):
             sent_count = 0
             for to_email in recipients:
                 try:
-                    success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body)
+                    success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body, property_id=property_obj.pk if property_obj else None)
                 except Exception:
                     logger.exception("Unexpected daily summary transport error")
                     success = False
@@ -622,7 +630,7 @@ class Command(BaseCommand):
             for to_email in recipients:
                 total_attempted_deliveries += 1
                 try:
-                    success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body)
+                    success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body, property_id=property_obj.pk if property_obj else None)
                 except Exception:
                     logger.exception(
                         "Unexpected daily summary transport error property_id=%s",

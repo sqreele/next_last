@@ -3749,3 +3749,76 @@ class PushSubscription(models.Model):
 
     def __str__(self):
         return f'PushSubscription({self.user_id}, {self.endpoint[:40]}…)'
+
+
+class ScheduledTaskRun(models.Model):
+    STATUS_CHOICES = [
+        ('running', 'Running'), ('succeeded', 'Succeeded'),
+        ('partial', 'Partially succeeded'), ('failed', 'Failed'),
+        ('skipped', 'No email attempts'), ('dry_run', 'Dry run'),
+    ]
+    task_name = models.CharField(max_length=100, db_index=True)
+    source = models.CharField(max_length=10, choices=[('cron', 'Cron'), ('manual', 'Manual')])
+    scope = models.CharField(max_length=100, blank=True)
+    dry_run = models.BooleanField(default=False)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='running', db_index=True)
+    started_at = models.DateTimeField(default=timezone.now, db_index=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    attempted_count = models.PositiveIntegerField(default=0)
+    sent_count = models.PositiveIntegerField(default=0)
+    failed_count = models.PositiveIntegerField(default=0)
+    error_code = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        ordering = ['-started_at', '-pk']
+        verbose_name = 'Cron & email status'
+        verbose_name_plural = 'Cron & email status'
+
+    def __str__(self):
+        return f'{self.task_name} · {self.started_at:%Y-%m-%d %H:%M} · {self.status}'
+
+
+class EmailDeliveryLog(models.Model):
+    run = models.ForeignKey(ScheduledTaskRun, null=True, blank=True, on_delete=models.SET_NULL, related_name='deliveries')
+    property = models.ForeignKey(Property, null=True, blank=True, on_delete=models.SET_NULL, related_name='email_deliveries')
+    recipient = models.CharField(max_length=254)
+    subject = models.CharField(max_length=255)
+    status = models.CharField(max_length=10, choices=[('sending', 'Sending'), ('sent', 'Accepted / sent'), ('failed', 'Failed')], default='sending', db_index=True)
+    provider = models.CharField(max_length=20, blank=True, choices=[('mailersend', 'MailerSend'), ('smtp', 'SMTP')])
+    provider_message_id = models.CharField(max_length=128, blank=True)
+    http_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    error_code = models.CharField(max_length=100, blank=True)
+    started_at = models.DateTimeField(default=timezone.now, db_index=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-started_at', '-pk']
+        verbose_name = 'Email delivery'
+        verbose_name_plural = 'Email delivery history'
+
+    def __str__(self):
+        return f'{self.recipient} · {self.status}'
+
+
+class DailySummaryRecipient(models.Model):
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=100, blank=True)
+    is_active = models.BooleanField(default=True, help_text='Receive the default daily summary covering all properties.')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['email']
+        verbose_name = 'Daily summary recipient'
+        verbose_name_plural = 'Daily summary recipients'
+
+    def clean(self):
+        super().clean()
+        self.email = self.email.strip().lower()
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.email

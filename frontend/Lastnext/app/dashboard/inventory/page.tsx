@@ -18,6 +18,7 @@ import {
   DashboardKpiSkeleton,
   SkeletonList,
 } from "@/app/components/ui/loading";
+import { SearchablePicker } from "@/app/components/ui/searchable-picker";
 import { Input } from "@/app/components/ui/input";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
@@ -37,6 +38,7 @@ import {
   XCircle,
   Clock,
   ShoppingCart,
+  X,
 } from "lucide-react";
 import {
   Select,
@@ -138,6 +140,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const inventorySearchRef = useRef<HTMLInputElement>(null);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [hasLoadedInventory, setHasLoadedInventory] = useState(false);
   const [page, setPage] = useState(1);
@@ -856,7 +859,7 @@ export default function InventoryPage() {
                 {t("inventory.addItem")}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-2xl sm:p-6">
+            <DialogContent className="[&_input]:text-base [&_textarea]:text-base max-h-[92dvh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-2xl sm:p-6">
               <DialogHeader>
                 <DialogTitle>{t("inventory.addTitle")}</DialogTitle>
                 <DialogDescription>
@@ -886,23 +889,15 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <Label htmlFor="category">{t("inventory.category")} *</Label>
-                    <Select
+                    <SearchablePicker
+                      id="category"
+                      label={t("inventory.category")}
+                      placeholder={t("inventory.selectCategory")}
                       value={newItem.category}
-                      onValueChange={(category) =>
-                        setNewItem((item) => ({ ...item, category }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t("inventory.selectCategory")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {getCategoryLabel(cat.value, cat.label)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onValueChange={(category) => setNewItem((item) => ({ ...item, category }))}
+                      disabled={addPending}
+                      options={categoryOptions.map((cat) => ({ value: cat.value, label: getCategoryLabel(cat.value, cat.label) }))}
+                    />
                   </div>
                 </div>
                 <div>
@@ -1035,23 +1030,41 @@ export default function InventoryPage() {
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
+                  ref={inventorySearchRef}
                   type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
                   aria-label={t("inventory.search")}
                   placeholder={t("inventory.searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-11 min-w-0 rounded-lg pl-10"
+                  className="h-12 min-w-0 rounded-lg pl-10 pr-12 text-base"
                 />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    aria-label={t("picker.clearSearch")}
+                    className="absolute right-0 top-0 grid h-12 w-12 place-items-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => {
+                      setSearchTerm("");
+                      inventorySearchRef.current?.focus();
+                    }}
+                  >
+                    <X className="h-5 w-5" aria-hidden />
+                  </button>
+                )}
               </div>
 
               {/* View Toggle */}
-              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1" role="group" aria-label="Inventory view">
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1" role="group" aria-label={t("inventory.view")}>
                 <Button
                   variant={viewMode === "grid" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("grid")}
-                  className="h-9 min-h-9 rounded-md px-3"
-                  aria-label="Show inventory as cards"
+                  className="h-12 min-h-12 min-w-12 rounded-md px-3 sm:h-9 sm:min-h-9 sm:min-w-0"
+                  aria-label={t("inventory.gridView")}
+                  aria-pressed={viewMode === "grid"}
                 >
                   <LayoutGrid className="h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -1059,8 +1072,9 @@ export default function InventoryPage() {
                   variant={viewMode === "list" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("list")}
-                  className="h-9 min-h-9 rounded-md px-3"
-                  aria-label="Show inventory as a list"
+                  className="h-12 min-h-12 min-w-12 rounded-md px-3 sm:h-9 sm:min-h-9 sm:min-w-0"
+                  aria-label={t("inventory.listView")}
+                  aria-pressed={viewMode === "list"}
                 >
                   <List className="h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -1071,7 +1085,7 @@ export default function InventoryPage() {
               type="button"
               variant={activeFilterCount > 0 ? "default" : "outline"}
               onClick={() => setShowMobileFilters((value) => !value)}
-              className="min-h-11 w-full justify-between sm:hidden"
+              className="min-h-12 w-full justify-between sm:hidden"
               aria-expanded={showMobileFilters}
             >
               <span className="inline-flex items-center gap-2">
@@ -1094,25 +1108,21 @@ export default function InventoryPage() {
               <Filter className="hidden h-5 w-5 text-muted-foreground sm:block" aria-hidden="true" />
 
               {/* Category Filter */}
-              <Select
+              <SearchablePicker
+                id="inventory-category-filter"
+                label={t("inventory.category")}
+                placeholder={t("inventory.allCategories")}
+                className="sm:w-[150px]"
                 value={selectedCategory}
                 onValueChange={(value) => {
                   setSelectedCategory(value);
                   setPage(1);
                 }}
-              >
-                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by category">
-                  <SelectValue placeholder={t("inventory.allCategories")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("inventory.allCategories")}</SelectItem>
-                  {categoryOptions.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {getCategoryLabel(cat.value, cat.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "all", label: t("inventory.allCategories") },
+                  ...categoryOptions.map((cat) => ({ value: cat.value, label: getCategoryLabel(cat.value, cat.label) })),
+                ]}
+              />
 
               {/* Status Filter */}
               <Select
@@ -1122,7 +1132,7 @@ export default function InventoryPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by status">
+                <SelectTrigger className="h-12 w-full rounded-lg sm:w-[150px]" aria-label={t("inventory.allStatuses")}>
                   <SelectValue placeholder={t("inventory.allStatuses")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -1136,68 +1146,55 @@ export default function InventoryPage() {
               </Select>
 
               {/* Room Filter */}
-              <Select
+              <SearchablePicker
+                id="inventory-room-filter"
+                label={t("inventory.room")}
+                placeholder={t("inventory.allRooms")}
+                className="sm:w-[150px]"
                 value={selectedRoom}
                 onValueChange={(value) => {
                   setSelectedRoom(value);
                   setPage(1);
                 }}
-              >
-                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by room">
-                  <SelectValue placeholder={t("inventory.allRooms")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("inventory.allRooms")}</SelectItem>
-                  {rooms.map((room) => (
-                    <SelectItem key={room.room_id} value={room.room_id}>
-                      {room.roomname}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "all", label: t("inventory.allRooms") },
+                  ...rooms.map((room) => ({ value: String(room.room_id), label: room.roomname })),
+                ]}
+              />
 
               {/* Job Filter */}
-              <Select
+              <SearchablePicker
+                id="inventory-job-filter"
+                label={t("inventory.filterJob")}
+                placeholder={t("inventory.allJobs")}
+                className="sm:w-[180px]"
                 value={selectedJobFilter}
                 onValueChange={(value) => {
                   setSelectedJobFilter(value);
                   setPage(1);
                 }}
-              >
-                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[180px]" aria-label="Filter by job">
-                  <SelectValue placeholder={t("inventory.allJobs")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("inventory.allJobs")}</SelectItem>
-                  {jobsForFilter.map((job) => (
-                    <SelectItem key={job.job_id} value={job.job_id}>
-                      {job.job_id} -{" "}
-                      {job.description?.substring(0, 30) || t("inventory.noDescription")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "all", label: t("inventory.allJobs") },
+                  ...jobsForFilter.map((job) => ({ value: job.job_id, label: job.job_id, description: job.description || t("inventory.noDescription") })),
+                ]}
+              />
 
               {/* PM Filter */}
-              <Select
+              <SearchablePicker
+                id="inventory-pm-filter"
+                label={t("inventory.filterPm")}
+                placeholder={t("inventory.allPms")}
+                className="sm:w-[180px]"
                 value={selectedPmFilter}
                 onValueChange={(value) => {
                   setSelectedPmFilter(value);
                   setPage(1);
                 }}
-              >
-                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[180px]" aria-label="Filter by preventive maintenance">
-                  <SelectValue placeholder={t("inventory.allPms")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("inventory.allPms")}</SelectItem>
-                  {pmsForFilter.map((pm) => (
-                    <SelectItem key={pm.pm_id} value={pm.pm_id}>
-                      {pm.pm_id} - {pm.pmtitle?.substring(0, 30) || t("inventory.noTitle")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "all", label: t("inventory.allPms") },
+                  ...pmsForFilter.map((pm) => ({ value: pm.pm_id, label: pm.pm_id, description: pm.pmtitle || t("inventory.noTitle") })),
+                ]}
+              />
 
               {/* Low Stock Toggle */}
               <Button
@@ -1694,7 +1691,7 @@ export default function InventoryPage() {
           if (open) setStockMutationError(null);
         }}
       >
-        <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-lg sm:p-6">
+        <DialogContent className="[&_input]:text-base [&_textarea]:text-base max-h-[92dvh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-lg sm:p-6">
           <DialogHeader className="text-left">
             <DialogTitle className="text-xl font-bold">{t("inventory.restockTitle")}</DialogTitle>
             <DialogDescription>
@@ -1772,7 +1769,7 @@ export default function InventoryPage() {
           }
         }}
       >
-        <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] gap-0 overflow-y-auto p-4 sm:max-w-lg sm:p-6">
+        <DialogContent className="[&_input]:text-base [&_textarea]:text-base max-h-[92dvh] w-[calc(100vw-1.5rem)] gap-0 overflow-y-auto p-4 sm:max-w-lg sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">{t("inventory.useTitle")}</DialogTitle>
             <DialogDescription>
@@ -1884,29 +1881,18 @@ export default function InventoryPage() {
                   {t("inventory.loadingJobs")}
                 </div>
               ) : (
-                <Select
-                  value={selectedJobId || undefined}
-                  onValueChange={(value) => setSelectedJobId(value || "")}
-                >
-                  <SelectTrigger id="use-job" className="h-12 rounded-xl">
-                    <SelectValue placeholder={t("inventory.selectJob")} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[45vh]">
-                    {userJobs.length > 0 ? (
-                      userJobs.map((job) => (
-                        <SelectItem key={job.job_id} value={job.job_id}>
-                          {job.job_id} -{" "}
-                          {job.description?.substring(0, 50) ||
-                            t("inventory.noDescription")}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-jobs" disabled>
-                        {t("inventory.noJobs")}
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <SearchablePicker
+                  id="use-job"
+                  label={t("inventory.linkJob")}
+                  placeholder={t("inventory.selectJob")}
+                  value={selectedJobId || "__none__"}
+                  onValueChange={(value) => setSelectedJobId(value === "__none__" ? "" : value)}
+                  disabled={stockMutationPending}
+                  options={[
+                    { value: "__none__", label: t("inventory.noJobLink") },
+                    ...userJobs.map((job) => ({ value: job.job_id, label: job.job_id, description: job.description || t("inventory.noDescription") })),
+                  ]}
+                />
               )}
               {selectedItem?.last_job_by_user && !selectedJobId && (
                 <div className="mt-1 text-xs text-info">
@@ -1925,28 +1911,18 @@ export default function InventoryPage() {
                   {t("inventory.loadingPms")}
                 </div>
               ) : (
-                <Select
-                  value={selectedPmId || undefined}
-                  onValueChange={(value) => setSelectedPmId(value || "")}
-                >
-                  <SelectTrigger id="use-pm" className="h-12 rounded-xl">
-                    <SelectValue placeholder={t("inventory.selectPm")} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[45vh]">
-                    {userPMs.length > 0 ? (
-                      userPMs.map((pm) => (
-                        <SelectItem key={pm.pm_id} value={pm.pm_id}>
-                          {pm.pm_id} -{" "}
-                          {pm.pmtitle?.substring(0, 50) || t("inventory.noTitle")}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-pms" disabled>
-                        {t("inventory.noPms")}
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <SearchablePicker
+                  id="use-pm"
+                  label={t("inventory.linkPm")}
+                  placeholder={t("inventory.selectPm")}
+                  value={selectedPmId || "__none__"}
+                  onValueChange={(value) => setSelectedPmId(value === "__none__" ? "" : value)}
+                  disabled={stockMutationPending}
+                  options={[
+                    { value: "__none__", label: t("inventory.noPmLink") },
+                    ...userPMs.map((pm) => ({ value: pm.pm_id, label: pm.pm_id, description: pm.pmtitle || t("inventory.noTitle") })),
+                  ]}
+                />
               )}
               {selectedItem?.last_pm_by_user && !selectedPmId && (
                 <div className="mt-1 text-xs text-primary">
@@ -2059,7 +2035,7 @@ export default function InventoryPage() {
                     setPage(1);
                   }}
                   disabled={loading}
-                  className="min-h-10 rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="min-h-12 rounded-lg border border-border bg-background px-3 py-1 text-base text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <option value={12}>12</option>
                   <option value={24}>24</option>

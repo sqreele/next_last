@@ -20,4 +20,6 @@
   </div>
 {% endblock %}
 
-{% block nav-global %}{% endblock %}
+{% block nav-global %}
+  {% if user.is_superuser %}<nav aria-label="Operations"><a href="{% url 'admin:myappLubd_scheduledtaskrun_changelist' %}">Cron &amp; email status</a></nav>{% endif %}
+{% endblock %}

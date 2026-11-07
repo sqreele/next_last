@@ -1,0 +1,37 @@
+{% extends "admin/change_list.html" %}
+{% load static tz %}
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'myappLubd/css/monitoring.css' %}">
+{% endblock %}
+{% block content %}
+<section class="operations-monitor" aria-label="Cron and email status">
+  <p>Last checked: <time>{{ monitor_checked_at|localtime|date:"Y-m-d H:i:s T" }}</time> · <a href="{{ request.path }}">Refresh status</a> · <a href="{{ email_history_url }}">Email delivery history</a></p>
+  <div class="monitor-cards">
+    <article><h2>Cron daemon</h2><strong>{% if cron_status.daemon_running == True %}Running{% elif cron_status.daemon_running == False %}Not running{% else %}Unknown{% endif %}</strong><p>Current backend container</p></article>
+    <article><h2>Emails accepted / sent</h2><strong>{{ email_counts.sent }}</strong><p>Last 24 hours</p></article>
+    <article><h2>Email failures</h2><strong>{{ email_counts.failed }}</strong><p>Last 24 hours</p></article>
+    <article><h2>Sending</h2><strong>{{ email_counts.sending }}</strong><p>Last 24 hours · unfinished attempts may need review</p></article>
+  </div>
+  <p><a class="button" href="{% url 'admin:myappLubd_dailysummaryrecipient_add' %}">Add recipient email</a> <a href="{% url 'admin:myappLubd_dailysummaryrecipient_changelist' %}">Manage daily summary recipients</a></p>
+  <h2>Scheduled tasks</h2>
+  <p>Schedule timezone: {{ cron_status.timezone }}. Schedules are read from the backend cron configuration. Manual runs and dry runs do not replace cron history.</p>
+  <div class="monitor-table-wrap">
+    <table>
+      <thead><tr><th scope="col">Task</th><th scope="col">Cron expression</th><th scope="col">Last recorded cron run</th><th scope="col">Result</th><th scope="col">Sent / failed</th></tr></thead>
+      <tbody>{% for task in monitored_tasks %}
+        <tr>
+          <th scope="row">{{ task.label }}<small>{{ task.name }}</small></th>
+          <td>{% if task.schedule %}<code>{{ task.schedule }}</code>{% else %}Not scheduled{% endif %}</td>
+          <td>{% if task.last_cron_run %}{{ task.last_cron_run.started_at|localtime|date:"Y-m-d H:i:s T" }}{% if task.stale %}<small class="monitor-warning">No cron run recorded in the last 26 hours</small>{% endif %}{% else %}No recorded cron run{% endif %}</td>
+          <td>{% if task.last_cron_run %}{{ task.last_cron_run.get_status_display }}{% else %}Unknown{% endif %}</td>
+          <td>{% if task.last_cron_run %}{{ task.last_cron_run.sent_count }} / {{ task.last_cron_run.failed_count }}{% else %}—{% endif %}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  <p class="monitor-note">“Accepted / sent” means the email transport accepted the message; it does not confirm inbox delivery. History starts when monitoring is installed. Older deliveries are not reconstructed. No email bodies or credentials are stored here.</p>
+  <h2>Run history</h2>
+</section>
+{{ block.super }}
+{% endblock %}

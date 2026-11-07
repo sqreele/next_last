@@ -1,3 +1,4 @@
+from myappLubd.operations_monitoring import monitored_task
 """Send grouped LINE reminders for due preventive-maintenance work."""
 
 from datetime import date
@@ -32,6 +33,7 @@ class Command(BaseCommand):
             help='Process only one reminder type.',
         )
 
+    @monitored_task('send_pm_line_reminders')
     def handle(self, *args, **options):
         run_date = None
         if options['run_date']:

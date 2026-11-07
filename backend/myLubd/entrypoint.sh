@@ -115,9 +115,9 @@ case "$(printf '%s' "${DEMO_MODE:-false}" | tr '[:upper:]' '[:lower:]')" in
             echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             echo "CRON_TZ=Asia/Bangkok"
             # One daily run handles today's and tomorrow's PM reminders.
-            echo "0 9 * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py send_pm_line_reminders >> /var/log/cron.log 2>&1"
+            echo "0 9 * * * root . $CRON_ENV_FILE && cd /app && SCHEDULED_TASK_SOURCE=cron /usr/local/bin/python manage.py send_pm_line_reminders >> /var/log/cron.log 2>&1"
             # Schedule: run daily at 23:00 Asia/Bangkok (includes the /etc/cron.d user column)
-            echo "0 23 * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
+            echo "0 23 * * * root . $CRON_ENV_FILE && cd /app && SCHEDULED_TASK_SOURCE=cron /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
         } > /etc/cron.d/daily_summary
         chmod 0644 /etc/cron.d/daily_summary
         ;;

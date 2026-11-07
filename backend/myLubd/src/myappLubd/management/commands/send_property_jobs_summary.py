@@ -1,3 +1,4 @@
+from myappLubd.operations_monitoring import monitored_task
 import logging
 from datetime import timedelta
 
@@ -195,6 +196,7 @@ class Command(BaseCommand):
         
         return users_qs
 
+    @monitored_task('send_property_jobs_summary')
     def handle(self, *args, **options):
         try:
             days = options.get('days', 7)
@@ -455,7 +457,8 @@ class Command(BaseCommand):
                         to_email=user_email,
                         subject=subject,
                         body=body,
-                        html_body=html_body
+                        html_body=html_body,
+                        property_id=stats['property_id'],
                     )
                 except Exception:
                     logger.exception(

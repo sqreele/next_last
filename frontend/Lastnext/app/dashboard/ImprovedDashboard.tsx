@@ -35,6 +35,7 @@ import {
   normalizeStatus,
 } from '@/app/components/pcms-ui';
 import { PageLoadingFrame, SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
+import MachineDashboard from '@/app/components/dashboard/MachineDashboard';
 import { MobileKpiStrip } from '@/app/components/dashboard/MobileKpiStrip';
 import { RecentActivityFeed } from '@/app/components/dashboard/RecentActivityFeed';
 import { TechnicianKpiBoard } from '@/app/components/dashboard/TechnicianKpiBoard';
@@ -175,6 +176,7 @@ export default function ImprovedDashboard() {
   useSessionGuard();
   const { locale, t } = useLocale();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
+  const [machineRefreshVersion, setMachineRefreshVersion] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -413,7 +415,7 @@ export default function ImprovedDashboard() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => refreshJobs()}
+              onClick={() => { refreshJobs(); setMachineRefreshVersion((value) => value + 1); }}
               disabled={loading || hasNoActiveProperty}
               aria-label="Refresh dashboard data"
             >
@@ -423,6 +425,8 @@ export default function ImprovedDashboard() {
           </>
         }
       />
+
+      {selectedPropertyId && <MachineDashboard key={selectedPropertyId} propertyId={selectedPropertyId} refreshVersion={machineRefreshVersion} />}
 
       {hasNoActiveProperty ? (
         <FeedbackState

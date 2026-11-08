@@ -10,7 +10,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "w-full max-w-none rounded-lg border border-border bg-card text-card-foreground shadow-soft",
+      "w-full min-w-0 max-w-none rounded-lg border border-border bg-card text-card-foreground shadow-soft",
       {
         "rounded-lg":
           variant === "mobile",

@@ -40,7 +40,7 @@ export default function Pagination({
   return (
     <div className="w-full">
       {/* Mobile Pagination */}
-      <div className="md:hidden flex items-center justify-between gap-2 mt-4">
+      <div className="mt-4 grid grid-cols-2 items-center gap-2 min-[390px]:flex min-[390px]:justify-between md:hidden">
         <Button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
@@ -50,7 +50,7 @@ export default function Pagination({
           Prev
         </Button>
 
-        <div className="flex items-center gap-1">
+        <div className="order-last col-span-2 flex items-center justify-center gap-1 min-[390px]:order-none">
           {mobilePages.map((page) => (
             <Button
               key={page}

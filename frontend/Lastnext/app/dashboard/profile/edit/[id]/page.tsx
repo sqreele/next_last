@@ -174,7 +174,7 @@ export default function EditProfilePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-4 px-3 py-4 pb-32 sm:px-6 sm:pb-6">
+    <main className="mx-auto w-full max-w-3xl space-y-4 px-3 py-4 pb-[calc(12rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
       <Button asChild variant="ghost" className="min-h-11">
         <Link href="/dashboard/profile">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to profile
@@ -284,7 +284,7 @@ export default function EditProfilePage() {
               ) : null}
             </div>
 
-            <div className="fixed inset-x-0 bottom-0 z-20 grid gap-2 border-t bg-background/95 p-3 backdrop-blur-sm sm:static sm:flex sm:border-0 sm:bg-transparent sm:p-0">
+            <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 grid gap-2 border-t bg-background/95 p-3 backdrop-blur-sm sm:static sm:flex sm:border-0 sm:bg-transparent sm:p-0">
               <Button
                 type="submit"
                 disabled={!dirty || saving}

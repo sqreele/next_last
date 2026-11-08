@@ -91,7 +91,7 @@ const BottomSheetContent = React.forwardRef<
         <DialogPrimitive.Content
           ref={setRefs}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-3xl border-t border-border bg-background shadow-[0_-12px_40px_rgba(15,23,42,0.18)]",
+            "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] min-w-0 flex-col rounded-t-3xl border-t border-border bg-background shadow-[0_-12px_40px_rgba(15,23,42,0.18)]",
             "pb-[calc(env(safe-area-inset-bottom)+0.5rem)]",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
@@ -111,7 +111,7 @@ const BottomSheetContent = React.forwardRef<
               <div className="h-1.5 w-12 rounded-full bg-slate-300" />
             </div>
           )}
-          <div className={cn("flex-1 overflow-y-auto overscroll-contain px-5 pb-4", bodyClassName)}>
+          <div className={cn("min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4", bodyClassName)}>
             {children}
           </div>
           {showClose && (

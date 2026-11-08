@@ -37,7 +37,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 grid gap-4 border bg-background shadow-card duration-200",
+        "fixed z-50 grid min-w-0 max-h-[92dvh] gap-4 overflow-y-auto overscroll-contain border bg-background shadow-card duration-200 [overflow-wrap:anywhere]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         mobileFullscreen
           ? [
@@ -48,7 +48,7 @@ const DialogContent = React.forwardRef<
               "mobile:data-[state=closed]:slide-out-to-bottom mobile:data-[state=open]:slide-in-from-bottom",
               "mobile:data-[state=open]:duration-300 mobile:data-[state=closed]:duration-200",
             ].join(" ")
-          : "",
+          : "mobile:left-1/2 mobile:top-1/2 mobile:w-[calc(100%-2rem)] mobile:max-w-lg mobile:-translate-x-1/2 mobile:-translate-y-1/2 mobile:rounded-xl mobile:p-5",
         "tablet:left-[50%] tablet:top-[50%] tablet:w-full tablet:max-w-lg tablet:translate-x-[-50%] tablet:translate-y-[-50%] tablet:rounded-xl tablet:p-6",
         "desktop:left-[50%] desktop:top-[50%] desktop:w-full desktop:max-w-lg desktop:translate-x-[-50%] desktop:translate-y-[-50%] desktop:rounded-xl desktop:p-6",
         "tablet:data-[state=closed]:zoom-out-95 tablet:data-[state=open]:zoom-in-95 tablet:data-[state=closed]:slide-out-to-left-1/2 tablet:data-[state=closed]:slide-out-to-top-[48%] tablet:data-[state=open]:slide-in-from-left-1/2 tablet:data-[state=open]:slide-in-from-top-[48%]",

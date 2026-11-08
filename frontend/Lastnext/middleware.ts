@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isWithinRoute } from "@/app/lib/security/route-matching.mjs";
 import { logSessionDiagnostic } from "@/app/lib/auth0/session-diagnostics.mjs";
 
 const AUTH0_SESSION_COOKIE = "auth0_session";
@@ -74,11 +75,11 @@ export async function middleware(request: NextRequest) {
 
   // Check if the route is protected
   const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route),
+    isWithinRoute(pathname, route),
   );
 
   const isProtectedApiRoute = protectedApiRoutes.some((route) =>
-    pathname.startsWith(route),
+    isWithinRoute(pathname, route),
   );
 
   // Get the auth0_session cookie and check if user is authenticated.

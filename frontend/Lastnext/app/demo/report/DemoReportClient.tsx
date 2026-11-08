@@ -117,6 +117,7 @@ function DistributionBars({
 export default function DemoReportClient() {
   const { language, text } = useDemoLanguage();
   const [snapshot, setSnapshot] = useState<DemoSnapshot | null>(null);
+  const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -155,6 +156,7 @@ export default function DemoReportClient() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail || text("ไม่สามารถโหลดรายงาน Demo ได้", "Unable to load demo report"));
       setSnapshot(result);
+      setRefreshedAt(new Date().toISOString());
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : text("ไม่สามารถโหลดรายงาน Demo ได้", "Unable to load demo report"));
     } finally {
@@ -255,7 +257,7 @@ export default function DemoReportClient() {
             <p className="text-sm font-semibold text-teal-700">{text("ข้อมูลสด · ฐานข้อมูล Demo แยก", "Live data · Isolated Demo Database")}</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{text("รายงานงานซ่อม Demo", "Maintenance Demo Report")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              {snapshot?.property.name ?? "StayMaint Demo Hotel - Chinatown"} · {text("อัปเดต ณ", "Updated at")} {new Date().toLocaleString(language === "th" ? "th-TH" : "en-GB")}
+              {snapshot?.property.name ?? "StayMaint Demo Hotel - Chinatown"} · {text("อัปเดต ณ", "Updated at")} {refreshedAt ? displayDate(refreshedAt, language) : "—"}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 print:hidden sm:flex sm:flex-wrap">

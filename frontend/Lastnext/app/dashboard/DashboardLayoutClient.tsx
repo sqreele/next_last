@@ -28,7 +28,7 @@ import { cn } from "@/app/lib/utils/cn";
 import { MobileNav as BottomNav } from "@/app/components/ui/mobile-nav";
 import { PageTransition } from "@/app/components/ui/page-transition";
 import { PullToRefresh } from "@/app/components/ui/pull-to-refresh";
-import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet";
 import {
   navigationGroups,
 } from "@/app/design-system/navigation-config";
@@ -309,7 +309,7 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
     <header
       id="mobile-app-header"
       className={cn(
-        "sticky top-0 z-[70] border-b border-border bg-card/95 shadow-soft backdrop-blur-xl lg:hidden",
+        "sticky top-0 z-40 border-b border-border bg-card/95 shadow-soft backdrop-blur-xl lg:hidden",
         "transition-transform duration-200 ease-out will-change-transform",
         hidden ? "-translate-y-full" : "translate-y-0",
       )}
@@ -354,7 +354,7 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
 
 function DesktopHeader() {
   return (
-    <header className="sticky top-0 z-50 hidden h-16 min-w-0 items-center gap-3 border-b border-border bg-card/95 px-4 shadow-soft backdrop-blur-xl lg:flex xl:px-6">
+    <header className="sticky top-0 z-40 hidden h-16 min-w-0 items-center gap-3 border-b border-border bg-card/95 px-4 shadow-soft backdrop-blur-xl lg:flex xl:px-6">
       <div className="flex min-w-0 flex-1 items-center overflow-hidden">
         <DashboardBreadcrumb />
       </div>
@@ -564,56 +564,36 @@ function MobileSearch() {
   }
 
   return (
-    <>
-      {!isOpen ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9"
-          onClick={() => setIsOpen(true)}
-          aria-label="Open search"
-        >
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Open search">
           <Search className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-          <span className="sr-only">Search</span>
         </Button>
-      ) : (
-        <div className="fixed inset-0 z-50 flex flex-col bg-card/95 p-4 backdrop-blur-xl">
-          <div className="mb-4 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close search"
-            >
-              <PanelLeft className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            </Button>
-            <span className="font-medium text-foreground">Search</span>
-          </div>
-
-          <form action={searchAction} className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              name="q"
-              type="search"
-              placeholder="Search jobs, properties, rooms..."
-              autoFocus
-              className="h-11 w-full rounded-lg border-border bg-muted/40 pl-9 pr-12 text-sm focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="absolute right-1 top-1 h-9 min-h-9 w-9 rounded-md"
-              disabled={isPending}
-              aria-busy={isPending || undefined}
-              aria-label={isPending ? "Searching" : "Search"}
-            >
-              <Search className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </form>
-        </div>
-      )}
-    </>
+      </SheetTrigger>
+      <SheetContent side="top" className="h-dvh bg-card/95 p-4 backdrop-blur-xl" aria-describedby={undefined}>
+        <SheetTitle className="mb-6 pr-12">Search</SheetTitle>
+        <form action={searchAction} className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <Input
+            name="q"
+            type="search"
+            placeholder="Search jobs, properties, rooms..."
+            autoFocus
+            className="h-11 w-full rounded-lg border-border bg-muted/40 pl-9 pr-12 text-base focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            className="absolute right-1 top-1 h-9 min-h-9 w-9 rounded-md"
+            disabled={isPending}
+            aria-busy={isPending || undefined}
+            aria-label={isPending ? "Searching" : "Search"}
+          >
+            <Search className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
 

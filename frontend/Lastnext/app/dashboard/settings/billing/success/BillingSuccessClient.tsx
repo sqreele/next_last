@@ -36,7 +36,7 @@ export default function BillingSuccessClient() {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">Stripe&apos;s verified webhook remains the authority. This page does not activate your subscription.</p>
           {status && <div className="flex items-center gap-2 text-sm">Current status <Badge variant="secondary">{billingStatusLabel(status)}</Badge></div>}
-          <div className="flex gap-2"><Button onClick={() => void refresh()}>Check again</Button><Button asChild variant="outline"><Link href="/dashboard/settings/billing">Billing settings</Link></Button></div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button onClick={() => void refresh()}>Check again</Button><Button asChild variant="outline"><Link href="/dashboard/settings/billing">Billing settings</Link></Button></div>
         </CardContent>
       </Card>
     </div>

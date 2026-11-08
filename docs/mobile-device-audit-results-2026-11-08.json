@@ -1,0 +1,4184 @@
+[
+  {
+    "source": "(marketing)/[slug]/page.tsx",
+    "template": "/[slug]",
+    "url": "/hotel-maintenance-software",
+    "expected": "/hotel-maintenance-software",
+    "alias": false,
+    "index": 0,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/hotel-maintenance-software/",
+    "heading": "Hotel maintenance software built for daily operations | One operational view | Faster response | Reliable records | From reported issue to reliable history | Everything hotel maintenance teams need | Frequently asked questions | Run calmer, more accountable hotel maintenance"
+  },
+  {
+    "source": "(marketing)/th/[slug]/page.tsx",
+    "template": "/th/[slug]",
+    "url": "/th/%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%88%E0%B9%89%E0%B8%87%E0%B8%8B%E0%B9%88%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%A3%E0%B8%87%E0%B9%81%E0%B8%A3%E0%B8%A1",
+    "expected": "/th/%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%88%E0%B9%89%E0%B8%87%E0%B8%8B%E0%B9%88%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%A3%E0%B8%87%E0%B9%81%E0%B8%A3%E0%B8%A1",
+    "alias": false,
+    "index": 1,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/th/%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%88%E0%B9%89%E0%B8%87%E0%B8%8B%E0%B9%88%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%A3%E0%B8%87%E0%B9%81%E0%B8%A3%E0%B8%A1/",
+    "heading": "ระบบแจ้งซ่อมโรงแรมที่ติดตามงานได้จริง | แจ้งงานได้รวดเร็ว | รู้ว่าใครรับผิดชอบ | มีประวัติที่ตรวจสอบได้ | จากปัญหาหน้างานสู่ข้อมูลที่นำไปใช้ได้ | ข้อมูลสำคัญครบ โดยไม่ทำให้หน้าจอรก | คำถามที่พบบ่อย | ยกระดับงานซ่อมบำรุงโรงแรมของคุณ"
+  },
+  {
+    "source": "ai-chat/page.tsx",
+    "template": "/ai-chat",
+    "url": "/ai-chat",
+    "expected": "/ai-chat",
+    "alias": false,
+    "index": 2,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/ai-chat/",
+    "heading": "AI Assistant is on the way"
+  },
+  {
+    "source": "auth/access-pending/page.tsx",
+    "template": "/auth/access-pending",
+    "url": "/auth/access-pending",
+    "expected": "/auth/access-pending",
+    "alias": false,
+    "index": 3,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/access-pending/",
+    "heading": "Waiting for property access"
+  },
+  {
+    "source": "auth/error/page.tsx",
+    "template": "/auth/error",
+    "url": "/auth/error",
+    "expected": "/auth/error",
+    "alias": false,
+    "index": 4,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/error/",
+    "heading": "Authentication Error"
+  },
+  {
+    "source": "auth/forgot-password/page.tsx",
+    "template": "/auth/forgot-password",
+    "url": "/auth/forgot-password",
+    "expected": "/auth/forgot-password",
+    "alias": false,
+    "index": 5,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/forgot-password/",
+    "heading": "Forgot Password"
+  },
+  {
+    "source": "auth/login/page.tsx",
+    "template": "/auth/login",
+    "url": "/auth/login",
+    "expected": "/auth/login",
+    "alias": false,
+    "index": 6,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/login/",
+    "heading": "Keep every property running at its best. | Sign in to your workspace"
+  },
+  {
+    "source": "auth/logout/page.tsx",
+    "template": "/auth/logout",
+    "url": "/auth/logout",
+    "expected": "/",
+    "alias": true,
+    "index": 7,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/",
+    "heading": "Smart Hotel Maintenance and Engineering Management Software | Everything you need for hotel engineering management | Transform your hotel engineering operations | Ready to get started?"
+  },
+  {
+    "source": "auth/onboarding/page.tsx",
+    "template": "/auth/onboarding",
+    "url": "/auth/onboarding",
+    "expected": "/auth/access-pending",
+    "alias": true,
+    "index": 8,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/access-pending/",
+    "heading": "Waiting for property access"
+  },
+  {
+    "source": "auth/register/page.tsx",
+    "template": "/auth/register",
+    "url": "/auth/register",
+    "expected": "/auth/register",
+    "alias": false,
+    "index": 9,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/register/",
+    "heading": "Build a more reliable operation. | Create your account"
+  },
+  {
+    "source": "auth/reset-password/page.tsx",
+    "template": "/auth/reset-password",
+    "url": "/auth/reset-password",
+    "expected": "/auth/reset-password",
+    "alias": false,
+    "index": 10,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/reset-password/",
+    "heading": "Reset Password"
+  },
+  {
+    "source": "auth/signin/page.tsx",
+    "template": "/auth/signin",
+    "url": "/auth/signin",
+    "expected": "/auth/login",
+    "alias": true,
+    "index": 11,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/login/",
+    "heading": "Keep every property running at its best. | Sign in to your workspace"
+  },
+  {
+    "source": "contact/page.tsx",
+    "template": "/contact",
+    "url": "/contact",
+    "expected": "/contact",
+    "alias": false,
+    "index": 12,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/contact/",
+    "heading": "Contact StayMaint | How can we help? | Send us a message"
+  },
+  {
+    "source": "dashboard/Preventive_maintenance/page.tsx",
+    "template": "/dashboard/Preventive_maintenance",
+    "url": "/dashboard/Preventive_maintenance",
+    "expected": "/dashboard/preventive-maintenance",
+    "alias": true,
+    "index": 13,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/",
+    "heading": "Preventive Maintenance | Preventive Maintenance"
+  },
+  {
+    "source": "dashboard/areas/page.tsx",
+    "template": "/dashboard/areas",
+    "url": "/dashboard/areas",
+    "expected": "/dashboard/areas",
+    "alias": false,
+    "index": 14,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/areas/",
+    "heading": "Areas"
+  },
+  {
+    "source": "dashboard/billing/page.tsx",
+    "template": "/dashboard/billing",
+    "url": "/dashboard/billing",
+    "expected": "/dashboard/settings/billing",
+    "alias": true,
+    "index": 15,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/settings/billing/",
+    "heading": "Billing"
+  },
+  {
+    "source": "dashboard/chartdashboad/page.tsx",
+    "template": "/dashboard/chartdashboad",
+    "url": "/dashboard/chartdashboad",
+    "expected": "/dashboard/chartdashboard",
+    "alias": true,
+    "index": 16,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/chartdashboard/",
+    "heading": "Chart Dashboard"
+  },
+  {
+    "source": "dashboard/chartdashboard/page.tsx",
+    "template": "/dashboard/chartdashboard",
+    "url": "/dashboard/chartdashboard",
+    "expected": "/dashboard/chartdashboard",
+    "alias": false,
+    "index": 17,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/chartdashboard/",
+    "heading": "Chart Dashboard"
+  },
+  {
+    "source": "dashboard/create-job/page.tsx",
+    "template": "/dashboard/create-job",
+    "url": "/dashboard/create-job",
+    "expected": "/dashboard/create-job",
+    "alias": false,
+    "index": 18,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/create-job/",
+    "heading": "New Job Order | Job Information | Location | Category | Additional Details | Image Upload | Maintenance job summary | Progress"
+  },
+  {
+    "source": "dashboard/createJob/page.tsx",
+    "template": "/dashboard/createJob",
+    "url": "/dashboard/createJob",
+    "expected": "/dashboard/create-job",
+    "alias": true,
+    "index": 19,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/create-job/",
+    "heading": "New Job Order | Job Information | Location | Category | Additional Details | Image Upload | Maintenance job summary | Progress"
+  },
+  {
+    "source": "dashboard/floor-plan/page.tsx",
+    "template": "/dashboard/floor-plan",
+    "url": "/dashboard/floor-plan",
+    "expected": "/dashboard/floor-plan",
+    "alias": false,
+    "index": 20,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/floor-plan/",
+    "heading": "Floor Plan | Floor 1"
+  },
+  {
+    "source": "dashboard/inventory/page.tsx",
+    "template": "/dashboard/inventory",
+    "url": "/dashboard/inventory",
+    "expected": "/dashboard/inventory",
+    "alias": false,
+    "index": 21,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/inventory/",
+    "heading": "Inventory"
+  },
+  {
+    "source": "dashboard/jobs/[jobId]/edit/page.tsx",
+    "template": "/dashboard/jobs/[jobId]/edit",
+    "url": "/dashboard/jobs/JOB-001/edit",
+    "expected": "/dashboard/jobs/JOB-001/edit",
+    "alias": false,
+    "index": 22,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/jobs/JOB-001/edit/",
+    "heading": "Edit Job #JOB-001"
+  },
+  {
+    "source": "dashboard/jobs/[jobId]/page.tsx",
+    "template": "/dashboard/jobs/[jobId]",
+    "url": "/dashboard/jobs/JOB-001",
+    "expected": "/dashboard/jobs/JOB-001",
+    "alias": false,
+    "index": 23,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/jobs/JOB-001/",
+    "heading": ""
+  },
+  {
+    "source": "dashboard/jobs/[jobId]/print/page.tsx",
+    "template": "/dashboard/jobs/[jobId]/print",
+    "url": "/dashboard/jobs/JOB-001/print",
+    "expected": "/dashboard/jobs/JOB-001/print",
+    "alias": false,
+    "index": 24,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/jobs/JOB-001/print/",
+    "heading": "#JOB-001 | Description | Remarks"
+  },
+  {
+    "source": "dashboard/jobs/by-area/page.tsx",
+    "template": "/dashboard/jobs/by-area",
+    "url": "/dashboard/jobs/by-area",
+    "expected": "/dashboard/jobs/by-area",
+    "alias": false,
+    "index": 25,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/jobs/by-area/",
+    "heading": "Jobs by Area | Jobs by Area | No Area | ตรวจสอบเครื่องปรับอากาศ"
+  },
+  {
+    "source": "dashboard/jobs/by-topic/page.tsx",
+    "template": "/dashboard/jobs/by-topic",
+    "url": "/dashboard/jobs/by-topic",
+    "expected": "/dashboard/jobs/by-topic",
+    "alias": false,
+    "index": 26,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/jobs/by-topic/",
+    "heading": "Jobs by Topic | Maintenance Jobs | Job history | ตรวจสอบเครื่องปรับอากาศ"
+  },
+  {
+    "source": "dashboard/jobs/page.tsx",
+    "template": "/dashboard/jobs",
+    "url": "/dashboard/jobs",
+    "expected": "/dashboard/jobs",
+    "alias": false,
+    "index": 27,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/jobs/",
+    "heading": "Maintenance jobs | ตรวจสอบเครื่องปรับอากาศ"
+  },
+  {
+    "source": "dashboard/jobs-report/page.tsx",
+    "template": "/dashboard/jobs-report",
+    "url": "/dashboard/jobs-report",
+    "expected": "/dashboard/jobs-report",
+    "alias": false,
+    "index": 28,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/jobs-report/",
+    "heading": "Jobs Report"
+  },
+  {
+    "source": "dashboard/machines/[machine_id]/page.tsx",
+    "template": "/dashboard/machines/[machine_id]",
+    "url": "/dashboard/machines/MC-001",
+    "expected": "/dashboard/machines/MC-001",
+    "alias": false,
+    "index": 29,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/machines/MC-001/",
+    "heading": "เครื่องจักรระบบปรับอากาศอาคารโรงแรม-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  },
+  {
+    "source": "dashboard/machines/page.tsx",
+    "template": "/dashboard/machines",
+    "url": "/dashboard/machines",
+    "expected": "/dashboard/machines",
+    "alias": false,
+    "index": 30,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/machines/",
+    "heading": "Machines"
+  },
+  {
+    "source": "dashboard/maintenance-tasks/[id]/page.tsx",
+    "template": "/dashboard/maintenance-tasks/[id]",
+    "url": "/dashboard/maintenance-tasks/1",
+    "expected": "/dashboard/maintenance-tasks/1",
+    "alias": false,
+    "index": 31,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/maintenance-tasks/1/",
+    "heading": "Air conditioning inspection procedure"
+  },
+  {
+    "source": "dashboard/maintenance-tasks/create/page.tsx",
+    "template": "/dashboard/maintenance-tasks/create",
+    "url": "/dashboard/maintenance-tasks/create",
+    "expected": "/dashboard/maintenance-tasks/create",
+    "alias": false,
+    "index": 32,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/maintenance-tasks/create/",
+    "heading": "Create Maintenance Task"
+  },
+  {
+    "source": "dashboard/maintenance-tasks/page.tsx",
+    "template": "/dashboard/maintenance-tasks",
+    "url": "/dashboard/maintenance-tasks",
+    "expected": "/dashboard/maintenance-tasks",
+    "alias": false,
+    "index": 33,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/maintenance-tasks/",
+    "heading": "Maintenance Tasks"
+  },
+  {
+    "source": "dashboard/my-jobs/page.tsx",
+    "template": "/dashboard/my-jobs",
+    "url": "/dashboard/my-jobs",
+    "expected": "/dashboard/my-jobs",
+    "alias": false,
+    "index": 34,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/my-jobs/",
+    "heading": "My Jobs | Find Jobs | Assigned Jobs"
+  },
+  {
+    "source": "dashboard/myJobs/page.tsx",
+    "template": "/dashboard/myJobs",
+    "url": "/dashboard/myJobs",
+    "expected": "/dashboard/my-jobs",
+    "alias": true,
+    "index": 35,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/my-jobs/",
+    "heading": "My Jobs | Find Jobs | Assigned Jobs"
+  },
+  {
+    "source": "dashboard/page.tsx",
+    "template": "/dashboard",
+    "url": "/dashboard",
+    "expected": "/dashboard",
+    "alias": false,
+    "index": 36,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/",
+    "heading": "KPI Dashboard | Machine Dashboard | Operations on track! | Weekly Maintenance Activity | Jobs by Priority | Job Status Distribution | Recent activity | Technician performance"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/[pm_id]/page.tsx",
+    "template": "/dashboard/preventive-maintenance/[pm_id]",
+    "url": "/dashboard/preventive-maintenance/PM-001",
+    "expected": "/dashboard/preventive-maintenance/PM-001",
+    "alias": false,
+    "index": 37,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/PM-001/",
+    "heading": "ตรวจเช็คเครื่องจักรรายเดือน | Work evidence | Maintenance Record Report | ตรวจเช็คเครื่องจักรรายเดือน"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/create/page.tsx",
+    "template": "/dashboard/preventive-maintenance/create",
+    "url": "/dashboard/preventive-maintenance/create",
+    "expected": "/dashboard/preventive-maintenance/create",
+    "alias": false,
+    "index": 38,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/create/",
+    "heading": "Create Preventive Maintenance | Creating preventive maintenance for | Assignment"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/dashboard/page.tsx",
+    "template": "/dashboard/preventive-maintenance/dashboard",
+    "url": "/dashboard/preventive-maintenance/dashboard",
+    "expected": "/dashboard/preventive-maintenance/dashboard",
+    "alias": false,
+    "index": 39,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/dashboard/",
+    "heading": "Preventive Maintenance Dashboard | Completion rate | Maintenance frequency distribution | Average completion times | Upcoming maintenance | Quick actions"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/edit/[pm_id]/page.tsx",
+    "template": "/dashboard/preventive-maintenance/edit/[pm_id]",
+    "url": "/dashboard/preventive-maintenance/edit/PM-001",
+    "expected": "/dashboard/preventive-maintenance/edit/PM-001",
+    "alias": false,
+    "index": 40,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/edit/PM-001/",
+    "heading": "Edit maintenance | Basic information | Images"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/page.tsx",
+    "template": "/dashboard/preventive-maintenance",
+    "url": "/dashboard/preventive-maintenance",
+    "expected": "/dashboard/preventive-maintenance",
+    "alias": false,
+    "index": 41,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/",
+    "heading": "Preventive Maintenance | Preventive Maintenance"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/plans/[plan_id]/edit/page.tsx",
+    "template": "/dashboard/preventive-maintenance/plans/[plan_id]/edit",
+    "url": "/dashboard/preventive-maintenance/plans/PLAN-001/edit",
+    "expected": "/dashboard/preventive-maintenance/plans/PLAN-001/edit",
+    "alias": false,
+    "index": 42,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/plans/PLAN-001/edit/",
+    "heading": "Edit PM master plan"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/plans/create/page.tsx",
+    "template": "/dashboard/preventive-maintenance/plans/create",
+    "url": "/dashboard/preventive-maintenance/plans/create",
+    "expected": "/dashboard/preventive-maintenance/plans/create",
+    "alias": false,
+    "index": 43,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/plans/create/",
+    "heading": "Create PM master plan"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/plans/page.tsx",
+    "template": "/dashboard/preventive-maintenance/plans",
+    "url": "/dashboard/preventive-maintenance/plans",
+    "expected": "/dashboard/preventive-maintenance/plans",
+    "alias": false,
+    "index": 44,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/plans/",
+    "heading": "PM master plans | Next 30 days"
+  },
+  {
+    "source": "dashboard/preventive-maintenance/schedule/page.tsx",
+    "template": "/dashboard/preventive-maintenance/schedule",
+    "url": "/dashboard/preventive-maintenance/schedule",
+    "expected": "/dashboard/preventive-maintenance/schedule",
+    "alias": false,
+    "index": 45,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/preventive-maintenance/schedule/",
+    "heading": "PM Calendar"
+  },
+  {
+    "source": "dashboard/profile/edit/[id]/page.tsx",
+    "template": "/dashboard/profile/edit/[id]",
+    "url": "/dashboard/profile/edit/me",
+    "expected": "/dashboard/profile/edit/me",
+    "alias": false,
+    "index": 46,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/profile/edit/me/",
+    "heading": "Account and organization"
+  },
+  {
+    "source": "dashboard/profile/page.tsx",
+    "template": "/dashboard/profile",
+    "url": "/dashboard/profile",
+    "expected": "/dashboard/profile",
+    "alias": false,
+    "index": 47,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/profile/",
+    "heading": "Profile"
+  },
+  {
+    "source": "dashboard/properties/page.tsx",
+    "template": "/dashboard/properties",
+    "url": "/dashboard/properties",
+    "expected": "/dashboard/properties",
+    "alias": false,
+    "index": 48,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/properties/",
+    "heading": "Properties"
+  },
+  {
+    "source": "dashboard/rooms/[room_id]/page.tsx",
+    "template": "/dashboard/rooms/[room_id]",
+    "url": "/dashboard/rooms/101",
+    "expected": "/dashboard/rooms/101",
+    "alias": false,
+    "index": 49,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/rooms/101/",
+    "heading": ""
+  },
+  {
+    "source": "dashboard/rooms/by-topics/page.tsx",
+    "template": "/dashboard/rooms/by-topics",
+    "url": "/dashboard/rooms/by-topics",
+    "expected": "/dashboard/rooms/by-topics",
+    "alias": false,
+    "index": 50,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/rooms/by-topics/",
+    "heading": "Rooms by Topic"
+  },
+  {
+    "source": "dashboard/rooms/page.tsx",
+    "template": "/dashboard/rooms",
+    "url": "/dashboard/rooms",
+    "expected": "/dashboard/rooms",
+    "alias": false,
+    "index": 51,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/rooms/",
+    "heading": "Rooms"
+  },
+  {
+    "source": "dashboard/rooms/topic-mismatch/page.tsx",
+    "template": "/dashboard/rooms/topic-mismatch",
+    "url": "/dashboard/rooms/topic-mismatch",
+    "expected": "/dashboard/rooms/topic-mismatch",
+    "alias": false,
+    "index": 52,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/rooms/topic-mismatch/",
+    "heading": "Room-Topic Mismatch"
+  },
+  {
+    "source": "dashboard/search/page.tsx",
+    "template": "/dashboard/search",
+    "url": "/dashboard/search",
+    "expected": "/dashboard/search",
+    "alias": false,
+    "index": 53,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/search/?q=air",
+    "heading": "Search Results | Jobs"
+  },
+  {
+    "source": "dashboard/settings/billing/page.tsx",
+    "template": "/dashboard/settings/billing",
+    "url": "/dashboard/settings/billing",
+    "expected": "/dashboard/settings/billing",
+    "alias": false,
+    "index": 54,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/settings/billing/",
+    "heading": "Billing"
+  },
+  {
+    "source": "dashboard/settings/billing/success/page.tsx",
+    "template": "/dashboard/settings/billing/success",
+    "url": "/dashboard/settings/billing/success",
+    "expected": "/dashboard/settings/billing/success",
+    "alias": false,
+    "index": 55,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/settings/billing/success/",
+    "heading": ""
+  },
+  {
+    "source": "dashboard/settings/users/page.tsx",
+    "template": "/dashboard/settings/users",
+    "url": "/dashboard/settings/users",
+    "expected": "/dashboard/settings/users",
+    "alias": false,
+    "index": 56,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/settings/users/",
+    "heading": "Users and invitations"
+  },
+  {
+    "source": "dashboard/unauthorized/page.tsx",
+    "template": "/dashboard/unauthorized",
+    "url": "/dashboard/unauthorized",
+    "expected": "/dashboard/unauthorized",
+    "alias": false,
+    "index": 57,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/unauthorized/",
+    "heading": "Unauthorized property access"
+  },
+  {
+    "source": "dashboard/utility-consumption/page.tsx",
+    "template": "/dashboard/utility-consumption",
+    "url": "/dashboard/utility-consumption",
+    "expected": "/dashboard/utility-consumption",
+    "alias": false,
+    "index": 58,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/dashboard/utility-consumption/",
+    "heading": "Utility Consumption | Consumption trends | Monthly trend | Utility-specific consumption | Usage breakdown | Monthly utility records | Future enhancement"
+  },
+  {
+    "source": "demo/create-job/page.tsx",
+    "template": "/demo/create-job",
+    "url": "/demo/create-job",
+    "expected": "/demo/create-job",
+    "alias": false,
+    "index": 59,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/demo/create-job/",
+    "heading": "Create maintenance job | 1. Job Information | 2. Location | 3. Category & Additional Details | 4. Evidence | Maintenance job summary"
+  },
+  {
+    "source": "demo/email-reports/page.tsx",
+    "template": "/demo/email-reports",
+    "url": "/demo/email-reports",
+    "expected": "/demo/email-reports",
+    "alias": false,
+    "index": 60,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/demo/email-reports/",
+    "heading": "Email report templates"
+  },
+  {
+    "source": "demo/jobs/[jobId]/page.tsx",
+    "template": "/demo/jobs/[jobId]",
+    "url": "/demo/jobs/DEMO-001",
+    "expected": "/demo/jobs/DEMO-001",
+    "alias": false,
+    "index": 61,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/demo/jobs/DEMO-001/",
+    "heading": "ตรวจสอบเครื่องปรับอากาศ | Job Information | Other jobs for this machine | Before / After Evidence | Comments | Production-style workflow"
+  },
+  {
+    "source": "demo/jobs/page.tsx",
+    "template": "/demo/jobs",
+    "url": "/demo/jobs",
+    "expected": "/demo/jobs",
+    "alias": false,
+    "index": 62,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/demo/jobs/",
+    "heading": "Maintenance Jobs | ตรวจสอบเครื่องปรับอากาศ"
+  },
+  {
+    "source": "demo/my-jobs/page.tsx",
+    "template": "/demo/my-jobs",
+    "url": "/demo/my-jobs",
+    "expected": "/demo/my-jobs",
+    "alias": false,
+    "index": 63,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/demo/my-jobs/",
+    "heading": "My Jobs | Inspect guest room fan"
+  },
+  {
+    "source": "demo/page.tsx",
+    "template": "/demo",
+    "url": "/demo",
+    "expected": "/demo",
+    "alias": false,
+    "index": 64,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/demo/",
+    "heading": "Dashboard | Machine Dashboard | Recent Maintenance Jobs | Preventive Maintenance | Inventory Alerts",
+    "extraState": "Machine details expanded"
+  },
+  {
+    "source": "demo/report/page.tsx",
+    "template": "/demo/report",
+    "url": "/demo/report",
+    "expected": "/demo/report",
+    "alias": false,
+    "index": 65,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/demo/report/",
+    "heading": "รายงานงานซ่อม Demo | แนวโน้มงานและภาระงานของทีม | งานตามสถานะ | งานตามความสำคัญ | พื้นที่ที่มีงานสูงสุด | งานตามหมวดหมู่ | การบำรุงรักษาเชิงป้องกัน | สถานะสินค้าคงคลัง"
+  },
+  {
+    "source": "demo/rooms/page.tsx",
+    "template": "/demo/rooms",
+    "url": "/demo/rooms",
+    "expected": "/demo/rooms",
+    "alias": false,
+    "index": 66,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/demo/rooms/?room=101",
+    "heading": "Rooms & maintenance history | Room 101"
+  },
+  {
+    "source": "invitations/accept/page.tsx",
+    "template": "/invitations/accept",
+    "url": "/invitations/accept",
+    "expected": "/invitations/accept",
+    "alias": false,
+    "index": 67,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/invitations/accept/",
+    "heading": ""
+  },
+  {
+    "source": "login/page.tsx",
+    "template": "/login",
+    "url": "/login",
+    "expected": "/auth/login",
+    "alias": true,
+    "index": 68,
+    "status": "passed-redirect",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/auth/login/",
+    "heading": "Keep every property running at its best. | Sign in to your workspace"
+  },
+  {
+    "source": "offline/page.tsx",
+    "template": "/offline",
+    "url": "/offline",
+    "expected": "/offline",
+    "alias": false,
+    "index": 69,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/offline/",
+    "heading": "You're offline"
+  },
+  {
+    "source": "page.tsx",
+    "template": "/",
+    "url": "/",
+    "expected": "/",
+    "alias": false,
+    "index": 70,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/",
+    "heading": "Smart Hotel Maintenance and Engineering Management Software | Everything you need for hotel engineering management | Transform your hotel engineering operations | Ready to get started?"
+  },
+  {
+    "source": "platform/page.tsx",
+    "template": "/platform",
+    "url": "/platform",
+    "expected": "/platform",
+    "alias": false,
+    "index": 71,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/platform/",
+    "heading": "Platform Overview | Commercial Plans | Feature Comparison | Subscription attention"
+  },
+  {
+    "source": "platform/subscriptions/page.tsx",
+    "template": "/platform/subscriptions",
+    "url": "/platform/subscriptions",
+    "expected": "/platform/subscriptions",
+    "alias": false,
+    "index": 72,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/platform/subscriptions/",
+    "heading": "Subscriptions"
+  },
+  {
+    "source": "platform/tenants/[tenantId]/page.tsx",
+    "template": "/platform/tenants/[tenantId]",
+    "url": "/platform/tenants/1",
+    "expected": "/platform/tenants/1",
+    "alias": false,
+    "index": 73,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/platform/tenants/1/",
+    "heading": "Tenant detail | Audit Hotel Group"
+  },
+  {
+    "source": "platform/tenants/page.tsx",
+    "template": "/platform/tenants",
+    "url": "/platform/tenants",
+    "expected": "/platform/tenants",
+    "alias": false,
+    "index": 74,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/platform/tenants/",
+    "heading": "Tenants"
+  },
+  {
+    "source": "platform/usage/page.tsx",
+    "template": "/platform/usage",
+    "url": "/platform/usage",
+    "expected": "/platform/usage",
+    "alias": false,
+    "index": 75,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/platform/usage/",
+    "heading": "Usage"
+  },
+  {
+    "source": "platform/webhook-events/page.tsx",
+    "template": "/platform/webhook-events",
+    "url": "/platform/webhook-events",
+    "expected": "/platform/webhook-events",
+    "alias": false,
+    "index": 76,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/platform/webhook-events/",
+    "heading": "Webhook Events"
+  },
+  {
+    "source": "pricing/page.tsx",
+    "template": "/pricing",
+    "url": "/pricing",
+    "expected": "/pricing",
+    "alias": false,
+    "index": 77,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/pricing/",
+    "heading": "Plans that grow with your hotel operation | Pro | Compare plans"
+  },
+  {
+    "source": "report/[propertyId]/[roomId]/page.tsx",
+    "template": "/report/[propertyId]/[roomId]",
+    "url": "/report/MOBILE/101",
+    "expected": "/report/MOBILE/101",
+    "alias": false,
+    "index": 78,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/report/MOBILE/101/",
+    "heading": "Room 101"
+  },
+  {
+    "source": "(marketing)/[slug]/page.tsx",
+    "template": "/[slug]",
+    "url": "/hotel-engineering-management",
+    "expected": "/hotel-engineering-management",
+    "alias": false,
+    "index": 79,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/hotel-engineering-management/",
+    "heading": "Hotel engineering management with clear accountability | Clear ownership | Engineering visibility | Consistent standards | From reported issue to reliable history | A practical command center for hotel engineering | Frequently asked questions | Run calmer, more accountable hotel maintenance"
+  },
+  {
+    "source": "(marketing)/[slug]/page.tsx",
+    "template": "/[slug]",
+    "url": "/preventive-maintenance-hotel",
+    "expected": "/preventive-maintenance-hotel",
+    "alias": false,
+    "index": 80,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/preventive-maintenance-hotel/",
+    "heading": "Preventive maintenance for hotel equipment and facilities | Prevent breakdowns | Protect asset life | Reduce missed tasks | From reported issue to reliable history | Hotel PM planning without spreadsheet drift | Frequently asked questions | Run calmer, more accountable hotel maintenance",
+    "securityChecks": {
+      "dashboardStatus": 307,
+      "dashboardLocation": "http://localhost:3100/auth/login?redirect=%2Fdashboard%2F",
+      "jobsApiStatus": 401
+    }
+  },
+  {
+    "source": "(marketing)/[slug]/page.tsx",
+    "template": "/[slug]",
+    "url": "/hotel-work-order-system",
+    "expected": "/hotel-work-order-system",
+    "alias": false,
+    "index": 81,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/hotel-work-order-system/",
+    "heading": "A hotel work order system that keeps every issue moving | Better requests | Predictable workflow | Visible service levels | From reported issue to reliable history | Purpose-built hotel work orders | Frequently asked questions | Run calmer, more accountable hotel maintenance"
+  },
+  {
+    "source": "(marketing)/[slug]/page.tsx",
+    "template": "/[slug]",
+    "url": "/hotel-cmms",
+    "expected": "/hotel-cmms",
+    "alias": false,
+    "index": 82,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/hotel-cmms/",
+    "heading": "A hotel CMMS designed around rooms, guests and engineering teams | Hospitality context | Connected maintenance | Actionable reporting | From reported issue to reliable history | Core CMMS capabilities for hotels | Frequently asked questions | Run calmer, more accountable hotel maintenance"
+  },
+  {
+    "source": "(marketing)/[slug]/page.tsx",
+    "template": "/[slug]",
+    "url": "/hotel-asset-management",
+    "expected": "/hotel-asset-management",
+    "alias": false,
+    "index": 83,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/hotel-asset-management/",
+    "heading": "Hotel asset management connected to real maintenance work | Know each asset | See maintenance history | Plan replacement | From reported issue to reliable history | Asset records your engineers will actually use | Frequently asked questions | Run calmer, more accountable hotel maintenance"
+  },
+  {
+    "source": "(marketing)/[slug]/page.tsx",
+    "template": "/[slug]",
+    "url": "/hotel-maintenance-checklist",
+    "expected": "/hotel-maintenance-checklist",
+    "alias": false,
+    "index": 84,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/hotel-maintenance-checklist/",
+    "heading": "Hotel maintenance checklists that lead to accountable action | Consistent inspections | Visible completion | Defect follow-up | From reported issue to reliable history | From checklist to maintenance history | Frequently asked questions | Run calmer, more accountable hotel maintenance"
+  },
+  {
+    "source": "(marketing)/[slug]/page.tsx",
+    "template": "/[slug]",
+    "url": "/hotel-engineering-report",
+    "expected": "/hotel-engineering-report",
+    "alias": false,
+    "index": 85,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/hotel-engineering-report/",
+    "heading": "Hotel engineering reports grounded in live maintenance data | Current operational picture | Management-ready insight | Traceable evidence | From reported issue to reliable history | Reporting for engineering and hotel leadership | Frequently asked questions | Run calmer, more accountable hotel maintenance"
+  },
+  {
+    "source": "(marketing)/th/[slug]/page.tsx",
+    "template": "/th/[slug]",
+    "url": "/th/%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B8%9A%E0%B8%A3%E0%B8%B4%E0%B8%AB%E0%B8%B2%E0%B8%A3%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B8%8B%E0%B9%88%E0%B8%AD%E0%B8%A1%E0%B8%9A%E0%B8%B3%E0%B8%A3%E0%B8%B8%E0%B8%87%E0%B9%82%E0%B8%A3%E0%B8%87%E0%B9%81%E0%B8%A3%E0%B8%A1",
+    "expected": "/th/%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B8%9A%E0%B8%A3%E0%B8%B4%E0%B8%AB%E0%B8%B2%E0%B8%A3%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B8%8B%E0%B9%88%E0%B8%AD%E0%B8%A1%E0%B8%9A%E0%B8%B3%E0%B8%A3%E0%B8%B8%E0%B8%87%E0%B9%82%E0%B8%A3%E0%B8%87%E0%B9%81%E0%B8%A3%E0%B8%A1",
+    "alias": false,
+    "index": 86,
+    "status": "passed",
+    "measurements": [
+      {
+        "width": 320,
+        "height": 844,
+        "documentWidth": 320,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 375,
+        "height": 844,
+        "documentWidth": 375,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "mainOverflow": [],
+        "outside": [],
+        "smallInputs": []
+      }
+    ],
+    "errors": [],
+    "unmatched": [],
+    "http": 200,
+    "finalUrl": "http://127.0.0.1:3100/th/%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B8%9A%E0%B8%A3%E0%B8%B4%E0%B8%AB%E0%B8%B2%E0%B8%A3%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B8%8B%E0%B9%88%E0%B8%AD%E0%B8%A1%E0%B8%9A%E0%B8%B3%E0%B8%A3%E0%B8%B8%E0%B8%87%E0%B9%82%E0%B8%A3%E0%B8%87%E0%B9%81%E0%B8%A3%E0%B8%A1/",
+    "heading": "ระบบบริหารงานซ่อมบำรุงโรงแรมแบบครบวงจร | เห็นภาพงานทั้งโรงแรม | ลดงานตกหล่น | ตัดสินใจจากข้อมูลจริง | จากปัญหาหน้างานสู่ข้อมูลที่นำไปใช้ได้ | เครื่องมือสำหรับหัวหน้าช่างและทีมปฏิบัติการ | คำถามที่พบบ่อย | ยกระดับงานซ่อมบำรุงโรงแรมของคุณ"
+  }
+]

@@ -14,7 +14,7 @@ import {
 export default function CreateMaintenanceTaskPage() {
   return (
     <div className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Button asChild variant="outline" size="sm">
           <Link href="/dashboard/maintenance-tasks">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -44,7 +44,7 @@ export default function CreateMaintenanceTaskPage() {
             <ol className="list-decimal list-inside space-y-2 text-blue-800 text-sm">
               <li>
                 Go to Django Admin:{" "}
-                <code className="bg-blue-100 px-2 py-1 rounded-sm">
+                <code className="break-all bg-blue-100 px-2 py-1 rounded-sm">
                   http://localhost:8000/admin/
                 </code>
               </li>
@@ -76,7 +76,7 @@ export default function CreateMaintenanceTaskPage() {
             </ol>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button asChild>
               <a
                 href="http://localhost:8000/admin/myappLubd/maintenanceprocedure/add/"

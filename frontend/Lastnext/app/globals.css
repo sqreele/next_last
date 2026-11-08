@@ -4642,7 +4642,10 @@ svg {
     background: var(--pcms-app-bg);
   }
 
-  .pcms-page-header {
+  .pcms-page-header,
+  .pcms-app-shell main .pcms-page-header {
+    /* Leave room for the gutters alongside legacy full-width mobile rules. */
+    width: auto !important;
     margin-inline: 0.75rem;
     border-radius: 12px;
     padding: 1rem;
@@ -4681,4 +4684,22 @@ svg {
 .dark .sneat-board {
   background: transparent;
   color: var(--pcms-text);
+}
+
+/* Keep content and editable controls usable across mobile routes and portals. */
+@media (max-width: 767px) {
+  :where(main, [role="dialog"], [role="alertdialog"]) .grid > * {
+    min-width: 0;
+  }
+
+  :where(main, [role="dialog"], [role="alertdialog"]) :where(h1, h2, h3, dd) {
+    overflow-wrap: anywhere;
+  }
+
+  /* A 16px editing font prevents iOS from zooming the page when focused. */
+  :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select) {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
 }

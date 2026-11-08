@@ -17,7 +17,7 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
     <TableMobileCardsContext.Provider value={mobileCards}>
       <div
         className={cn(
-          "relative w-full rounded-xl border border-border bg-card shadow-soft",
+          "relative w-full min-w-0 max-w-full rounded-xl border border-border bg-card shadow-soft",
           mobileCards
             ? "overflow-visible mobile:border-0 mobile:bg-transparent mobile:shadow-none"
             : "overflow-x-auto",
@@ -145,7 +145,7 @@ const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
             <span className="hidden mobile:inline text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {mobileLabel}
             </span>
-            <span className="min-w-0 mobile:text-right mobile:font-medium mobile:text-foreground">
+            <span className="min-w-0 [overflow-wrap:anywhere] mobile:text-right mobile:font-medium mobile:text-foreground">
               {children}
             </span>
           </>

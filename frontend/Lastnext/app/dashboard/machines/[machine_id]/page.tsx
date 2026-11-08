@@ -468,23 +468,23 @@ export default function MachineDetailPage({
     : "/dashboard/preventive-maintenance/create";
 
   return (
-    <div className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
+    <div className="w-full min-w-0 max-w-none space-y-4 [overflow-wrap:anywhere] px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:flex-1">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:flex-1">
           <Button asChild variant="outline" size="sm" className="self-start">
             <Link href="/dashboard/machines">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Link>
           </Button>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <div className="mb-2 min-w-0">
               <h1 className="flex min-w-0 items-start gap-2 text-xl font-bold text-foreground sm:items-center sm:gap-3 sm:text-3xl">
                 <span className="shrink-0 rounded-lg bg-blue-100 p-2">
                   <Wrench className="h-5 w-5 text-blue-600 sm:h-6 sm:w-6" />
                 </span>
-                <span className="min-w-0 break-words">{machine.name}</span>
+                <span className="min-w-0 [overflow-wrap:anywhere]">{machine.name}</span>
               </h1>
             </div>
             <p className="mt-1 break-all font-mono text-xs text-muted-foreground sm:text-sm">
@@ -521,7 +521,7 @@ export default function MachineDetailPage({
               ) : (
                 <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
               )}
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <h3
                   className={`font-semibold mb-1 ${propertyVerification.matches ? "text-green-900" : "text-orange-900"}`}
                 >
@@ -576,7 +576,7 @@ export default function MachineDetailPage({
                 </div>
               )}
             </div>
-            <div className="flex-1 space-y-4">
+            <div className="min-w-0 flex-1 space-y-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   Machine Information

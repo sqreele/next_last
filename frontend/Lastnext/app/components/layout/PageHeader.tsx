@@ -59,8 +59,8 @@ export function SectionHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start justify-between gap-4", className)}>
-      <div>
+    <div className={cn("flex min-w-0 flex-wrap items-start justify-between gap-4", className)}>
+      <div className="min-w-0 [overflow-wrap:anywhere]">
         <h2 className="text-base font-semibold text-foreground">{title}</h2>
         {description ? (
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>

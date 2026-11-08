@@ -1,8 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { getServerSession } from '@/app/lib/session.server';
-import { fetchAllRooms, fetchAllTopics, fetchAllJobsForDashboard, ServerApiError } from '@/app/lib/data.server';
-import { jobsApi, JobsApiError } from '@/app/lib/api/jobsApi';
+import { fetchAllRooms, fetchAllTopics, fetchAllJobsForDashboard, fetchProperties, ServerApiError } from '@/app/lib/data.server';
 import RoomsByTopicClient, { RoomsByTopicLoadError } from './room-topic-client';
 import { generatePageMetadata } from '@/app/lib/seo-config';
 import type { Job, Property, Room, Topic } from '@/app/lib/types';
@@ -20,7 +19,7 @@ type LoadResult<T> = {
 const emptyArray = <T,>(): T[] => [];
 
 function getFriendlyLoadError(source: string, error: unknown): RoomsByTopicLoadError {
-  const status = error instanceof ServerApiError || error instanceof JobsApiError ? error.status : undefined;
+  const status = error instanceof ServerApiError ? error.status : undefined;
   const rawMessage = error instanceof Error ? error.message : String(error || 'Unknown error');
 
   if (status === 401) {
@@ -110,7 +109,7 @@ export default async function RoomsByTopicPage() {
   const [roomsResult, topicsResult, propertiesResult, jobsResult] = await Promise.all([
     safeLoad<Room[]>('rooms', () => fetchAllRooms(), emptyArray<Room>()),
     safeLoad<Topic[]>('topics', () => fetchAllTopics(), emptyArray<Topic>()),
-    safeLoad<Property[]>('properties', () => jobsApi.getProperties(), emptyArray<Property>()),
+    safeLoad<Property[]>('properties', () => fetchProperties(), emptyArray<Property>()),
     safeLoad<Job[]>('jobs', () => fetchAllJobsForDashboard(), emptyArray<Job>()),
   ]);
 

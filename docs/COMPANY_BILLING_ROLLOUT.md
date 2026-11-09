@@ -57,6 +57,7 @@ Additive migration sequence:
 | 0102_company_property_billing | Company catalog, quote/operation journal, enrollments, invoice allocations, quantity fields, explicit roles and nullable Job assignment/creator fields |
 | 0103_company_coverage_contract | Reference the contract responsible for paid coverage |
 | 0104_company_invoice_balances | Exact due/remaining balances and signed totals for credit invoices |
+| 0105_billing_issuer_settings | Singleton legal issuer configuration for Django Admin; no data backfill |
 
 No migration calls Stripe, changes existing plans, enrolls Properties, rewrites
 ownership, assigns historical Jobs or promotes memberships. A historical-schema
@@ -96,6 +97,25 @@ separate mutation endpoints. Browser requests use the authenticated BFF action
 map; its server session supplies the bearer token. PDFs are private/no-store.
 
 ## Configuration — staging first
+
+The legal issuer can be configured by a **platform Superuser** in Django Admin:
+`/admin/myappLubd/billingissuersettings/` → Add → legal name, address,
+13-digit tax ID and billing email. After the first save, edit the existing row.
+Company Admin and ordinary staff permissions do not grant access to this global
+configuration. Deletion and multiple issuer records are disabled; updates record
+the actor/time and Django Admin history.
+
+Saved Admin data takes precedence over the four `BILLING_ISSUER_*` environment
+values as one complete identity. It applies immediately without restarting a
+worker. Until the first Admin save, existing environment configuration continues
+to work. Issued invoices and their later receipts retain their original issuer
+snapshot; only newly issued invoices use updated details. Saving issuer details
+does not enable billing, modify prices or send payments/emails to Stripe.
+
+This form requires the additive `0105_billing_issuer_settings` migration and the
+matching backend deployment. Test it on an isolated database first; production
+migration/deployment remains an explicit operational step. Keep the expanded
+table during an image rollback to preserve its settings and audit history.
 
 Keep these disabled until the relevant rollout approval. No secrets are copied
 into this document or source control.

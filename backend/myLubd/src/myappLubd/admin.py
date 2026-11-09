@@ -83,6 +83,7 @@ from .models import (
     TenantInvitation,
     LineGroupPairing,
     BillingWebhookEvent,
+    BillingIssuerSettings,
     UsageMetric,
     InventoryUsage,
 )
@@ -7048,6 +7049,52 @@ class UsageMetricAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+@admin.register(BillingIssuerSettings)
+class BillingIssuerSettingsAdmin(admin.ModelAdmin):
+    list_display = ['legal_name', 'email', 'updated_at', 'updated_by']
+    readonly_fields = ['updated_at', 'updated_by']
+    actions = None
+    save_on_top = True
+    fieldsets = [
+        ('ข้อมูลผู้ออกบิล / Billing issuer', {
+            'fields': ['legal_name', 'address', 'tax_id', 'email'],
+            'description': (
+                'ข้อมูลของผู้ให้บริการ StayMaint สำหรับบิลใหม่ มีผลทันทีหลังบันทึก '
+                'บิลและใบเสร็จที่ออกแล้วคงข้อมูลเดิม ผู้ให้บริการไม่ได้จด VAT '
+                '/ Applies immediately to new invoices. Existing documents remain unchanged. '
+                'The provider is not VAT registered.'
+            ),
+        }),
+        ('ประวัติการแก้ไข / Last update', {'fields': ['updated_at', 'updated_by']}),
+    ]
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser and not BillingIssuerSettings.objects.exists()
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        issuer = getattr(settings, 'BILLING_ISSUER', {}) or {}
+        for key in ('legal_name', 'address', 'tax_id', 'email'):
+            initial.setdefault(key, issuer.get(key, ''))
+        return initial
+
+    def save_model(self, request, obj, form, change):
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
 
 # Operational history has a separate read-only, superuser-only admin module.
 from . import admin_monitoring  # noqa: E402,F401

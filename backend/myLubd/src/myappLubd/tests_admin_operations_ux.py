@@ -461,14 +461,14 @@ class AdminOperationsDisplayTests(TestCase):
 
 
 class TenantSubscriptionPermissionRegressionTests(SimpleTestCase):
-    def test_existing_platform_authority_permissions_are_unchanged(self):
+    def test_only_superuser_edits_subscription_and_deletion_is_disabled(self):
         model_admin = TenantSubscriptionAdmin(TenantSubscription, AdminSite())
         superuser_request = SimpleNamespace(user=SimpleNamespace(is_superuser=True))
         staff_request = SimpleNamespace(user=SimpleNamespace(is_superuser=False))
 
         self.assertTrue(model_admin.has_add_permission(superuser_request))
         self.assertTrue(model_admin.has_change_permission(superuser_request))
-        self.assertTrue(model_admin.has_delete_permission(superuser_request))
+        self.assertFalse(model_admin.has_delete_permission(superuser_request))
         self.assertFalse(model_admin.has_add_permission(staff_request))
         self.assertFalse(model_admin.has_change_permission(staff_request))
         self.assertFalse(model_admin.has_delete_permission(staff_request))

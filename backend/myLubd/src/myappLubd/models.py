@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 from django.utils.crypto import get_random_string
-from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
+from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator, RegexValidator
 from django.core.exceptions import ValidationError
 from django.db.models import Q  # ✅ PERFORMANCE OPTIMIZATION: Import Q for partial indexes
 from django.db.utils import ProgrammingError
@@ -278,6 +278,42 @@ class BillingWebhookEvent(models.Model):
         indexes = [
             models.Index(fields=['provider', 'status'], name='billing_event_status_idx'),
         ]
+
+
+class BillingIssuerSettings(models.Model):
+    """One platform-wide legal issuer; issued invoices keep their own snapshot."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    legal_name = models.CharField('ชื่อผู้ออกบิล / Legal name', max_length=255)
+    address = models.TextField('ที่อยู่ / Address', max_length=2000)
+    tax_id = models.CharField(
+        'เลขประจำตัวผู้เสียภาษี / Tax ID', max_length=13,
+        validators=[RegexValidator(r'^[0-9]{13}$', 'กรอกเลขประจำตัวผู้เสียภาษี 13 หลัก / Enter 13 digits.')],
+        help_text='เลขของผู้ออกบิล ไม่ใช่สถานะการจด VAT / This does not indicate VAT registration.',
+    )
+    email = models.EmailField('อีเมลติดต่อเรื่องบิล / Billing email')
+    updated_at = models.DateTimeField('แก้ไขล่าสุด / Updated at', auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='billing_issuer_settings_updates', editable=False,
+        verbose_name='แก้ไขโดย / Updated by',
+    )
+
+    class Meta:
+        verbose_name = 'ข้อมูลผู้ออกบิล / Billing issuer'
+        verbose_name_plural = 'ข้อมูลผู้ออกบิล / Billing issuer'
+        constraints = [models.CheckConstraint(check=Q(id=1), name='billing_issuer_singleton')]
+
+    def clean(self):
+        super().clean()
+        for field in ('legal_name', 'address', 'tax_id', 'email'):
+            value = str(getattr(self, field) or '').strip()
+            setattr(self, field, value)
+            if not value:
+                raise ValidationError({field: 'กรุณากรอกข้อมูล / This field is required.'})
+
+    def __str__(self):
+        return self.legal_name
 
 
 class BillingProfile(models.Model):

@@ -10,7 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from ..models import BillingInvoice, BillingProfile
+from ..models import BillingInvoice, BillingProfile, BillingIssuerSettings
 from .stripe_service import StripeBillingError, _invoice_subscription_id, _provider_id, _timestamp_to_datetime, _value
 
 
@@ -23,7 +23,12 @@ class BillingProfileSerializer(serializers.ModelSerializer):
 
 
 def issuer_details():
-    issuer = dict(getattr(settings, 'BILLING_ISSUER', {}) or {})
+    stored = BillingIssuerSettings.objects.filter(pk=1).values(
+        'legal_name', 'address', 'tax_id', 'email',
+    ).first()
+    # A saved Admin configuration takes precedence as a complete identity.
+    # Environment configuration remains compatible until the first Admin save.
+    issuer = stored if stored is not None else dict(getattr(settings, 'BILLING_ISSUER', {}) or {})
     if not all(str(issuer.get(key, '')).strip() for key in ('legal_name', 'address', 'tax_id', 'email')):
         raise StripeBillingError('billing_issuer_missing', 'Please configure the legal billing issuer before issuing invoices.')
     return issuer

@@ -9,7 +9,7 @@ from rest_framework.test import APITestCase
 from .billing.documents import snapshot_invoice
 from .billing.stripe_service import process_webhook_event, sync_provider_subscription
 from .entitlements import get_tenant_entitlement
-from .models import BillingInvoice, BillingProfile, SubscriptionPlan, Tenant, TenantMembership, TenantSubscription, User
+from .models import BillingInvoice, BillingProfile, BillingIssuerSettings, SubscriptionPlan, Tenant, TenantMembership, TenantSubscription, User
 from .tests_stripe_billing import TEST_SETTINGS
 
 
@@ -209,6 +209,26 @@ class PromptPayBillingTests(APITestCase):
         sync_provider_subscription(self.remote)
         self.subscription.refresh_from_db()
         self.assertEqual(self.subscription.current_period_end.isoformat(), '2026-11-30')
+
+    def test_admin_issuer_edits_apply_to_new_invoices_only(self):
+        self.bind()
+        original = {'legal_name': 'ผู้ให้บริการเดิม', 'address': 'ที่อยู่เดิมของผู้ให้บริการ',
+                    'tax_id': '1234567890123', 'email': 'old-issuer@example.test'}
+        issuer = BillingIssuerSettings.objects.create(**original)
+        document = snapshot_invoice(self.invoice, self.subscription)
+        issuer.legal_name = 'ผู้ให้บริการชื่อใหม่'
+        issuer.email = 'new-issuer@example.test'
+        issuer.save()
+        # A later paid webhook must retain the issuer from the issued invoice,
+        # including when that invoice becomes a receipt.
+        snapshot_invoice(self.paid_invoice(), self.subscription)
+        document.refresh_from_db()
+        self.assertEqual(document.issuer, original)
+        self.assertIsNotNone(document.receipt_number)
+        following = {**self.invoice, 'id': 'in_next_issuer'}
+        next_document = snapshot_invoice(following, self.subscription)
+        self.assertEqual(next_document.issuer['legal_name'], issuer.legal_name)
+        self.assertEqual(next_document.issuer['email'], issuer.email)
 
     def test_document_identity_and_totals_are_immutable_after_profile_changes(self):
         self.bind()

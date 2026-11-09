@@ -136,7 +136,18 @@ def render_document_pdf(document, receipt=False):
 
     if receipt and not document.paid_at:
         raise StripeBillingError('receipt_unavailable', 'A receipt is available only after payment.')
-    font_dir = Path(settings.BASE_DIR) / 'static' / 'fonts'
+    # The production static volume can mask source fonts. Docker keeps an
+    # immutable copy outside that mount; local development uses source fonts.
+    font_directories = [
+        Path('/usr/local/share/fonts/mylubd'),
+        Path(settings.BASE_DIR) / 'static' / 'fonts',
+        Path(settings.STATIC_ROOT) / 'fonts',
+    ]
+    font_dir = next((directory for directory in font_directories if all(
+        (directory / f'Sarabun-{weight}.ttf').is_file() for weight in ('Regular', 'Bold')
+    )), None)
+    if font_dir is None:
+        raise ValueError('Billing PDF fonts are unavailable.')
     for name in ('Regular', 'Bold'):
         font_name = f'BillingSarabun-{name}'
         if font_name not in pdfmetrics.getRegisteredFontNames():

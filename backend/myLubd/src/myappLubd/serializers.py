@@ -33,6 +33,7 @@ import json
 
 from .timezones import is_valid_timezone, object_timezone
 from .tenancy import (
+    user_can_edit_property,
     require_work_creation_permission,
     TENANT_WIDE_PROPERTY_ROLES,
     get_accessible_properties,
@@ -483,6 +484,7 @@ class PropertyPMStatusSerializer(serializers.ModelSerializer):
 
 # Property serializer with rooms and PM status
 class PropertySerializer(serializers.ModelSerializer):
+    can_edit = serializers.SerializerMethodField()
     rooms = serializers.SerializerMethodField()
     is_preventivemaintenance = serializers.SerializerMethodField()
     tenant_name = serializers.CharField(source='tenant.name', read_only=True)
@@ -501,8 +503,13 @@ class PropertySerializer(serializers.ModelSerializer):
             'created_at',
             'rooms',
             'is_preventivemaintenance',
+            'can_edit',
         ]
-        read_only_fields = ['created_at', 'is_preventivemaintenance']
+        read_only_fields = ['property_id', 'created_at', 'is_preventivemaintenance']
+
+    def get_can_edit(self, obj):
+        request = self.context.get('request')
+        return user_can_edit_property(getattr(request, 'user', None), obj)
 
     def validate(self, attrs):
         if self.instance and 'tenant' in attrs and attrs['tenant'] != self.instance.tenant:

@@ -97,6 +97,7 @@ jobs:
           python manage.py test
           myappLubd.tests_company_billing
           myappLubd.tests_company_billing_migrations
+          myappLubd.tests_property_edit
           myappLubd.tests_stripe_billing
           myappLubd.tests_promptpay_billing
           myappLubd.tests_billing_authorization

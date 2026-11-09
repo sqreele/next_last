@@ -44,6 +44,21 @@ INVENTORY_STOCK_MANAGE_ROLES = {'owner', 'admin', 'manager', 'company_admin', 'p
 INVENTORY_CONSUME_ROLES = TENANT_OPERATOR_ROLES
 
 
+def user_can_edit_property(user, prop):
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    if not prop.tenant_id:
+        return False
+    return TenantMembership.objects.filter(
+        user=user, tenant_id=prop.tenant_id, is_active=True,
+    ).filter(
+        Q(role__in=TENANT_WIDE_PROPERTY_ROLES)
+        | Q(role='property_admin', properties=prop)
+    ).exists()
+
+
 @dataclass(frozen=True)
 class TenantUserCapacity:
     """Current user-seat capacity for one exact Tenant."""

@@ -10,6 +10,7 @@ import { fetchProperties } from "@/app/lib/data.server";
 import { Skeleton } from "@/app/components/ui/loading";
 import { PropertiesToolbar } from "./PropertiesToolbar";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
+import { EditPropertyDialog } from "@/app/components/properties/EditPropertyDialog";
 
 export const dynamic = "force-dynamic";
 
@@ -51,11 +52,11 @@ export default async function PropertiesIndexPage() {
           />
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {properties.map((prop: any) => (
-              <li key={prop.property_id ?? prop.id}>
+            {properties.map((prop) => (
+              <li key={prop.property_id ?? prop.id} className="flex h-full flex-col rounded-xl border border-[var(--pcms-border)] bg-card shadow-[var(--pcms-shadow-soft)]">
                 <Link
                   href={`/dashboard/rooms?property=${encodeURIComponent(prop.property_id ?? prop.id)}`}
-                  className="flex h-full flex-col gap-2 rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] transition-all hover:border-[var(--pcms-border-strong)] hover:shadow-[var(--pcms-shadow)]"
+                  className="flex flex-1 flex-col gap-2 rounded-xl p-4 transition-colors hover:bg-muted/40"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -87,6 +88,7 @@ export default async function PropertiesIndexPage() {
                     )}
                   </div>
                 </Link>
+                {prop.can_edit === true && <EditPropertyDialog property={prop} />}
               </li>
             ))}
           </ul>

@@ -70,6 +70,7 @@ from django.views.decorators.http import require_http_methods
 from .cache import cache_result, CacheManager
 from .services import NotificationService, PreventiveMaintenanceService
 from .tenancy import (
+    user_can_edit_property,
     can_manage_membership_property_grants,
     user_can_access_billing,
     get_accessible_jobs,
@@ -5657,8 +5658,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         target = serializer.validated_data.get('tenant', prop.tenant)
         if target != prop.tenant:
             raise PermissionDenied('Property ownership cannot be changed through this endpoint.')
-        membership = TenantMembership.objects.filter(user=self.request.user, tenant=prop.tenant, is_active=True).first()
-        if not self.request.user.is_superuser and not (membership and membership.role in {'owner', 'admin', 'manager', 'company_admin', 'property_admin'}):
+        if not user_can_edit_property(self.request.user, prop):
             raise PermissionDenied('Your role cannot edit this Property.')
         serializer.save()
 

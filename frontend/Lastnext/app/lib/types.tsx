@@ -131,6 +131,9 @@ export interface Job {
 }
 
 export interface Property {
+  can_edit?: boolean;
+  room_count?: number;
+  user_count?: number;
   id: string | number;
   property_id: string;
   name: string;

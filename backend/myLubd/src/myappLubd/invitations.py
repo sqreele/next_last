@@ -35,7 +35,7 @@ from .throttles import (
 )
 
 
-PROPERTY_REQUIRED_ROLES = {'supervisor', 'technician', 'viewer'}
+PROPERTY_REQUIRED_ROLES = {'supervisor', 'technician', 'viewer', 'property_admin'}
 PROPERTY_OPTIONAL_ROLES = {'billing'}
 User = get_user_model()
 

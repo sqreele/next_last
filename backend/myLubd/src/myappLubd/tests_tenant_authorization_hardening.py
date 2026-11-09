@@ -225,7 +225,7 @@ class TenantPropertyAuthorizationTests(APITestCase):
         self.assertEqual(
             set(property_row),
             {
-                'id', 'tenant', 'tenant_name', 'timezone', 'property_id', 'name',
+                'id', 'tenant', 'tenant_name', 'timezone', 'property_id', 'name', 'can_edit',
                 'description', 'created_at', 'rooms', 'is_preventivemaintenance',
             },
         )

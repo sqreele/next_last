@@ -544,6 +544,40 @@ class TenantInvitationTests(APITestCase):
         self.assertEqual(invitation.accepted_by, self.invitee)
         self.assertIsNotNone(invitation.accepted_at)
 
+    @patch('myappLubd.invitations.send_email', return_value=True)
+    def test_property_admin_email_and_acceptance_preserve_selected_property(self, send):
+        self.client.force_authenticate(self.manager)
+        endpoint = reverse('myappLubd:tenant-invitation-list')
+        payload = {'tenant': self.tenant.pk, 'email': self.invitee.email,
+                   'role': 'property_admin', 'properties': []}
+        self.assertEqual(self.client.post(endpoint, payload, format='json').status_code, 400)
+        payload['properties'] = [self.second_property.pk]
+        response = self.client.post(endpoint, payload, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(response.data['email_sent'])
+        args, kwargs = send.call_args
+        self.assertEqual(args[0], self.invitee.email)
+        self.assertIn(self.second_property.name, args[2])
+        self.assertIn(self.second_property.name, kwargs['html_body'])
+        self.assertNotIn(self.other_property.name, args[2])
+        token = args[2].split('#token=', 1)[1].split()[0]
+        self.authenticate_auth0(self.invitee)
+        accepted = self.client.post(reverse('myappLubd:tenant-invitation-accept'), {'token': token}, format='json')
+        self.assertEqual(accepted.status_code, 200, accepted.data)
+        membership = TenantMembership.objects.get(tenant=self.tenant, user=self.invitee)
+        self.assertEqual(membership.role, 'property_admin')
+        self.assertEqual(set(membership.properties.values_list('pk', flat=True)), {self.second_property.pk})
+        self.assertEqual(set(get_accessible_properties(self.invitee).values_list('pk', flat=True)), {self.second_property.pk})
+
+    def test_company_admin_invitation_has_company_wide_scope(self):
+        invitation, token = self.make_invitation(role='company_admin', properties=[])
+        self.authenticate_auth0(self.invitee)
+        response = self.client.post(reverse('myappLubd:tenant-invitation-accept'), {'token': token}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(invitation.properties.exists())
+        self.assertEqual(set(get_accessible_properties(self.invitee).values_list('pk', flat=True)),
+                         {self.property.pk, self.second_property.pk})
+
     def test_accept_below_user_limit_succeeds(self):
         self.plan.max_users = 6
         self.plan.save(update_fields=['max_users'])

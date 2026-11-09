@@ -141,11 +141,11 @@ test('browser invitation flows use body-only same-origin BFF transport', async (
 test('settings invitation form covers role, property, and submission states', async () => {
   const settings = await readFile(new URL('app/dashboard/settings/users/page.tsx', root), 'utf8');
 
-  assert.match(settings, /const roles = \["owner", "admin", "manager", "supervisor", "technician", "viewer", "billing"\]/);
-  assert.match(settings, /const tenantWideRoles = new Set\(\["owner", "admin", "manager"\]\)/);
-  assert.match(settings, /const propertyRequiredRoles = new Set\(\["supervisor", "technician", "viewer"\]\)/);
+  assert.match(settings, /const roles = \["owner", "admin", "manager", "supervisor", "technician", "viewer", "billing", "company_admin", "property_admin"\]/);
+  assert.match(settings, /const tenantWideRoles = new Set\(\["owner", "admin", "manager", "company_admin"\]\)/);
+  assert.match(settings, /const propertyRequiredRoles = new Set\(\["supervisor", "technician", "viewer", "property_admin"\]\)/);
   assert.match(settings, /properties\.filter\(\(property\) => String\(property\.tenant\) === tenantId\)/);
-  assert.match(settings, /const invitationPropertyIds = canManageAdvancedGrants/);
+  assert.match(settings, /const invitationPropertyIds = tenantWideRoles\.has\(role\)/);
   assert.match(settings, /properties: invitationPropertyIds/);
   assert.match(settings, /onCheckedChange=\{\(next\) => setPropertyIds/);
   assert.match(settings, /propertyRequiredRoles\.has\(role\) && propertyIds\.length === 0/);

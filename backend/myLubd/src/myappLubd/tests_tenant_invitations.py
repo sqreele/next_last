@@ -474,7 +474,10 @@ class TenantInvitationTests(APITestCase):
 
         workspace = self.client.get(reverse('myappLubd:tenant-invitation-workspace'))
         self.assertEqual(workspace.status_code, status.HTTP_200_OK)
-        self.assertEqual(workspace.data, {'tenants': [], 'properties': []})
+        self.assertEqual(workspace.data, {
+            'tenants': [], 'properties': [],
+            'roles': [role for role, _label in TenantMembership.ROLE_CHOICES],
+        })
         create = self.client.post(reverse('myappLubd:tenant-invitation-list'), {
             'tenant': self.tenant.pk,
             'email': 'inactive.manager@example.com',

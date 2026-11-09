@@ -51,6 +51,14 @@ import sys
 names = (
     'DJANGO_SETTINGS_MODULE',
     'PYTHONPATH',
+    'COMPANY_BILLING_ENABLED',
+    'COMPANY_BILLING_GRACE_DAYS',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'BILLING_ISSUER_NAME',
+    'BILLING_ISSUER_ADDRESS',
+    'BILLING_ISSUER_TAX_ID',
+    'BILLING_ISSUER_EMAIL',
     'TZ',
     'DJANGO_SECRET_KEY',
     'DEBUG',
@@ -122,6 +130,13 @@ case "$(printf '%s' "${DEMO_MODE:-false}" | tr '[:upper:]' '[:lower:]')" in
         chmod 0644 /etc/cron.d/daily_summary
         ;;
 esac
+
+# Company reconciliation is separately opt-in. The default deployment never
+# processes billing operations merely because code has been released.
+if [ "${BILLING_RECONCILIATION_CRON_ENABLED:-false}" = "true" ]; then
+    echo "*/5 * * * * root . $CRON_ENV_FILE && cd /app && /usr/local/bin/python manage.py reconcile_company_billing --apply >> /var/log/cron.log 2>&1" > /etc/cron.d/company_billing
+    chmod 0644 /etc/cron.d/company_billing
+fi
 
 # Start cron service
 service cron start

@@ -44,6 +44,9 @@ HANDLED_EVENT_TYPES = {
     'customer.subscription.deleted',
     'invoice.paid',
     'invoice.payment_failed',
+    'invoice.finalized',
+    'invoice.voided',
+    'invoice.marked_uncollectible',
 }
 
 
@@ -107,6 +110,8 @@ def get_or_create_stripe_customer(tenant, user):
 
 def create_checkout_session(tenant, user, plan):
     _configure_stripe()
+    if tenant.billing_model == 'property_quantity_v1':
+        raise StripeBillingError('company_checkout_required', 'Use the Company billing preview and confirmation flow.')
     with transaction.atomic():
         subscription = TenantSubscription.objects.select_for_update().get(tenant=tenant)
         if subscription.external_subscription_id:
@@ -142,6 +147,17 @@ def create_portal_session(tenant):
     if not customer_id:
         raise StripeBillingError('stripe_customer_missing', 'No billing customer exists.')
     frontend = str(settings.FRONTEND_BASE_URL).rstrip('/')
+    if tenant.billing_model == 'property_quantity_v1':
+        configuration_id = str(getattr(settings, 'COMPANY_BILLING_PORTAL_CONFIGURATION', '') or '')
+        if not configuration_id:
+            raise StripeBillingError('portal_configuration_required', 'Configure a Company payment-method-only portal before opening it.')
+        configuration = stripe.billing_portal.Configuration.retrieve(configuration_id)
+        features = _value(configuration, 'features') or {}
+        if any(_value(_value(features, key) or {}, 'enabled', False) for key in ('subscription_update', 'subscription_cancel')):
+            raise StripeBillingError('unsafe_portal_configuration', 'Company Portal must not bypass billing preview or cancellation controls.')
+        session = stripe.billing_portal.Session.create(customer=customer_id, configuration=configuration_id,
+            flow_data={'type': 'payment_method_update'}, return_url=f'{frontend}/dashboard/settings/billing/')
+        return _value(session, 'url')
     session = stripe.billing_portal.Session.create(
         customer=customer_id,
         return_url=f'{frontend}/dashboard/settings/billing',
@@ -202,7 +218,10 @@ def _subscription_period(provider_subscription, field_name):
 def _plan_for_provider_subscription(provider_subscription):
     price_id = _subscription_price_id(provider_subscription)
     matches = [
-        code for code, configured_price in getattr(settings, 'STRIPE_PRICE_MAP', {}).items()
+        code for code, configured_price in [
+            *getattr(settings, 'STRIPE_PRICE_MAP', {}).items(),
+            *getattr(settings, 'STRIPE_PROMPTPAY_PRICE_MAP', {}).items(),
+        ]
         if configured_price and configured_price == price_id
     ]
     if len(matches) != 1:
@@ -385,17 +404,22 @@ def sync_provider_subscription(
         )
         plan = _plan_for_provider_subscription(provider_subscription)
         subscription.external_subscription_id = provider_subscription_id
-        subscription.plan = plan
-        subscription.status = canonical_status
-        subscription.current_period_start = _timestamp_to_date(
-            _subscription_period(provider_subscription, 'current_period_start')
-        )
-        subscription.current_period_end = _timestamp_to_date(
-            _subscription_period(provider_subscription, 'current_period_end')
-        )
-        subscription.trial_ends_at = _timestamp_to_datetime(
-            _value(provider_subscription, 'trial_end')
-        )
+        if _value(provider_subscription, 'collection_method') == 'send_invoice':
+            _apply_paid_invoice_period(subscription, provider_subscription, plan, canonical_status)
+        else:
+            subscription.plan = plan
+            subscription.status = canonical_status
+            subscription.current_period_start = _timestamp_to_date(
+                _subscription_period(provider_subscription, 'current_period_start')
+            )
+            subscription.current_period_end = _timestamp_to_date(
+                _subscription_period(provider_subscription, 'current_period_end')
+            )
+        if (_value(provider_subscription, 'collection_method') != 'send_invoice'
+                or subscription.status != 'trialing' or _value(provider_subscription, 'trial_end')):
+            subscription.trial_ends_at = _timestamp_to_datetime(
+                _value(provider_subscription, 'trial_end')
+            )
         subscription.cancel_at_period_end = bool(
             _value(provider_subscription, 'cancel_at_period_end', False)
         )
@@ -407,6 +431,44 @@ def sync_provider_subscription(
             'grace_period_ends_at', 'updated_at',
         ])
         return subscription
+
+
+def _apply_paid_invoice_period(subscription, remote, plan, canonical_status):
+    """send_invoice can be active before payment: never grant an unpaid period.
+
+    Only immutable, provider-confirmed invoice lines establish paid access.
+    Sorting by period end prevents old/repeated invoices shortening access.
+    """
+    from zoneinfo import ZoneInfo
+    from ..models import BillingInvoice
+
+    price_id = _subscription_price_id(remote)
+    periods = []
+    documents = BillingInvoice.objects.filter(
+        tenant=subscription.tenant,
+        provider_subscription_id=subscription.external_subscription_id,
+        paid_at__isnull=False,
+    )
+    for document in documents:
+        for line in document.lines:
+            start, end = line.get('period_start'), line.get('period_end')
+            if line.get('price_id') == price_id and start and end and end > start and line.get('amount_minor', 0) >= 0:
+                periods.append((end, start))
+    if periods:
+        end, start = max(periods)
+        tenant_zone = ZoneInfo(subscription.tenant.timezone)
+        subscription.plan = plan
+        subscription.current_period_start = _timestamp_to_datetime(start).astimezone(tenant_zone).date()
+        # Stripe's period end is exclusive; StayMaint's DateField is inclusive.
+        subscription.current_period_end = (_timestamp_to_datetime(end) - timedelta(seconds=1)).astimezone(tenant_zone).date()
+        subscription.status = 'cancelled' if canonical_status == 'cancelled' else 'active'
+    elif canonical_status == 'cancelled':
+        subscription.status = 'cancelled'
+    elif subscription.status not in {'active', 'trialing'}:
+        subscription.status = 'suspended'
+    # Existing paid or trial access can finish. Without either, fail closed.
+    elif subscription.status == 'active' and subscription.current_period_end is None:
+        subscription.status = 'suspended'
 
 
 def _retrieve_subscription(provider_subscription_id):
@@ -434,6 +496,17 @@ def _process_invoice_paid(invoice):
     if not provider_subscription_id or not customer_id:
         raise StripeBillingError('subscription_reference_missing', 'Invoice has no customer or subscription reference.')
     provider_subscription = _retrieve_subscription(provider_subscription_id)
+    if _value(provider_subscription, 'collection_method') == 'send_invoice':
+        # Fetch the current invoice so late webhook delivery cannot resurrect
+        # an old status. Bind identity before persisting any document.
+        from .documents import snapshot_invoice
+        with transaction.atomic():
+            local = validate_stripe_subscription_identity(
+                provider_subscription, expected_customer_id=customer_id,
+                expected_subscription_id=provider_subscription_id, require_bound_subscription=True,
+            )
+            authoritative = stripe.Invoice.retrieve(_provider_id(invoice))
+            snapshot_invoice(authoritative, local)
     subscription = sync_provider_subscription(
         provider_subscription,
         expected_customer_id=customer_id,
@@ -451,6 +524,13 @@ def _process_invoice_failed(invoice, event_created):
     if not provider_subscription_id or not customer_id:
         raise StripeBillingError('subscription_reference_missing', 'Invoice has no customer or subscription reference.')
     provider_subscription = _retrieve_subscription(provider_subscription_id)
+    if _value(provider_subscription, 'collection_method') == 'send_invoice':
+        # Unpaid manual invoices do not earn an extra grace period.
+        sync_provider_subscription(
+            provider_subscription, expected_customer_id=customer_id,
+            expected_subscription_id=provider_subscription_id, require_bound_subscription=True,
+        )
+        return
     with transaction.atomic():
         subscription = validate_stripe_subscription_identity(
             provider_subscription,
@@ -466,9 +546,16 @@ def _process_invoice_failed(invoice, event_created):
 
 def _dispatch_event(event):
     event_type = _value(event, 'type')
+    provider_object = _value(_value(event, 'data', {}), 'object')
+    if provider_object:
+        customer_id = _provider_id(_value(provider_object, 'customer'))
+        company = TenantSubscription.objects.filter(external_customer_id=customer_id, tenant__billing_model='property_quantity_v1').exists() if customer_id else False
+        if company:
+            from .reconciliation import dispatch_company_event
+            dispatch_company_event(event_type, provider_object)
+            return
     if event_type not in HANDLED_EVENT_TYPES:
         return
-    provider_object = _value(_value(event, 'data', {}), 'object')
     if not provider_object:
         raise StripeBillingError('event_object_missing', 'Stripe event object is missing.')
 
@@ -501,6 +588,20 @@ def _dispatch_event(event):
         _process_invoice_paid(provider_object)
     elif event_type == 'invoice.payment_failed':
         _process_invoice_failed(provider_object, _value(event, 'created'))
+    elif event_type in {'invoice.finalized', 'invoice.voided', 'invoice.marked_uncollectible'}:
+        provider_subscription_id = _invoice_subscription_id(provider_object)
+        if not provider_subscription_id:
+            return
+        remote = _retrieve_subscription(provider_subscription_id)
+        if _value(remote, 'collection_method') != 'send_invoice':
+            return
+        from .documents import snapshot_invoice
+        with transaction.atomic():
+            local = validate_stripe_subscription_identity(
+                remote, expected_customer_id=_provider_id(_value(provider_object, 'customer')),
+                expected_subscription_id=provider_subscription_id, require_bound_subscription=True,
+            )
+            snapshot_invoice(stripe.Invoice.retrieve(_provider_id(provider_object)), local)
 
 
 def _record_failed_webhook_event(event_id, event_type, error_code):

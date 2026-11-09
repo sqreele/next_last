@@ -44,18 +44,24 @@ def get_plan_capabilities(plan_or_subscription):
     # access for pre-existing internal/custom plans until each is explicitly
     # assigned a capability map; portfolio remains unavailable everywhere.
     legacy_default = getattr(plan, 'code', None) not in {'starter', 'pro', 'enterprise', None}
-    return {
+    capabilities = {
         feature: bool(configured.get(
             feature,
             legacy_default and feature != 'portfolio_dashboard',
         ))
         for feature in PLAN_FEATURES
     }
+    if getattr(getattr(plan_or_subscription, 'tenant', None), 'billing_model', None) == 'property_quantity_v1':
+        capabilities['multi_property'] = True
+        capabilities['advanced_property_permissions'] = True
+    return capabilities
 
 
 def tenant_has_feature(tenant, feature):
     if feature not in PLAN_FEATURES or tenant is None:
         return False
+    if feature == 'multi_property' and tenant.billing_model == 'property_quantity_v1':
+        return True
     try:
         subscription = tenant.subscription
     except TenantSubscription.DoesNotExist:

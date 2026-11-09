@@ -70,6 +70,12 @@ from django.views.decorators.http import require_http_methods
 from .cache import cache_result, CacheManager
 from .services import NotificationService, PreventiveMaintenanceService
 from .tenancy import (
+    can_manage_membership_property_grants,
+    user_can_access_billing,
+    get_accessible_jobs,
+    get_accessible_machines,
+    restrict_pm_for_company_technicians,
+    require_work_creation_permission,
     SubscriptionUserLimitReached,
     accessible_property_ids,
     enforce_subscription_limit,
@@ -1331,6 +1337,11 @@ def chat_with_gemini(request):
     # Establish the canonical authorization boundary before any AI processing.
     # A.2h-2 propagates this scope through each context helper.
     accessible_properties = get_accessible_properties(request.user)
+    restricted_companies = TenantMembership.objects.filter(user=request.user, is_active=True,
+        role='technician', tenant__billing_model='property_quantity_v1').values('tenant_id')
+    # Portfolio AI tools summarize complete properties. Assigned-work users
+    # use their scoped Jobs/Equipment screens instead of a broader aggregate.
+    accessible_properties = accessible_properties.exclude(tenant_id__in=restricted_companies)
     ai_scope_token = _ai_accessible_properties.set(accessible_properties)
     message = str(request.data.get('message') or '').strip()
     if not message:
@@ -1781,7 +1792,7 @@ def canonical_pm_queryset(user, property_filter=None):
             | Q(machines__property__property_id=property_filter)
         )
 
-    return queryset.distinct()
+    return restrict_pm_for_company_technicians(queryset, user)
 
 
 # Preventive Maintenance ViewSet
@@ -3172,7 +3183,7 @@ class MachineViewSet(viewsets.ModelViewSet):
         superuser receives the global list.
         """
         user = self.request.user
-        queryset = Machine.objects.select_related('property').prefetch_related(
+        queryset = get_accessible_machines(self.request.user).select_related('property').prefetch_related(
             Prefetch('preventive_maintenances', queryset=PreventiveMaintenance.objects.order_by('next_due_date'))
         )
 
@@ -3245,6 +3256,7 @@ class MachineViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         property_obj = serializer.validated_data.get('property')
+        require_work_creation_permission(self.request.user, property_obj)
         _ensure_user_can_operate_property(self.request.user, property_obj)
         incoming = serializer.validated_data.get('image')
         incoming_bytes = int(getattr(incoming, 'size', 0) or 0)
@@ -3908,7 +3920,7 @@ class JobViewSet(viewsets.ModelViewSet):
         # ✅ PERFORMANCE OPTIMIZATION: Comprehensive query optimization
         # Use select_related for foreign keys to avoid N+1 queries
         # Use prefetch_related for many-to-many and reverse foreign keys
-        queryset = Job.objects.select_related(
+        queryset = get_accessible_jobs(self.request.user).select_related(
             'user',           # Foreign key to User
             'user__userprofile',
             'updated_by',     # Foreign key to User
@@ -4008,7 +4020,7 @@ class JobViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        jobs = Job.objects.filter(property=active_property).select_related(
+        jobs = get_accessible_jobs(self.request.user).filter(property=active_property).select_related(
             'machine',
             'user', 'property', 'area', 'area__property'
         ).prefetch_related('rooms', 'rooms__property', 'topics', 'job_images')
@@ -4160,7 +4172,7 @@ class JobViewSet(viewsets.ModelViewSet):
         room_names = sorted(set(room_qs.values_list('name', flat=True)))
 
         # Job rooms under same permission and optional filters
-        job_qs = Job.objects.all()
+        job_qs = get_accessible_jobs(self.request.user).all()
         if not user.is_superuser:
             accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
             job_qs = job_qs.filter(property_id__in=accessible_property_ids)
@@ -4185,7 +4197,7 @@ class JobViewSet(viewsets.ModelViewSet):
     
     def _calculate_stats(self, user, query_params):
         """Calculate job statistics (separated for caching)"""
-        base_queryset = Job.objects.all()
+        base_queryset = get_accessible_jobs(self.request.user).all()
         
         # Apply same filtering logic as get_queryset
         if not user.is_superuser:
@@ -4244,7 +4256,7 @@ class JobViewSet(viewsets.ModelViewSet):
         if property_obj is None:
             raise PermissionDenied('You do not have access to this property.')
 
-        jobs = Job.objects.filter(property=property_obj).select_related(
+        jobs = get_accessible_jobs(self.request.user).filter(property=property_obj).select_related(
             'property', 'user', 'area'
         ).prefetch_related('rooms', 'topics')
 
@@ -4540,7 +4552,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
         # Job.user is the current assignee relation. Job.property is the sole
         # ownership and active-Property boundary for this projection.
-        jobs = Job.objects.filter(
+        jobs = get_accessible_jobs(self.request.user).filter(
             user=target_user,
             property=active_property,
         ).select_related(
@@ -5044,7 +5056,7 @@ class JobViewSet(viewsets.ModelViewSet):
         already parses, so the timeline picks up the reassignment as a
         first-class event. Pushes both the new and previous assignee."""
         job = get_object_or_404(
-            Job.objects.select_related('property', 'property__tenant', 'user'),
+            get_accessible_jobs(self.request.user).select_related('property', 'property__tenant', 'user'),
             job_id=job_id,
         )
         _ensure_user_can_reassign_job(request.user, job)
@@ -5085,7 +5097,8 @@ class JobViewSet(viewsets.ModelViewSet):
             resource_type='job',
         )
 
-        previous = job.user
+        company_model = job.property.tenant and job.property.tenant.billing_model == 'property_quantity_v1'
+        previous = job.assigned_to if company_model else job.user
         if previous and previous.pk == target.pk:
             return Response(
                 {'error': 'Job is already assigned to that user.'},
@@ -5103,10 +5116,13 @@ class JobViewSet(viewsets.ModelViewSet):
             + (f" — {note}" if note else '')
         )
 
-        job.user = target
+        if company_model:
+            job.assigned_to = target
+        else:
+            job.user = target
         job.updated_by = request.user if getattr(request.user, 'is_authenticated', False) else target
         job.remarks = f"{job.remarks}\n{log_line}" if job.remarks else log_line
-        job.save(update_fields=['user', 'updated_by', 'remarks', 'updated_at'])
+        job.save(update_fields=['assigned_to' if company_model else 'user', 'updated_by', 'remarks', 'updated_at'])
         log_job_action(
             job=job,
             user=request.user,
@@ -5155,7 +5171,7 @@ class JobViewSet(viewsets.ModelViewSet):
     def assignment_candidates(self, request, job_id=None):
         """Return the smallest same-Property set needed by reassignment UI."""
         job = get_object_or_404(
-            Job.objects.select_related('property', 'property__tenant'),
+            get_accessible_jobs(self.request.user).select_related('property', 'property__tenant'),
             job_id=job_id,
         )
         _ensure_user_can_reassign_job(request.user, job)
@@ -5176,6 +5192,16 @@ class JobViewSet(viewsets.ModelViewSet):
 class TenantViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = TenantSerializer
+
+    def perform_update(self, serializer):
+        tenant = self.get_object()
+        if not (user_can_manage_tenant(self.request.user, tenant) or user_can_access_billing(self.request.user, tenant)):
+            raise PermissionDenied('Only a Company administrator can edit Company details.')
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        self.get_object()
+        raise ValidationError({'detail': 'Company deletion is disabled. Cancel billing and preserve Property history.'})
 
     def get_queryset(self):
         qs = get_user_tenants(self.request.user).prefetch_related('memberships', 'properties')
@@ -5297,10 +5323,10 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
         if properties is None and serializer.instance is not None:
             properties = serializer.instance.properties.all()
         properties = properties or []
-        invalid = [prop.name for prop in properties if prop.tenant_id and prop.tenant_id != tenant.id]
+        invalid = any(prop.tenant_id != tenant.id for prop in properties)
         if invalid:
             raise ValidationError({
-                'properties': f"Properties must belong to tenant {tenant.name}: {', '.join(invalid)}"
+                'properties': 'Every Property grant must belong to the authorized Company.'
             })
 
     def perform_create(self, serializer):
@@ -5626,6 +5652,20 @@ class PropertyViewSet(viewsets.ModelViewSet):
     serializer_class = PropertySerializer
     lookup_field = 'property_id'
 
+    def perform_update(self, serializer):
+        prop = self.get_object()
+        target = serializer.validated_data.get('tenant', prop.tenant)
+        if target != prop.tenant:
+            raise PermissionDenied('Property ownership cannot be changed through this endpoint.')
+        membership = TenantMembership.objects.filter(user=self.request.user, tenant=prop.tenant, is_active=True).first()
+        if not self.request.user.is_superuser and not (membership and membership.role in {'owner', 'admin', 'manager', 'company_admin', 'property_admin'}):
+            raise PermissionDenied('Your role cannot edit this Property.')
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        self.get_object()
+        raise ValidationError({'detail': 'Property deletion is disabled. Use the billing removal preview to archive it and preserve maintenance records.'})
+
     def get_queryset(self):
         logger.info(f"User {self.request.user.username} requesting properties")
         
@@ -5655,7 +5695,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You do not have permission to add properties to this tenant.")
         with transaction.atomic():
             locked_tenant = lock_tenants_for_membership_change(tenant)[tenant.pk]
-            if Property.objects.filter(tenant=locked_tenant).exists():
+            if locked_tenant.billing_model != 'property_quantity_v1' and Property.objects.filter(tenant=locked_tenant).exists():
                 require_plan_feature(locked_tenant, 'multi_property')
             enforce_subscription_limit(locked_tenant, 'max_properties')
             membership = TenantMembership.objects.select_for_update().filter(
@@ -5664,7 +5704,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             ).first()
             if membership is None:
                 enforce_tenant_user_limit(locked_tenant)
-            prop = serializer.save(tenant=locked_tenant)
+            prop = serializer.save(tenant=locked_tenant, **({'subscription_status': 'draft'} if locked_tenant.billing_model == 'property_quantity_v1' else {}))
             if membership is None:
                 membership = TenantMembership.objects.create(
                     tenant=locked_tenant,
@@ -5850,6 +5890,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_user(self, request, property_id=None):
         property_obj = get_object_or_404(Property, property_id=property_id)
+        if not can_manage_membership_property_grants(request.user, property_obj.tenant):
+            raise PermissionDenied('Only a Company membership administrator can grant Property access.')
         membership = TenantMembership.objects.filter(
             user=request.user, tenant=property_obj.tenant, is_active=True
         ).first()
@@ -5877,6 +5919,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
         membership = TenantMembership.objects.filter(user=request.user, is_active=True).first()
         if membership is None:
             raise ValidationError({'detail': 'User must have an active TenantMembership before property access can be assigned.'})
+        if not can_manage_membership_property_grants(request.user, membership.tenant):
+            raise PermissionDenied('Self-service Property grants are disabled for restricted roles.')
         property_ids = request.data.get('property_ids', [])
         
         if not property_ids:
@@ -6109,7 +6153,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     existing = Property.objects.filter(name__iexact=name).first()
                 if existing is not None:
                     if existing.tenant_id is None:
-                        ensure_tenant_for_property(existing, request.user)
+                        errors.append({'row': row_index, 'error': 'Tenantless Property assignment requires explicit operator approval.'})
+                        continue
                     elif not user_can_manage_tenant(request.user, existing.tenant):
                         errors.append({'row': row_index, 'error': 'You cannot attach this property.'})
                         continue
@@ -6745,7 +6790,7 @@ def get_preventive_maintenance_data(request):
         logger.info(f"Found {user_properties.count()} properties for user")
         
         # Get preventive maintenance jobs for these properties
-        pm_jobs = Job.objects.filter(
+        pm_jobs = get_accessible_jobs(request.user).filter(
             property__in=user_properties,
             is_preventivemaintenance=True
         ).select_related('user').prefetch_related('rooms', 'topics')
@@ -6791,7 +6836,7 @@ def get_preventive_maintenance_jobs(request):
     user_filter = request.query_params.get('user_id')
     
     # Build base query
-    query = Job.objects.filter(is_preventivemaintenance=True)
+    query = get_accessible_jobs(request.user).filter(is_preventivemaintenance=True)
     
     # Add property filter if provided
     if property_id:
@@ -6938,7 +6983,7 @@ def get_dashboard_summary(request):
     user = request.user
     month_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-    base_queryset = Job.objects.all()
+    base_queryset = get_accessible_jobs(user)
 
     if not user.is_superuser:
         accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
@@ -7226,7 +7271,7 @@ def generate_maintenance_pdf_report(request):
             queryset = queryset.filter(job__property__in=user_properties)
         
         # Order by scheduled date
-        queryset = queryset.order_by('scheduled_date')
+        queryset = restrict_pm_for_company_technicians(queryset, request.user).order_by('scheduled_date')
         
         # Get the data
         maintenance_data = list(queryset.distinct())
@@ -7620,7 +7665,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
         if job_id:
             accessible = get_accessible_properties(request.user)
             job = get_object_or_404(
-                Job.objects.filter(property__in=accessible),
+                get_accessible_jobs(self.request.user).filter(property__in=accessible),
                 job_id=job_id,
             )
             if inventory.property_id not in _job_property_ids(job):
@@ -7756,7 +7801,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
             if job_id:
                 accessible = get_accessible_properties(request.user)
                 job = get_object_or_404(
-                    Job.objects.filter(property__in=accessible),
+                    get_accessible_jobs(self.request.user).filter(property__in=accessible),
                     job_id=job_id,
                 )
                 if inventory.property_id not in _job_property_ids(job):

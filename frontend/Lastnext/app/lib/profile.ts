@@ -7,6 +7,7 @@ export type ProfileMembership = {
   tenant_id: string;
   tenant_name: string;
   role: string;
+  can_manage_billing?: boolean;
   access_scope: "tenant_wide" | "granted";
   properties: ProfileProperty[];
 };

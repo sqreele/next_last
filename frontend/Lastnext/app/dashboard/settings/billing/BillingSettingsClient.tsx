@@ -9,6 +9,8 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
 import { SettingsPageSkeleton } from "@/app/components/ui/loading";
+import BillingDocuments from "./BillingDocuments";
+import CompanyBilling from "./CompanyBilling";
 import {
   billingStatusLabel,
   formatBillingDate,
@@ -17,7 +19,7 @@ import {
   rows,
 } from "@/app/lib/billing-ui.mjs";
 
-type Tenant = { tenant_id: string; name: string };
+type Tenant = { tenant_id: string; name: string; billing_model?: string };
 type Plan = { id: number; code: string; name: string; description?: string; monthly_price: string; billing_interval: string };
 type BillingState = {
   tenant_id: string;
@@ -44,6 +46,8 @@ function message(payload: unknown, fallback: string) {
 export default function BillingSettingsClient() {
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ requireAuth: true });
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [selectedTenantId, setSelectedTenantId] = useState("");
   const [plans, setPlans] = useState<Plan[]>([]);
   const [billing, setBilling] = useState<BillingState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,10 +69,12 @@ export default function BillingSettingsClient() {
       const planPayload = await planResponse.json().catch(() => null);
       if (!tenantResponse.ok) throw new Error(message(tenantPayload, "Unable to load billing tenant."));
       if (!planResponse.ok) throw new Error(message(planPayload, "Unable to load plans."));
-      const selected = rows<Tenant>(tenantPayload)[0] || null;
+      const available = rows<Tenant>(tenantPayload);
+      setTenants(available);
+      const selected = available.find((item) => item.tenant_id === selectedTenantId) || (available.length === 1 ? available[0] : null);
       setTenant(selected);
       setPlans(rows<Plan>(planPayload));
-      if (!selected) throw new Error("No tenant is available for billing.");
+      if (!selected) { setBilling(null); return; }
       const stateResponse = await fetch(
         `/api/billing/status?tenant_id=${encodeURIComponent(selected.tenant_id)}`,
         { cache: "no-store" },
@@ -82,7 +88,7 @@ export default function BillingSettingsClient() {
       setLoading(false);
       setHasLoaded(true);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, selectedTenantId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -114,14 +120,17 @@ export default function BillingSettingsClient() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Billing</h1>
-          <p className="text-sm text-muted-foreground">Stripe securely manages card payments, invoices, and receipts.</p>
+          <p className="text-sm text-muted-foreground">Manage your subscription, payments, invoices, and receipts.</p>
         </div>
         <Button variant="outline" size="sm" disabled={loading} onClick={() => void load()}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{loading ? "Refreshing…" : "Refresh"}</Button>
       </div>
 
       {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
 
-      <Card>
+      {tenants.length > 1 && <div className="space-y-2"><label htmlFor="billing-company" className="text-sm font-medium">Company</label><select id="billing-company" className="w-full rounded-md border bg-background p-3" value={selectedTenantId} onChange={(event) => { setTenant(null); setBilling(null); setSelectedTenantId(event.target.value); }}><option value="">Select a Company</option>{tenants.map((item) => <option key={item.tenant_id} value={item.tenant_id}>{item.name}</option>)}</select></div>}
+      {tenant && billing?.can_manage_billing && <CompanyBilling key={tenant.tenant_id} tenantId={tenant.tenant_id} onChanged={load} />}
+
+      {tenant?.billing_model !== "property_quantity_v1" && <Card>
         <CardHeader><CardTitle>Current subscription</CardTitle><CardDescription>{tenant?.name}</CardDescription></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div><p className="text-xs text-muted-foreground">Plan</p><p className="font-medium">{billing?.plan?.name || "No plan"}</p></div>
@@ -143,9 +152,9 @@ export default function BillingSettingsClient() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
-      {billing?.can_manage_billing && (
+      {billing?.can_manage_billing && tenant?.billing_model !== "property_quantity_v1" && (
         <div className="grid gap-4 md:grid-cols-3">
           {plans.map((plan) => (
             <Card key={plan.id}>
@@ -160,6 +169,7 @@ export default function BillingSettingsClient() {
           ))}
         </div>
       )}
+      {tenant && billing?.can_manage_billing && <BillingDocuments key={tenant.tenant_id} tenantId={tenant.tenant_id} onRefresh={load} companyBilling={tenant.billing_model === "property_quantity_v1"} />}
     </div>
   );
 }

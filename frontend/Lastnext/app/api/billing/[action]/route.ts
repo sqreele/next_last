@@ -11,14 +11,26 @@ type RouteContext = {
 };
 
 const GET_ACTIONS: Record<string, string> = {
+  company: "/api/v1/billing/company/",
+  operation: "/api/v1/billing/operation/",
   tenants: "/api/v1/tenants/billing/",
   plans: "/api/v1/subscription-plans/",
   status: "/api/v1/tenant-subscriptions/entitlement/",
+  profile: "/api/v1/billing/profile/",
+  promptpay: "/api/v1/billing/promptpay/",
+  invoices: "/api/v1/billing/invoices/",
+  document: "/api/v1/billing/document/",
 };
 
 const POST_ACTIONS: Record<string, string> = {
+  preview: "/api/v1/billing/preview/",
+  confirm: "/api/v1/billing/confirm/",
   checkout: "/api/v1/billing/checkout/",
   portal: "/api/v1/billing/portal/",
+  profile: "/api/v1/billing/profile/",
+  promptpay: "/api/v1/billing/promptpay/",
+  "invoice-refresh": "/api/v1/billing/invoices/",
+  "invoice-pay": "/api/v1/billing/invoice-pay/",
 };
 
 async function proxyBillingRequest(
@@ -65,10 +77,14 @@ async function proxyBillingRequest(
     init,
   );
   const responseContentType = response.headers.get("content-type");
+  const responseHeaders = new Headers({ "Cache-Control": "private, no-store" });
+  if (responseContentType) responseHeaders.set("Content-Type", responseContentType);
+  const disposition = response.headers.get("content-disposition");
+  if (disposition) responseHeaders.set("Content-Disposition", disposition);
   return new NextResponse(await response.arrayBuffer(), {
     status: response.status,
     statusText: response.statusText,
-    headers: responseContentType ? { "content-type": responseContentType } : undefined,
+    headers: responseHeaders,
   });
 }
 

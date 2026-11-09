@@ -24,6 +24,12 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - name: Company billing browser fixtures
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:company-browser
+      - name: Production build
+        run: STAYMAINT_LOW_MEMORY_BUILD=1 NODE_OPTIONS=--max-old-space-size=1024 npm run build
 
   backend:
     runs-on: ubuntu-latest
@@ -85,4 +91,17 @@ jobs:
           myappLubd.tests_job_property_write_enforcement.JobPropertyWriteApiTests
           myappLubd.tests_admin_job_search
           myappLubd.tests_admin_operations_ux
+          --noinput
+      - name: Run Company billing and authorization regressions
+        run: >-
+          python manage.py test
+          myappLubd.tests_company_billing
+          myappLubd.tests_company_billing_migrations
+          myappLubd.tests_stripe_billing
+          myappLubd.tests_promptpay_billing
+          myappLubd.tests_billing_authorization
+          myappLubd.tests_tenant_authorization_hardening
+          myappLubd.tests_job_write_authorization
+          myappLubd.tests_tenant_invitations
+          myappLubd.tests_platform_api
           --noinput

@@ -71,6 +71,8 @@ def subscription_write_allowed(
 ):
     """Evaluate and observe one already-authorized target Tenant write."""
     mode = get_subscription_enforcement_mode()
+    if tenant is not None and tenant.billing_model == 'property_quantity_v1':
+        mode = 'enforce'
     if mode == 'off' or request.method in SAFE_METHODS:
         return True
 

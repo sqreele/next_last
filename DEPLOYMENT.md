@@ -1,5 +1,10 @@
 # Central Docker Nginx deployment
 
+Company subscription billing has a separate disabled-by-default rollout. Review
+[the Company billing runbook](docs/COMPANY_BILLING_ROLLOUT.md) before applying its
+additive migrations or enabling its feature/reconciliation flags. Approval to
+implement code does not authorize migration, deployment or live charging.
+
 The `nginx` Compose service is the only intended public reverse proxy. Its
 configuration uses Docker's embedded DNS resolver and variable-based proxy
 targets, so a missing or recreated application produces a response-time 502 for

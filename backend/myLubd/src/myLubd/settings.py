@@ -120,10 +120,29 @@ if SUBSCRIPTION_ENFORCEMENT_MODE not in {'off', 'observe', 'enforce'}:
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '').strip()
 STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '').strip()
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '').strip()
+# Legal issuer of StayMaint's non-VAT commercial documents. Keep blank until
+# verified by the operator; never substitute the brand for a legal identity.
+BILLING_ISSUER = {
+    'legal_name': os.getenv('BILLING_ISSUER_NAME', '').strip(),
+    'address': os.getenv('BILLING_ISSUER_ADDRESS', '').strip(),
+    'tax_id': os.getenv('BILLING_ISSUER_TAX_ID', '').strip(),
+    'email': os.getenv('BILLING_ISSUER_EMAIL', '').strip(),
+}
+BILLING_INVOICE_DAYS_UNTIL_DUE = 7
+# Opt-in release gate. Never enroll or charge existing companies by migration.
+COMPANY_BILLING_ENABLED = os.getenv('COMPANY_BILLING_ENABLED', 'false').lower() == 'true'
+COMPANY_BILLING_GRACE_DAYS = int(os.getenv('COMPANY_BILLING_GRACE_DAYS', '7') or '7')
+COMPANY_BILLING_QUOTE_SECONDS = 300
+COMPANY_BILLING_PORTAL_CONFIGURATION = os.getenv('COMPANY_BILLING_PORTAL_CONFIGURATION', '').strip()
 STRIPE_PRICE_MAP = {
     'starter': os.getenv('STRIPE_PRICE_STARTER', '').strip(),
     'pro': os.getenv('STRIPE_PRICE_PRO', '').strip(),
     'enterprise': os.getenv('STRIPE_PRICE_ENTERPRISE', '').strip(),
+}
+STRIPE_PROMPTPAY_PRICE_MAP = {
+    'starter': os.getenv('STRIPE_PROMPTPAY_PRICE_STARTER', '').strip(),
+    'pro': os.getenv('STRIPE_PROMPTPAY_PRICE_PRO', '').strip(),
+    'enterprise': os.getenv('STRIPE_PROMPTPAY_PRICE_ENTERPRISE', '').strip(),
 }
 
 if STRIPE_SECRET_KEY and not STRIPE_SECRET_KEY.startswith('sk_test_'):
@@ -133,7 +152,7 @@ if STRIPE_PUBLISHABLE_KEY and not STRIPE_PUBLISHABLE_KEY.startswith('pk_test_'):
 if STRIPE_WEBHOOK_SECRET and not STRIPE_WEBHOOK_SECRET.startswith('whsec_'):
     raise ValueError('STRIPE_WEBHOOK_SECRET must be a Stripe webhook signing secret.')
 _configured_stripe_prices = [
-    price_id for price_id in STRIPE_PRICE_MAP.values() if price_id
+    price_id for price_id in [*STRIPE_PRICE_MAP.values(), *STRIPE_PROMPTPAY_PRICE_MAP.values()] if price_id
 ]
 if any(not price_id.startswith('price_') for price_id in _configured_stripe_prices):
     raise ValueError('Configured Stripe plan prices must be Stripe Price IDs.')

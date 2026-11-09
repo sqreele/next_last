@@ -91,6 +91,13 @@ const nextConfig = {
   },
   
   experimental: {
+    // Opt-in build isolation releases compiler memory before type checking on
+    // small CI/preview machines. Runtime and ordinary builds keep their defaults.
+    ...(process.env.STAYMAINT_LOW_MEMORY_BUILD === '1' ? {
+      webpackBuildWorker: true,
+      webpackMemoryOptimizations: true,
+      cpus: 1,
+    } : {}),
     // ✅ Fixed: serverActions must be an object in Next.js 15+
     serverActions: {},
     // Disabled optimizePackageImports to avoid build-time TypeError in Next 15.5+

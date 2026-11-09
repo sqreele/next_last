@@ -16,11 +16,15 @@ export default function BillingSuccessClient() {
   const refresh = useCallback(async () => {
     const tenantResponse = await fetch("/api/billing/tenants", { cache: "no-store" });
     const tenantPayload = await tenantResponse.json().catch(() => null);
-    const tenant = rows<Tenant>(tenantPayload)[0];
+    const selectedId = new URLSearchParams(window.location.search).get("tenant_id");
+    const available = rows<Tenant>(tenantPayload);
+    const tenant = available.find((item) => item.tenant_id === selectedId) || (available.length === 1 ? available[0] : null);
     if (!tenantResponse.ok || !tenant) return;
     const response = await fetch(`/api/billing/status?tenant_id=${encodeURIComponent(tenant.tenant_id)}`, { cache: "no-store" });
     const payload = await response.json().catch(() => null);
-    if (response.ok && typeof payload?.status === "string") setStatus(payload.status);
+    if (response.ok && typeof payload?.status === "string") setStatus(
+      payload.entitlement_level === "FULL" ? payload.status : "awaiting_payment",
+    );
   }, []);
 
   useEffect(() => {
@@ -32,7 +36,7 @@ export default function BillingSuccessClient() {
   return (
     <div className="mx-auto grid min-h-[60vh] max-w-xl place-items-center p-4">
       <Card className="w-full">
-        <CardHeader><CardTitle>Payment received</CardTitle><CardDescription>We&apos;re confirming your subscription.</CardDescription></CardHeader>
+        <CardHeader><CardTitle>Payment confirmation</CardTitle><CardDescription>We&apos;re confirming your subscription.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">Stripe&apos;s verified webhook remains the authority. This page does not activate your subscription.</p>
           {status && <div className="flex items-center gap-2 text-sm">Current status <Badge variant="secondary">{billingStatusLabel(status)}</Badge></div>}

@@ -16,7 +16,11 @@ from .invitations import (
     TenantInvitationPreviewView,
     TenantInvitationViewSet,
 )
-from .billing.views import StripeCheckoutView, StripePortalView, StripeWebhookView
+from .billing.views import (
+    StripeCheckoutView, StripePortalView, StripeWebhookView, BillingProfileView,
+    PromptPayInvoiceView, BillingInvoiceListView, BillingInvoicePayView, BillingDocumentView,
+)
+from .billing.company_views import CompanyOverviewView, CompanyPreviewView, CompanyConfirmView, CompanyOperationView
 from .line_integration import LineWebhookView
 from .contact import ContactSubmissionView
 from .demo_api import DemoImageView, DemoJobCommentView, DemoJobView, DemoResetView, DemoSnapshotView, DemoDocumentView
@@ -65,7 +69,16 @@ urlpatterns = [
     path('static/<path:file_path>', views.serve_static_file, name='serve_static_file'),
 
     path('api/v1/billing/checkout/', StripeCheckoutView.as_view(), name='stripe-checkout'),
+    path('api/v1/billing/company/', CompanyOverviewView.as_view(), name='company-billing'),
+    path('api/v1/billing/preview/', CompanyPreviewView.as_view(), name='company-billing-preview'),
+    path('api/v1/billing/confirm/', CompanyConfirmView.as_view(), name='company-billing-confirm'),
+    path('api/v1/billing/operation/', CompanyOperationView.as_view(), name='company-billing-operation'),
     path('api/v1/billing/portal/', StripePortalView.as_view(), name='stripe-portal'),
+    path('api/v1/billing/profile/', BillingProfileView.as_view(), name='billing-profile'),
+    path('api/v1/billing/promptpay/', PromptPayInvoiceView.as_view(), name='billing-promptpay'),
+    path('api/v1/billing/invoices/', BillingInvoiceListView.as_view(), name='billing-invoices'),
+    path('api/v1/billing/invoice-pay/', BillingInvoicePayView.as_view(), name='billing-invoice-pay'),
+    path('api/v1/billing/document/', BillingDocumentView.as_view(), name='billing-document'),
     path('api/v1/billing/webhooks/stripe/', StripeWebhookView.as_view(), name='stripe-webhook'),
     path('api/v1/commercial-plans/', PublicCommercialPlansView.as_view(), name='commercial-plans'),
     path('api/v1/integrations/line/webhook/', LineWebhookView.as_view(), name='line-webhook'),

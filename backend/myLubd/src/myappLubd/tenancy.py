@@ -27,21 +27,21 @@ from .models import (
 )
 
 
-TENANT_ADMIN_ROLES = {'owner', 'admin', 'billing'}
-TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'}
-BILLING_ACCESS_ROLES = {'admin', 'manager'}
-CAN_REASSIGN_JOB_ROLES = {'owner', 'admin', 'manager', 'supervisor'}
+TENANT_ADMIN_ROLES = {'owner', 'admin', 'billing', 'company_admin'}
+TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician', 'company_admin', 'property_admin'}
+BILLING_ACCESS_ROLES = {'admin', 'manager', 'company_admin'}
+CAN_REASSIGN_JOB_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'company_admin', 'property_admin'}
 # These are the existing roles which intentionally see every property in a
 # tenant.  Keep this decision here rather than duplicating role checks in API
 # views.
-TENANT_WIDE_PROPERTY_ROLES = {'owner', 'admin', 'manager'}
-TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES = {'owner', 'admin', 'manager'}
+TENANT_WIDE_PROPERTY_ROLES = {'owner', 'admin', 'manager', 'company_admin'}
+TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES = {'owner', 'admin', 'manager', 'company_admin'}
 # PM master plans are configuration, rather than day-to-day operational work.
 # Keep this capability separate from TENANT_OPERATOR_ROLES: supervisors and
 # technicians can operate assigned work, but cannot change recurring rules.
-PM_MASTER_MANAGE_ROLES = {'owner', 'admin', 'manager'}
-INVENTORY_STOCK_MANAGE_ROLES = {'owner', 'admin', 'manager'}
-INVENTORY_CONSUME_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'}
+PM_MASTER_MANAGE_ROLES = {'owner', 'admin', 'manager', 'company_admin', 'property_admin'}
+INVENTORY_STOCK_MANAGE_ROLES = {'owner', 'admin', 'manager', 'company_admin', 'property_admin'}
+INVENTORY_CONSUME_ROLES = TENANT_OPERATOR_ROLES
 
 
 @dataclass(frozen=True)
@@ -119,11 +119,12 @@ def get_billing_tenants(user):
         return Tenant.objects.none()
     if user.is_superuser:
         return Tenant.objects.all()
-    return Tenant.objects.filter(
-        memberships__user=user,
-        memberships__is_active=True,
-        memberships__role__in=BILLING_ACCESS_ROLES,
-    ).distinct()
+    memberships = TenantMembership.objects.filter(user=user, is_active=True).filter(
+        Q(role='company_admin')
+        | Q(can_manage_company_billing=True, role__in={'property_admin', 'owner', 'admin', 'manager', 'billing'})
+        | Q(tenant__billing_model='legacy_plan', role__in={'admin', 'manager'})
+    )
+    return Tenant.objects.filter(pk__in=memberships.values('tenant_id')).distinct()
 
 
 def user_can_access_billing(user, tenant=None):
@@ -175,7 +176,7 @@ def user_can_manage_tenant(user, tenant):
         tenant=tenant,
         user=user,
         is_active=True,
-        role__in=TENANT_ADMIN_ROLES,
+        role__in={'company_admin'} if tenant.billing_model == 'property_quantity_v1' else TENANT_ADMIN_ROLES,
     ).exists()
 
 
@@ -194,7 +195,7 @@ def can_manage_membership_property_grants(user, tenant):
         tenant=tenant,
         user=user,
         is_active=True,
-        role__in=TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES,
+        role__in={'company_admin'} if tenant.billing_model == 'property_quantity_v1' else TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES,
     ).exists()
 
 
@@ -276,7 +277,7 @@ def get_operable_properties(user, tenant=None):
     if not getattr(user, 'is_authenticated', False):
         return Property.objects.none()
     if user.is_superuser:
-        qs = Property.objects.all()
+        qs = Property.objects.filter(archived_at__isnull=True)
         return qs.filter(tenant=tenant) if tenant is not None else qs
 
     assigned_operator_q = Q(
@@ -290,8 +291,50 @@ def get_operable_properties(user, tenant=None):
         tenant__memberships__is_active=True,
         tenant__memberships__role__in=TENANT_WIDE_PROPERTY_ROLES & TENANT_OPERATOR_ROLES,
     )
-    qs = Property.objects.filter(assigned_operator_q | tenant_wide_operator_q).distinct()
+    qs = Property.objects.filter(assigned_operator_q | tenant_wide_operator_q, archived_at__isnull=True).distinct()
+    from .billing.coverage import operable_property_filter
+    qs = qs.filter(operable_property_filter())
     return qs.filter(tenant=tenant) if tenant is not None else qs
+
+
+def get_accessible_jobs(user):
+    """Company-model technicians see assigned work; legacy scope is preserved."""
+    qs = Job.objects.filter(property__in=get_accessible_properties(user)).select_related('assigned_to', 'created_by', 'property__tenant')
+    if getattr(user, 'is_superuser', False):
+        return qs
+    restricted = get_user_tenant_memberships(user).filter(
+        role='technician', tenant__billing_model='property_quantity_v1',
+    ).values('tenant_id')
+    return qs.exclude(Q(property__tenant_id__in=restricted) & ~Q(assigned_to=user))
+
+
+def require_work_creation_permission(user, property_obj):
+    if property_obj and property_obj.tenant_id and not getattr(user, 'is_superuser', False):
+        if TenantMembership.objects.filter(user=user, tenant=property_obj.tenant,
+                is_active=True, role='technician', tenant__billing_model='property_quantity_v1').exists():
+            raise PermissionDenied('Company technicians receive assigned work. A Company or Property administrator must create and assign new Jobs or Equipment.')
+
+
+def get_accessible_machines(user):
+    qs = Machine.objects.filter(property__in=get_accessible_properties(user))
+    if getattr(user, 'is_superuser', False):
+        return qs
+    restricted = get_user_tenant_memberships(user).filter(
+        role='technician', tenant__billing_model='property_quantity_v1',
+    ).values('tenant_id')
+    return qs.exclude(Q(property__tenant_id__in=restricted) & ~Q(jobs__assigned_to=user)).distinct()
+
+
+def restrict_pm_for_company_technicians(queryset, user):
+    if getattr(user, 'is_superuser', False):
+        return queryset
+    restricted = get_user_tenant_memberships(user).filter(
+        role='technician', tenant__billing_model='property_quantity_v1',
+    ).values('tenant_id')
+    return queryset.exclude(
+        (Q(job__property__tenant_id__in=restricted) | Q(machines__property__tenant_id__in=restricted))
+        & ~Q(assigned_to=user) & ~Q(job__assigned_to=user)
+    ).distinct()
 
 
 def get_job_reassignable_properties(user, tenant=None):
@@ -675,6 +718,10 @@ def lock_tenants_for_membership_change(*tenants):
 
 def enforce_subscription_limit(tenant, limit_key, increment=1):
     if tenant is None:
+        return
+    if limit_key == 'max_properties' and tenant.billing_model == 'property_quantity_v1':
+        # Creating a draft is free. Enrollment is charged through the exact
+        # confirmed manifest; the legacy plan's hard Property cap is unrelated.
         return
     if limit_key == 'max_users':
         return enforce_tenant_user_limit(tenant, increment=increment)

@@ -2711,6 +2711,8 @@ class JobImageAdmin(admin.ModelAdmin):
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
+    def has_delete_permission(self, request, obj=None):
+        return False
     change_form_template = 'admin/myappLubd/property/change_form.html'
     list_per_page = 25
     list_display = [
@@ -6507,6 +6509,8 @@ class JobCommentAdmin(admin.ModelAdmin):
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
+    def has_delete_permission(self, request, obj=None):
+        return False
     class TenantAdminForm(forms.ModelForm):
         timezone = forms.ChoiceField(choices=timezone_choices)
 
@@ -6820,6 +6824,8 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
         return f'{obj.tenant_property_count} / {obj.plan.max_properties} properties'
 
     def get_readonly_fields(self, request, obj=None):
+        if obj and obj.tenant.billing_model == 'property_quantity_v1':
+            return [field.name for field in obj._meta.fields]
         if request.user.is_superuser:
             return self.readonly_fields
         return [*self.readonly_fields, *self.platform_authority_fields]
@@ -6831,7 +6837,7 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
         return bool(request.user.is_superuser)
 
     def has_delete_permission(self, request, obj=None):
-        return bool(request.user.is_superuser)
+        return False
 
 
 class InvitationStatusFilter(admin.SimpleListFilter):

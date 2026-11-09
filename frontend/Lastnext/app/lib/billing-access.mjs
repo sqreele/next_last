@@ -1,11 +1,13 @@
-export const BILLING_ACCESS_ROLES = new Set(["admin", "manager"]);
+export const BILLING_ACCESS_ROLES = new Set(["admin", "manager", "company_admin"]);
 
 export function canAccessBilling(profile) {
   if (!profile) return false;
   if (profile.is_platform_superuser === true) return true;
   return Array.isArray(profile.memberships) && profile.memberships.some(
     (membership) =>
-      membership?.is_active !== false && BILLING_ACCESS_ROLES.has(membership?.role),
+      membership?.is_active !== false && (typeof membership?.can_manage_billing === "boolean"
+        ? membership.can_manage_billing
+        : BILLING_ACCESS_ROLES.has(membership?.role)),
   );
 }
 

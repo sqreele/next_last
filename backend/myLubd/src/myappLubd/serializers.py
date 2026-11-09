@@ -33,6 +33,7 @@ import json
 
 from .timezones import is_valid_timezone, object_timezone
 from .tenancy import (
+    require_work_creation_permission,
     TENANT_WIDE_PROPERTY_ROLES,
     get_accessible_properties,
     get_job_reassignable_properties,
@@ -274,8 +275,18 @@ class TenantMembershipSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'tenant', 'user', 'user_id', 'role', 'is_active',
             'properties', 'invited_by', 'created_at', 'updated_at',
+            'can_manage_company_billing',
         ]
         read_only_fields = ['id', 'invited_by', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        tenant = attrs.get('tenant', self.instance.tenant if self.instance else None)
+        if self.instance and tenant != self.instance.tenant:
+            raise serializers.ValidationError({'tenant': 'Membership transfers require explicit operator approval.'})
+        role = attrs.get('role', self.instance.role if self.instance else '')
+        if role == 'technician' and attrs.get('can_manage_company_billing', False):
+            raise serializers.ValidationError('Technicians cannot manage Company billing.')
+        return attrs
 
 
 class UsageMetricSerializer(serializers.ModelSerializer):
@@ -299,9 +310,10 @@ class TenantSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'tenant_id', 'name', 'slug', 'status', 'owner',
             'billing_email', 'timezone', 'metadata', 'subscription',
+            'billing_model', 'billing_currency',
             'property_count', 'active_user_count', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'tenant_id', 'slug', 'owner', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'tenant_id', 'slug', 'owner', 'created_at', 'updated_at', 'billing_model', 'billing_currency']
 
     def validate(self, attrs):
         billing_fields = {'billing_email', 'status'} & set(attrs)
@@ -491,6 +503,11 @@ class PropertySerializer(serializers.ModelSerializer):
             'is_preventivemaintenance',
         ]
         read_only_fields = ['created_at', 'is_preventivemaintenance']
+
+    def validate(self, attrs):
+        if self.instance and 'tenant' in attrs and attrs['tenant'] != self.instance.tenant:
+            raise serializers.ValidationError({'tenant': 'Property ownership transfers require explicit operator approval.'})
+        return attrs
     
     def get_rooms(self, obj):
         """Get rooms for this property.
@@ -657,6 +674,7 @@ class CurrentUserProfileSerializer(serializers.ModelSerializer):
                 'tenant_id': membership.tenant.tenant_id,
                 'tenant_name': membership.tenant.name,
                 'role': membership.role,
+                'can_manage_billing': user_can_access_billing(obj.user, membership.tenant),
                 'access_scope': access_scope,
                 'properties': self._property_summary(properties),
             })
@@ -936,6 +954,10 @@ class JobDashboardSerializer(serializers.ModelSerializer):
         return get_user_display_name(getattr(obj, 'user', None)) or 'Unassigned technician'
 
     def get_technician_name(self, obj):
+        if obj.assigned_to_id:
+            return get_user_display_name(obj.assigned_to) or 'Unassigned technician'
+        if obj.property.tenant and obj.property.tenant.billing_model == 'property_quantity_v1':
+            return 'Unassigned technician'
         return self.get_user_name(obj)
 
     def get_can_operate(self, obj):
@@ -1030,12 +1052,14 @@ class JobSerializer(serializers.ModelSerializer):
             'topic_data', 'room_id', 'room_ids', 'property_id', 'image_urls', 'is_preventivemaintenance',
             'area', 'area_id', 'area_name', 'comments_count', 'can_operate', 'can_assign',
             'machine', 'machine_id', 'documents',
+            'assigned_to', 'created_by',
         ]
         read_only_fields = [
             'id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name',
             'user_email', 'user_name', 'technician_name', 'created_by_name',
             'updated_by_name', 'images', 'topics', 'area', 'area_name', 'comments_count',
             'can_operate', 'can_assign',
+            'assigned_to', 'created_by',
         ]
 
     def to_representation(self, instance):
@@ -1267,6 +1291,10 @@ class JobSerializer(serializers.ModelSerializer):
         return get_user_public_username(getattr(obj, 'user', None))
 
     def get_technician_name(self, obj):
+        if obj.assigned_to_id:
+            return get_user_display_name(obj.assigned_to) or 'Unknown technician'
+        if obj.property.tenant and obj.property.tenant.billing_model == 'property_quantity_v1':
+            return 'Unassigned technician'
         return get_user_display_name(getattr(obj, 'user', None)) or 'Unknown technician'
 
     def get_created_by_name(self, obj):
@@ -1347,6 +1375,7 @@ class JobSerializer(serializers.ModelSerializer):
         validated_data.pop('user_id', None)
         validated_data.pop('property_id', None)
         resolved_property = validated_data.pop('_resolved_property')
+        require_work_creation_permission(request.user, resolved_property)
         resolved_rooms = validated_data.pop('_resolved_rooms', None)
         pending_before_tokens = validated_data.pop('_pending_before_tokens', [])
         pending_after_tokens = validated_data.pop('_pending_after_tokens', [])
@@ -1371,6 +1400,8 @@ class JobSerializer(serializers.ModelSerializer):
                 job = Job.objects.create(
                     **validated_data,
                     user=request.user,
+                    created_by=request.user,
+                    assigned_to=request.user if resolved_property.tenant and resolved_property.tenant.billing_model == 'property_quantity_v1' else None,
                     property=resolved_property,
                 )
                 if resolved_rooms is not None:

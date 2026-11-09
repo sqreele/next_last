@@ -100,6 +100,8 @@ class Tenant(models.Model):
         related_name='owned_tenants',
     )
     billing_email = models.EmailField(blank=True, null=True)
+    billing_model = models.CharField(max_length=32, default='legacy_plan', choices=[('legacy_plan', 'Legacy plan'), ('property_quantity_v1', 'Per property')])
+    billing_currency = models.CharField(max_length=3, blank=True, default='')
     timezone = models.CharField(max_length=64, default='Asia/Bangkok')
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -192,6 +194,18 @@ class TenantSubscription(models.Model):
     external_customer_id = models.CharField(max_length=255, blank=True, null=True)
     external_subscription_id = models.CharField(max_length=255, blank=True, null=True)
     cancel_at_period_end = models.BooleanField(default=False)
+    stripe_subscription_item_id = models.CharField(max_length=255, null=True, blank=True, unique=True)
+    stripe_price_id = models.CharField(max_length=255, blank=True)
+    billing_quantity = models.PositiveIntegerField(default=0)
+    desired_quantity = models.PositiveIntegerField(default=0)
+    paid_quantity = models.PositiveIntegerField(default=0)
+    collection_method = models.CharField(max_length=30, blank=True)
+    payment_method_type = models.CharField(max_length=20, blank=True)
+    billing_revision = models.PositiveIntegerField(default=0)
+    provider_period_start_at = models.DateTimeField(null=True, blank=True)
+    provider_period_end_at = models.DateTimeField(null=True, blank=True)
+    paid_through_at = models.DateTimeField(null=True, blank=True)
+    reconciliation_status = models.CharField(max_length=30, default='legacy')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -266,10 +280,139 @@ class BillingWebhookEvent(models.Model):
         ]
 
 
+class BillingProfile(models.Model):
+    """Customer identity used on future commercial documents, never a VAT registration."""
+
+    tenant = models.OneToOneField(Tenant, on_delete=models.CASCADE, related_name='billing_profile')
+    legal_name = models.CharField(max_length=255)
+    address = models.TextField(max_length=2000)
+    tax_id = models.CharField(max_length=13, blank=True)
+    branch = models.CharField(max_length=100, blank=True)
+    email = models.EmailField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class BillingInvoice(models.Model):
+    """Immutable document details with provider-authoritative payment status.
+
+    Amounts are integer minor units. Neither this document nor its receipt is a
+    VAT tax invoice. Identity and line snapshots survive later profile edits.
+    """
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name='billing_invoices')
+    provider_invoice_id = models.CharField(max_length=255, unique=True)
+    provider_subscription_id = models.CharField(max_length=255)
+    provider_number = models.CharField(max_length=255, blank=True)
+    issuer = models.JSONField()
+    customer = models.JSONField()
+    lines = models.JSONField(default=list)
+    currency = models.CharField(max_length=3, default='thb')
+    total_minor = models.BigIntegerField()
+    amount_paid_minor = models.PositiveBigIntegerField(default=0)
+    amount_due_minor = models.PositiveBigIntegerField(default=0)
+    amount_remaining_minor = models.PositiveBigIntegerField(default=0)
+    status = models.CharField(max_length=30)
+    issued_at = models.DateTimeField()
+    due_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    billing_revision = models.PositiveIntegerField(default=0)
+    quantity = models.PositiveIntegerField(default=0)
+    unit_amount_minor = models.PositiveBigIntegerField(default=0)
+    purpose = models.CharField(max_length=20, default='renewal')
+    property_manifest = models.JSONField(default=list)
+    credited_minor = models.PositiveBigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-issued_at', '-pk']
+
+    @property
+    def number(self):
+        return f'INV-{self.pk:08d}'
+
+    @property
+    def receipt_number(self):
+        return f'RCT-{self.pk:08d}' if self.paid_at else None
+
+
+class BillingPrice(models.Model):
+    """Explicit approved catalog. No exchange-rate guesses or live setup in migrations."""
+    currency = models.CharField(max_length=3, choices=[('usd', 'USD'), ('thb', 'THB')], unique=True)
+    stripe_product_id = models.CharField(max_length=255)
+    stripe_price_id = models.CharField(max_length=255, unique=True)
+    unit_amount_minor = models.PositiveBigIntegerField()
+    is_active = models.BooleanField(default=True)
+    livemode = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.CheckConstraint(
+            check=(Q(currency='usd', unit_amount_minor=2000) | Q(currency='thb', unit_amount_minor__gt=0)),
+            name='company_price_exact_currency_amount',
+        )]
+
+
+class BillingChange(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name='billing_changes')
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    action = models.CharField(max_length=20)
+    state = models.CharField(max_length=30, default='quoted', db_index=True)
+    revision = models.PositiveIntegerField()
+    before_manifest = models.JSONField(default=list)
+    after_manifest = models.JSONField(default=list)
+    draft = models.JSONField(default=dict)
+    price = models.ForeignKey(BillingPrice, on_delete=models.PROTECT)
+    payment_method = models.CharField(max_length=20)
+    quote = models.JSONField(default=dict)
+    proration_at = models.DateTimeField()
+    expires_at = models.DateTimeField()
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    lease_until = models.DateTimeField(null=True, blank=True)
+    provider_invoice_id = models.CharField(max_length=255, blank=True)
+    checkout_session_id = models.CharField(max_length=255, blank=True)
+    hosted_url = models.URLField(max_length=2000, blank=True)
+    error_code = models.CharField(max_length=100, blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['tenant'], condition=Q(state__in=['applying', 'awaiting_payment']),
+            name='one_inflight_company_billing_change',
+        )]
+
+
+class PropertyBillingEnrollment(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT)
+    property = models.OneToOneField('Property', on_delete=models.PROTECT, related_name='billing_enrollment')
+    subscription = models.ForeignKey(TenantSubscription, on_delete=models.PROTECT, related_name='property_enrollments')
+    state = models.CharField(max_length=30, default='unreviewed')
+    effective_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    paid_through_at = models.DateTimeField(null=True, blank=True)
+    paid_subscription_id = models.CharField(max_length=255, blank=True)
+    revision = models.PositiveIntegerField(default=0)
+
+
+class BillingInvoiceAllocation(models.Model):
+    invoice = models.ForeignKey(BillingInvoice, on_delete=models.PROTECT, related_name='allocations')
+    property = models.ForeignKey('Property', on_delete=models.PROTECT)
+    line_id = models.CharField(max_length=255)
+    period_start_at = models.DateTimeField()
+    period_end_at = models.DateTimeField()
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['invoice', 'property', 'line_id'], name='unique_property_invoice_coverage')]
+
+
 class TenantMembership(models.Model):
     """A user's role inside a tenant plus optional property-level access."""
 
     ROLE_CHOICES = [
+        ('company_admin', 'Company Admin'),
+        ('property_admin', 'Property Admin'),
         ('owner', 'Owner'),
         ('admin', 'Admin'),
         ('manager', 'Manager'),
@@ -283,6 +426,7 @@ class TenantMembership(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tenant_memberships')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='technician')
     is_active = models.BooleanField(default=True, db_index=True)
+    can_manage_company_billing = models.BooleanField(default=False)
     properties = models.ManyToManyField('Property', related_name='tenant_memberships', blank=True)
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -309,7 +453,9 @@ class TenantMembership(models.Model):
 
     @property
     def can_manage_tenant(self):
-        return self.role in {'owner', 'admin', 'billing'}
+        if self.tenant.billing_model == 'property_quantity_v1':
+            return self.role == 'company_admin'
+        return self.role in {'owner', 'admin', 'billing', 'company_admin'}
 
 
 class PlatformMembership(models.Model):
@@ -1205,6 +1351,10 @@ class Property(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    subscription_status = models.CharField(max_length=30, default='legacy')
     is_preventivemaintenance=models.BooleanField(default=False)
     line_notifications_enabled = models.BooleanField(
         default=False,
@@ -1602,6 +1752,8 @@ class DeletedJobManager(models.Manager.from_queryset(JobQuerySet)):
 
 
 class Job(models.Model):
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_company_jobs')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_company_jobs', editable=False)
     machine = models.ForeignKey(
         'Machine', on_delete=models.PROTECT, null=True, blank=True,
         related_name='jobs', help_text='Equipment selected for this work order',

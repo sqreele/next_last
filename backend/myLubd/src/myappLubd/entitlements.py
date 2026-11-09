@@ -77,6 +77,9 @@ def get_tenant_entitlement(tenant, at=None) -> TenantEntitlement:
         return _result(EntitlementLevel.READ_ONLY, 'subscription_missing')
 
     status = subscription.status
+    if tenant.billing_model == 'property_quantity_v1':
+        from .billing.coverage import company_entitlement
+        return company_entitlement(tenant, at)
     if status == 'trialing':
         trial_end = subscription.trial_ends_at
         if trial_end is None:

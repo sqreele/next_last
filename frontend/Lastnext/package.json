@@ -18,7 +18,8 @@
     "test:billing": "node --test tests/billing.test.mjs",
     "test:i18n": "node --test tests/i18n.test.mjs",
     "test:contact": "node --test tests/contact-page.test.mjs tests/contact-route.test.mjs",
-    "test:pm-detail-i18n": "node --test tests/pm-detail-i18n.test.mjs"
+    "test:pm-detail-i18n": "node --test tests/pm-detail-i18n.test.mjs",
+    "test:company-browser": "COMPANY_BILLING_START_PREVIEW=1 node tests/company-billing-browser.cjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.13.3",
@@ -40,17 +41,17 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
     "date-fns": "^4.1.0",
-    "eslint-config-next": "15.5.9",
+    "eslint-config-next": "15.5.29",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "formik": "^2.4.6",
     "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.2",
-    "jspdf": "^3.0.1",
+    "jspdf": "4.2.1",
     "jwt-decode": "^4.0.0",
     "lodash": "^4.17.21",
     "lucide-react": "^0.473.0",
-    "next": "15.5.9",
+    "next": "15.5.29",
     "pg": "^8.11.5",
     "react": "^18.3.1",
     "react-day-picker": "^9.6.1",
@@ -74,6 +75,7 @@
     "@types/react": "^18.3.24",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
+    "playwright": "^1.65.0",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.2"

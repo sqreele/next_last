@@ -91,6 +91,11 @@ class PublicCommercialPlansView(APIView):
 
 def _subscription_summary(subscription, include_reason=True):
     data = {
+        'billing_model': subscription.tenant.billing_model,
+        'billing_quantity': subscription.billing_quantity,
+        'desired_quantity': subscription.desired_quantity,
+        'paid_quantity': subscription.paid_quantity,
+        'reconciliation_status': subscription.reconciliation_status,
         'id': subscription.pk,
         'plan': _plan_summary(subscription.plan),
         'status': subscription.status,

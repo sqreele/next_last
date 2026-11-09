@@ -290,32 +290,32 @@ class TenantPropertyAuthorizationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
         self.assertEqual(self._property_ids_from_response(response), set())
 
-    def test_add_user_assigns_only_the_authenticated_scoped_membership(self):
+    def test_add_user_cannot_expand_a_restricted_members_own_grants(self):
         self.client.force_authenticate(self.user)
         response = self.client.post(
             reverse('myappLubd:property-add-user', kwargs={'property_id': self.property_a2.property_id}),
             {}, format='json', secure=True,
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.content)
         self.assertEqual(
             set(self.membership.properties.values_list('pk', flat=True)),
-            {self.property_a1.pk, self.property_a2.pk},
+            {self.property_a1.pk},
         )
 
-    def test_assign_properties_replaces_scoped_grants_and_rejects_cross_tenant_input(self):
+    def test_assign_properties_rejects_restricted_self_grants_in_any_tenant(self):
         self.client.force_authenticate(self.user)
         assign_url = reverse('myappLubd:property-assign-properties')
         response = self.client.post(
             assign_url, {'property_ids': [self.property_a2.pk]}, format='json', secure=True,
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
-        self.assertEqual(set(self.membership.properties.values_list('pk', flat=True)), {self.property_a2.pk})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.content)
+        self.assertEqual(set(self.membership.properties.values_list('pk', flat=True)), {self.property_a1.pk})
 
         response = self.client.post(
             assign_url, {'property_ids': [self.property_a1.pk, self.property_b.pk]}, format='json', secure=True,
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
-        self.assertEqual(set(self.membership.properties.values_list('pk', flat=True)), {self.property_a2.pk})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.content)
+        self.assertEqual(set(self.membership.properties.values_list('pk', flat=True)), {self.property_a1.pk})
 
     def test_superuser_remains_explicit_platform_break_glass(self):
         self.assertEqual(

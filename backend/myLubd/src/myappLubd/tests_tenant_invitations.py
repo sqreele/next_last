@@ -386,6 +386,7 @@ class TenantInvitationTests(APITestCase):
         response = self.client.get(endpoint)
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual([tenant['id'] for tenant in response.data['tenants']], [self.tenant.pk])
+        self.assertEqual(set(response.data['roles']), {role for role, _label in TenantMembership.ROLE_CHOICES})
         self.assertEqual(
             {prop['id'] for prop in response.data['properties']},
             {self.property.pk, self.second_property.pk},

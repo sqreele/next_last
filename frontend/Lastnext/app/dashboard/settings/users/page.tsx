@@ -56,7 +56,7 @@ type Invitation = {
   created_at: string;
   email_sent?: boolean;
 };
-type InvitationWorkspace = { tenants?: Tenant[]; properties?: Property[] };
+type InvitationWorkspace = { tenants?: Tenant[]; properties?: Property[]; roles?: string[] };
 type Feedback = {
   title: string;
   role?: string;
@@ -123,6 +123,7 @@ export default function TenantUsersSettingsPage() {
   const localizedRoleLabel = (value: string) => ROLE_LABEL_KEYS[value] ? t(ROLE_LABEL_KEYS[value]) : roleLabel(value);
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ requireAuth: true });
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [tenantId, setTenantId] = useState<string>("");
@@ -162,6 +163,8 @@ export default function TenantUsersSettingsPage() {
       if (!response.ok) throw new Error(apiMessage(payload, "Unable to load invitation access."));
       const tenantRows = payload?.tenants || [];
       setTenants(tenantRows);
+      // Older backends support the original roles until their schema rollout.
+      setAvailableRoles(payload?.roles || roles.filter(value => value !== "company_admin" && value !== "property_admin"));
       setProperties(payload?.properties || []);
       setTenantId((current) => current || (tenantRows[0] ? String(tenantRows[0].id) : ""));
     } catch (loadError) {
@@ -372,7 +375,7 @@ export default function TenantUsersSettingsPage() {
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {roles.map((value) => <SelectItem key={value} value={value}>{localizedRoleLabel(value)}</SelectItem>)}
+                    {roles.filter(value => availableRoles.includes(value)).map((value) => <SelectItem key={value} value={value}>{localizedRoleLabel(value)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

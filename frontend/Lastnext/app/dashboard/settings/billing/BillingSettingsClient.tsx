@@ -60,6 +60,9 @@ export default function BillingSettingsClient() {
   const [action, setAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lifecycle = getBillingLifecycleMessage(billing, locale, t);
+  // Older backends omit billing_model and do not expose Company/document APIs.
+  // Allow frontend language updates to roll out before the additive DB migration.
+  const companyBillingAvailable = Boolean(tenant?.billing_model);
 
   const load = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -133,7 +136,7 @@ export default function BillingSettingsClient() {
       {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error.startsWith("billing.") ? t(error as DictKey) : error}</AlertDescription></Alert>}
 
       {tenants.length > 1 && <div className="space-y-2"><label htmlFor="billing-company" className="text-sm font-medium">{t("billing.company")}</label><select id="billing-company" className="w-full rounded-md border bg-background p-3" value={selectedTenantId} onChange={(event) => { setTenant(null); setBilling(null); setSelectedTenantId(event.target.value); }}><option value="">{t("billing.selectCompany")}</option>{tenants.map((item) => <option key={item.tenant_id} value={item.tenant_id}>{item.name}</option>)}</select></div>}
-      {tenant && billing?.can_manage_billing && <CompanyBilling key={tenant.tenant_id} tenantId={tenant.tenant_id} onChanged={load} />}
+      {companyBillingAvailable && tenant && billing?.can_manage_billing && <CompanyBilling key={tenant.tenant_id} tenantId={tenant.tenant_id} onChanged={load} />}
 
       {tenant?.billing_model !== "property_quantity_v1" && <Card>
         <CardHeader><CardTitle>{t("billing.currentSubscription")}</CardTitle><CardDescription>{tenant?.name}</CardDescription></CardHeader>
@@ -174,7 +177,7 @@ export default function BillingSettingsClient() {
           ))}
         </div>
       )}
-      {tenant && billing?.can_manage_billing && <BillingDocuments key={tenant.tenant_id} tenantId={tenant.tenant_id} onRefresh={load} companyBilling={tenant.billing_model === "property_quantity_v1"} />}
+      {companyBillingAvailable && tenant && billing?.can_manage_billing && <BillingDocuments key={tenant.tenant_id} tenantId={tenant.tenant_id} onRefresh={load} companyBilling={tenant.billing_model === "property_quantity_v1"} />}
     </div>
   );
 }

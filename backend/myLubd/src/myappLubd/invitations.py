@@ -507,6 +507,7 @@ class TenantInvitationViewSet(
             tenant_id__in=tenant_ids,
         ).select_related('tenant').order_by('tenant_id', 'name', 'pk')
         return Response({
+            'roles': [role for role, _label in TenantMembership.ROLE_CHOICES],
             'tenants': [
                 {'id': tenant.pk, 'tenant_id': tenant.tenant_id, 'name': tenant.name}
                 for tenant in tenants

@@ -1,16 +1,21 @@
 "use client";
 
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
+import { billingStatusKey } from "@/app/lib/i18n/billing-status";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
-import { billingStatusLabel, rows } from "@/app/lib/billing-ui.mjs";
+import { rows } from "@/app/lib/billing-ui.mjs";
 
 type Tenant = { tenant_id: string };
 
 export default function BillingSuccessClient() {
+  const { t } = useLocale();
+  const statusLabel = (status: string) => t(billingStatusKey(status));
   const [status, setStatus] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -36,11 +41,11 @@ export default function BillingSuccessClient() {
   return (
     <div className="mx-auto grid min-h-[60vh] max-w-xl place-items-center p-4">
       <Card className="w-full">
-        <CardHeader><CardTitle>Payment confirmation</CardTitle><CardDescription>We&apos;re confirming your subscription.</CardDescription></CardHeader>
+        <CardHeader><CardTitle>{t("billing.paymentConfirmation")}</CardTitle><CardDescription>{t("billing.confirmSubscription")}</CardDescription></CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Stripe&apos;s verified webhook remains the authority. This page does not activate your subscription.</p>
-          {status && <div className="flex items-center gap-2 text-sm">Current status <Badge variant="secondary">{billingStatusLabel(status)}</Badge></div>}
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button onClick={() => void refresh()}>Check again</Button><Button asChild variant="outline"><Link href="/dashboard/settings/billing">Billing settings</Link></Button></div>
+          <p className="text-sm text-muted-foreground">{t("billing.paymentVerification")}</p>
+          {status && <div className="flex items-center gap-2 text-sm">{t("billing.currentStatus")} <Badge variant="secondary">{statusLabel(status)}</Badge></div>}
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"><Button onClick={() => void refresh()}>{t("billing.checkAgain")}</Button><Button asChild variant="outline"><Link href="/dashboard/settings/billing">{t("billing.settings")}</Link></Button></div>
         </CardContent>
       </Card>
     </div>

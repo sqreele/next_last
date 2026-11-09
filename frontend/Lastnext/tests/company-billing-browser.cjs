@@ -30,8 +30,13 @@ const output = process.env.COMPANY_BILLING_SCREENSHOTS || '/tmp/staymaint-compan
     }
     assert.ok(ready, 'Isolated Company billing preview must be ready');
     browser = await chromium.launch({ headless: true });
-    for (const width of [320, 390, 1280]) {
+    for (const locale of ['en', 'th']) for (const width of [320, 390, 1280]) {
+      const copy = locale === 'en'
+        ? { add: 'Add property', preview: 'Preview charges', confirm: 'Confirm changes', consent: 'I confirm the properties, amounts and terms above', pending: 'Awaiting payment', history: 'Invoices and receipts' }
+        : { add: 'เพิ่ม Property', preview: 'แสดงยอดก่อนยืนยัน', confirm: 'ยืนยันการเปลี่ยนแปลง', consent: 'ยืนยันรายการ จำนวนเงิน และเงื่อนไขข้างต้น', pending: 'รอชำระ', history: 'ประวัติบิลและใบเสร็จ' };
+      const money = value => new Intl.NumberFormat(locale === 'th' ? 'th-TH' : 'en-US', { style: 'currency', currency: 'USD' }).format(value);
       const context = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: 'block' });
+      await context.addInitScript(locale => localStorage.setItem('pcms-locale', locale), locale);
       let confirmations = 0;
       let previews = 0;
       let canModify = true;
@@ -56,7 +61,9 @@ const output = process.env.COMPANY_BILLING_SCREENSHOTS || '/tmp/staymaint-compan
       await context.route('**/api/billing/**', async (route) => {
         const pathname = new URL(route.request().url()).pathname.replace(/\/$/, '');
         let result;
-        if (pathname.endsWith('/company')) result = { ...company, can_modify: canModify };
+        if (pathname.endsWith('/profile')) result = { profile: { legal_name: 'ABC Hotel Group', address: 'Bangkok', email: 'billing@example.test', tax_id: '', branch: '' }, provider_available: true };
+        else if (pathname.endsWith('/invoices')) result = { results: [{ id: 1, number: 'INV-TEST-1', receipt_number: 'RCT-TEST-1', status: 'paid', currency: 'USD', total: '40.00', issued_at: '2026-11-01', due_at: '2026-11-08' }], next_before: null };
+        else if (pathname.endsWith('/company')) result = { ...company, can_modify: canModify };
         else if (pathname.endsWith('/preview')) {
           previews++;
           const body = route.request().postDataJSON();
@@ -78,33 +85,57 @@ const output = process.env.COMPANY_BILLING_SCREENSHOTS || '/tmp/staymaint-compan
       page.on('pageerror', (error) => errors.push(error.message));
       await page.goto(baseURL, { waitUntil: 'networkidle' });
       await page.getByText('ABC Hotel Group', { exact: true }).waitFor();
-      assert.ok((await page.locator('body').innerText()).includes('$40.00'));
+      await page.getByText(copy.history, { exact: true }).waitFor();
+      await page.locator('#billing-name').fill('Unsaved billing name');
+      async function switchLanguage(next) {
+        if (await page.getByRole('dialog').isVisible()) {
+          // The modal correctly blocks the page header. Exercise the existing
+          // cross-tab language update while a financial quote remains open.
+          await page.evaluate(next => {
+            localStorage.setItem('pcms-locale', next);
+            window.dispatchEvent(new StorageEvent('storage', { key: 'pcms-locale', newValue: next }));
+          }, next);
+        } else {
+          await page.locator('button[data-locale]').click();
+          await page.getByRole('menuitem', { name: next === 'th' ? /ภาษาไทย/ : /English/ }).click();
+        }
+        await page.waitForFunction(next => document.documentElement.lang === next, next);
+      }
+      await switchLanguage(locale === 'en' ? 'th' : 'en');
+      await switchLanguage(locale);
+      assert.ok((await page.locator('body').innerText()).includes(money(40)));
       assert.equal(confirmations, 0);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
       assert.equal(overflow, false, `Dashboard overflows at ${width}px`);
-      await page.screenshot({ path: `${output}/company-${width}.png`, fullPage: true });
-      await page.getByRole('button', { name: 'เพิ่ม Property', exact: true }).click();
+      await page.screenshot({ path: `${output}/company-${locale}-${width}.png`, fullPage: true });
+      await page.getByRole('button', { name: copy.add, exact: true }).click();
       const dialog = page.getByRole('dialog');
       await dialog.getByLabel('Hotel Phuket', { exact: true }).check();
-      await dialog.getByRole('button', { name: 'แสดงยอดก่อนยืนยัน' }).click();
-      await dialog.getByText('$60.00', { exact: true }).waitFor();
+      await dialog.getByRole('button', { name: copy.preview }).click();
+      await dialog.getByText(money(60), { exact: true }).waitFor();
       assert.equal(previews, 1);
       assert.equal(confirmations, 0, 'Preview must never confirm billing');
-      const confirmButton = dialog.getByRole('button', { name: 'ยืนยันการเปลี่ยนแปลง', exact: true });
+      const confirmButton = dialog.getByRole('button', { name: copy.confirm, exact: true });
       assert.equal(await confirmButton.isDisabled(), true);
-      await dialog.getByLabel('ยืนยันรายการ จำนวนเงิน และเงื่อนไขข้างต้น').check();
-      await page.screenshot({ path: `${output}/proration-${width}.png`, fullPage: true });
+      await dialog.getByLabel(copy.consent).check();
+      await switchLanguage(locale === 'en' ? 'th' : 'en');
+      assert.equal(await page.locator('#billing-name').inputValue(), 'Unsaved billing name', 'Language switching preserves unsaved billing details');
+      assert.equal(previews, 1, 'Language switching does not request a new financial quote');
+      assert.equal(confirmations, 0, 'Language switching never confirms a charge');
+      await switchLanguage(locale);
+      assert.equal(await dialog.getByLabel(copy.consent).isChecked(), true, 'Consent and quote survive language switching');
+      await page.screenshot({ path: `${output}/proration-${locale}-${width}.png`, fullPage: true });
       await confirmButton.click();
       await dialog.waitFor({ state: 'hidden' });
-      await page.getByText('รอชำระ', { exact: true }).waitFor();
+      await page.getByRole('row').filter({ hasText: 'Hotel Phuket' }).getByText(copy.pending, { exact: true }).waitFor();
       assert.equal(confirmations, 1);
       assert.equal(company.active_properties, 2, 'Unpaid third Property must not look active');
       canModify = false; company = structuredClone(initial);
       await page.reload({ waitUntil: 'networkidle' });
-      assert.equal(await page.getByRole('button', { name: 'เพิ่ม Property', exact: true }).isDisabled(), true);
+      assert.equal(await page.getByRole('button', { name: copy.add, exact: true }).isDisabled(), true);
       assert.deepEqual(errors, []);
       await context.close();
-      process.stdout.write(`Company dashboard, proration consent and restricted role: ${width}px passed\n`);
+      process.stdout.write(`Company dashboard, proration consent and restricted role: ${locale} ${width}px passed\n`);
     }
   } finally { if (browser) await browser.close(); if (preview) preview.kill('SIGTERM'); }
 })().catch((error) => { console.error(error); process.exitCode = 1; });

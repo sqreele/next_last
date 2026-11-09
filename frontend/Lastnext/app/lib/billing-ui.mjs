@@ -17,18 +17,18 @@ export function billingStatusLabel(status) {
   return labels[status] || 'Unavailable';
 }
 
-export function formatBillingDate(value) {
+export function formatBillingDate(value, locale = 'en') {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' }).format(date);
+  return new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'medium', timeZone: 'UTC' }).format(date);
 }
 
-export function formatBillingDateTime(value, timeZone) {
+export function formatBillingDateTime(value, timeZone, locale = 'en') {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
     ...(timeZone ? { timeZone } : {}),
@@ -70,59 +70,60 @@ export function getLifecycleDisplay(billing, timeZone, now) {
   return unavailable;
 }
 
-export function getBillingLifecycleMessage(billing) {
+export function getBillingLifecycleMessage(billing, locale = 'en', translate) {
+  const tr = (key, fallback, values) => translate ? translate(key, values) : fallback;
   if (!billing) return null;
 
-  const periodEnd = formatBillingDate(billing.current_period_end);
-  const trialEnd = formatBillingDateTime(billing.trial_ends_at);
-  const graceEnd = formatBillingDateTime(billing.grace_period_ends_at);
+  const periodEnd = formatBillingDate(billing.current_period_end, locale);
+  const trialEnd = formatBillingDateTime(billing.trial_ends_at, undefined, locale);
+  const graceEnd = formatBillingDateTime(billing.grace_period_ends_at, undefined, locale);
 
   if (billing.status === 'active') {
     if (billing.reason_code === 'active_period_expired') {
-      return { tone: 'attention', message: `Paid period expired after ${periodEnd}. StayMaint is read-only when enforcement is enabled.` };
+      return { tone: 'attention', message: tr('billing.lifecycle.expired', `Paid period expired after ${periodEnd}. StayMaint is read-only when enforcement is enabled.`, { date: periodEnd }) };
     }
     if (billing.reason_code === 'active_missing_period_end') {
-      return { tone: 'attention', message: 'Paid period end is unavailable. Billing requires attention.' };
+      return { tone: 'attention', message: tr('billing.lifecycle.missing', 'Paid period end is unavailable. Billing requires attention.') };
     }
     if (billing.reason_code === 'active_invalid_tenant_timezone') {
-      return { tone: 'attention', message: 'Paid period could not be validated. Billing requires attention.' };
+      return { tone: 'attention', message: tr('billing.lifecycle.invalid', 'Paid period could not be validated. Billing requires attention.') };
     }
-    if (!billing.current_period_end) return { tone: 'attention', message: 'Expiry date unavailable' };
-    if (billing.cancel_at_period_end) return { tone: 'warning', message: `Access until ${periodEnd}` };
-    return { tone: 'neutral', message: `Renews ${periodEnd}` };
+    if (!billing.current_period_end) return { tone: 'attention', message: tr('billing.lifecycle.unavailable', 'Expiry date unavailable') };
+    if (billing.cancel_at_period_end) return { tone: 'warning', message: tr('billing.lifecycle.until', `Access until ${periodEnd}`, { date: periodEnd }) };
+    return { tone: 'neutral', message: tr('billing.lifecycle.renews', `Renews ${periodEnd}`, { date: periodEnd }) };
   }
 
   if (billing.status === 'trialing') {
     if (billing.reason_code === 'trial_end_missing') {
-      return { tone: 'attention', message: 'Expiry date unavailable' };
+      return { tone: 'attention', message: tr('billing.lifecycle.unavailable', 'Expiry date unavailable') };
     }
     if (billing.reason_code === 'trial_end_invalid') {
-      return { tone: 'attention', message: 'Expiry date unavailable' };
+      return { tone: 'attention', message: tr('billing.lifecycle.unavailable', 'Expiry date unavailable') };
     }
     if (billing.reason_code === 'trial_expired') {
-      return { tone: 'attention', message: `Trial ended ${trialEnd}. StayMaint is read-only when enforcement is enabled.` };
+      return { tone: 'attention', message: tr('billing.lifecycle.trialEnded', `Trial ended ${trialEnd}. StayMaint is read-only when enforcement is enabled.`, { date: trialEnd }) };
     }
-    if (!billing.trial_ends_at) return { tone: 'attention', message: 'Expiry date unavailable' };
-    return { tone: 'neutral', message: `Trial expires ${trialEnd}` };
+    if (!billing.trial_ends_at) return { tone: 'attention', message: tr('billing.lifecycle.unavailable', 'Expiry date unavailable') };
+    return { tone: 'neutral', message: tr('billing.lifecycle.trialExpires', `Trial expires ${trialEnd}`, { date: trialEnd }) };
   }
 
   if (billing.status === 'past_due') {
-    if (billing.grace_period_ends_at) return { tone: 'warning', message: `Grace until ${graceEnd}` };
-    return { tone: 'attention', message: 'Expiry date unavailable' };
+    if (billing.grace_period_ends_at) return { tone: 'warning', message: tr('billing.lifecycle.grace', `Grace until ${graceEnd}`, { date: graceEnd }) };
+    return { tone: 'attention', message: tr('billing.lifecycle.unavailable', 'Expiry date unavailable') };
   }
 
   if (billing.status === 'cancelled') {
     if (!billing.current_period_end) {
-      return { tone: 'attention', message: 'Expiry date unavailable' };
+      return { tone: 'attention', message: tr('billing.lifecycle.unavailable', 'Expiry date unavailable') };
     }
     if (billing.reason_code === 'cancelled_period_ended') {
-      return { tone: 'attention', message: `Access ended ${periodEnd}` };
+      return { tone: 'attention', message: tr('billing.lifecycle.ended', `Access ended ${periodEnd}`, { date: periodEnd }) };
     }
-    return { tone: 'warning', message: `Access until ${periodEnd}` };
+    return { tone: 'warning', message: tr('billing.lifecycle.until', `Access until ${periodEnd}`, { date: periodEnd }) };
   }
 
   if (billing.entitlement_level === 'READ_ONLY') {
-    return { tone: 'attention', message: 'Subscription requires attention.' };
+    return { tone: 'attention', message: tr('billing.lifecycle.attention', 'Subscription requires attention.') };
   }
   return null;
 }

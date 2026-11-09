@@ -14,6 +14,7 @@ for (const [name, target] of [
 ]) fs.symlinkSync(path.join(source, target), path.join(root, name), 'dir');
 for (const [from, to] of [
   ['app/dashboard/settings/billing/CompanyBilling.tsx', 'app/CompanyBilling.tsx'],
+  ['app/dashboard/settings/billing/BillingDocuments.tsx', 'app/BillingDocuments.tsx'],
   ['app/globals.css', 'app/globals.css'], ['tailwind.config.ts', 'tailwind.config.ts'],
 ]) fs.copyFileSync(path.join(source, from), path.join(root, to));
 fs.appendFileSync(path.join(root, 'app/globals.css'), `\n@source "${path.join(source, 'app/components/ui')}";\n`);
@@ -26,7 +27,7 @@ fs.writeFileSync(path.join(root, 'tsconfig.json'), JSON.stringify({ compilerOpti
 fs.writeFileSync(path.join(root, 'next.config.mjs'), 'export default { devIndicators: false, experimental: { cpus: 1 } };\n');
 fs.writeFileSync(path.join(root, 'postcss.config.mjs'), 'export default { plugins: { "@tailwindcss/postcss": {} } };\n');
 fs.writeFileSync(path.join(root, 'app/layout.tsx'), 'import "./globals.css"; export default function Layout({ children }: { children: React.ReactNode }) { return <html lang="th"><body>{children}</body></html>; }\n');
-fs.writeFileSync(path.join(root, 'app/page.tsx'), '"use client"; import CompanyBilling from "./CompanyBilling"; export default function Page() { return <main className="mx-auto max-w-5xl p-4"><CompanyBilling tenantId="TTEST" onChanged={async () => {}} /></main>; }\n');
+fs.writeFileSync(path.join(root, 'app/page.tsx'), '"use client"; import CompanyBilling from "./CompanyBilling"; import BillingDocuments from "./BillingDocuments"; import { LocaleProvider } from "@/app/lib/i18n/LocaleProvider"; import { LocaleToggle } from "@/app/components/i18n/LocaleToggle"; export default function Page() { return <LocaleProvider><main className="mx-auto max-w-5xl p-4 space-y-5"><LocaleToggle /><CompanyBilling tenantId="TTEST" onChanged={async () => {}} /><BillingDocuments tenantId="TTEST" companyBilling onRefresh={async () => {}} /></main></LocaleProvider>; }\n');
 const child = spawn(process.execPath, [path.join(source, 'node_modules/next/dist/bin/next'), 'dev', '--hostname', '127.0.0.1', '--port', process.env.COMPANY_BILLING_PREVIEW_PORT || '3117'], { cwd: root, stdio: 'inherit' });
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
 child.on('exit', (code) => { process.exitCode = code || 0; });

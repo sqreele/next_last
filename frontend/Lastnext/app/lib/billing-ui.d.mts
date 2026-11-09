@@ -1,7 +1,8 @@
+import type { DictKey } from "./i18n/dictionary";
 export function rows<T>(payload: T[] | { results?: T[] } | null): T[];
 export function billingStatusLabel(status: string): string;
-export function formatBillingDate(value: string | null | undefined): string;
-export function formatBillingDateTime(value: string | null | undefined, timeZone?: string): string;
+export function formatBillingDate(value: string | null | undefined, locale?: string): string;
+export function formatBillingDateTime(value: string | null | undefined, timeZone?: string, locale?: string): string;
 export interface BillingLifecycleState {
   status: string;
   entitlement_level: string;
@@ -27,6 +28,8 @@ export function getLifecycleDisplay(
 ): LifecycleDisplay;
 export function getBillingLifecycleMessage(
   billing: BillingLifecycleState | null | undefined,
+  locale?: string,
+  translate?: (key: DictKey, values?: Record<string, string | number>) => string,
 ): BillingLifecycleMessage | null;
 export function isSafeStripeHostedUrl(value: string): boolean;
 export function redirectToStripe(value: string, locationObject?: { assign(value: string): void }): void;

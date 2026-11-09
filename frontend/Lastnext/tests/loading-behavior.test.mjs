@@ -357,6 +357,6 @@ test("settings actions expose local progress without replacing loaded pages", as
   assert.match(users, /submitting \? "Sending…"/);
   assert.match(users, /actionId === invitation\.id \? "Working…"/);
   assert.match(billing, /loading && !hasLoaded/);
-  assert.match(billing, /loading \? "Refreshing…"/);
-  assert.match(billing, /"Opening…"/);
+  assert.match(billing, /loading \? t\("billing.refreshing"\)/);
+  assert.match(billing, /t\("billing.opening"\)/);
 });

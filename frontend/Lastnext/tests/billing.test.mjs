@@ -104,8 +104,8 @@ test('billing pages use internal plans, role visibility, and waiting-for-webhook
   assert.match(page, /cancel_at_period_end/);
   assert.doesNotMatch(page, /external_customer_id|external_subscription_id/);
   assert.match(serverPage, /requireBillingAccess/);
-  assert.match(success, /We&apos;re confirming your subscription/);
-  assert.match(success, /does not activate your subscription/);
+  assert.match(success, /t\("billing.confirmSubscription"\)/);
+  assert.match(success, /t\("billing.paymentVerification"\)/);
   assert.doesNotMatch(success, /external_customer_id|external_subscription_id/);
 });
 

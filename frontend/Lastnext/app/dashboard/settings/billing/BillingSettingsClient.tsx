@@ -1,5 +1,9 @@
 "use client";
 
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
+import { billingStatusKey } from "@/app/lib/i18n/billing-status";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
+
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CreditCard, ExternalLink, RefreshCw } from "lucide-react";
 
@@ -12,7 +16,6 @@ import { SettingsPageSkeleton } from "@/app/components/ui/loading";
 import BillingDocuments from "./BillingDocuments";
 import CompanyBilling from "./CompanyBilling";
 import {
-  billingStatusLabel,
   formatBillingDate,
   getBillingLifecycleMessage,
   redirectToStripe,
@@ -35,7 +38,7 @@ type BillingState = {
   can_start_checkout: boolean;
 };
 
-function message(payload: unknown, fallback: string) {
+function message(payload: unknown, fallback = "billing.failed") {
   if (payload && typeof payload === "object") {
     const detail = (payload as Record<string, unknown>).detail;
     if (typeof detail === "string") return detail;
@@ -44,6 +47,8 @@ function message(payload: unknown, fallback: string) {
 }
 
 export default function BillingSettingsClient() {
+  const { t, locale } = useLocale();
+  const statusLabel = (status: string) => t(billingStatusKey(status));
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ requireAuth: true });
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -54,7 +59,7 @@ export default function BillingSettingsClient() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [action, setAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const lifecycle = getBillingLifecycleMessage(billing);
+  const lifecycle = getBillingLifecycleMessage(billing, locale, t);
 
   const load = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -67,8 +72,8 @@ export default function BillingSettingsClient() {
       ]);
       const tenantPayload = await tenantResponse.json().catch(() => null);
       const planPayload = await planResponse.json().catch(() => null);
-      if (!tenantResponse.ok) throw new Error(message(tenantPayload, "Unable to load billing tenant."));
-      if (!planResponse.ok) throw new Error(message(planPayload, "Unable to load plans."));
+      if (!tenantResponse.ok) throw new Error(message(tenantPayload, "billing.errorTenant"));
+      if (!planResponse.ok) throw new Error(message(planPayload, "billing.errorPlans"));
       const available = rows<Tenant>(tenantPayload);
       setTenants(available);
       const selected = available.find((item) => item.tenant_id === selectedTenantId) || (available.length === 1 ? available[0] : null);
@@ -80,10 +85,10 @@ export default function BillingSettingsClient() {
         { cache: "no-store" },
       );
       const statePayload = await stateResponse.json().catch(() => null);
-      if (!stateResponse.ok) throw new Error(message(statePayload, "Unable to load subscription status."));
+      if (!stateResponse.ok) throw new Error(message(statePayload, "billing.errorStatus"));
       setBilling(statePayload as BillingState);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load billing.");
+      setError(loadError instanceof Error ? loadError.message : "billing.errorLoad");
     } finally {
       setLoading(false);
       setHasLoaded(true);
@@ -103,10 +108,10 @@ export default function BillingSettingsClient() {
         body: JSON.stringify({ tenant_id: tenant.tenant_id, ...(plan ? { plan: plan.id } : {}) }),
       });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(message(payload, "Unable to open Stripe billing."));
+      if (!response.ok) throw new Error(message(payload, "billing.errorStripe"));
       redirectToStripe(String(payload?.url || ""));
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Unable to open Stripe billing.");
+      setError(actionError instanceof Error ? actionError.message : "billing.errorStripe");
       setAction(null);
     }
   }
@@ -119,24 +124,24 @@ export default function BillingSettingsClient() {
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-8" aria-busy={loading || action !== null}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Billing</h1>
-          <p className="text-sm text-muted-foreground">Manage your subscription, payments, invoices, and receipts.</p>
+          <h1 className="text-2xl font-semibold">{t("billing.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("billing.intro")}</p>
         </div>
-        <Button variant="outline" size="sm" disabled={loading} onClick={() => void load()}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{loading ? "Refreshing…" : "Refresh"}</Button>
+        <Button variant="outline" size="sm" disabled={loading} onClick={() => void load()}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin motion-reduce:animate-none" : ""}`} />{loading ? t("billing.refreshing") : t("billing.refresh")}</Button>
       </div>
 
-      {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
+      {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error.startsWith("billing.") ? t(error as DictKey) : error}</AlertDescription></Alert>}
 
-      {tenants.length > 1 && <div className="space-y-2"><label htmlFor="billing-company" className="text-sm font-medium">Company</label><select id="billing-company" className="w-full rounded-md border bg-background p-3" value={selectedTenantId} onChange={(event) => { setTenant(null); setBilling(null); setSelectedTenantId(event.target.value); }}><option value="">Select a Company</option>{tenants.map((item) => <option key={item.tenant_id} value={item.tenant_id}>{item.name}</option>)}</select></div>}
+      {tenants.length > 1 && <div className="space-y-2"><label htmlFor="billing-company" className="text-sm font-medium">{t("billing.company")}</label><select id="billing-company" className="w-full rounded-md border bg-background p-3" value={selectedTenantId} onChange={(event) => { setTenant(null); setBilling(null); setSelectedTenantId(event.target.value); }}><option value="">{t("billing.selectCompany")}</option>{tenants.map((item) => <option key={item.tenant_id} value={item.tenant_id}>{item.name}</option>)}</select></div>}
       {tenant && billing?.can_manage_billing && <CompanyBilling key={tenant.tenant_id} tenantId={tenant.tenant_id} onChanged={load} />}
 
       {tenant?.billing_model !== "property_quantity_v1" && <Card>
-        <CardHeader><CardTitle>Current subscription</CardTitle><CardDescription>{tenant?.name}</CardDescription></CardHeader>
+        <CardHeader><CardTitle>{t("billing.currentSubscription")}</CardTitle><CardDescription>{tenant?.name}</CardDescription></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div><p className="text-xs text-muted-foreground">Plan</p><p className="font-medium">{billing?.plan?.name || "No plan"}</p></div>
-          <div><p className="text-xs text-muted-foreground">Status</p><Badge variant={billing?.status === "past_due" ? "destructive" : "secondary"}>{billingStatusLabel(billing?.status || "missing")}</Badge></div>
-          <div><p className="text-xs text-muted-foreground">Current period end</p><p className="font-medium">{formatBillingDate(billing?.current_period_end)}</p></div>
-          <div><p className="text-xs text-muted-foreground">Entitlement</p><p className="font-medium">{billing?.entitlement_level || "—"}</p></div>
+          <div><p className="text-xs text-muted-foreground">{t("billing.plan")}</p><p className="font-medium">{billing?.plan?.name || t("billing.noPlan")}</p></div>
+          <div><p className="text-xs text-muted-foreground">{t("billing.status")}</p><Badge variant={billing?.status === "past_due" ? "destructive" : "secondary"}>{statusLabel(billing?.status || "missing")}</Badge></div>
+          <div><p className="text-xs text-muted-foreground">{t("billing.periodEnd")}</p><p className="font-medium">{formatBillingDate(billing?.current_period_end, locale)}</p></div>
+          <div><p className="text-xs text-muted-foreground">{t("billing.entitlement")}</p><p className="font-medium">{billing?.entitlement_level ? statusLabel(billing.entitlement_level) : "—"}</p></div>
           {lifecycle && (
             <div className="sm:col-span-2 lg:col-span-4">
               <p className={lifecycle.tone === "attention" ? "text-sm text-destructive" : lifecycle.tone === "warning" ? "text-sm text-amber-700" : "text-sm text-muted-foreground"}>
@@ -147,7 +152,7 @@ export default function BillingSettingsClient() {
           {billing?.can_manage_billing && (
             <div className="sm:col-span-2 lg:col-span-4">
               <Button onClick={() => void hostedAction("portal")} disabled={action !== null}>
-                <CreditCard className="mr-2 h-4 w-4" />{action === "portal" ? "Opening…" : "Manage billing"}<ExternalLink className="ml-2 h-4 w-4" />
+                <CreditCard className="mr-2 h-4 w-4" />{action === "portal" ? t("billing.opening") : t("billing.manageBilling")}<ExternalLink className="ml-2 h-4 w-4" />
               </Button>
             </div>
           )}
@@ -158,11 +163,11 @@ export default function BillingSettingsClient() {
         <div className="grid gap-4 md:grid-cols-3">
           {plans.map((plan) => (
             <Card key={plan.id}>
-              <CardHeader><CardTitle>{plan.name}</CardTitle><CardDescription>{plan.description || "StayMaint subscription plan"}</CardDescription></CardHeader>
+              <CardHeader><CardTitle>{plan.name}</CardTitle><CardDescription>{plan.description || t("billing.defaultPlan")}</CardDescription></CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-xl font-semibold">{plan.monthly_price} <span className="text-sm font-normal text-muted-foreground">/{plan.billing_interval}</span></p>
+                <p className="text-xl font-semibold">{plan.monthly_price} <span className="text-sm font-normal text-muted-foreground">/{plan.billing_interval === "annual" ? t("billing.year") : t("billing.month")}</span></p>
                 <Button className="w-full" variant={billing.plan?.id === plan.id ? "outline" : "default"} disabled={action !== null} onClick={() => void hostedAction(billing.can_start_checkout ? "checkout" : "portal", billing.can_start_checkout ? plan : undefined)}>
-                  {action === `plan-${plan.id}` ? "Opening…" : billing.plan?.id === plan.id ? "Change plan" : "Select plan"}
+                  {action === `plan-${plan.id}` ? t("billing.opening") : billing.plan?.id === plan.id ? t("billing.changePlan") : t("billing.selectPlan")}
                 </Button>
               </CardContent>
             </Card>

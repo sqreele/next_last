@@ -118,6 +118,51 @@ docker start django-backend
 Nginx and static/frontend routes where possible stay available; API routes may
 return 502 and recover after Docker DNS refresh.
 
+## Transactional email with Resend SMTP
+
+Invitation emails and scheduled email summaries use the existing Django SMTP
+transport. Verify a sending domain in Resend before configuring the deployment.
+See https://resend.com/docs/send-with-smtp for the provider settings.
+
+Set these values in the deployment host's untracked `.env` file. Replace the
+password placeholder with a Resend API key and use a sender on the verified
+domain. Never commit the API key or `.env` file.
+
+```dotenv
+MAILERSEND_API_TOKEN=
+EMAIL_HOST=smtp.resend.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_HOST_USER=resend
+EMAIL_HOST_PASSWORD=YOUR_RESEND_API_KEY
+EMAIL_REQUIRE_AUTH=True
+DEFAULT_FROM_EMAIL=notifications@staymaint.com
+SERVER_EMAIL=notifications@staymaint.com
+```
+
+Leave `MAILERSEND_API_TOKEN` empty so delivery goes directly to SMTP. If
+`CONTACT_FROM_EMAIL` is configured separately, it must also use a verified
+sending domain.
+
+Apply the environment changes by recreating the backend container; this briefly
+interrupts backend requests:
+
+```bash
+docker compose up -d --no-deps --force-recreate backend
+```
+
+Test SMTP connectivity and authentication without sending an email:
+
+```bash
+docker compose exec -T backend python manage.py shell -c 'from django.core.mail import get_connection; connection = get_connection(timeout=15); connection.open(); print("SMTP connection and authentication succeeded"); connection.close()'
+```
+
+Then resend an invitation from `/dashboard/settings/users/` and inspect its
+status in Resend's Emails dashboard. A successful SMTP submission means the
+provider accepted the message; check delivery events to confirm receipt by the
+recipient's mail server.
+
 ## Rollback
 
 To roll back only repository changes, check out the previous known-good revision

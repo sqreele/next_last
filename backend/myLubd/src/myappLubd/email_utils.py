@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import base64
 from datetime import datetime
 from email.utils import parseaddr
 from typing import Optional, List, Dict, Any
@@ -95,6 +96,7 @@ def _send_via_mailersend(
     from_email: str,
     html_body: Optional[str] = None,
     reply_to: Optional[str] = None,
+    attachments=None,
 ) -> bool:
     """Submit one message to MailerSend without exposing sensitive data in logs."""
     from_name, from_address = parseaddr(from_email)
@@ -111,6 +113,11 @@ def _send_via_mailersend(
         payload['html'] = html_body
     if reply_to:
         payload['reply_to'] = {'email': reply_to}
+    if attachments:
+        payload['attachments'] = [
+            {'filename': name, 'content': base64.b64encode(content).decode('ascii'), 'disposition': 'attachment', 'type': mime}
+            for name, content, mime in attachments
+        ]
 
     try:
         response = requests.post(
@@ -175,6 +182,7 @@ def send_email(
     html_body: Optional[str] = None,
     reply_to: Optional[str] = None,
     property_id: Optional[int] = None,
+    attachments=None,
 ) -> bool:
     """Send an email via MailerSend when configured, then SMTP as fallback.
 
@@ -210,6 +218,7 @@ def send_email(
             from_email=from_addr,
             html_body=html_body,
             reply_to=reply_to_addresses[0] if reply_to_addresses else None,
+            attachments=attachments,
         ):
             return True
 
@@ -235,6 +244,8 @@ def send_email(
         )
         if html_body:
             message.attach_alternative(html_body, 'text/html')
+        for name, content, mime in attachments or []:
+            message.attach(name, content, mime)
         sent = message.send(fail_silently=False)
         if sent:
             logger.info("Email sent via SMTP")

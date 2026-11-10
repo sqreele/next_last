@@ -357,6 +357,7 @@ class BillingInvoice(models.Model):
     purpose = models.CharField(max_length=20, default='renewal')
     property_manifest = models.JSONField(default=list)
     credited_minor = models.PositiveBigIntegerField(default=0)
+    receipt_email_sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

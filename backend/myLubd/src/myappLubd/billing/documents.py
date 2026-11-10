@@ -1,6 +1,7 @@
 """Non-VAT Thai commercial documents. No payment state is accepted from clients."""
 
 from decimal import Decimal
+import logging
 from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -12,6 +13,8 @@ from rest_framework import serializers
 
 from ..models import BillingInvoice, BillingProfile, BillingIssuerSettings
 from .stripe_service import StripeBillingError, _invoice_subscription_id, _provider_id, _timestamp_to_datetime, _value
+
+logger = logging.getLogger('billing.documents')
 
 
 class BillingProfileSerializer(serializers.ModelSerializer):
@@ -115,6 +118,8 @@ def snapshot_invoice(invoice, subscription):
         document.amount_due_minor = max(0, int(_value(invoice, 'amount_due', document.amount_due_minor) or 0))
         document.amount_remaining_minor = 0 if document.paid_at else max(0, int(_value(invoice, 'amount_remaining', document.amount_remaining_minor) or 0))
         document.save(update_fields=['status', 'amount_paid_minor', 'paid_at', 'amount_due_minor', 'amount_remaining_minor'])
+    if document.paid_at:
+        transaction.on_commit(lambda invoice_id=document.pk: send_paid_receipt_email(invoice_id))
     return document
 
 
@@ -207,3 +212,38 @@ def render_document_pdf(document, receipt=False):
     SimpleDocTemplate(buffer, pagesize=A4, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40,
                       title=f'{number} StayMaint', author=document.issuer['legal_name']).build(story)
     return buffer.getvalue()
+
+
+def send_paid_receipt_email(document_id):
+    """Send one paid receipt PDF per invoice; the database claim prevents webhook duplicates."""
+    from django.db import transaction
+    from django.utils import timezone
+    from ..models import BillingInvoice
+
+    with transaction.atomic():
+        document = BillingInvoice.objects.select_for_update().filter(pk=document_id, paid_at__isnull=False).first()
+        if not document or document.receipt_email_sent_at:
+            return False
+        recipient = str((document.customer or {}).get('email') or '').strip()
+        if not recipient:
+            logger.warning('billing_receipt_email_skipped invoice_id=%s reason=no_recipient', document_id)
+            return False
+        document.receipt_email_sent_at = timezone.now()
+        document.save(update_fields=['receipt_email_sent_at'])
+    try:
+        pdf = render_document_pdf(document, receipt=True)
+        from ..email_utils import send_email
+        sent = send_email(
+            recipient,
+            f'ใบเสร็จรับเงิน {document.receipt_number} | StayMaint',
+            f'ชำระเงินเรียบร้อยแล้ว แนบใบเสร็จรับเงิน {document.receipt_number} มาพร้อมอีเมลฉบับนี้',
+            attachments=[(f'{document.receipt_number}.pdf', pdf, 'application/pdf')],
+        )
+        if not sent:
+            BillingInvoice.objects.filter(pk=document_id).update(receipt_email_sent_at=None)
+            logger.error('billing_receipt_email_failed invoice_id=%s', document_id)
+        return sent
+    except Exception:
+        BillingInvoice.objects.filter(pk=document_id).update(receipt_email_sent_at=None)
+        logger.exception('billing_receipt_email_failed invoice_id=%s', document_id)
+        return False

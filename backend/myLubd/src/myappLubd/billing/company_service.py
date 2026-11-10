@@ -611,6 +611,8 @@ def reconcile_company_invoice(invoice):
                 allocation.paid_at = document.paid_at
                 allocation.save(update_fields=['paid_at'])
     if is_paid:
+        from .documents import send_paid_receipt_email
+        transaction.on_commit(lambda invoice_id=document.pk: send_paid_receipt_email(invoice_id))
         for prop_id in selected:
             end = max(line[2] for line in coverage_lines)
             enrollment, _ = PropertyBillingEnrollment.objects.get_or_create(property_id=prop_id,

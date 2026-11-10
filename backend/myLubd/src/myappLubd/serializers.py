@@ -987,6 +987,9 @@ class JobDashboardSerializer(serializers.ModelSerializer):
 # Job serializer
 class JobSerializer(serializers.ModelSerializer):
     machine = JobMachineSerializer(read_only=True)
+    procedure_template = serializers.PrimaryKeyRelatedField(
+        queryset=MaintenanceProcedure.objects.all(), required=False, allow_null=True,
+    )
     machine_id = serializers.SlugRelatedField(
         source='machine', slug_field='machine_id', queryset=Machine.objects.all(),
         write_only=True, required=False, allow_null=True,
@@ -1059,6 +1062,7 @@ class JobSerializer(serializers.ModelSerializer):
             'topic_data', 'room_id', 'room_ids', 'property_id', 'image_urls', 'is_preventivemaintenance',
             'area', 'area_id', 'area_name', 'comments_count', 'can_operate', 'can_assign',
             'machine', 'machine_id', 'documents',
+            'procedure_template',
             'assigned_to', 'created_by',
         ]
         read_only_fields = [

@@ -1795,6 +1795,10 @@ class Job(models.Model):
         'Machine', on_delete=models.PROTECT, null=True, blank=True,
         related_name='jobs', help_text='Equipment selected for this work order',
     )
+    procedure_template = models.ForeignKey(
+        'MaintenanceProcedure', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='jobs', help_text='PM template selected for this machine work order',
+    )
     is_preventivemaintenance = models.BooleanField(default=False, db_index=True)
     STATUS_CHOICES = [
         ('pending', 'Pending'),

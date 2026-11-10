@@ -59,6 +59,7 @@ import {
 } from "@/app/lib/security/propertyAccess";
 import { roomBelongsToProperty } from "@/app/lib/utils/property-filter";
 import { getStatusConfig } from "@/app/design-system/status-config";
+import { fetchAllMaintenanceProcedures, type MaintenanceProcedureTemplate } from "@/app/lib/maintenanceProcedures";
 
 // Use Next.js API routes for proxying to the backend
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
@@ -98,6 +99,7 @@ interface FormValues {
   afterImageTokens: string[];
   is_defective: boolean;
   is_preventivemaintenance: boolean;
+  procedure_template: number | null;
 }
 
 const createValidationSchema = (t: TFunction) =>
@@ -276,6 +278,7 @@ const initialValues: FormValues = {
   afterImageTokens: [],
   is_defective: false,
   is_preventivemaintenance: false,
+  procedure_template: null,
 };
 
 const SECTION_CARD_CLASS =
@@ -482,6 +485,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [pmTemplates, setPmTemplates] = useState<MaintenanceProcedureTemplate[]>([]);
   const [floors, setFloors] = useState<string[]>([]);
   const [isFloorLoading, setIsFloorLoading] = useState(false);
   const [isRoomLoading, setIsRoomLoading] = useState(false);
@@ -817,6 +821,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         "is_preventivemaintenance",
         values.is_preventivemaintenance ? "true" : "false",
       );
+      if (values.procedure_template) formData.append("procedure_template", String(values.procedure_template));
       if (values.area_id != null) {
         formData.append("area_id", String(values.area_id));
       }
@@ -1042,6 +1047,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       setAreas(propertyAreas);
       setMachines(machinesResponse.data || []);
       setFloors(deriveFloorsFromRooms(initialRooms));
+      setPmTemplates(await fetchAllMaintenanceProcedures());
 
       if (!copiedJobResponse && queryMachineId) {
         const selectedMachine = (machinesResponse.data || []).find(
@@ -1097,6 +1103,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
           is_preventivemaintenance: Boolean(
             copiedJob.is_preventivemaintenance,
           ),
+          procedure_template: null,
         });
       }
     } catch (error) {
@@ -1890,6 +1897,20 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   errors.topic?.title,
                                 )}
                               />
+                              {values.locationType === "machine" && values.is_preventivemaintenance && (
+                                <div className="space-y-2">
+                                  <Label htmlFor="job-pm-template">PM template</Label>
+                                  <select id="job-pm-template" className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    value={values.procedure_template ?? ""} disabled={isSubmitting}
+                                    onChange={(event) => setFieldValue("procedure_template", event.target.value ? Number(event.target.value) : null)}>
+                                    <option value="">Select a PM template</option>
+                                    {pmTemplates.filter((template) => template.machine_ids?.includes(values.machine_id) || template.machines?.some((item) => item.machine_id === values.machine_id)).map((template) => (
+                                      <option key={template.id} value={template.id}>{template.name} · {template.frequency || "monthly"}</option>
+                                    ))}
+                                  </select>
+                                  <p className="text-xs text-muted-foreground">Templates linked to the selected machine are shown.</p>
+                                </div>
+                              )}
 
                               {(touched.topic?.title || submitCount > 0) &&
                                 errors.topic?.title && (

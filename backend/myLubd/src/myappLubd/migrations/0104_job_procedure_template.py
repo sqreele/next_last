@@ -3,7 +3,7 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-    dependencies = [('myappLubd', '0103_billing_receipt_email_sent_at')]
+    dependencies = [('myappLubd', '0105_billing_issuer_settings')]
 
     operations = [migrations.AddField(
         model_name='job', name='procedure_template',

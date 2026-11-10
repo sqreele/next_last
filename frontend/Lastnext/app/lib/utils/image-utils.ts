@@ -1,3 +1,8 @@
+/** Encode raw characters while preserving escapes already supplied by storage. */
+function encodeImageUrl(url: string): string {
+  return encodeURI(url).replace(/%25([0-9a-f]{2})/gi, '%$1');
+}
+
 /**
  * Get the base media URL for the current environment
  */
@@ -29,12 +34,12 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
   // configured canonical domain.
   if (mediaIndex >= 0) {
     const mediaPath = normalizedInput.slice(mediaIndex).replace(/^\/media\/(?:media\/)+/i, '/media/');
-    return encodeURI(mediaPath);
+    return encodeImageUrl(mediaPath);
   }
 
   // If it's already a relative URL starting with /media/, return as is
   if (normalizedInput.startsWith('/media/')) {
-    return encodeURI(normalizedInput.replace(/^\/media\/(?:media\/)+/i, '/media/'));
+    return encodeImageUrl(normalizedInput.replace(/^\/media\/(?:media\/)+/i, '/media/'));
   }
   
   // If it's a full external URL, handle it properly
@@ -60,7 +65,7 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
     if (normalizedInput.includes('localhost:8000')) {
       // For media files, keep the external URL to avoid Next.js image optimization issues
       if (normalizedInput.includes('/media/')) {
-        return encodeURI(normalizedInput);
+        return encodeImageUrl(normalizedInput);
       }
       // For non-media files, use relative path
       const relativePath = normalizedInput.replace('http://localhost:8000', '');
@@ -69,16 +74,16 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
     
     // For other external URLs, return them as-is for Next.js Image component
     // The unoptimized prop will be used to bypass Next.js optimization
-    return encodeURI(normalizedInput);
+    return encodeImageUrl(normalizedInput);
   }
   
   // If it's a relative path without /media/, prepend /media/
   if (normalizedInput.startsWith('maintenance_job_images/') || normalizedInput.startsWith('profile_images/')) {
-    return encodeURI(`/media/${normalizedInput}`);
+    return encodeImageUrl(`/media/${normalizedInput}`);
   }
   
   // Default case: prepend /media/
-  return encodeURI(`/media/${normalizedInput.replace(/^\/+/, '')}`);
+  return encodeImageUrl(`/media/${normalizedInput.replace(/^\/+/, '')}`);
 }
 
 /**

@@ -36,6 +36,7 @@ import {
 } from '@/app/components/pcms-ui';
 import { PageLoadingFrame, SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
 import MachineDashboard from '@/app/components/dashboard/MachineDashboard';
+import DashboardPMWidget from '@/app/components/dashboard/DashboardPMWidget';
 import { MobileKpiStrip } from '@/app/components/dashboard/MobileKpiStrip';
 import { RecentActivityFeed } from '@/app/components/dashboard/RecentActivityFeed';
 import { TechnicianKpiBoard } from '@/app/components/dashboard/TechnicianKpiBoard';
@@ -427,6 +428,7 @@ export default function ImprovedDashboard() {
       />
 
       {selectedPropertyId && <MachineDashboard key={selectedPropertyId} propertyId={selectedPropertyId} refreshVersion={machineRefreshVersion} />}
+      {selectedPropertyId && <DashboardPMWidget key={selectedPropertyId} propertyId={selectedPropertyId} refreshKey={machineRefreshVersion} />}
 
       {hasNoActiveProperty ? (
         <FeedbackState

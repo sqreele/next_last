@@ -41,6 +41,7 @@ import { getDisplayName } from "@/app/lib/utils/display-name";
 import dynamic from "next/dynamic";
 import { DetailPageSkeleton } from "@/app/components/ui/loading";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCode = dynamic(
@@ -128,6 +129,7 @@ export default function MachineDetailPage({
   const router = useRouter();
   const { selectedPropertyId: selectedProperty } = useUser();
   const [machine, setMachine] = useState<Machine | null>(null);
+  const [createWorkOpen, setCreateWorkOpen] = useState(false);
   const [pmHistory, setPMHistory] = useState<PMHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -492,17 +494,29 @@ export default function MachineDetailPage({
             </p>
           </div>
         </div>
-        <div className="grid w-full gap-2 self-start sm:flex sm:w-auto sm:items-center">
-          <Button asChild size="sm" className="w-full sm:w-auto">
-            <Link href={createPreventiveLink}>
-              <FilePlus2 className="h-4 w-4 mr-2" />
-              <span className="sm:hidden">Create PM</span>
-              <span className="hidden sm:inline">
-                Create Preventive Maintenance
-              </span>
-            </Link>
-          </Button>
-        </div>
+        <Dialog open={createWorkOpen} onOpenChange={setCreateWorkOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="w-full sm:w-auto"><FilePlus2 className="h-4 w-4 mr-2" />Create work</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create work for {machine.name}</DialogTitle>
+              <DialogDescription>Choose a repair job or preventive maintenance. The selected machine and property will be carried into the form.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button asChild variant="outline" className="h-auto justify-start whitespace-normal p-4 text-left" onClick={() => setCreateWorkOpen(false)}>
+                <Link href={`/dashboard/create-job?property_id=${encodeURIComponent(machine.property.property_id)}&machine_id=${encodeURIComponent(machine.machine_id)}`}>
+                  <Wrench className="mr-3 h-5 w-5 shrink-0" /><span><strong className="block">Repair job</strong><span className="text-xs text-muted-foreground">Create a maintenance work order</span></span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto justify-start whitespace-normal p-4 text-left" onClick={() => setCreateWorkOpen(false)}>
+                <Link href={createPreventiveLink}>
+                  <Calendar className="mr-3 h-5 w-5 shrink-0" /><span><strong className="block">Preventive maintenance</strong><span className="text-xs text-muted-foreground">Choose a PM template and schedule</span></span>
+                </Link>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Property Verification Alert */}

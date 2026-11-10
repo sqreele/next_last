@@ -477,6 +477,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const searchParams = useSearchParams();
   const copyFromJobId = searchParams.get("copy_from")?.trim() || null;
   const copyPropertyId = searchParams.get("property_id")?.trim() || null;
+  const queryMachineId = searchParams.get("machine_id")?.trim() || null;
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -1042,6 +1043,19 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       setMachines(machinesResponse.data || []);
       setFloors(deriveFloorsFromRooms(initialRooms));
 
+      if (!copiedJobResponse && queryMachineId) {
+        const selectedMachine = (machinesResponse.data || []).find(
+          (machine) => machine.machine_id === queryMachineId,
+        );
+        if (selectedMachine) {
+          setFormInitialValues({
+            ...initialValues,
+            locationType: "machine",
+            machine_id: selectedMachine.machine_id,
+          });
+        }
+      }
+
       if (copiedJobResponse) {
         const copiedJob = copiedJobResponse.data;
         if (String(copiedJob.property_id || "") !== activePropertyId) {
@@ -1110,6 +1124,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     getFloorFromRoomName,
     copyFromJobId,
     copyPropertyId,
+    queryMachineId,
     showErrorToast,
     t,
   ]);

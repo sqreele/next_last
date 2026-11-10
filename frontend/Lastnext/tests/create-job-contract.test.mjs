@@ -26,7 +26,8 @@ test("create job requests only active rooms and treats area as an alternative lo
 
 test("mobile incomplete-step navigation uses real section targets", () => {
   const form = read("app/components/jobs/CreateJobForm.tsx");
-  assert.match(form, /target: "cj-step-category"/);
+  assert.match(form, /"cj-step-category"/);
+  assert.match(form, /"cj-step-template"/);
   assert.match(form, /firstIncompleteTarget/);
   assert.doesNotMatch(form, /`cj-step-\$\{firstIncomplete\}`/);
 });

@@ -110,18 +110,18 @@ const createValidationSchema = (t: TFunction) =>
     status: Yup.string().required(t("createJob.validation.statusRequired")),
     priority: Yup.string().required(t("createJob.validation.priorityRequired")),
     remarks: Yup.string().optional(),
-    topic: Yup.object()
-      .shape({
-        title: Yup.string().required(
-          t("createJob.validation.categoryRequired"),
-        ),
-        description: Yup.string(),
-      })
-      .required()
-      .test("machine-category", t("createJob.validation.categoryRequired"), function (topic) {
-        if (this.parent.locationType !== "machine" || MACHINE_WORK_CATEGORIES.includes(topic.title)) return true;
-        return this.createError({ path: `${this.path}.title`, message: t("createJob.validation.categoryRequired") });
-      }),
+    topic: Yup.object().shape({
+      title: Yup.string(),
+      description: Yup.string(),
+    }).test("location-category", t("createJob.validation.categoryRequired"), function (topic) {
+      if (this.parent.locationType === "machine" || topic?.title?.trim()) return true;
+      return this.createError({ path: `${this.path}.title`, message: t("createJob.validation.categoryRequired") });
+    }),
+    procedure_template: Yup.number().nullable().test(
+      "machine-template-required", t("createJob.selectMaintenanceTemplate"), function (value) {
+        return this.parent.locationType !== "machine" || Boolean(value);
+      },
+    ),
     machine_id: Yup.string().test("machine-required", t("createJob.machineRequired"), function (value) {
       return this.parent.locationType !== "machine" || Boolean(value);
     }),
@@ -341,17 +341,19 @@ function CreateJobHeader({
   onBack,
   progress,
   stepStatus,
+  isMachine,
   t,
 }: {
   onBack: () => void;
   progress: number;
   stepStatus: boolean[];
+  isMachine: boolean;
   t: TFunction;
 }) {
   const steps = [
     { label: t("createJob.step.jobDetails"), target: "cj-step-1" },
     { label: t("createJob.step.location"), target: "cj-step-2" },
-    { label: t("createJob.step.category"), target: "cj-step-category" },
+    { label: t(isMachine ? "createJob.maintenanceTemplate" : "createJob.step.category"), target: isMachine ? "cj-step-template" : "cj-step-category" },
     { label: t("createJob.step.additional"), target: "cj-step-3" },
     { label: t("createJob.step.photos"), target: "cj-step-4" },
   ];
@@ -777,6 +779,15 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         }
       }
 
+      if (hasMachine && !pmTemplates.some((template) =>
+        template.id === values.procedure_template && (
+          template.machine_ids?.includes(values.machine_id) ||
+          template.machines?.some((machine) => machine.machine_id === values.machine_id)
+        )
+      )) {
+        throw new Error(t("createJob.selectMaintenanceTemplate"));
+      }
+
       const fileError = validateFiles(values.files, MAX_BEFORE_FILES);
       if (fileError) {
         setError(fileError);
@@ -808,20 +819,20 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       formData.append(
         "topic_data",
         JSON.stringify({
-          title: values.topic.title.trim(),
-          description: values.topic.description.trim() || "",
+          title: hasMachine ? "PM" : values.topic.title.trim(),
+          description: hasMachine ? "" : values.topic.description.trim() || "",
         }),
       );
       if (values.remarks?.trim()) {
         formData.append("remarks", values.remarks.trim());
       }
       formData.append("property_id", activePropertyId);
-      formData.append("is_defective", values.is_defective ? "true" : "false");
+      formData.append("is_defective", !hasMachine && values.is_defective ? "true" : "false");
       formData.append(
         "is_preventivemaintenance",
-        values.is_preventivemaintenance ? "true" : "false",
+        hasMachine || values.is_preventivemaintenance ? "true" : "false",
       );
-      if (hasMachine && values.is_preventivemaintenance && values.procedure_template) {
+      if (hasMachine && values.procedure_template) {
         formData.append("procedure_template", String(values.procedure_template));
       }
       if (values.area_id != null) {
@@ -1224,8 +1235,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                   done: Boolean(values.area_id) || Boolean(values.room?.room_id) || Boolean(values.machine_id),
                 },
                 {
-                  target: "cj-step-category",
-                  done: Boolean(values.topic.title),
+                  target: values.locationType === "machine" ? "cj-step-template" : "cj-step-category",
+                  done: values.locationType === "machine" ? Boolean(values.procedure_template) : Boolean(values.topic.title),
                 },
                 {
                   target: "cj-step-4",
@@ -1256,6 +1267,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                     onBack={() => window.history.back()}
                     progress={progress}
                     stepStatus={stepStatus}
+                    isMachine={values.locationType === "machine"}
                     t={t}
                   />
                   <div className="px-0 pt-4 sm:px-1 md:px-0">
@@ -1445,6 +1457,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 )}
                             </div>
 
+                            {values.locationType !== "machine" && (
                             <div className="space-y-2 md:col-span-2">
                               <Label className="text-sm font-semibold text-foreground">
                                 {t("createJob.jobType")} <RequiredMark />
@@ -1506,6 +1519,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 })}
                               </div>
                             </div>
+                            )}
                           </div>
                         </div>
 
@@ -1574,14 +1588,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 invalid={Boolean((touched.machine_id || submitCount > 0) && errors.machine_id)}
                               />
                               {selectedMachine && (
-                                <div className="space-y-2">
-                                  <Label htmlFor="job-pm-template">{t("createJob.maintenanceTemplate")}</Label>
+                                <div id="cj-step-template" className="scroll-mt-32 space-y-2">
+                                  <Label htmlFor="job-pm-template">{t("createJob.maintenanceTemplate")} <RequiredMark /></Label>
                                   <select
                                     id="job-pm-template"
                                     className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
                                     value={values.procedure_template ?? ""}
                                     disabled={isSubmitting || machineTemplates.length === 0}
-                                    aria-describedby="job-pm-template-hint"
+                                    aria-describedby="job-pm-template-hint job-pm-template-error"
+                                    aria-invalid={Boolean((touched.procedure_template || submitCount > 0) && errors.procedure_template)}
+                                    onBlur={() => setFieldTouched("procedure_template", true)}
                                     onChange={(event) => {
                                       const templateId = event.target.value ? Number(event.target.value) : null;
                                       setFieldValue("procedure_template", templateId);
@@ -1600,6 +1616,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                       </option>
                                     ))}
                                   </select>
+                                  {(touched.procedure_template || submitCount > 0) && errors.procedure_template && (
+                                    <p id="job-pm-template-error" role="alert" className="text-sm text-destructive">{errors.procedure_template}</p>
+                                  )}
                                   <p id="job-pm-template-hint" className="text-xs text-muted-foreground">
                                     {t(machineTemplates.length ? "createJob.maintenanceTemplateHint" : "createJob.noMaintenanceTemplates")}
                                   </p>
@@ -1900,7 +1919,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                           )}
                         </div>
 
-                        {/* Step 3: Category */}
+                        {values.locationType !== "machine" && (
                         <div
                           id="cj-step-category"
                           className={SECTION_CARD_CLASS}
@@ -1924,19 +1943,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                               </div>
 
                               <TopicPicker
-                                allowCustom={values.locationType !== "machine"}
-                                topics={values.locationType === "machine"
-                                  ? MACHINE_WORK_CATEGORIES.map((title, index) => ({ id: -(index + 1), title, description: "" }))
-                                  : topics.filter((topic) => !MACHINE_WORK_CATEGORIES.includes(topic.title))}
+                                allowCustom
+                                topics={topics.filter((topic) => !MACHINE_WORK_CATEGORIES.includes(topic.title))}
                                 value={values.topic}
                                 onChange={(topic) => {
                                   setFieldValue("topic", topic);
                                   if (topic.title !== values.topic.title) {
                                     setFieldValue("procedure_template", null);
-                                  }
-                                  if (values.locationType === "machine") {
-                                    setFieldValue("is_defective", topic.title === "Repair");
-                                    setFieldValue("is_preventivemaintenance", topic.title === "PM" || topic.title.startsWith("Preventive "));
                                   }
                                   setFieldTouched("topic.title", true, false);
                                 }}
@@ -1958,6 +1971,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             </div>
                           </div>
                         </div>
+                        )}
 
                         {values.locationType === "machine" && (
                           <div className={SECTION_CARD_CLASS}>
@@ -2138,6 +2152,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     t("createJob.error.selectActiveProperty")}
                                 </dd>
                               </div>
+                              {values.locationType !== "machine" && <>
                               <div className="flex items-center justify-between gap-3">
                                 <dt className="text-muted-foreground">
                                   {t("createJob.area")}
@@ -2157,13 +2172,15 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     t("createJob.selectRoomNumber")}
                                 </dd>
                               </div>
+                              </>}
                               <div className="flex items-center justify-between gap-3">
                                 <dt className="text-muted-foreground">
-                                  {t("createJob.category")}
+                                  {t(values.locationType === "machine" ? "createJob.maintenanceTemplate" : "createJob.category")}
                                 </dt>
                                 <dd className="min-w-0 break-words text-right font-semibold text-foreground [overflow-wrap:anywhere]">
-                                  {values.topic.title ||
-                                    t("createJob.category")}
+                                  {values.locationType === "machine"
+                                    ? pmTemplates.find((template) => template.id === values.procedure_template)?.name || "—"
+                                    : values.topic.title || t("createJob.category")}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
@@ -2230,7 +2247,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     stepStatus[0],
                                   ],
                                   [t("createJob.step.location"), stepStatus[1]],
-                                  [t("createJob.step.category"), stepStatus[2]],
+                                  [t(values.locationType === "machine" ? "createJob.maintenanceTemplate" : "createJob.step.category"), stepStatus[2]],
                                   [
                                     t("createJob.step.additional"),
                                     stepStatus[3],

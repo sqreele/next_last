@@ -25,6 +25,8 @@ interface MachineJob {
   status: string;
   priority: string;
   created_at: string;
+  updated_at?: string;
+  completed_at?: string | null;
   technician_name?: string;
   machine?: { machine_id: string } | null;
 }
@@ -34,6 +36,7 @@ interface Maintenance {
   machines?: { machine_id: string }[];
   status: string;
   scheduled_date: string;
+  completed_date?: string | null;
   frequency?: string;
   assigned_to_name?: string;
   estimated_duration?: number;
@@ -112,6 +115,21 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
   const history = jobs.filter((job) => job.machine?.machine_id === selectedId);
   const maintenance = plans.filter((plan) => plan.machines?.some((machine) => machine.machine_id === selectedId));
   const openMachineJobs = jobs.filter((job) => job.machine && !["completed", "verified", "cancelled"].includes(job.status));
+  const latestJobFor = (machineId: string) => jobs
+    .filter((job) => job.machine?.machine_id === machineId)
+    .reduce<MachineJob | undefined>((latest, job) => {
+      const timestamp = (value: MachineJob) => Date.parse(value.updated_at || value.created_at) || 0;
+      return !latest || timestamp(job) > timestamp(latest) ? job : latest;
+    }, undefined);
+  const lastMaintenanceFor = (machine: Machine) => {
+    const dates = [machine.last_maintenance_date,
+      ...plans.filter((plan) => plan.status === "completed" && plan.machines?.some((item) => item.machine_id === machine.machine_id))
+        .map((plan) => plan.completed_date),
+      ...jobs.filter((job) => job.status === "completed" && job.machine?.machine_id === machine.machine_id)
+        .map((job) => job.completed_at),
+    ].filter((value): value is string => Boolean(value) && Number.isFinite(Date.parse(value!)));
+    return dates.sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+  };
   const overdue = plans.filter((plan) => plan.machines?.length && !["completed", "verified", "cancelled"].includes(plan.status) && new Date(plan.scheduled_date).getTime() < Date.now());
 
   if (error) return <section className="rounded-xl border border-destructive/30 bg-card p-6" role="alert"><h2 className="font-semibold">{text("ภาพรวมเครื่องจักร", "Machine Dashboard")}</h2><p className="mt-2 text-sm">{text("ไม่สามารถโหลดข้อมูลเครื่องจักรได้", "Unable to load machine dashboard data")}</p><button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-3 min-h-10 font-semibold text-teal-700 underline">{text("ลองอีกครั้ง", "Try again")}</button></section>;
@@ -127,8 +145,14 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
     <div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><span className="sr-only">{text("ค้นหาเครื่องจักร", "Search machines")}</span><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text("ค้นหาชื่อ รหัส ยี่ห้อ หรือตำแหน่ง…", "Search name, ID, brand or location…")} className="pl-9" /></label><select aria-label={text("สถานะเครื่องจักร", "Machine status")} value={status} onChange={(event) => setStatus(event.target.value)} className="min-h-10 rounded-lg border bg-card px-3 text-sm"><option value="all">{text("ทุกสถานะ", "All statuses")}</option>{Object.entries(statusNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
     {loading ? <p role="status" className="p-4 text-sm text-muted-foreground">{text("กำลังโหลดเครื่องจักร…", "Loading machines…")}</p> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{visible.map((machine) => {
       const open = openMachineJobs.filter((job) => job.machine?.machine_id === machine.machine_id).length;
+      const latestJob = latestJobFor(machine.machine_id);
       return <button key={machine.machine_id} type="button" aria-expanded={selectedId === machine.machine_id} aria-controls="machine-dashboard-details" onClick={() => setSelectedId(machine.machine_id)} className={`min-w-0 rounded-xl border p-4 text-left transition [overflow-wrap:anywhere] hover:border-teal-400 ${selectedId === machine.machine_id ? "border-teal-500 bg-teal-500/10" : "border-border"}`}>
-        <p className="font-mono text-xs font-semibold text-teal-700">{machine.machine_id}</p><h3 className="mt-1 font-semibold">{machine.name}</h3><p className="mt-1 text-xs text-muted-foreground">{machine.category} · {machine.location}</p><div className="mt-3 flex flex-wrap justify-between gap-2 text-xs"><span className={machine.status === "active" ? "font-semibold text-emerald-700" : "font-semibold text-amber-800"}>{statusNames[machine.status] || machine.status}</span><span>{open} {text("งานเปิด", "open jobs")}</span></div><p className="mt-3 text-xs font-semibold text-teal-700">{text("ดูรายละเอียดและประวัติ →", "View details & history →")}</p>
+        <p className="font-mono text-xs font-semibold text-teal-700">{machine.machine_id}</p><h3 className="mt-1 font-semibold">{machine.name}</h3><p className="mt-1 text-xs text-muted-foreground">{machine.category} · {machine.location}</p><div className="mt-3 flex flex-wrap justify-between gap-2 text-xs"><span className={machine.status === "active" ? "font-semibold text-emerald-700" : "font-semibold text-amber-800"}>{statusNames[machine.status] || machine.status}</span><span>{open} {text("งานเปิด", "open jobs")}</span></div><dl className="mt-3 space-y-2 border-t pt-3 text-xs">
+          <div><dt className="text-muted-foreground">{text("งานเครื่องล่าสุด", "Latest machine job")}</dt><dd className="mt-1 font-medium">{latestJob?.description || "—"}</dd></div>
+          <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{text("อัปเดตงานล่าสุด", "Last job update")}</dt><dd>{displayDate(latestJob?.updated_at || latestJob?.created_at)}</dd></div>
+          <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{text("บำรุงรักษาล่าสุด", "Last maintenance")}</dt><dd>{displayDate(lastMaintenanceFor(machine))}</dd></div>
+          <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{text("PM ครั้งถัดไป", "Next PM due")}</dt><dd>{displayDate(machine.next_maintenance_date)}</dd></div>
+        </dl><p className="mt-3 text-xs font-semibold text-teal-700">{text("ดูรายละเอียดและประวัติ →", "View details & history →")}</p>
       </button>;
     })}</div>}
     {!loading && !visible.length && <p className="p-6 text-center text-sm text-muted-foreground">{text("ไม่พบเครื่องจักรตามเงื่อนไข", "No machines match your filters")}</p>}
@@ -136,12 +160,14 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
       <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{selected.name}</h3><button type="button" onClick={() => setSelectedId("")} className="min-h-10 px-3 text-sm font-semibold text-teal-700">{text("ปิดรายละเอียด", "Close details")}</button></div>
       <div className="rounded-xl border bg-muted/50 p-4"><dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">{[
         [text("รหัสเครื่อง", "Machine ID"), selected.machine_id],
+        [text("งานเครื่องล่าสุด", "Latest machine job"), latestJobFor(selected.machine_id)?.description],
+        [text("อัปเดตงานล่าสุด", "Last job update"), displayDate(latestJobFor(selected.machine_id)?.updated_at || latestJobFor(selected.machine_id)?.created_at)],
         [text("ยี่ห้อ", "Brand"), selected.brand],
         ["Serial Number", selected.serial_number],
         [text("ประเภทเครื่อง", "Equipment category"), selected.category],
         [text("ตำแหน่ง", "Location"), selected.location],
         [text("สถานะเครื่อง", "Equipment status"), statusNames[selected.status] || selected.status],
-        [text("บำรุงรักษาล่าสุด", "Last maintenance"), displayDate(selected.last_maintenance_date)],
+        [text("บำรุงรักษาล่าสุด", "Last maintenance"), displayDate(lastMaintenanceFor(selected))],
         [text("PM ครั้งถัดไป", "Next PM due"), displayDate(selected.next_maintenance_date)],
         [text("สิ้นสุดประกัน", "Warranty end"), displayDate(selected.warranty_end_date)],
       ].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-sm font-medium">{value || "—"}</dd></div>)}</dl><Link href={`/dashboard/machines/${encodeURIComponent(selected.machine_id)}`} className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold text-teal-700">{text("ดูข้อมูลเครื่องจักรทั้งหมด →", "View full machine details →")}</Link></div>

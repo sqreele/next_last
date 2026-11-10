@@ -157,7 +157,9 @@ def render_document_pdf(document, receipt=False):
         font_name = f'BillingSarabun-{name}'
         if font_name not in pdfmetrics.getRegisteredFontNames():
             pdfmetrics.registerFont(TTFont(font_name, str(font_dir / f'Sarabun-{name}.ttf')))
-    style = ParagraphStyle('billing', fontName='BillingSarabun-Regular', fontSize=11, leading=17, wordWrap='CJK')
+    # Thai combining marks need HarfBuzz positioning. CJK wrapping bypasses
+    # ReportLab's shaping path and leaves vowels and tone marks misplaced.
+    style = ParagraphStyle('billing', fontName='BillingSarabun-Regular', fontSize=11, leading=17, shaping=1)
     heading = ParagraphStyle('heading', parent=style, fontName='BillingSarabun-Bold', fontSize=20, leading=28)
     def p(value, text_style=style):
         return Paragraph(escape(str(value or '')).replace('\n', '<br/>'), text_style)

@@ -2,6 +2,7 @@
 import json
 import tempfile
 from io import BytesIO
+from datetime import datetime, timezone as datetime_timezone
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -11,7 +12,7 @@ from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APITestCase
 
-from .models import Job, JobDocument, Machine, Property, Room, Tenant, TenantMembership
+from .models import Job, JobDocument, Machine, MaintenanceProcedure, Property, Room, Tenant, TenantMembership
 from .tenancy import get_tenant_storage_usage_bytes
 from .test_plan_helpers import use_canonical_plan
 
@@ -125,6 +126,44 @@ class JobMachineTests(APITestCase):
         self.assertTrue(response.data['is_preventivemaintenance'])
         self.assertFalse(response.data['is_defective'])
 
+    def test_pm_template_requires_linked_machine_and_pm_category(self):
+        template = MaintenanceProcedure.objects.create(name='Pump PM', description='Inspect pump')
+        template.machines.add(self.machine)
+        other_machine = Machine.objects.create(
+            property=self.property, name='Second pump', machine_id='PUMP-002',
+        )
+        room = Room.objects.create(property=self.property, name='102', room_type='Standard')
+        for overrides in (
+            {'category': 'Repair'},
+            {'category': 'PM', 'machine_id': other_machine.machine_id},
+            {'category': 'Electrical', 'machine_id': '', 'room_id': room.room_id},
+        ):
+            response = self.create_job(procedure_template=template.pk, **overrides)
+            self.assertEqual(response.status_code, 400, response.data)
+            self.assertIn('procedure_template', response.data)
+        self.assertFalse(Job.objects.exists())
+
+        response = self.create_job(category='PM', procedure_template=template.pk)
+        self.assertEqual(response.status_code, 201, response.data)
+        job = Job.objects.get(job_id=response.data['job_id'])
+        self.assertEqual(job.procedure_template, template)
+        url = f'/api/v1/jobs/{job.job_id}/'
+        update = self.client.patch(url, {'remarks': 'Inspected'}, format='json')
+        self.assertEqual(update.status_code, 200, update.data)
+        self.assertEqual(update.data['procedure_template'], template.pk)
+        update = self.client.patch(url, {'machine_id': other_machine.machine_id}, format='json')
+        self.assertEqual(update.status_code, 400, update.data)
+        update = self.client.patch(url, {
+            'topic_data': {'title': 'Repair', 'description': ''},
+        }, format='json')
+        self.assertEqual(update.status_code, 400, update.data)
+        update = self.client.patch(url, {
+            'topic_data': {'title': 'Repair', 'description': ''},
+            'procedure_template': None,
+        }, format='json')
+        self.assertEqual(update.status_code, 200, update.data)
+        self.assertIsNone(update.data['procedure_template'])
+
     def test_validates_pdf_signature_size_extension_and_count_before_saving(self):
         cases = [
             [self.pdf(content=b'not a PDF')],
@@ -171,6 +210,47 @@ class JobMachineTests(APITestCase):
         self.assertEqual(self.client.get(url, {'property_id': self.other.property_id}).status_code, 404)
         second = self.create_job()
         self.assertEqual(self.client.get(f"/api/v1/jobs/{second.data['job_id']}/documents/{document_id}/").status_code, 404)
+
+    def test_completed_pm_with_documents_and_photos_calculates_next_date(self):
+        template = MaintenanceProcedure.objects.create(
+            name='Monthly pump inspection', description='Check pump', frequency='monthly',
+        )
+        template.machines.add(self.machine)
+        response = self.create_job(category='PM', procedure_template=template.pk, documents=[self.pdf()])
+        self.assertEqual(response.status_code, 201, response.data)
+        job = Job.objects.get(job_id=response.data['job_id'])
+        self.assertEqual(job.documents.count(), 1)
+        self.assertEqual(job.job_images.count(), 1)
+        self.assertIsNone(self.machine.get_next_maintenance_date())
+        completed_at = datetime(2028, 1, 31, 10, tzinfo=datetime_timezone.utc)
+        Job.objects.filter(pk=job.pk).update(status='completed', completed_at=completed_at)
+        expected = datetime(2028, 2, 29, 10, tzinfo=datetime_timezone.utc)
+        self.assertEqual(self.machine.get_next_maintenance_date(), expected)
+        # A later edit and a later repair do not shift this PM's due date.
+        update = self.client.patch(f'/api/v1/jobs/{job.job_id}/', {'remarks': 'Updated notes'}, format='json')
+        self.assertEqual(update.status_code, 200, update.data)
+        repair = self.create_job(status='completed')
+        self.assertEqual(repair.status_code, 201, repair.data)
+        self.assertEqual(self.machine.get_next_maintenance_date(), expected)
+        # Retain overdue dates, and advance only after a newer PM completion.
+        second = self.create_job(category='PM', procedure_template=template.pk)
+        self.assertEqual(second.status_code, 201, second.data)
+        Job.objects.filter(job_id=second.data['job_id']).update(
+            status='completed', completed_at=datetime(2028, 2, 29, 10, tzinfo=datetime_timezone.utc),
+        )
+        self.assertEqual(self.machine.get_next_maintenance_date(), datetime(2028, 3, 29, 10, tzinfo=datetime_timezone.utc))
+
+    def test_machine_pm_dates_are_tracked_per_template(self):
+        for name, frequency, completed_at in (
+            ('Annual inspection', 'annual', datetime(2028, 1, 31, tzinfo=datetime_timezone.utc)),
+            ('Weekly check', 'weekly', datetime(2028, 2, 1, tzinfo=datetime_timezone.utc)),
+        ):
+            template = MaintenanceProcedure.objects.create(name=name, description=name, frequency=frequency)
+            template.machines.add(self.machine)
+            response = self.create_job(category='PM', procedure_template=template.pk)
+            self.assertEqual(response.status_code, 201, response.data)
+            Job.objects.filter(job_id=response.data['job_id']).update(status='completed', completed_at=completed_at)
+        self.assertEqual(self.machine.get_next_maintenance_date(), datetime(2028, 2, 8, tzinfo=datetime_timezone.utc))
 
     def test_completing_job_updates_machine_date(self):
         response = self.create_job()

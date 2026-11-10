@@ -1205,6 +1205,19 @@ class JobSerializer(serializers.ModelSerializer):
         elif data.get('topic_data', {}).get('title') in MACHINE_CATEGORIES:
             raise serializers.ValidationError({'topic_data': 'Machine work categories require a machine.'})
 
+        future_template = data.get(
+            'procedure_template', instance.procedure_template if instance is not None else None,
+        )
+        if future_template:
+            if not future_machine or not data.get('is_preventivemaintenance'):
+                raise serializers.ValidationError({
+                    'procedure_template': 'PM templates require a machine preventive maintenance job.',
+                })
+            if not future_template.machines.filter(pk=future_machine.pk).exists():
+                raise serializers.ValidationError({
+                    'procedure_template': 'Select a PM template linked to the selected machine.',
+                })
+
         documents = request.FILES.getlist('documents') if request else []
         if documents:
             if instance is not None:

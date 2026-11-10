@@ -196,7 +196,7 @@ class PreventiveMaintenanceImageTests(APITestCase):
         evidence = PreventiveMaintenanceImage.objects.get(preventive_maintenance=self.pm)
         self.assertEqual(evidence.image_type, 'after')
         with Image.open(evidence.image.path) as stored:
-            self.assertEqual(stored.size, (1600, 800))
+            self.assertEqual(stored.size, (400, 200))
         self.pm.refresh_from_db()
         self.assertFalse(self.pm.after_image)
         self.assertIsNotNone(self.pm.completed_date)
@@ -310,7 +310,7 @@ class PreventiveMaintenanceImageTests(APITestCase):
         response = self._upload('before', [self._image(size=(2400, 1200))])
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
         with Image.open(PreventiveMaintenanceImage.objects.get().image.path) as stored:
-            self.assertEqual(stored.size, (1600, 800))
+            self.assertEqual(stored.size, (400, 200))
             self.assertEqual(stored.format, 'JPEG')
 
     def test_small_image_is_not_upscaled(self):
@@ -323,7 +323,7 @@ class PreventiveMaintenanceImageTests(APITestCase):
         self.client.force_authenticate(self.operator)
         self._upload('after', [self._image(size=(3000, 1000))])
         with Image.open(PreventiveMaintenanceImage.objects.get().image.path) as stored:
-            self.assertEqual(stored.size, (1600, 533))
+            self.assertEqual(stored.size, (400, 133))
 
     def test_valid_multi_image_upload_persists_every_image(self):
         self.client.force_authenticate(self.operator)

@@ -12,6 +12,7 @@ from PIL import Image, ImageOps
 
 MAX_SIZE = (1600, 1600)
 JPEG_QUALITY = 82
+PM_MAX_SIZE = (400, 400)
 PM_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 PM_ALLOWED_FORMATS = {'JPEG', 'PNG', 'GIF', 'WEBP'}
 
@@ -79,7 +80,7 @@ def validate_and_optimize_pm_image(source):
             opened.verify()
         if hasattr(source, 'seek'):
             source.seek(0)
-        optimized = optimize_job_image(source)
+        optimized = optimize_job_image(source, max_size=PM_MAX_SIZE)
     except PMImageValidationError:
         raise
     except Exception as exc:

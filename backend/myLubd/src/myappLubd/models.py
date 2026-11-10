@@ -679,7 +679,7 @@ class PreventiveMaintenance(models.Model):
     ]
 
     # Maximum image dimensions
-    MAX_SIZE = (800, 800)
+    MAX_SIZE = (400, 400)
     job = models.ForeignKey('Job', on_delete=models.SET_NULL, null=True, blank=True)
     master_plan = models.ForeignKey(
         'PMMasterPlan',
@@ -1269,7 +1269,7 @@ class PreventiveMaintenanceImage(models.Model):
         ('before', 'Before'),
         ('after', 'After'),
     ]
-    MAX_SIZE = (1600, 1600)
+    MAX_SIZE = (400, 400)
     JPEG_QUALITY = 82
 
     id = models.AutoField(primary_key=True)
@@ -2371,14 +2371,31 @@ class Machine(models.Model):
         super().save(*args, **kwargs)
     
     def get_next_maintenance_date(self):
-        """Get the nearest upcoming maintenance date"""
-        upcoming_maintenances = self.preventive_maintenances.filter(
+        """Combine scheduled PM with recurrence from completed template jobs.
+
+        Each template has its own completion baseline. Editing a job or
+        completing a repair must not postpone a template's next PM date.
+        Keep overdue template dates visible until that PM is completed again.
+        """
+        scheduled = self.preventive_maintenances.filter(
             next_due_date__gt=timezone.now()
-        ).order_by('next_due_date')
-        
-        if upcoming_maintenances.exists():
-            return upcoming_maintenances.first().next_due_date
-        return None
+        ).order_by('next_due_date').values_list('next_due_date', flat=True).first()
+        candidates = [scheduled] if scheduled else []
+        latest_completions = self.jobs.filter(
+            status='completed', is_preventivemaintenance=True,
+            completed_at__isnull=False, procedure_template__isnull=False,
+            procedure_template__machines=self,
+        ).values('procedure_template_id').annotate(last_completed=models.Max('completed_at'))
+        completions = {row['procedure_template_id']: row['last_completed'] for row in latest_completions}
+        for template in MaintenanceProcedure.objects.filter(pk__in=completions):
+            # Use the same calendar recurrence rules as regular PM schedules.
+            recurrence = PreventiveMaintenance(
+                completed_date=completions[template.pk], frequency=template.frequency,
+            )
+            recurrence.calculate_next_due_date()
+            if recurrence.next_due_date:
+                candidates.append(recurrence.next_due_date)
+        return min(candidates) if candidates else None
 
     @builtins.property
     def is_under_warranty(self):

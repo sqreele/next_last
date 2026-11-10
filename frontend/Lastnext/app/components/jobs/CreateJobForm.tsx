@@ -821,7 +821,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         "is_preventivemaintenance",
         values.is_preventivemaintenance ? "true" : "false",
       );
-      if (values.procedure_template) formData.append("procedure_template", String(values.procedure_template));
+      if (hasMachine && values.is_preventivemaintenance && values.procedure_template) {
+        formData.append("procedure_template", String(values.procedure_template));
+      }
       if (values.area_id != null) {
         formData.append("area_id", String(values.area_id));
       }
@@ -1047,7 +1049,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       setAreas(propertyAreas);
       setMachines(machinesResponse.data || []);
       setFloors(deriveFloorsFromRooms(initialRooms));
-      setPmTemplates(await fetchAllMaintenanceProcedures());
+      const templates = await fetchAllMaintenanceProcedures();
+      if (requestId !== dataRequestIdRef.current) return;
+      setPmTemplates(templates);
 
       if (!copiedJobResponse && queryMachineId) {
         const selectedMachine = (machinesResponse.data || []).find(
@@ -1242,6 +1246,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
               );
 
               const selectedMachine = machines.find((machine) => machine.machine_id === values.machine_id);
+              const machineTemplates = selectedMachine ? pmTemplates.filter((template) =>
+                template.machine_ids?.includes(selectedMachine.machine_id) ||
+                template.machines?.some((machine) => machine.machine_id === selectedMachine.machine_id)
+              ) : [];
               return (
                 <Form className="relative space-y-4" noValidate>
                   <CreateJobHeader
@@ -1535,6 +1543,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   setFieldValue("locationType", kind);
                                   setFieldValue("machine_id", "");
                                   setFieldValue("documents", []);
+                                  setFieldValue("procedure_template", null);
                                   setFieldValue("room", null);
                                   setFieldValue("area_id", null);
                                   setFieldValue("floor", null);
@@ -1554,11 +1563,48 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                               <MachineAutocomplete
                                 machines={machines}
                                 value={values.machine_id}
-                                onSelect={(machineId) => setFieldValue("machine_id", machineId)}
+                                onSelect={(machineId) => {
+                                  if (machineId !== values.machine_id) {
+                                    setFieldValue("procedure_template", null);
+                                  }
+                                  setFieldValue("machine_id", machineId);
+                                }}
                                 onBlur={() => setFieldTouched("machine_id", true, false)}
                                 disabled={isSubmitting || !activePropertyId}
                                 invalid={Boolean((touched.machine_id || submitCount > 0) && errors.machine_id)}
                               />
+                              {selectedMachine && (
+                                <div className="space-y-2">
+                                  <Label htmlFor="job-pm-template">{t("createJob.maintenanceTemplate")}</Label>
+                                  <select
+                                    id="job-pm-template"
+                                    className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    value={values.procedure_template ?? ""}
+                                    disabled={isSubmitting || machineTemplates.length === 0}
+                                    aria-describedby="job-pm-template-hint"
+                                    onChange={(event) => {
+                                      const templateId = event.target.value ? Number(event.target.value) : null;
+                                      setFieldValue("procedure_template", templateId);
+                                      if (templateId !== null) {
+                                        setFieldValue("topic", { title: "PM", description: "" });
+                                        setFieldValue("is_preventivemaintenance", true);
+                                        setFieldValue("is_defective", false);
+                                        setFieldTouched("topic.title", true, false);
+                                      }
+                                    }}
+                                  >
+                                    <option value="">{t("createJob.selectMaintenanceTemplate")}</option>
+                                    {machineTemplates.map((template) => (
+                                      <option key={template.id} value={template.id}>
+                                        {template.name}{template.frequency ? ` · ${template.frequency}` : ""}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <p id="job-pm-template-hint" className="text-xs text-muted-foreground">
+                                    {t(machineTemplates.length ? "createJob.maintenanceTemplateHint" : "createJob.noMaintenanceTemplates")}
+                                  </p>
+                                </div>
+                              )}
                               {!machines.length && <p className="text-sm text-muted-foreground">{t("createJob.noMachines")}</p>}
                               {(touched.machine_id || submitCount > 0) && errors.machine_id && <p id="machine-error" role="alert" className="text-sm text-destructive">{errors.machine_id}</p>}
                               {selectedMachine && (
@@ -1885,6 +1931,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 value={values.topic}
                                 onChange={(topic) => {
                                   setFieldValue("topic", topic);
+                                  if (topic.title !== values.topic.title) {
+                                    setFieldValue("procedure_template", null);
+                                  }
                                   if (values.locationType === "machine") {
                                     setFieldValue("is_defective", topic.title === "Repair");
                                     setFieldValue("is_preventivemaintenance", topic.title === "PM" || topic.title.startsWith("Preventive "));
@@ -1897,20 +1946,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   errors.topic?.title,
                                 )}
                               />
-                              {values.locationType === "machine" && values.is_preventivemaintenance && (
-                                <div className="space-y-2">
-                                  <Label htmlFor="job-pm-template">PM template</Label>
-                                  <select id="job-pm-template" className="min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    value={values.procedure_template ?? ""} disabled={isSubmitting}
-                                    onChange={(event) => setFieldValue("procedure_template", event.target.value ? Number(event.target.value) : null)}>
-                                    <option value="">Select a PM template</option>
-                                    {pmTemplates.filter((template) => template.machine_ids?.includes(values.machine_id) || template.machines?.some((item) => item.machine_id === values.machine_id)).map((template) => (
-                                      <option key={template.id} value={template.id}>{template.name} · {template.frequency || "monthly"}</option>
-                                    ))}
-                                  </select>
-                                  <p className="text-xs text-muted-foreground">Templates linked to the selected machine are shown.</p>
-                                </div>
-                              )}
+
 
                               {(touched.topic?.title || submitCount > 0) &&
                                 errors.topic?.title && (

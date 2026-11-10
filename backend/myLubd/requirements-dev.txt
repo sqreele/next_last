@@ -1,0 +1,5 @@
+# Runtime dependencies have a single source shared with Docker and CI.
+-r requirements.txt
+
+pytest==8.3.4
+pytest-django==4.9.0

@@ -1,23 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
-import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
+import { API_CONFIG } from '@/app/lib/config';
 import { backendFetch } from '@/app/lib/backend-fetch';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get session to verify authentication
     const session = await getServerSession();
-    
-    if (DEBUG_CONFIG.logSessions) {
-    }
     
     if (!session?.user?.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/properties/`;
-    if (DEBUG_CONFIG.logApiCalls) {
-    }
 
     // Fetch properties from the external API
     const response = await backendFetch(apiUrl, {

@@ -28,9 +28,6 @@ google-api-python-client>=2.146.0
 # Auth0 JWT Validation - Use python-jose instead of PyJWT
 python-jose[cryptography]>=3.3.0
 
-# Image processing
-Pillow>=8.0.0
-
 # Excel Generation
 openpyxl>=3.1.0
 
@@ -50,3 +47,7 @@ qrcode[pil]>=7.4.2
 
 # Gemini API official SDK
 google-genai>=1.0.0
+
+# Optional delivery channel, configured through VAPID environment variables
+pywebpush>=2.0.0,<3.0
+py-vapid>=1.9.1,<2.0

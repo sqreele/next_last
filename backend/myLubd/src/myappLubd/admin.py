@@ -1,3 +1,4 @@
+from .room_names import floor_from_room_name
 import os
 import re
 from django.contrib import admin, messages
@@ -1167,22 +1168,7 @@ class FloorFilter(admin.SimpleListFilter):
             return queryset.filter(rooms__name__regex=self._floor_regex(self.value())).distinct()
         return queryset
 
-    @staticmethod
-    def _floor_from_room_name(room_name):
-        room_name = str(room_name or '').strip()
-        if not room_name:
-            return None
-
-        match = re.search(r'\d+', room_name)
-        if not match:
-            return None
-
-        room_code = match.group(0)
-        if len(room_code) == 4 and room_code.startswith('1') and room_code[1].isdigit():
-            return room_code[1]
-        if len(room_code) >= 3:
-            return room_code[0]
-        return None
+    _floor_from_room_name = staticmethod(floor_from_room_name)
 
     @staticmethod
     def _floor_regex(floor):

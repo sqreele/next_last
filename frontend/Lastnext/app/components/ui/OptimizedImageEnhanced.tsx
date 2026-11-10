@@ -12,7 +12,6 @@ import {
   getOptimizedImageProps,
   IMAGE_PRESETS,
   ImagePresetOptions,
-  isExternalImage,
 } from "@/app/lib/utils/universal-image-optimization";
 
 interface OptimizedImageEnhancedProps extends Omit<ImageProps, "src" | "alt"> {
@@ -45,7 +44,7 @@ export function OptimizedImageEnhanced({
   const [hasError, setHasError] = useState(false);
 
   const imageOptions = options || IMAGE_PRESETS[preset];
-  const { width, height, quality, priority, ...restProps } = props;
+  const { width, height, quality, priority } = props;
 
   // Check if this is an external image that should be unoptimized
   const isExternalImage =

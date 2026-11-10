@@ -469,9 +469,9 @@ class TenantSubscriptionAdminHardeningTests(TestCase):
         self.assertIn('external_subscription_id', readonly)
         self.assertIn('grace_period_ends_at', readonly)
 
-    def test_superuser_retains_platform_recovery_authority(self):
+    def test_superuser_can_recover_subscription_but_cannot_delete_billing_history(self):
         request = self.request_for(self.superuser)
         self.assertTrue(self.admin.has_add_permission(request))
         self.assertTrue(self.admin.has_change_permission(request))
-        self.assertTrue(self.admin.has_delete_permission(request))
+        self.assertFalse(self.admin.has_delete_permission(request))
         self.assertNotIn('status', self.admin.get_readonly_fields(request))

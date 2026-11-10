@@ -212,11 +212,8 @@ export function preloadCriticalImages(pageType: 'dashboard' | 'jobs' | 'maintena
       break;
   }
   
-  // Filter out non-existent URLs and preload
-  const validImages = criticalImages.filter(url => {
-    // In a real app, you'd check if the URL exists
-    return true;
-  });
+  // Preload the configured critical images
+  const validImages = criticalImages;
   
   if (validImages.length > 0) {
     preloadImages(validImages, { priority: 'high' });

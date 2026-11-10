@@ -5,7 +5,7 @@
 
 "use client";
 
-import { UniversalImageProps } from '@/app/components/ui/UniversalImage';
+import type { UniversalImageProps } from '@/app/components/ui/UniversalImage';
 
 export interface ImageOptimizationConfig {
   // Quality settings
@@ -167,7 +167,6 @@ export function getOptimizedImageProps(
   additionalProps?: Partial<UniversalImageProps>
 ): UniversalImageProps {
   const config = getImageOptimizationConfig(options);
-  const isExternal = isExternalImage(src);
 
   return {
     src,
@@ -208,20 +207,7 @@ export function preloadImages(srcs: string[]): void {
 /**
  * Generate optimized image URL with query parameters
  */
-export function generateOptimizedImageUrl(
-  src: string,
-  width: number,
-  height: number,
-  quality: number = 75,
-  format: 'avif' | 'jpeg' = 'jpeg'
-): string {
-  if (isExternalImage(src)) {
-    return src; // Return original URL for external images
-  }
-
-  // For internal images, Next.js will handle optimization automatically
-  return src;
-}
+export { generateOptimizedImageUrl } from './image-url';
 
 /**
  * Image optimization presets for common use cases
@@ -302,7 +288,7 @@ export const IMAGE_PRESETS = {
  * Hook for lazy image loading with intersection observer
  */
 export function useLazyImageLoading() {
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);

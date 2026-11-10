@@ -21,10 +21,7 @@ export function getOptimizedImageUrl(
 ): string {
   const {
     width = 400,
-    height = 300,
     quality = 75,
-    format = 'jpeg',
-    placeholder = 'blur'
   } = options;
 
   // If it's already a Next.js optimized URL, return as is
@@ -58,8 +55,8 @@ export function getResponsiveSizes(breakpoints: { [key: string]: number } = {}):
 
   const merged = { ...defaultBreakpoints, ...breakpoints };
   
-  return Object.entries(merged)
-    .map(([breakpoint, width]) => `(max-width: ${width}px) ${width}px`)
+  return Object.values(merged)
+    .map((width) => `(max-width: ${width}px) ${width}px`)
     .join(', ') + `, ${Math.max(...Object.values(merged))}px`;
 }
 

@@ -222,11 +222,10 @@ export default function MaintenanceTaskDetailPage({
     }
   }, [
     unwrappedParams.id,
-    selectedProperty,
     fetchMaintenanceHistory,
     recordLoaderShown,
     clearLoadingAfterMinTime,
-  ]); // Add selectedProperty
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();

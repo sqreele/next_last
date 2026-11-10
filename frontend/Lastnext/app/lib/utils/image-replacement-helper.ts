@@ -81,7 +81,7 @@ function determinePresetFromProps(
   imgProps: { src: string; alt: string; className?: string; width?: number; height?: number },
   defaultPreset: string
 ): 'hero' | 'card' | 'thumbnail' | 'profile' | 'gallery' | 'preview' | 'maintenance' {
-  const { src, alt, className = '', width, height } = imgProps;
+  const { alt, className = '', width, height } = imgProps;
 
   // Check for profile images
   if (alt.toLowerCase().includes('profile') || 

@@ -1,20 +1,10 @@
 // ./app/lib/api-client.ts - Improved version
 "use client";
-declare const process: any;
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
-import { useSession } from "@/app/lib/session.client";
 import { expireSession } from "@/app/lib/logout";
-import { jwtDecode } from "jwt-decode";
 import { useState,useCallback} from 'react'
 import { getCsrfHeaders } from './csrf';
-
-// Define token structure
-interface JwtToken {
-  exp?: number;
-  user_id?: string;
-  [key: string]: any;
-}
 
 // Define error interfaces for DRF style errors
 export interface ApiErrorDetails {

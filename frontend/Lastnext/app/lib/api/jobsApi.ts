@@ -1,12 +1,24 @@
-import { API_CONFIG } from '../config';
+import type { Job, Property } from '../types';
+import { isRecord, type PaginatedResponse, type QueryParams } from './types';
+
+export interface JobStats {
+  total: number; pending: number; inProgress: number; completed: number;
+  cancelled: number; defect: number; preventiveMaintenance: number; waitingSparepart: number;
+}
+
+export type JobUpdate =
+  | { type: 'job_updated' | 'job_created'; job: Job }
+  | { type: 'job_deleted'; jobId: number };
+
+type JobInput = FormData | Partial<Job>;
 
 // Custom error class for Jobs API
 export class JobsApiError extends Error {
   status: number;
   code: string;
-  details: any;
+  details: unknown;
 
-  constructor(message: string, status: number, code: string = 'UNKNOWN_ERROR', details?: any) {
+  constructor(message: string, status: number, code: string = 'UNKNOWN_ERROR', details?: unknown) {
     super(message);
     this.name = 'JobsApiError';
     this.status = status;
@@ -16,11 +28,11 @@ export class JobsApiError extends Error {
 }
 
 // Simple cache implementation
-class JobsCache {
-  private cache = new Map<string, { data: any; timestamp: number }>();
+class JobsCache<T> {
+  private cache = new Map<string, { data: T; timestamp: number }>();
   private config = { ttl: 5 * 60 * 1000, maxSize: 100 }; // 5 minutes, 100 items
 
-  set(key: string, data: any): void {
+  set(key: string, data: T): void {
     // Clean up expired entries
     this.cleanup();
     
@@ -38,7 +50,7 @@ class JobsCache {
     });
   }
 
-  get(key: string): any | null {
+  get(key: string): T | null {
     const item = this.cache.get(key);
     if (!item) return null;
 
@@ -79,101 +91,12 @@ class JobsCache {
   }
 }
 
-// Real-time updates using EventSource (temporarily disabled)
-class JobsRealTimeUpdates {
-  private eventSource: EventSource | null = null;
-  private listeners: Set<(data: any) => void> = new Set();
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
-
-  connect(token: string): void {
-    if (this.eventSource) {
-      this.disconnect();
-    }
-
-    try {
-      // Check if API_CONFIG.baseUrl is available
-      if (!API_CONFIG.baseUrl) {
-        console.warn('⚠️ API_CONFIG.baseUrl not available, disabling real-time updates');
-        return;
-      }
-
-      const url = `${API_CONFIG.baseUrl}/api/v1/jobs/stream/?token=${token}`;
-      
-      // For now, disable real-time updates if the endpoint doesn't exist
-      // You can enable this later when you implement the stream endpoint
-      return;
-      
-      // Uncomment this when you implement the stream endpoint:
-      // this.eventSource = new EventSource(url);
-      
-      // this.eventSource.onmessage = (event) => {
-      //   try {
-      //     const data = JSON.parse(event.data);
-      //     this.notifyListeners(data);
-      //   } catch (error) {
-      //     console.error('Error parsing real-time update:', error);
-      //   }
-      // };
-
-      // this.eventSource.onerror = (error) => {
-      //   console.error('Real-time connection error:', error);
-      //   this.handleReconnect(token);
-      // };
-
-      // this.eventSource.onopen = () => {
-      //   this.reconnectAttempts = 0;
-      // };
-    } catch (error) {
-      console.error('Failed to establish real-time connection:', error);
-    }
-  }
-
-  disconnect(): void {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
-    }
-  }
-
-  subscribe(listener: (data: any) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  private notifyListeners(data: any): void {
-    this.listeners.forEach(listener => {
-      try {
-        listener(data);
-      } catch (error) {
-        console.error('Error in real-time listener:', error);
-      }
-    });
-  }
-
-  private handleReconnect(token: string): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      setTimeout(() => {
-        this.connect(token);
-      }, this.reconnectDelay * this.reconnectAttempts);
-    } else {
-      console.error('Max reconnection attempts reached');
-    }
-  }
-}
-
 // Main Jobs API service
 export class JobsApiService {
-  private cache: JobsCache;
-  private realTimeUpdates: JobsRealTimeUpdates;
-  private abortController: AbortController | null = null;
-
-  constructor() {
-    this.cache = new JobsCache();
-    this.realTimeUpdates = new JobsRealTimeUpdates();
-  }
+  private pages = new JobsCache<PaginatedResponse<Job>>();
+  private jobs = new JobsCache<Job>();
+  private properties = new JobsCache<Property[]>();
+  private listeners = new Set<(data: JobUpdate) => void>();
 
   // Enhanced fetch with timeout and retry logic
   private async fetchWithRetry<T>(
@@ -188,7 +111,7 @@ export class JobsApiService {
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
-        headers: {
+        headers: options.body instanceof FormData ? options.headers : {
           'Content-Type': 'application/json',
           ...options.headers,
         },
@@ -199,13 +122,14 @@ export class JobsApiService {
       if (!response.ok) {
         const errorData = await this.parseErrorResponse(response);
         throw new JobsApiError(
-          errorData.message || `HTTP ${response.status}`,
+          typeof errorData.message === 'string' ? errorData.message : `HTTP ${response.status}`,
           response.status,
-          errorData.code || 'HTTP_ERROR',
+          typeof errorData.code === 'string' ? errorData.code : 'HTTP_ERROR',
           errorData
         );
       }
 
+      if (response.status === 204) return undefined as T;
       return await response.json();
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -218,19 +142,22 @@ export class JobsApiService {
       }
 
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
-  private async parseErrorResponse(response: Response): Promise<any> {
+  private async parseErrorResponse(response: Response): Promise<Record<string, unknown>> {
     try {
-      return await response.json();
+      const data: unknown = await response.json();
+      return isRecord(data) ? data : {};
     } catch {
       return { message: `HTTP ${response.status}`, code: 'HTTP_ERROR' };
     }
   }
 
   // Jobs CRUD operations with pagination support
-  async getJobs(filters?: any, page: number = 1, pageSize: number = 24): Promise<any> {
+  async getJobs(filters?: QueryParams, page: number = 1, pageSize: number = 24): Promise<PaginatedResponse<Job>> {
     const params = new URLSearchParams();
     
     // Add pagination params
@@ -249,18 +176,18 @@ export class JobsApiService {
     }
     
     const cacheKey = `jobs:${params.toString()}`;
-    const cached = this.cache.get(cacheKey);
+    const cached = this.pages.get(cacheKey);
     if (cached) return cached;
 
     const url = `/api/v1/jobs/?${params.toString()}`;
-    const response = await this.fetchWithRetry<any>(url);
+    const response = await this.fetchWithRetry<PaginatedResponse<Job>>(url);
     
-    this.cache.set(cacheKey, response);
+    this.pages.set(cacheKey, response);
     return response;
   }
 
   // Get job statistics without loading all jobs
-  async getJobStats(filters?: Record<string, unknown>): Promise<any> {
+  async getJobStats(filters?: QueryParams): Promise<JobStats> {
     const params = new URLSearchParams();
     
     if (filters) {
@@ -272,42 +199,44 @@ export class JobsApiService {
     }
     
     const url = `/api/v1/jobs/stats/?${params.toString()}`;
-    const stats = await this.fetchWithRetry<any>(url);
+    const stats = await this.fetchWithRetry<JobStats>(url);
     return stats;
   }
 
-  async getJob(jobId: string): Promise<any> {
+  async getJob(jobId: string): Promise<Job> {
     const cacheKey = `job:${jobId}`;
-    const cached = this.cache.get(cacheKey);
+    const cached = this.jobs.get(cacheKey);
     if (cached) return cached;
 
     const url = `/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<any>(url);
+    const job = await this.fetchWithRetry<Job>(url);
     
-    this.cache.set(cacheKey, job);
+    this.jobs.set(cacheKey, job);
     return job;
   }
 
-  async createJob(jobData: any): Promise<any> {
+  async createJob(jobData: JobInput): Promise<Job> {
     const url = `/api/v1/jobs/`;
-    const job = await this.fetchWithRetry<any>(url, {
+    const job = await this.fetchWithRetry<Job>(url, {
       method: 'POST',
-      body: jobData,
+      body: jobData instanceof FormData ? jobData : JSON.stringify(jobData),
+      headers: jobData instanceof FormData ? {} : { 'Content-Type': 'application/json' },
     });
     
-    this.cache.invalidate('jobs');
+    this.invalidateCache('jobs');
     return job;
   }
 
-  async updateJob(jobId: string, jobData: any): Promise<any> {
+  async updateJob(jobId: string, jobData: JobInput): Promise<Job> {
     const url = `/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<any>(url, {
+    const job = await this.fetchWithRetry<Job>(url, {
       method: 'PATCH',
-      body: jobData,
+      body: jobData instanceof FormData ? jobData : JSON.stringify(jobData),
+      headers: jobData instanceof FormData ? {} : { 'Content-Type': 'application/json' },
     });
     
-    this.cache.invalidate(`job:${jobId}`);
-    this.cache.invalidate('jobs');
+    this.invalidateCache(`job:${jobId}`);
+    this.invalidateCache('jobs');
     return job;
   }
 
@@ -315,44 +244,49 @@ export class JobsApiService {
     const url = `/api/v1/jobs/${jobId}/`;
     await this.fetchWithRetry<void>(url, { method: 'DELETE' });
     
-    this.cache.invalidate(`job:${jobId}`);
-    this.cache.invalidate('jobs');
+    this.invalidateCache(`job:${jobId}`);
+    this.invalidateCache('jobs');
   }
 
   // Properties
-  async getProperties(..._legacyArguments: unknown[]): Promise<any[]> {
+  async getProperties(..._legacyArguments: unknown[]): Promise<Property[]> {
     const cacheKey = 'properties';
-    const cached = this.cache.get(cacheKey);
+    const cached = this.properties.get(cacheKey);
     if (cached) return cached;
 
     const url = `/api/v1/properties/`;
-    const properties = await this.fetchWithRetry<any[]>(url);
+    const properties = await this.fetchWithRetry<Property[]>(url);
     
-    this.cache.set(cacheKey, properties);
+    this.properties.set(cacheKey, properties);
     return properties;
   }
 
   // Real-time updates
   enableRealTime(): void {
     // Streaming remains disabled; never obtain a browser bearer token for it.
-    this.realTimeUpdates.connect('');
+    // The stream endpoint is not available yet. Keep the public API inert.
   }
 
   disableRealTime(): void {
-    this.realTimeUpdates.disconnect();
+    // No stream connection is opened while streaming is disabled.
   }
 
-  subscribeToUpdates(listener: (data: any) => void): () => void {
-    return this.realTimeUpdates.subscribe(listener);
+  subscribeToUpdates(listener: (data: JobUpdate) => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
   }
 
   // Cache management
   clearCache(): void {
-    this.cache.clear();
+    this.pages.clear();
+    this.jobs.clear();
+    this.properties.clear();
   }
 
   invalidateCache(pattern?: string): void {
-    this.cache.invalidate(pattern);
+    this.pages.invalidate(pattern);
+    this.jobs.invalidate(pattern);
+    this.properties.invalidate(pattern);
   }
 }
 

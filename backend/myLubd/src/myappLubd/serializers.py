@@ -183,7 +183,7 @@ def get_user_public_username(user, fallback=''):
 
 
 # User serializer for basic user data
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+class UserReadSerializer(serializers.HyperlinkedModelSerializer):
     username = serializers.SerializerMethodField()
     display_name = serializers.SerializerMethodField()
 
@@ -1521,7 +1521,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 # User serializer for creation
-class UserSerializer(serializers.ModelSerializer):
+class UserWriteSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         required=True,
@@ -1572,6 +1572,9 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
+
+# Compatibility for integrations importing the historical write serializer.
+UserSerializer = UserWriteSerializer
 
 # Login serializer
 class LoginSerializer(serializers.Serializer):
@@ -2322,7 +2325,7 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
     before_image_url = serializers.SerializerMethodField()
     after_image_url = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
-    created_by = UserSerializer(read_only=True)
+    created_by = UserWriteSerializer(read_only=True)
     days_remaining = serializers.SerializerMethodField()
     topics = TopicSerializer(many=True, read_only=True)
     topic_ids = serializers.ListField(

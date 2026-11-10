@@ -198,7 +198,9 @@ class JobReassignTests(TestCase):
         )
         supervisor = self._make_actor('supervisor', properties=(other_property,))
         response = self._reassign_to_bob(supervisor)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.content)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND, response.content)
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.user_id, self.alice.pk)
 
     def test_technician_cannot_enumerate_or_reassign(self):
         self._login(self.alice)
@@ -451,7 +453,9 @@ class JobReassignTests(TestCase):
             properties=(self.other_prop,),
         )
         response = self._reassign_to_bob(supervisor)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.content)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND, response.content)
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.user_id, self.alice.pk)
 
     def test_supervisor_cannot_assign_cross_tenant_target(self):
         supervisor = self._make_actor('supervisor', properties=(self.prop,))

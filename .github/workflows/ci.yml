@@ -104,6 +104,11 @@ jobs:
           myappLubd.tests_billing_authorization
           myappLubd.tests_tenant_authorization_hardening
           myappLubd.tests_job_write_authorization
+          myappLubd.tests_user_serializer_contract
+          myappLubd.tests_inventory_signal_and_reassign
+          myappLubd.tests_job_machines
+          myappLubd.tests_subscription_entitlements
+          myappLubd.tests_tenant_user_capacity
           myappLubd.tests_tenant_invitations
           myappLubd.tests_platform_api
           --noinput

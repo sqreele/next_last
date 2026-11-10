@@ -1,6 +1,8 @@
 // app/lib/PreventiveMaintenanceService.ts
 
 import apiClient from "./api-client";
+import { isRecord, type QueryParams } from "./api/types";
+import { logger } from "./utils/logger";
 import { handleApiError } from "./api-client";
 import {
   validateFrequency,
@@ -160,6 +162,12 @@ type MaintenanceApiResponse =
   | PreventiveMaintenance[]
   | PaginatedMaintenanceResponse;
 
+function isMaintenanceRecord(value: unknown): value is PreventiveMaintenance {
+  return isRecord(value) && typeof value.pm_id === "string"
+    && typeof value.scheduled_date === "string" && typeof value.frequency === "string"
+    && validateFrequency(value.frequency) === value.frequency;
+}
+
 class PreventiveMaintenanceService {
   private baseUrl: string = "/api/v1/preventive-maintenance";
 
@@ -184,9 +192,9 @@ class PreventiveMaintenanceService {
           }
           if (typeof machine === "object" && machine !== null) {
             return (
-              (machine as any).machine_id === machineId ||
-              String((machine as any).id) === machineId ||
-              (machine as any).machineId === machineId
+              machine.machine_id === machineId ||
+              String(machine.id) === machineId ||
+              ("machineId" in machine ? machine.machineId : undefined) === machineId
             );
           }
           return false;
@@ -196,7 +204,7 @@ class PreventiveMaintenanceService {
           return true;
         }
       } else if (typeof item.machines === "object" && item.machines !== null) {
-        const machine = item.machines as any;
+        const machine = item.machines as Record<string, unknown>;
         const objectMatch =
           machine.machine_id === machineId ||
           String(machine.id) === machineId ||
@@ -224,11 +232,11 @@ class PreventiveMaintenanceService {
 
   // ENHANCED: getAllPreventiveMaintenance with better typing
   async getAllPreventiveMaintenance(
-    params?: Record<string, any>,
+    params?: QueryParams,
   ): Promise<ServiceResponse<MaintenanceApiResponse>> {
     try {
       // Create clean params object - remove empty strings and undefined values
-      const cleanParams: Record<string, any> = {};
+      const cleanParams: QueryParams = {};
 
       // Always ensure page and page_size are set (required for Django pagination)
       cleanParams.page = params?.page ? parseInt(String(params.page), 10) : 1;
@@ -263,13 +271,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: `Fetched ${items.length} maintenance items successfully`,
       };
-    } catch (error: any) {
-      console.error("Service error fetching with filters:", error);
-      console.error("Error details:", {
-        status: error.status,
-        message: error.message,
-        response: error.response?.data,
-      });
+    } catch (error) {
+      logger.error("Service error fetching with filters:", error);
       throw handleApiError(error);
     }
   }
@@ -277,10 +280,10 @@ class PreventiveMaintenanceService {
   // ENHANCED: Better machine-specific fetching with proper typing
   async getPreventiveMaintenanceByMachine(
     machineId: string,
-    additionalParams?: Record<string, any>,
+    additionalParams?: QueryParams,
   ): Promise<ServiceResponse<MaintenanceApiResponse>> {
     if (!machineId) {
-      console.error("Cannot fetch: Machine ID is undefined or empty");
+      logger.error("Cannot fetch: Machine ID is undefined or empty");
       return {
         success: false,
         message: "Machine ID is required to fetch related maintenance",
@@ -372,8 +375,8 @@ class PreventiveMaintenanceService {
         success: false,
         message: `No maintenance items found for machine ${machineId}`,
       };
-    } catch (error: any) {
-      console.error(
+    } catch (error) {
+      logger.error(
         `Service error fetching maintenance for machine ${machineId}:`,
         error,
       );
@@ -382,7 +385,7 @@ class PreventiveMaintenanceService {
   }
 
   async getPMMasterPlans(
-    params?: Record<string, any>,
+    params?: QueryParams,
   ): Promise<ServiceResponse<PMMasterPlan[]>> {
     try {
       const response = await apiClient.get<PMMasterPlan[]>(
@@ -396,8 +399,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "PM master plans fetched successfully",
       };
-    } catch (error: any) {
-      console.error("Service error fetching PM master plans:", error);
+    } catch (error) {
+      logger.error("Service error fetching PM master plans:", error);
       throw handleApiError(error);
     }
   }
@@ -419,8 +422,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "PM master plan created successfully",
       };
-    } catch (error: any) {
-      console.error("Service error creating PM master plan:", error);
+    } catch (error) {
+      logger.error("Service error creating PM master plan:", error);
       throw handleApiError(error);
     }
   }
@@ -437,8 +440,8 @@ class PreventiveMaintenanceService {
         },
       );
       return { success: true, data: response.data, message: "PM master plan fetched successfully" };
-    } catch (error: any) {
-      console.error("Service error fetching PM master plan:", error);
+    } catch (error) {
+      logger.error("Service error fetching PM master plan:", error);
       throw handleApiError(error);
     }
   }
@@ -457,8 +460,8 @@ class PreventiveMaintenanceService {
         },
       );
       return { success: true, data: response.data, message: "PM master plan updated successfully" };
-    } catch (error: any) {
-      console.error("Service error updating PM master plan:", error);
+    } catch (error) {
+      logger.error("Service error updating PM master plan:", error);
       throw handleApiError(error);
     }
   }
@@ -472,8 +475,8 @@ class PreventiveMaintenanceService {
         params: { property_id: propertyId },
       });
       return { success: true, message: "PM master plan deleted successfully" };
-    } catch (error: any) {
-      console.error("Service error deleting PM master plan:", error);
+    } catch (error) {
+      logger.error("Service error deleting PM master plan:", error);
       throw handleApiError(error);
     }
   }
@@ -490,8 +493,8 @@ class PreventiveMaintenanceService {
         },
       );
       return { success: true, data: response.data, message: "PM master plan projection fetched successfully" };
-    } catch (error: any) {
-      console.error("Service error fetching PM master plan projection:", error);
+    } catch (error) {
+      logger.error("Service error fetching PM master plan projection:", error);
       throw handleApiError(error);
     }
   }
@@ -512,8 +515,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "PM master plans materialized successfully",
       };
-    } catch (error: any) {
-      console.error("Service error materializing PM master plans:", error);
+    } catch (error) {
+      logger.error("Service error materializing PM master plans:", error);
       throw handleApiError(error);
     }
   }
@@ -523,7 +526,7 @@ class PreventiveMaintenanceService {
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
     // Ordinary PM creation requires at least one canonical Machine ownership path.
     if (!Array.isArray(data.machine_ids)) {
-      console.error("ERROR: machine_ids must be an array:", {
+      logger.error("ERROR: machine_ids must be an array:", {
         machine_ids: data.machine_ids,
         type: typeof data.machine_ids,
         isArray: Array.isArray(data.machine_ids),
@@ -592,7 +595,7 @@ class PreventiveMaintenanceService {
           formData.append("machine_ids", String(id));
         });
       } else {
-        console.error("ERROR: machine_ids is missing or not an array:", {
+        logger.error("ERROR: machine_ids is missing or not an array:", {
           machine_ids: data.machine_ids,
           type: typeof data.machine_ids,
           isArray: Array.isArray(data.machine_ids),
@@ -607,21 +610,10 @@ class PreventiveMaintenanceService {
       // Initial create deliberately carries no completion/evidence fields.
       // Evidence is uploaded after the canonical pm_id exists so the gallery
       // endpoint can enforce authorization, optimization, type, and max-count.
-      const formDataEntries: Array<[string, any]> = [];
-      for (const [key, value] of formData.entries()) {
-        const displayValue =
-          value instanceof File
-            ? `File: ${value.name} (${value.size} bytes, ${value.type})`
-            : typeof value === "object" && value !== null
-              ? `Object: ${JSON.stringify(value)}`
-              : value;
-        formDataEntries.push([key, displayValue]);
-      }
-
       // CRITICAL: Don't set Content-Type header - let axios/browser set it automatically with boundary
       // The apiClient interceptor will detect FormData and remove Content-Type header
       // The same-origin BFF injects the server-held credential.
-      const createResponse = await apiClient.post<any>(
+      const createResponse = await apiClient.post<unknown>(
         `${this.baseUrl}/`,
         formData,
         {
@@ -635,28 +627,24 @@ class PreventiveMaintenanceService {
       let actualRecord: PreventiveMaintenance;
 
       if (
-        "data" in responseData &&
-        responseData.data &&
-        "pm_id" in responseData.data
+        isRecord(responseData) &&
+        isMaintenanceRecord(responseData.data)
       ) {
         actualRecord = responseData.data;
-      } else if ("pm_id" in responseData) {
+      } else if (isMaintenanceRecord(responseData)) {
         actualRecord = responseData;
       } else if (
-        responseData &&
-        typeof responseData === "object" &&
-        "results" in responseData &&
-        Array.isArray((responseData as any).results) &&
-        (responseData as any).results.length > 0 &&
-        "pm_id" in (responseData as any).results[0]
+        isRecord(responseData) &&
+        Array.isArray(responseData.results) &&
+        isMaintenanceRecord(responseData.results[0])
       ) {
-        actualRecord = (responseData as any).results[0];
-        console.warn(
+        actualRecord = responseData.results[0];
+        logger.warn(
           "Response was paginated; using first result:",
           actualRecord.pm_id,
         );
       } else {
-        console.error("Unexpected response format:", responseData);
+        logger.error("Unexpected response format:", responseData);
         throw new Error("Invalid response format: Missing pm_id");
       }
 
@@ -665,8 +653,8 @@ class PreventiveMaintenanceService {
         data: actualRecord,
         message: "Maintenance created successfully",
       };
-    } catch (error: any) {
-      console.error("Service error creating maintenance:", error);
+    } catch (error) {
+      logger.error("Service error creating maintenance:", error);
       throw handleApiError(error);
     }
   }
@@ -677,7 +665,7 @@ class PreventiveMaintenanceService {
     propertyId: string,
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
     if (!pmId) {
-      console.error("Cannot upload images: PM ID is undefined or empty");
+      logger.error("Cannot upload images: PM ID is undefined or empty");
       return { success: false, message: "PM ID is required for image upload" };
     }
 
@@ -719,8 +707,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "Images uploaded successfully",
       };
-    } catch (error: any) {
-      console.error(`Service error uploading images for PM ${pmId}:`, error);
+    } catch (error) {
+      logger.error(`Service error uploading images for PM ${pmId}:`, error);
       throw handleApiError(error);
     }
   }
@@ -742,8 +730,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "Image deleted successfully",
       };
-    } catch (error: any) {
-      console.error(`Service error deleting image for PM ${pmId}:`, error);
+    } catch (error) {
+      logger.error(`Service error deleting image for PM ${pmId}:`, error);
       throw handleApiError(error);
     }
   }
@@ -753,7 +741,7 @@ class PreventiveMaintenanceService {
     data: UpdatePreventiveMaintenanceData,
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
     if (!id) {
-      console.error("Cannot update: PM ID is undefined or empty");
+      logger.error("Cannot update: PM ID is undefined or empty");
       return { success: false, message: "PM ID is required for updates" };
     }
 
@@ -844,8 +832,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "Maintenance updated successfully",
       };
-    } catch (error: any) {
-      console.error("Service error updating maintenance:", error);
+    } catch (error) {
+      logger.error("Service error updating maintenance:", error);
       throw handleApiError(error);
     }
   }
@@ -856,7 +844,7 @@ class PreventiveMaintenanceService {
     propertyId?: string,
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
     if (!id) {
-      console.error("Cannot complete: PM ID is undefined or empty");
+      logger.error("Cannot complete: PM ID is undefined or empty");
       return {
         success: false,
         message: "PM ID is required to mark as complete",
@@ -894,8 +882,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "Maintenance completed successfully",
       };
-    } catch (error: any) {
-      console.error("Service error completing maintenance:", error);
+    } catch (error) {
+      logger.error("Service error completing maintenance:", error);
       throw handleApiError(error);
     }
   }
@@ -905,7 +893,7 @@ class PreventiveMaintenanceService {
     propertyId?: string,
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
     if (!id) {
-      console.error("Cannot fetch: PM ID is undefined or empty");
+      logger.error("Cannot fetch: PM ID is undefined or empty");
       return { success: false, message: "PM ID is required to fetch details" };
     }
 
@@ -921,8 +909,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "Maintenance fetched successfully",
       };
-    } catch (error: any) {
-      console.error("Service error fetching maintenance:", error);
+    } catch (error) {
+      logger.error("Service error fetching maintenance:", error);
       throw handleApiError(error);
     }
   }
@@ -941,14 +929,14 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "Maintenances fetched successfully",
       };
-    } catch (error: any) {
-      console.error("Service error fetching maintenances:", error);
+    } catch (error) {
+      logger.error("Service error fetching maintenances:", error);
       throw handleApiError(error);
     }
   }
 
   async getMaintenanceStatistics(
-    params?: Record<string, any>,
+    params?: QueryParams,
   ): Promise<ServiceResponse<DashboardStats>> {
     try {
       const response = await apiClient.get<DashboardStats>(
@@ -963,14 +951,12 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "Statistics fetched successfully",
       };
-    } catch (error: any) {
-      console.error("Service error fetching maintenance statistics:", error);
+    } catch (error) {
+      logger.error("Service error fetching maintenance statistics:", error);
 
       // Handle the case where no data exists (404 error)
-      if (
-        error.status === 404 ||
-        (error.response && error.response.status === 404)
-      ) {
+      const apiError = handleApiError(error);
+      if (apiError.status === 404) {
         const emptyStats: DashboardStats = {
           counts: {
             total: 0,
@@ -1009,8 +995,8 @@ class PreventiveMaintenanceService {
         data: response.data,
         message: "Upcoming maintenance fetched successfully",
       };
-    } catch (error: any) {
-      console.error("Service error fetching upcoming maintenance:", error);
+    } catch (error) {
+      logger.error("Service error fetching upcoming maintenance:", error);
       throw handleApiError(error);
     }
   }
@@ -1039,8 +1025,8 @@ class PreventiveMaintenanceService {
       }
 
       return statsResponse;
-    } catch (error: any) {
-      console.error("Service error fetching enhanced statistics:", error);
+    } catch (error) {
+      logger.error("Service error fetching enhanced statistics:", error);
       throw handleApiError(error);
     }
   }
@@ -1049,7 +1035,7 @@ class PreventiveMaintenanceService {
     id: string,
   ): Promise<ServiceResponse<null>> {
     if (!id) {
-      console.error("Cannot delete: PM ID is undefined or empty");
+      logger.error("Cannot delete: PM ID is undefined or empty");
       return { success: false, message: "PM ID is required for deletion" };
     }
 
@@ -1060,26 +1046,27 @@ class PreventiveMaintenanceService {
         data: null,
         message: "Maintenance deleted successfully",
       };
-    } catch (error: any) {
-      console.error(`Service error deleting maintenance ${id}:`, error);
+    } catch (error) {
+      logger.error(`Service error deleting maintenance ${id}:`, error);
 
-      if (error.status === 403) {
+      const apiError = handleApiError(error);
+      if (apiError.status === 403) {
         return {
           success: false,
           message:
-            error.details?.detail ||
+            apiError.details?.detail ||
             "You don't have permission to delete this maintenance record. Please contact an administrator.",
         };
       }
 
-      if (error.status === 401) {
+      if (apiError.status === 401) {
         return {
           success: false,
           message: "Your session has expired. Please log in again to continue.",
         };
       }
 
-      if (error.status === 404) {
+      if (apiError.status === 404) {
         return {
           success: false,
           message:
@@ -1087,7 +1074,7 @@ class PreventiveMaintenanceService {
         };
       }
 
-      throw handleApiError(error);
+      throw apiError;
     }
   }
 }

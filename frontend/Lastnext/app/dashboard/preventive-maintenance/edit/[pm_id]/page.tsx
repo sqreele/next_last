@@ -2,7 +2,7 @@
 "use client";
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
@@ -186,11 +186,8 @@ export default function EditPreventiveMaintenancePage() {
     loadMaintenance();
   }, [pmId, fetchMaintenanceById]);
 
-  // Debug: Monitor form state changes
-  useEffect(() => {}, [formState]);
-
   // Helper to convert Date to datetime-local format
-  const formatDateTimeLocal = (date: Date): string => {
+  const formatDateTimeLocal = useCallback((date: Date): string => {
     if (isNaN(date.getTime())) return "";
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -198,7 +195,7 @@ export default function EditPreventiveMaintenancePage() {
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
     return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
+  }, []);
 
   const calculateNextScheduledDate = (
     frequency: FrequencyType,

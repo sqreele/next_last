@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eu
 
 echo "🚀 Starting deployment process..."
 
@@ -11,8 +11,21 @@ fi
 # Fail before building if required variables or Compose syntax are invalid.
 docker compose -f docker-compose.yml config --quiet
 
-# Pull the latest changes
-git pull origin main
+# Deploy the selected branch without merging another branch into the checkout.
+current_branch=$(git symbolic-ref --quiet --short HEAD) || {
+    echo "Deployment requires a branch checkout."
+    exit 1
+}
+deploy_branch="${DEPLOY_BRANCH:-$current_branch}"
+if [ "$current_branch" != "$deploy_branch" ]; then
+    echo "Check out $deploy_branch before deploying (current: $current_branch)."
+    exit 1
+fi
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Commit or stash local changes before deploying."
+    exit 1
+fi
+git pull --ff-only origin "$deploy_branch"
 
 # Build images
 docker compose -f docker-compose.yml build
@@ -42,8 +55,8 @@ fi
 echo "✅ Deployment completed successfully!"
 echo ""
 echo "🔗 Your application should be available at:"
-echo "   - HTTP: http://hotelcarepro.com (redirects to HTTPS)"
-echo "   - HTTPS: https://hotelcarepro.com"
+echo "   - HTTP: http://${DOMAIN:-staymaint.com} (redirects to HTTPS)"
+echo "   - HTTPS: https://${DOMAIN:-staymaint.com}"
 echo ""
 echo "📋 Post-deployment checklist:"
 echo "   - Verify SSL certificates are working"

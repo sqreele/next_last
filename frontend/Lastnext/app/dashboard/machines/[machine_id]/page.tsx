@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use, useRef } from "react";
+import React, { useState, useEffect, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import apiClient from "@/app/lib/api-client";
@@ -163,28 +163,48 @@ export default function MachineDetailPage({
     }
   };
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-    }
-  }, [status, router]);
+  const fetchPMHistory = useCallback(async (
+    propertyId: string,
+    signal: AbortSignal,
+    requestId: number,
+  ) => {
+    setLoadingHistory(true);
+    try {
+      const response = await apiClient.get("/api/v1/preventive-maintenance/", {
+        params: {
+          machine_id: unwrappedParams.machine_id,
+          page_size: 100,
+          property_id: propertyId,
+        },
+        signal,
+      });
 
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    const controller = new AbortController();
-    const requestId = ++requestIdRef.current;
-    setMachine(null);
-    setPMHistory([]);
-    setError(null);
-    if (!selectedProperty) {
-      setLoading(false);
-      return () => controller.abort();
-    }
-    void fetchMachineDetails(selectedProperty, controller.signal, requestId);
-    return () => controller.abort();
-  }, [status, unwrappedParams.machine_id, selectedProperty]);
+      let historyData: PMHistory[] = [];
+      if (Array.isArray(response.data)) {
+        historyData = response.data;
+      } else if (response.data && "results" in response.data) {
+        historyData = response.data.results || [];
+      }
 
-  const fetchMachineDetails = async (
+      // Sort by scheduled date (most recent first)
+      historyData.sort(
+        (a, b) =>
+          new Date(b.scheduled_date).getTime() -
+          new Date(a.scheduled_date).getTime(),
+      );
+
+      if (requestId === requestIdRef.current) setPMHistory(historyData);
+    } catch (err: any) {
+      if (err?.code === "ERR_CANCELED") return;
+      console.error("Error fetching PM history:", err);
+      // Don't set error, just leave history empty
+      if (requestId === requestIdRef.current) setPMHistory([]);
+    } finally {
+      if (requestId === requestIdRef.current) setLoadingHistory(false);
+    }
+  }, [unwrappedParams.machine_id]);
+
+  const fetchMachineDetails = useCallback(async (
     propertyId: string,
     signal: AbortSignal,
     requestId: number,
@@ -232,48 +252,28 @@ export default function MachineDetailPage({
         clearLoadingAfterMinTime(loaderGeneration);
       }
     }
-  };
+  }, [unwrappedParams.machine_id, fetchPMHistory, recordLoaderShown, clearLoadingAfterMinTime]);
 
-  const fetchPMHistory = async (
-    propertyId: string,
-    signal: AbortSignal,
-    requestId: number,
-  ) => {
-    setLoadingHistory(true);
-    try {
-      const response = await apiClient.get("/api/v1/preventive-maintenance/", {
-        params: {
-          machine_id: unwrappedParams.machine_id,
-          page_size: 100,
-          property_id: propertyId,
-        },
-        signal,
-      });
-
-      let historyData: PMHistory[] = [];
-      if (Array.isArray(response.data)) {
-        historyData = response.data;
-      } else if (response.data && "results" in response.data) {
-        historyData = response.data.results || [];
-      }
-
-      // Sort by scheduled date (most recent first)
-      historyData.sort(
-        (a, b) =>
-          new Date(b.scheduled_date).getTime() -
-          new Date(a.scheduled_date).getTime(),
-      );
-
-      if (requestId === requestIdRef.current) setPMHistory(historyData);
-    } catch (err: any) {
-      if (err?.code === "ERR_CANCELED") return;
-      console.error("Error fetching PM history:", err);
-      // Don't set error, just leave history empty
-      if (requestId === requestIdRef.current) setPMHistory([]);
-    } finally {
-      if (requestId === requestIdRef.current) setLoadingHistory(false);
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
     }
-  };
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
+    setMachine(null);
+    setPMHistory([]);
+    setError(null);
+    if (!selectedProperty) {
+      setLoading(false);
+      return () => controller.abort();
+    }
+    void fetchMachineDetails(selectedProperty, controller.signal, requestId);
+    return () => controller.abort();
+  }, [status, unwrappedParams.machine_id, selectedProperty, fetchMachineDetails]);
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {

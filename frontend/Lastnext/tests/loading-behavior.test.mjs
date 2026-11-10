@@ -268,7 +268,8 @@ test("jobs pagination remains visible and is disabled during page requests", asy
 test("inventory preserves settled content and pagination during same-scope updates", async () => {
   const inventory = await source("app/dashboard/inventory/page.tsx");
   assert.match(inventory, /loading && !hasLoadedInventory/);
-  assert.match(inventory, /if \(!hasLoadedInventory\) \{/);
+  assert.match(inventory, /hasLoadedInventoryRef\.current = hasLoadedInventory/);
+  assert.match(inventory, /if \(!hasLoadedInventoryRef\.current\) \{/);
   assert.match(inventory, /t\("common\.loading"\)/);
   assert.match(inventory, /disabled=\{loading \|\| page >= totalPages\}/);
 });

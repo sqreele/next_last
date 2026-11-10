@@ -70,7 +70,9 @@ class JobMachineTests(APITestCase):
         download = self.client.get(f'/api/v1/jobs/{job.job_id}/documents/{document.pk}/')
         self.assertEqual(download.status_code, 200)
         self.assertEqual(b''.join(download.streaming_content), b'%PDF-1.7\ninspection\n%%EOF')
-        download.close()
+        # Consuming streaming_content closes the response through Django's
+        # test-client iterator. Closing it again would close the connection
+        # inside APITestCase's transaction.
         self.assertGreaterEqual(get_tenant_storage_usage_bytes(self.tenant), document.size)
         dashboard = self.client.get('/api/v1/jobs/dashboard/', {'property_id': self.property.property_id})
         self.assertEqual(dashboard.status_code, 200, dashboard.data)

@@ -93,7 +93,7 @@ export function useImageOptimization(
 }
 
 // Hook for managing multiple images
-export function useImageGallery(images: string[], options: UseImageOptimizationOptions = {}) {
+export function useImageGallery(images: string[], _options: UseImageOptimizationOptions = {}) {
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
 

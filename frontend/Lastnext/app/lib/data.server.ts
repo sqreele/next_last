@@ -1,6 +1,8 @@
 import 'server-only';
 
-import { Job, Property, JobStatus, Room, User, Topic } from "./types";
+import { isRecord, type ListResponse } from './api/types';
+
+import { Job, Property, JobStatus, Room, User, UserProfile, Topic } from "./types";
 import { API_CONFIG } from "./config";
 import { getCsrfHeaders } from "./csrf";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
@@ -15,9 +17,9 @@ declare const process: { env: Record<string, string | undefined> };
 // Server-side compatible error class
 export class ServerApiError extends Error {
   status: number;
-  errorData: any;
+  errorData: unknown;
 
-  constructor(message: string, status: number, errorData?: any) {
+  constructor(message: string, status: number, errorData?: unknown) {
     super(message);
     this.name = 'ServerApiError';
     this.status = status;
@@ -36,7 +38,7 @@ const JOBS_ALL_REQUEST_TIMEOUT_MS = 120000;
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Check if error is retryable (network errors, timeouts, 5xx errors)
-function isRetryableError(error: any, status?: number): boolean {
+function isRetryableError(error: unknown, status?: number): boolean {
   // Network errors (fetch failed, ECONNREFUSED, etc.)
   if (error instanceof TypeError && error.message.includes('fetch failed')) {
     return true;
@@ -64,7 +66,7 @@ function isRetryableError(error: any, status?: number): boolean {
 export async function fetchWithSession<T>(
   url: string,
   method: string = "GET",
-  body?: any,
+  body?: unknown,
   retries: number = MAX_RETRIES,
   timeoutMs: number = REQUEST_TIMEOUT,
   signal?: AbortSignal,
@@ -95,7 +97,7 @@ export async function fetchWithSession<T>(
     try {
       const csrf = await getCsrfHeaders();
       Object.assign(headers, csrf);
-    } catch (e) {
+    } catch {
       // Non-fatal: proceed without CSRF header if fetching token fails
     }
     // Ensure cookies (session) are sent in the browser
@@ -139,12 +141,14 @@ export async function fetchWithSession<T>(
     if (!response.ok) {
       const contentType = response.headers.get("content-type");
       let errorMessage = `Request failed with status ${response.status}`;
-      let errorData = null;
+      let errorData: unknown = null;
       
       if (contentType?.includes("application/json") && responseText) {
         try {
           errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail || errorMessage;
+          if (isRecord(errorData) && typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail || errorMessage;
+          }
         } catch (parseError) {
           logger.error("Failed to parse error JSON", parseError);
         }
@@ -224,7 +228,7 @@ async function fetchWithToken<T>(
   url: string,
   _ignoredLegacyValue?: string,
   method: string = "GET",
-  body?: any,
+  body?: unknown,
   retries?: number,
   timeoutMs?: number,
   signal?: AbortSignal,
@@ -256,7 +260,7 @@ export async function fetchJobsForProperty(
     // Backend expects property_id
     const baseUrl = `/api/v1/jobs/?property_id=${propertyId}`;
     const url = additionalParams ? `${baseUrl}&${additionalParams}` : baseUrl;
-    const response = await fetchWithToken<any>(url, accessToken);
+    const response = await fetchWithToken<ListResponse<Job>>(url, accessToken);
     
     // Handle paginated response from Django REST Framework
     let jobs: Job[];
@@ -339,7 +343,7 @@ export async function fetchAllJobsForDashboard(accessToken?: string): Promise<Jo
 
     while (true) {
       const url = `/api/v1/jobs/?page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
-      const response = await fetchWithToken<any>(url, accessToken);
+      const response = await fetchWithToken<ListResponse<Job>>(url, accessToken);
 
       if (!response || typeof response !== 'object') {
         console.error('fetchAllJobsForDashboard: Invalid response:', response);
@@ -394,7 +398,7 @@ export async function fetchAllTopics(accessToken?: string): Promise<Topic[]> {
 
   while (true) {
     const url = `/api/v1/topics/?page=${currentPage}&page_size=${PAGE_SIZE}`;
-    const response = await fetchWithToken<any>(url, accessToken);
+    const response = await fetchWithToken<ListResponse<Topic>>(url, accessToken);
 
     let pageTopics: Topic[] = [];
     if (response && typeof response === 'object') {
@@ -441,7 +445,7 @@ export async function fetchAllRooms(accessToken?: string, propertyId?: string | 
   while (true) {
     const base = `/api/v1/rooms/?page=${currentPage}&page_size=${PAGE_SIZE}`;
     const url = propertyId ? `${base}&property=${encodeURIComponent(propertyId)}` : base;
-    const response = await fetchWithToken<any>(url, accessToken);
+    const response = await fetchWithToken<ListResponse<Room>>(url, accessToken);
 
     let pageRooms: Room[] = [];
     if (response && typeof response === 'object') {
@@ -487,7 +491,7 @@ export async function fetchAllJobs(accessToken?: string, additionalParams?: stri
   while (true) {
     const base = `/api/v1/jobs/?page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
     const url = additionalParams ? `${base}&${additionalParams}` : base;
-    const response = await fetchWithToken<any>(url, accessToken);
+    const response = await fetchWithToken<ListResponse<Job>>(url, accessToken);
 
     if (!response || typeof response !== 'object') {
       console.error('fetchAllJobs: Invalid response:', response);
@@ -528,7 +532,7 @@ export async function fetchAllJobsForProperty(
   try {
     const allUrlBase = `/api/v1/jobs/all/?property_id=${encodeURIComponent(propertyId)}`;
     const allUrl = additionalParams ? `${allUrlBase}&${additionalParams}` : allUrlBase;
-    const allResponse = await fetchWithToken<any>(
+    const allResponse = await fetchWithToken<ListResponse<Job>>(
       allUrl,
       accessToken,
       'GET',
@@ -547,7 +551,7 @@ export async function fetchAllJobsForProperty(
       const sanitized = sanitizeJobsData(jobs);
       return fixJobsImageUrls(sanitized);
     }
-  } catch (e) {
+  } catch {
     // Fallback to paginated fetching
     console.warn('fetchAllJobsForProperty: all endpoint unavailable, falling back to pagination');
   }
@@ -560,7 +564,7 @@ export async function fetchAllJobsForProperty(
   while (true) {
     const base = `/api/v1/jobs/?property_id=${encodeURIComponent(propertyId)}&page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
     const url = additionalParams ? `${base}&${additionalParams}` : base;
-    const response = await fetchWithToken<any>(
+    const response = await fetchWithToken<ListResponse<Job>>(
       url,
       accessToken,
       'GET',
@@ -607,7 +611,7 @@ export async function fetchAllMyJobs(accessToken?: string, additionalParams?: st
   while (true) {
     const base = `/api/v1/jobs/my_jobs/?page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
     const url = additionalParams ? `${base}&${additionalParams}` : base;
-    const response = await fetchWithToken<any>(url, accessToken);
+    const response = await fetchWithToken<ListResponse<Job>>(url, accessToken);
 
     if (!response || typeof response !== 'object') {
       console.error('fetchAllMyJobs: Invalid response:', response);
@@ -692,7 +696,7 @@ export async function updateJobStatus(
 export async function fetchMyJobs(accessToken?: string, queryParams?: string): Promise<Job[]> {
   try {
     const url = queryParams ? `/api/v1/jobs/my_jobs/?${queryParams}` : `/api/v1/jobs/my_jobs/`;
-    const response = await fetchWithToken<any>(url, accessToken);
+    const response = await fetchWithToken<ListResponse<Job>>(url, accessToken);
     
     // The backend returns a structured response with 'results' field containing the jobs
     let jobs: Job[] = [];
@@ -737,9 +741,9 @@ export async function fetchJobsForRoom(roomId: string, accessToken?: string): Pr
   return fetchAllJobs(accessToken, `room_id=${encodeURIComponent(roomId)}`);
 }
 
-export async function updateUserProfile(auth0Profile: any): Promise<boolean> {
+export async function updateUserProfile(auth0Profile: Record<string, unknown>): Promise<boolean> {
   try {
-    await fetchWithSession<{message: string, updated_fields: string[], user: any}>(
+    await fetchWithSession<{message: string, updated_fields: string[], user: unknown}>(
       '/api/v1/auth/profile/update/',
       'POST',
       {
@@ -755,7 +759,7 @@ export async function updateUserProfile(auth0Profile: any): Promise<boolean> {
 
 export async function fetchUsers(accessToken?: string): Promise<User[]> {
   try {
-    const response = await fetchWithToken<any>(`/api/v1/users/`, accessToken);
+    const response = await fetchWithToken<ListResponse<User>>(`/api/v1/users/`, accessToken);
     
     // The backend returns a structured response with 'results' field containing the users
     let users: User[] = [];
@@ -784,10 +788,10 @@ export async function fetchUsers(accessToken?: string): Promise<User[]> {
 export async function fetchUsersByProperty(propertyId: string, accessToken?: string): Promise<User[]> {
   try {
     // Use the user-profiles endpoint which includes property information
-    const response = await fetchWithToken<any>(`/api/v1/user-profiles/`, accessToken);
+    const response = await fetchWithToken<ListResponse<UserProfile>>(`/api/v1/user-profiles/`, accessToken);
     
     // The backend returns a structured response with 'results' field containing the user profiles
-    let userProfiles: any[] = [];
+    let userProfiles: UserProfile[] = [];
     if (response && typeof response === 'object') {
       if (Array.isArray(response)) {
         // Direct array response (fallback)
@@ -811,7 +815,7 @@ export async function fetchUsersByProperty(propertyId: string, accessToken?: str
       }
       // UI filtering over the backend-scoped profile response only. Django
       // remains the authorization authority for every subsequent request.
-      return profile.properties.some((prop: any) => getPropertyId(prop) === propertyId);
+      return profile.properties.some((prop) => getPropertyId(prop) === propertyId);
     });
 
     // Transform to User format
@@ -836,7 +840,7 @@ export async function fetchUsersByProperty(propertyId: string, accessToken?: str
 export async function fetchTopics(accessToken?: string, propertyId?: string | null): Promise<Topic[]> {
   try {
     const query = propertyId ? `?property=${encodeURIComponent(propertyId)}` : '';
-    const response = await fetchWithToken<any>(`/api/v1/topics/${query}`, accessToken);
+    const response = await fetchWithToken<ListResponse<Topic>>(`/api/v1/topics/${query}`, accessToken);
     
     // The backend returns a structured response with 'results' field containing the topics
     let topics: Topic[] = [];
@@ -864,7 +868,7 @@ export async function fetchTopics(accessToken?: string, propertyId?: string | nu
 
 export async function fetchRooms(accessToken?: string): Promise<Room[]> {
   try {
-    const response = await fetchWithToken<any>(`/api/v1/rooms/`, accessToken);
+    const response = await fetchWithToken<ListResponse<Room>>(`/api/v1/rooms/`, accessToken);
     
     // The backend returns a structured response with 'results' field containing the rooms
     let rooms: Room[] = [];

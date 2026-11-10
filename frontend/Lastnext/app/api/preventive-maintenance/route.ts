@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
-import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
+import { API_CONFIG } from '@/app/lib/config';
 import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(request: NextRequest) {
   try {
     // Get session to verify authentication
     const session = await getServerSession();
-    
-    if (DEBUG_CONFIG.logSessions) {
-    }
     
     if (!session?.user?.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -21,9 +18,6 @@ export async function GET(request: NextRequest) {
     
     // Build the API URL
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/preventive-maintenance/${queryString ? `?${queryString}` : ''}`;
-    
-    if (DEBUG_CONFIG.logApiCalls) {
-    }
 
     // Fetch preventive maintenance from the external API
     const response = await backendFetch(apiUrl, {
@@ -58,9 +52,6 @@ export async function POST(request: NextRequest) {
     // Get session to verify authentication
     const session = await getServerSession();
     
-    if (DEBUG_CONFIG.logSessions) {
-    }
-    
     if (!session?.user?.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -68,20 +59,9 @@ export async function POST(request: NextRequest) {
     // Build the API URL
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/preventive-maintenance/`;
     
-    if (DEBUG_CONFIG.logApiCalls) {
-    }
-    
     // Get the form data from the request
     const formData = await request.formData();
     
-    // Log form data entries for debugging
-    if (DEBUG_CONFIG.logApiCalls) {
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-        } else {
-        }
-      }
-    }
 
     // Forward the request to the backend API
     const response = await backendFetch(apiUrl, {
@@ -111,8 +91,6 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    if (DEBUG_CONFIG.logApiCalls) {
-    }
     return NextResponse.json(data);
 
   } catch (error: any) {

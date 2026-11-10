@@ -323,7 +323,7 @@ class TenantMembershipCapacityApiTests(TestCase):
         membership.refresh_from_db()
         self.assertFalse(membership.is_active)
 
-    def test_move_into_full_tenant_fails_without_corrupting_source(self):
+    def test_membership_transfer_is_rejected_without_corrupting_source(self):
         self.client.force_authenticate(self.owner)
         source, source_members, _ = self.make_tenant('Move source', active_others=1)
         destination, _, _ = self.make_tenant('Move destination', active_others=3)
@@ -334,7 +334,8 @@ class TenantMembershipCapacityApiTests(TestCase):
             {'tenant': destination.pk}, format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT, response.data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+        self.assertIn('tenant', response.data)
         moving.refresh_from_db()
         self.assertEqual(moving.tenant_id, source.pk)
         self.assertTrue(moving.is_active)

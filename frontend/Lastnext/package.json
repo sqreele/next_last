@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "shadcn": "shadcn-ui",
-    "lint": "eslint app",
+    "lint": "eslint app --max-warnings 184",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs tests/*.test.cjs",
     "test:jobs-dashboard": "node --test tests/jobs-dashboard-request.test.mjs",

@@ -37,6 +37,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY ./src .
 
+# The source tree keeps a legacy requirements entry point. Preserve the
+# canonical manifests in the image after copying it over /app.
+COPY requirements.txt requirements-dev.txt ./
+
 # Keep Thai PDF fonts outside /app/static because runtime static volumes can mask it.
 RUN mkdir -p /usr/local/share/fonts/mylubd && \
     cp /app/static/fonts/Sarabun-Regular.ttf /usr/local/share/fonts/mylubd/Sarabun-Regular.ttf && \

@@ -10,6 +10,8 @@ import {
   FormikHelpers,
 } from "formik";
 import Link from "next/link";
+import { MaintenanceFormSync } from "./MaintenanceFormSync";
+import { normalizeGroupId, type FormValues, type MaintenanceTaskOption } from "./maintenance-form-types";
 import {
   PreventiveMaintenance,
   FREQUENCY_OPTIONS,
@@ -47,52 +49,6 @@ interface PreventiveMaintenanceFormProps {
   onCancel?: () => void;
   machineId?: string; // Pre-select a machine if provided
 }
-
-interface FormValues {
-  pmtitle: string;
-  scheduled_date: string;
-  completed_date: string;
-  frequency: FrequencyType;
-  custom_days: number | "" | null;
-  status: string;
-  notes: string;
-  before_image_file: File | null;
-  after_image_file: File | null;
-  selected_topics: number[];
-  selected_machine_ids: string[];
-  property_id: string | null;
-  procedure: string;
-  procedure_template: number | ""; // Maintenance task template ID (empty string for "none")
-  assigned_to: string;
-  create_master_plan: boolean;
-  lead_time_days: number;
-}
-
-const normalizeGroupId = (value: unknown): string | null => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-  const normalized = String(value).trim().toLowerCase();
-  return normalized.length > 0 ? normalized : null;
-};
-
-type MaintenanceTaskOption = {
-  id: number;
-  name: string;
-  group_id?: string | null;
-  category?: string;
-  frequency: string;
-  difficulty_level: string;
-  responsible_department?: string;
-  custom_days?: number | null;
-  machine_ids?: string[];
-  machines?: Array<{
-    machine_id: string;
-    name?: string | null;
-    group_id?: string | null;
-    property_id?: string | number | null;
-  }>;
-};
 
 const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   pmId,
@@ -359,10 +315,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           const formattedDate = formatDateForInput(date);
           return formattedDate;
         }
-      } catch {
+      } catch (formatError) {
         console.error(
           "[ensureDateTimeLocalFormat] Error ensuring datetime-local format:",
-          error,
+          formatError,
         );
       }
       return dateString;
@@ -596,9 +552,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     actualInitialData,
     selectedProperty,
     machineId,
-    formatDateForInput,
     defaultScheduledDate,
-    getPropertyDetails,
+    ensureDateTimeLocalFormat,
     userProfile?.id,
     user,
   ]);
@@ -930,7 +885,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     return () => {
       mounted = false;
     };
-  }, [pmId, initialDataProp]);
+  }, [pmId, initialDataProp, clearError, clearLoadingAfterMinTime]);
 
   // Now check for early return conditions after all hooks are defined
   if (!hasProperties) {
@@ -1367,8 +1322,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         initialValues={getInitialValues()}
         validate={(values) => {
           const errors = validateForm(values);
-          if (Object.keys(errors).length > 0) {
-          }
           return errors;
         }}
         enableReinitialize
@@ -1383,140 +1336,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           isSubmitting,
           setFieldValue,
         }) {
-          // Debug form values changes
-          React.useEffect(() => {}, [
-            values.scheduled_date,
-            values.completed_date,
-            values.selected_machine_ids,
-            machineId,
-            pmId,
-          ]);
-
-          React.useEffect(() => {
-            if (pmId) return;
-            const nextPropertyId = selectedProperty || "";
-            const currentValue = values.property_id || "";
-            if (nextPropertyId !== currentValue) {
-              setFieldValue("property_id", nextPropertyId, false);
-            }
-          }, [pmId, selectedProperty, values.property_id, setFieldValue]);
-
-          // Auto-select machine when machineId prop is provided
-          React.useEffect(() => {
-            // Once a template is chosen, its machine relationship is authoritative.
-            // Do not re-add a machine that the template-matching effect removed.
-            if (!machineId || pmId || values.procedure_template !== "") {
-              return;
-            }
-
-            const machineIdStr = String(machineId);
-            const isAlreadySelected =
-              values.selected_machine_ids.includes(machineIdStr);
-
-            // Wait for machines to finish loading before auto-selecting
-            if (loadingMachines) {
-              return;
-            }
-
-            // If machines are loaded, validate and select the machine
-            if (availableMachines.length > 0) {
-              const machineExists = availableMachines.some(
-                (m) => m.machine_id === machineIdStr,
-              );
-
-              if (machineExists) {
-                // Machine exists - select it if not already selected
-                if (!isAlreadySelected) {
-                  const newMachineIds = [
-                    machineIdStr,
-                    ...values.selected_machine_ids.filter(
-                      (id) => id !== machineIdStr,
-                    ),
-                  ];
-                  setFieldValue("selected_machine_ids", newMachineIds, false);
-                } else {
-                }
-              } else if (isAlreadySelected) {
-                setFieldValue(
-                  "selected_machine_ids",
-                  values.selected_machine_ids.filter(
-                    (id) => id !== machineIdStr,
-                  ),
-                  false,
-                );
-              }
-            }
-          }, [
-            machineId,
-            pmId,
-            availableMachines,
-            loadingMachines,
-            values.selected_machine_ids,
-            values.property_id,
-            values.procedure_template,
-            setFieldValue,
-          ]);
-
-          // Refetch maintenance tasks from preselected machines only until a template is chosen.
-          React.useEffect(() => {
-            if (pmId || values.procedure_template !== "") return;
-
-            if (values.selected_machine_ids.length > 0) {
-              fetchAvailableMaintenanceTasks(values.selected_machine_ids);
-            } else {
-              fetchAvailableMaintenanceTasks();
-            }
-          }, [
-            values.selected_machine_ids,
-            values.procedure_template,
-            pmId,
-            fetchAvailableMaintenanceTasks,
-          ]);
-
-          React.useEffect(() => {
-            if (values.procedure_template === "") {
-              return;
-            }
-
-            const selectedTask = availableMaintenanceTasks.find(
-              (t) => t.id === Number(values.procedure_template),
-            );
-            const selectedTaskGroupId = normalizeGroupId(
-              selectedTask?.group_id,
-            );
-            const selectedTaskMachineIds = new Set(
-              (selectedTask?.machine_ids ?? []).map((id) => String(id)),
-            );
-            if (selectedTaskMachineIds.size === 0 && !selectedTaskGroupId)
-              return;
-
-            const allowedMachineIds =
-              selectedTaskMachineIds.size > 0
-                ? selectedTaskMachineIds
-                : new Set(
-                    availableMachines
-                      .filter(
-                        (machine) =>
-                          normalizeGroupId(machine.group_id) ===
-                          selectedTaskGroupId,
-                      )
-                      .map((machine) => machine.machine_id),
-                  );
-            const nextMachineIds = values.selected_machine_ids.filter((id) =>
-              allowedMachineIds.has(id),
-            );
-            if (nextMachineIds.length !== values.selected_machine_ids.length) {
-              setFieldValue("selected_machine_ids", nextMachineIds, false);
-            }
-          }, [
-            availableMachines,
-            availableMaintenanceTasks,
-            values.procedure_template,
-            values.selected_machine_ids,
-            setFieldValue,
-          ]);
-
-          const nextDueDate = React.useMemo(() => {
+          const nextDueDate = (() => {
             if (!values.frequency || !values.scheduled_date) {
               return null;
             }
@@ -1533,12 +1353,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 : undefined,
               baseDate,
             );
-          }, [
-            values.frequency,
-            values.custom_days,
-            values.scheduled_date,
-            calculateNextScheduledDate,
-          ]);
+          })();
 
           const nextDueLabel = nextDueDate
             ? nextDueDate.toLocaleString()
@@ -1549,6 +1364,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               aria-label="Preventive Maintenance Form"
               className="relative space-y-4 sm:space-y-6"
             >
+              <MaintenanceFormSync
+                pmId={pmId}
+                selectedProperty={selectedProperty}
+                machineId={machineId}
+                loadingMachines={loadingMachines}
+                availableMachines={availableMachines}
+                availableMaintenanceTasks={availableMaintenanceTasks}
+                fetchAvailableMaintenanceTasks={fetchAvailableMaintenanceTasks}
+              />
               {/* Full-screen saving/uploading overlay */}
               {(isSubmitting || isLoading) && (
                 <div

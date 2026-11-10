@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -200,12 +200,81 @@ export default function InventoryPage() {
     location: "",
     supplier: "",
   });
+  const hasLoadedInventoryRef = useRef(hasLoadedInventory);
+  hasLoadedInventoryRef.current = hasLoadedInventory;
   const requestIdRef = useRef(0);
   const selectedPropertyRef = useRef(selectedProperty);
   selectedPropertyRef.current = selectedProperty;
 
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setLoading);
+
+  const fetchInventory = useCallback(async (
+    signal?: AbortSignal,
+    requestId = requestIdRef.current,
+  ) => {
+    if (!selectedProperty) return;
+    const loaderGeneration = recordLoaderShown();
+    setLoading(true);
+    setError(null);
+    try {
+      const params = buildInventoryListParams({
+        propertyId: selectedProperty,
+        page,
+        pageSize,
+        category: selectedCategory,
+        status: selectedStatus,
+        room: selectedRoom,
+        lowStockOnly,
+        job: selectedJobFilter,
+        preventiveMaintenance: selectedPmFilter,
+        search: debouncedSearchTerm,
+      });
+
+      const response = await apiClient.get("/api/v1/inventory/", {
+        params,
+        signal,
+      });
+
+      let inventoryData: InventoryItem[] = [];
+      let total = 0;
+      let pages = 1;
+
+      if (Array.isArray(response.data)) {
+        inventoryData = response.data;
+        total = response.data.length;
+        pages = Math.ceil(total / pageSize);
+      } else if (response.data && "results" in response.data) {
+        inventoryData = response.data.results || [];
+        total = response.data.count || 0;
+        pages =
+          response.data.total_pages ||
+          Math.ceil(total / (response.data.page_size || pageSize));
+      }
+
+      if (requestId === requestIdRef.current) {
+        setTotalCount(total);
+        setTotalPages(pages);
+        setInventory(inventoryData);
+        setHasLoadedInventory(true);
+      }
+    } catch (err: any) {
+      if (err?.code === "ERR_CANCELED") return;
+      console.error("Error fetching inventory:", err);
+      if (requestId === requestIdRef.current) {
+        setError(err.message || "Failed to load inventory");
+        if (!hasLoadedInventoryRef.current) {
+          setInventory([]);
+          setTotalCount(0);
+          setTotalPages(1);
+        }
+      }
+    } finally {
+      if (requestId === requestIdRef.current) {
+        clearLoadingAfterMinTime(loaderGeneration);
+      }
+    }
+  }, [selectedProperty, page, pageSize, selectedCategory, selectedStatus, selectedRoom, lowStockOnly, selectedJobFilter, selectedPmFilter, debouncedSearchTerm, recordLoaderShown, clearLoadingAfterMinTime]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -273,6 +342,7 @@ export default function InventoryPage() {
     selectedJobFilter,
     selectedPmFilter,
     debouncedSearchTerm,
+    fetchInventory,
   ]);
 
   useEffect(() => {
@@ -521,73 +591,6 @@ export default function InventoryPage() {
     void fetchUserJobsAndPMs();
     return () => controller.abort();
   }, [showUseDialog, status, selectedItem, selectedProperty]);
-
-  const fetchInventory = async (
-    signal?: AbortSignal,
-    requestId = requestIdRef.current,
-  ) => {
-    if (!selectedProperty) return;
-    const loaderGeneration = recordLoaderShown();
-    setLoading(true);
-    setError(null);
-    try {
-      const params = buildInventoryListParams({
-        propertyId: selectedProperty,
-        page,
-        pageSize,
-        category: selectedCategory,
-        status: selectedStatus,
-        room: selectedRoom,
-        lowStockOnly,
-        job: selectedJobFilter,
-        preventiveMaintenance: selectedPmFilter,
-        search: debouncedSearchTerm,
-      });
-
-      const response = await apiClient.get("/api/v1/inventory/", {
-        params,
-        signal,
-      });
-
-      let inventoryData: InventoryItem[] = [];
-      let total = 0;
-      let pages = 1;
-
-      if (Array.isArray(response.data)) {
-        inventoryData = response.data;
-        total = response.data.length;
-        pages = Math.ceil(total / pageSize);
-      } else if (response.data && "results" in response.data) {
-        inventoryData = response.data.results || [];
-        total = response.data.count || 0;
-        pages =
-          response.data.total_pages ||
-          Math.ceil(total / (response.data.page_size || pageSize));
-      }
-
-      if (requestId === requestIdRef.current) {
-        setTotalCount(total);
-        setTotalPages(pages);
-        setInventory(inventoryData);
-        setHasLoadedInventory(true);
-      }
-    } catch (err: any) {
-      if (err?.code === "ERR_CANCELED") return;
-      console.error("Error fetching inventory:", err);
-      if (requestId === requestIdRef.current) {
-        setError(err.message || "Failed to load inventory");
-        if (!hasLoadedInventory) {
-          setInventory([]);
-          setTotalCount(0);
-          setTotalPages(1);
-        }
-      }
-    } finally {
-      if (requestId === requestIdRef.current) {
-        clearLoadingAfterMinTime(loaderGeneration);
-      }
-    }
-  };
 
   // No need for client-side filtering - backend handles it via search param
   // Keep filteredInventory for backward compatibility but use inventory directly

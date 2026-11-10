@@ -136,7 +136,7 @@ export function UniversalImage({
   const handleLoad = useCallback(() => {
     setIsLoaded(true);
     onLoad?.();
-  }, [onLoad, src]);
+  }, [onLoad]);
 
   // Handle image error
   const handleError = useCallback(() => {

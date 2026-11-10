@@ -153,20 +153,7 @@ export function preloadImage(src: string, as: 'image' = 'image'): void {
 /**
  * Generate optimized image URL with query parameters
  */
-export function generateOptimizedImageUrl(
-  src: string,
-  width: number,
-  height: number,
-  quality: number = 75,
-  format: 'avif' | 'jpeg' = 'jpeg'
-): string {
-  if (isExternalImage(src)) {
-    return src; // Return original URL for external images
-  }
-
-  // For internal images, Next.js will handle optimization automatically
-  return src;
-}
+export { generateOptimizedImageUrl } from './image-url';
 
 /**
  * Lazy load images with intersection observer

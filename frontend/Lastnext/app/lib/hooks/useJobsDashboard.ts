@@ -243,7 +243,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   }, [refreshJobs]);
 
   // Update job status
-  const updateJobStatus = useCallback(async (jobId: string, status: string) => {
+  const updateJobStatus = useCallback(async (jobId: string, status: JobStatus) => {
     if (!isAuthenticated) return;
 
     try {
@@ -257,9 +257,6 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         )
       }));
 
-      // Refresh stats - temporarily disabled since getJobStats doesn't exist
-      // const stats = await jobsApi.getJobStats(accessToken, state.filters);
-      // setState(prev => ({ ...prev, stats }));
       
       toast.success('Job status updated successfully');
       
@@ -272,7 +269,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         toast.error('Failed to update job status');
       }
     }
-  }, [isAuthenticated, state.filters, toast]);
+  }, [isAuthenticated, toast]);
 
   // Delete job
   const deleteJob = useCallback(async (jobId: string) => {
@@ -287,9 +284,6 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         jobs: prev.jobs.filter(job => job.id !== Number(jobId))
       }));
 
-      // Refresh stats - temporarily disabled since getJobStats doesn't exist
-      // const stats = await jobsApi.getJobStats(accessToken, state.filters);
-      // setState(prev => ({ ...prev, stats }));
       
       toast.success('Job deleted successfully');
       
@@ -302,7 +296,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         toast.error('Failed to delete job');
       }
     }
-  }, [isAuthenticated, state.jobs, state.properties, state.filters, toast]);
+  }, [isAuthenticated, toast]);
 
   // Update filters
   const updateFilters = useCallback((newFilters: Partial<JobsDashboardState['filters']>) => {
@@ -374,10 +368,6 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
           }));
         }
         
-        // Refresh stats - temporarily disabled since getJobStats doesn't exist
-        // jobsApi.getJobStats(accessToken, state.filters).then(stats => {
-        //   setState(prev => ({ ...prev, stats }));
-        // });
       });
       
       realTimeUnsubscribeRef.current = unsubscribe;
@@ -385,7 +375,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     } catch (error) {
       console.error('Error enabling real-time updates:', error);
     }
-  }, [isAuthenticated, state.filters]);
+  }, [isAuthenticated]);
 
   // Disable real-time updates
   const disableRealTime = useCallback(() => {

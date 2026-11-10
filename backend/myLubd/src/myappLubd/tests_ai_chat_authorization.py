@@ -91,9 +91,9 @@ class AIChatAuthorizationTests(APITestCase):
 
         self.assertIn(response.status_code, {401, 403})
 
-    @patch('myappLubd.views._gemini_config', return_value=object())
-    @patch('myappLubd.views._genai_modules', return_value=(None, FAKE_TYPES))
-    @patch('myappLubd.views._build_gemini_client')
+    @patch('myappLubd.view_modules.ai._gemini_config', return_value=object())
+    @patch('myappLubd.view_modules.ai._genai_modules', return_value=(None, FAKE_TYPES))
+    @patch('myappLubd.view_modules.ai._build_gemini_client')
     def test_authenticated_user_can_chat_in_accessible_property(
         self, build_client, _genai_modules, _gemini_config,
     ):
@@ -113,7 +113,7 @@ class AIChatAuthorizationTests(APITestCase):
             fake_client.calls[0]['contents'],
         )
 
-    @patch('myappLubd.views._build_gemini_client')
+    @patch('myappLubd.view_modules.ai._build_gemini_client')
     def test_cross_tenant_explicit_property_is_hidden_before_provider_call(
         self, build_client,
     ):
@@ -154,10 +154,10 @@ class AIChatAuthorizationTests(APITestCase):
 
         self.assertEqual(payload, {'name': 'Visible Name'})
 
-    @patch('myappLubd.views.get_today_maintenance_jobs')
-    @patch('myappLubd.views._gemini_config', return_value=object())
-    @patch('myappLubd.views._genai_modules', return_value=(None, FAKE_TYPES))
-    @patch('myappLubd.views._build_gemini_client')
+    @patch('myappLubd.view_modules.ai.get_today_maintenance_jobs')
+    @patch('myappLubd.view_modules.ai._gemini_config', return_value=object())
+    @patch('myappLubd.view_modules.ai._genai_modules', return_value=(None, FAKE_TYPES))
+    @patch('myappLubd.view_modules.ai._build_gemini_client')
     def test_selected_property_overrides_provider_tool_arguments(
         self,
         build_client,
@@ -186,9 +186,9 @@ class AIChatAuthorizationTests(APITestCase):
             property_name=self.allowed_property.property_id,
         )
 
-    @patch('myappLubd.views._gemini_config', return_value=object())
-    @patch('myappLubd.views._genai_modules', return_value=(None, FAKE_TYPES))
-    @patch('myappLubd.views._build_gemini_client')
+    @patch('myappLubd.view_modules.ai._gemini_config', return_value=object())
+    @patch('myappLubd.view_modules.ai._genai_modules', return_value=(None, FAKE_TYPES))
+    @patch('myappLubd.view_modules.ai._build_gemini_client')
     def test_provider_exception_is_not_returned_to_client(
         self, build_client, _genai_modules, _gemini_config,
     ):

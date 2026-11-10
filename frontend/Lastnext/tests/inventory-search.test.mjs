@@ -1,3 +1,4 @@
+import { readInventorySource } from "./helpers/inventory-source.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { describe, it } from "node:test";
@@ -161,10 +162,7 @@ describe("Inventory search UX", () => {
   });
 
   it("keeps input state immediate and introduces no navigation or reload", async () => {
-    const source = await readFile(
-      new URL("../app/dashboard/inventory/page.tsx", import.meta.url),
-      "utf8",
-    );
+    const source = readInventorySource();
     assert.match(source, /value=\{searchTerm\}/);
     assert.match(source, /onChange=\{\(e\) => setSearchTerm\(e\.target\.value\)\}/);
     assert.match(source, /setDebouncedSearchTerm\(nextSearchTerm\);\s*setPage\(1\)/);

@@ -6,7 +6,8 @@ const read = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("create job pre-uploads and submits distinct before and after image tokens", () => {
-  const form = read("app/components/jobs/CreateJobForm.tsx");
+  const form = ["CreateJobForm", "CreateJobDetails", "CreateJobSubmit", "CreateJobEvidence", "create-job-ui"]
+    .map((name) => read(`app/components/jobs/${name}.tsx`)).join("\n");
   const uploader = read("app/components/jobs/ImmediateImageUpload.tsx");
   assert.match(form, /formData\.append\("before_image_tokens", token\)/);
   assert.match(form, /formData\.append\("after_image_tokens", token\)/);
@@ -17,7 +18,8 @@ test("create job pre-uploads and submits distinct before and after image tokens"
 });
 
 test("create job requests only active rooms and treats area as an alternative location", () => {
-  const form = read("app/components/jobs/CreateJobForm.tsx");
+  const form = ["CreateJobForm", "CreateJobDetails", "CreateJobSubmit", "CreateJobEvidence", "create-job-ui"]
+    .map((name) => read(`app/components/jobs/${name}.tsx`)).join("\n");
   assert.match(form, /is_active: "true"/);
   assert.match(form, /Boolean\(values\.area_id\)/);
   assert.match(form, /floorDisabledByArea/);
@@ -25,7 +27,8 @@ test("create job requests only active rooms and treats area as an alternative lo
 });
 
 test("mobile incomplete-step navigation uses real section targets", () => {
-  const form = read("app/components/jobs/CreateJobForm.tsx");
+  const form = ["CreateJobForm", "CreateJobDetails", "CreateJobSubmit", "CreateJobEvidence", "create-job-ui"]
+    .map((name) => read(`app/components/jobs/${name}.tsx`)).join("\n");
   assert.match(form, /"cj-step-category"/);
   assert.match(form, /"cj-step-template"/);
   assert.match(form, /firstIncompleteTarget/);
@@ -34,7 +37,8 @@ test("mobile incomplete-step navigation uses real section targets", () => {
 
 test("create job has one localized page header and one job-type control", () => {
   const page = read("app/dashboard/create-job/page.tsx");
-  const form = read("app/components/jobs/CreateJobForm.tsx");
+  const form = ["CreateJobForm", "CreateJobDetails", "CreateJobSubmit", "CreateJobEvidence", "create-job-ui"]
+    .map((name) => read(`app/components/jobs/${name}.tsx`)).join("\n");
   assert.doesNotMatch(page, /<PageHeader/);
   assert.doesNotMatch(form, /<Checkbox/);
   assert.match(form, /JOB_TYPES\.map/);

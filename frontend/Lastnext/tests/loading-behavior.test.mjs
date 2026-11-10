@@ -1,3 +1,4 @@
+import { readInventorySource } from "./helpers/inventory-source.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
@@ -266,7 +267,7 @@ test("jobs pagination remains visible and is disabled during page requests", asy
 });
 
 test("inventory preserves settled content and pagination during same-scope updates", async () => {
-  const inventory = await source("app/dashboard/inventory/page.tsx");
+  const inventory = readInventorySource();
   assert.match(inventory, /loading && !hasLoadedInventory/);
   assert.match(inventory, /hasLoadedInventoryRef\.current = hasLoadedInventory/);
   assert.match(inventory, /if \(!hasLoadedInventoryRef\.current\) \{/);

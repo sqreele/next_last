@@ -1,3 +1,4 @@
+import { readInventorySource } from "./helpers/inventory-source.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -5,7 +6,7 @@ import { readFile } from "node:fs/promises";
 const source = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("inventory management and consumption controls use server capabilities", async () => {
-  const page = await source("../app/dashboard/inventory/page.tsx");
+  const page = readInventorySource();
   const importer = await source("../app/components/inventory/InventoryCsvImport.tsx");
 
   assert.match(page, /inventory\/capabilities/);
@@ -21,7 +22,7 @@ test("inventory management and consumption controls use server capabilities", as
 });
 
 test("use inventory asks for a positive use quantity rather than a resulting balance", async () => {
-  const page = await source("../app/dashboard/inventory/page.tsx");
+  const page = readInventorySource();
   assert.match(page, /id="use-quantity"/);
   assert.match(page, /min="1"/);
   assert.match(page, /max=\{selectedItem\?\.quantity\}/);

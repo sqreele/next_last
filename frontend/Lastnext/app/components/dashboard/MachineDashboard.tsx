@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Wrench } from "lucide-react";
 import { Input } from "@/app/components/ui/input";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import { PriorityBadge } from "@/app/components/PriorityBadge";
 import { useLocale } from "@/app/lib/i18n/LocaleProvider";
+import { buildMachineSummaries } from "@/app/lib/machine-dashboard-summary";
 import apiClient from "@/app/lib/api-client";
 import MachineService, { type Machine as ServiceMachine } from "@/app/lib/MachineService";
 
@@ -115,21 +116,11 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
   const history = jobs.filter((job) => job.machine?.machine_id === selectedId);
   const maintenance = plans.filter((plan) => plan.machines?.some((machine) => machine.machine_id === selectedId));
   const openMachineJobs = jobs.filter((job) => job.machine && !["completed", "verified", "cancelled"].includes(job.status));
-  const latestJobFor = (machineId: string) => jobs
-    .filter((job) => job.machine?.machine_id === machineId)
-    .reduce<MachineJob | undefined>((latest, job) => {
-      const timestamp = (value: MachineJob) => Date.parse(value.updated_at || value.created_at) || 0;
-      return !latest || timestamp(job) > timestamp(latest) ? job : latest;
-    }, undefined);
-  const lastMaintenanceFor = (machine: Machine) => {
-    const dates = [machine.last_maintenance_date,
-      ...plans.filter((plan) => plan.status === "completed" && plan.machines?.some((item) => item.machine_id === machine.machine_id))
-        .map((plan) => plan.completed_date),
-      ...jobs.filter((job) => job.status === "completed" && job.machine?.machine_id === machine.machine_id)
-        .map((job) => job.completed_at),
-    ].filter((value): value is string => Boolean(value) && Number.isFinite(Date.parse(value!)));
-    return dates.sort((a, b) => Date.parse(b) - Date.parse(a))[0];
-  };
+  const summaries = useMemo(() => buildMachineSummaries(
+    snapshot?.machines ?? [], snapshot?.jobs ?? [], snapshot?.maintenance ?? [],
+  ), [snapshot]);
+  const latestJobFor = (machineId: string) => summaries.get(machineId)?.latestJob;
+  const lastMaintenanceFor = (machine: Machine) => summaries.get(machine.machine_id)?.lastMaintenance;
   const overdue = plans.filter((plan) => plan.machines?.length && !["completed", "verified", "cancelled"].includes(plan.status) && new Date(plan.scheduled_date).getTime() < Date.now());
 
   if (error) return <section className="rounded-xl border border-destructive/30 bg-card p-6" role="alert"><h2 className="font-semibold">{text("ภาพรวมเครื่องจักร", "Machine Dashboard")}</h2><p className="mt-2 text-sm">{text("ไม่สามารถโหลดข้อมูลเครื่องจักรได้", "Unable to load machine dashboard data")}</p><button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-3 min-h-10 font-semibold text-teal-700 underline">{text("ลองอีกครั้ง", "Try again")}</button></section>;
@@ -144,7 +135,7 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
     ].map(([label, value]) => <div key={label} className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-bold">{loading ? "—" : value}</p></div>)}</div>
     <div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><span className="sr-only">{text("ค้นหาเครื่องจักร", "Search machines")}</span><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text("ค้นหาชื่อ รหัส ยี่ห้อ หรือตำแหน่ง…", "Search name, ID, brand or location…")} className="pl-9" /></label><select aria-label={text("สถานะเครื่องจักร", "Machine status")} value={status} onChange={(event) => setStatus(event.target.value)} className="min-h-10 rounded-lg border bg-card px-3 text-sm"><option value="all">{text("ทุกสถานะ", "All statuses")}</option>{Object.entries(statusNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
     {loading ? <p role="status" className="p-4 text-sm text-muted-foreground">{text("กำลังโหลดเครื่องจักร…", "Loading machines…")}</p> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{visible.map((machine) => {
-      const open = openMachineJobs.filter((job) => job.machine?.machine_id === machine.machine_id).length;
+      const open = summaries.get(machine.machine_id)?.openJobs ?? 0;
       const latestJob = latestJobFor(machine.machine_id);
       return <button key={machine.machine_id} type="button" aria-expanded={selectedId === machine.machine_id} aria-controls="machine-dashboard-details" onClick={() => setSelectedId(machine.machine_id)} className={`min-w-0 rounded-xl border p-4 text-left transition [overflow-wrap:anywhere] hover:border-teal-400 ${selectedId === machine.machine_id ? "border-teal-500 bg-teal-500/10" : "border-border"}`}>
         <p className="font-mono text-xs font-semibold text-teal-700">{machine.machine_id}</p><h3 className="mt-1 font-semibold">{machine.name}</h3><p className="mt-1 text-xs text-muted-foreground">{machine.category} · {machine.location}</p><div className="mt-3 flex flex-wrap justify-between gap-2 text-xs"><span className={machine.status === "active" ? "font-semibold text-emerald-700" : "font-semibold text-amber-800"}>{statusNames[machine.status] || machine.status}</span><span>{open} {text("งานเปิด", "open jobs")}</span></div><dl className="mt-3 space-y-2 border-t pt-3 text-xs">

@@ -48,7 +48,8 @@ test("machine filtering includes partial machine-name matches", () => {
 });
 
 test("create-job mobile submit bar uses the safe area while its bottom navigation is hidden", () => {
-  const form = read("app/components/jobs/CreateJobForm.tsx");
+  const form = ["CreateJobForm", "CreateJobDetails", "CreateJobSubmit", "CreateJobEvidence", "create-job-ui"]
+    .map((name) => read(`app/components/jobs/${name}.tsx`)).join("\n");
   const layout = read("app/dashboard/DashboardLayoutClient.tsx");
   const mobileNav = read("app/components/ui/mobile-nav.tsx");
 

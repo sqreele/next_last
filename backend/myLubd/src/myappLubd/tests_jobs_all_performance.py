@@ -189,7 +189,7 @@ class JobsAllSerializationPerformanceTests(TestCase):
         request = self.request(property_id=self.property.property_id)
 
         with patch(
-            'myappLubd.serializers.get_accessible_properties',
+            'myappLubd.serializer_modules.jobs.get_accessible_properties',
             wraps=serializer_module.get_accessible_properties,
         ) as accessible_properties:
             rows = self.serialize(self.optimized_queryset(request), request)
@@ -203,7 +203,7 @@ class JobsAllSerializationPerformanceTests(TestCase):
         request = self.request(property_id=self.property.property_id)
 
         with patch(
-            'myappLubd.serializers.get_accessible_properties',
+            'myappLubd.serializer_modules.jobs.get_accessible_properties',
             wraps=serializer_module.get_accessible_properties,
         ) as accessible_properties:
             rows = self.serialize(self.optimized_queryset(request), request)

@@ -143,6 +143,7 @@ export function OptimizedImageEnhanced({
         <Image
           {...optimizedProps}
           {...props}
+          alt={alt}
           className={cn(
             "transition-opacity duration-300",
             isLoading ? "opacity-0" : "opacity-100",

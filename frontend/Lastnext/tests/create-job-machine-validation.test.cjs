@@ -1,18 +1,8 @@
 const assert = require('node:assert/strict');
-const { readFileSync } = require('node:fs');
 const { test } = require('node:test');
-const ts = require('typescript');
-const Yup = require('yup');
-
-// Execute the form's actual schema without loading Next.js and browser components.
-const source = readFileSync(`${__dirname}/../app/components/jobs/CreateJobForm.tsx`, 'utf8');
-const schemaSource = source.slice(source.indexOf('const createValidationSchema'), source.indexOf('const PRIORITY_OPTIONS'));
-const { outputText } = ts.transpileModule(schemaSource, {
-  compilerOptions: { target: ts.ScriptTarget.ES2022 },
-});
-const createSchema = new Function('Yup', 'formatMessage', 'MAX_FILE_SIZE', 'MAX_BEFORE_FILES', 'MAX_AFTER_FILES',
-  `${outputText}\nreturn createValidationSchema;`)(Yup, (message) => message, 5 * 1024 * 1024, 20, 5);
-const schema = createSchema((key) => key);
+const loadTypeScript = require('./helpers/load-typescript.cjs');
+const { createValidationSchema } = loadTypeScript(`${__dirname}/../app/components/jobs/create-job-validation.ts`);
+const schema = createValidationSchema((key) => key);
 const machineJob = {
   locationType: 'machine', machine_id: 'PUMP-001', procedure_template: 5,
   description: 'Inspect pump', status: 'pending', priority: 'medium',

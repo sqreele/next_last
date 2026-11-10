@@ -121,6 +121,7 @@ export function ResponsiveImage({
       >
         <Image
           {...imageProps}
+          alt={alt}
           fill
           style={{
             objectFit: "cover",
@@ -137,6 +138,7 @@ export function ResponsiveImage({
     <div className="relative">
       <Image
         {...imageProps}
+          alt={alt}
         width={width}
         height={height}
         style={{

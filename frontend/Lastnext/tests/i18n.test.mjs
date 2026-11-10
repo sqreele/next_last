@@ -1,3 +1,4 @@
+import { readInventorySource } from "./helpers/inventory-source.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
@@ -13,7 +14,7 @@ const providerSource = read("app/lib/i18n/LocaleProvider.tsx");
 const layoutSource = read("app/layout.tsx");
 const toggleSource = read("app/components/i18n/LocaleToggle.tsx");
 const dashboardSource = read("app/dashboard/ImprovedDashboard.tsx");
-const inventorySource = read("app/dashboard/inventory/page.tsx");
+const inventorySource = readInventorySource();
 const scheduleSource = read("app/dashboard/preventive-maintenance/schedule/PMScheduleCalendar.tsx");
 const statusBadgeSource = read("app/components/StatusBadge.tsx");
 const priorityBadgeSource = read("app/components/PriorityBadge.tsx");

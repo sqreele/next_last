@@ -8,7 +8,11 @@ const formUrl = new URL(
 );
 
 test("custom PM frequency leaves Scheduled unset", async () => {
-  const form = await readFile(formUrl, "utf8");
+  const form = (await Promise.all([
+    readFile(formUrl, "utf8"),
+    readFile(new URL("../app/components/preventive/PMTemplateSection.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/preventive/PMScheduleSection.tsx", import.meta.url), "utf8"),
+  ])).join("\n");
 
   assert.match(
     form,

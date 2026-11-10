@@ -14,7 +14,7 @@ test("PM schedule navigation keeps exact contiguous date windows", async () => {
 test("PM list sends sorting and date ranges to the paginated backend", async () => {
   const page = await source("../app/dashboard/preventive-maintenance/page.tsx");
   const store = await source("../app/lib/stores/usePreventiveMaintenanceStore.ts");
-  const backend = await source("../../../backend/myLubd/src/myappLubd/views.py");
+  const backend = await source("../../../backend/myLubd/src/myappLubd/view_modules/preventive_maintenance.py");
   assert.match(page, /date_from: start_date/);
   assert.match(page, /date_to: end_date/);
   assert.match(page, /ordering: getServerOrdering\(sortBy, sortOrder\)/);

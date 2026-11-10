@@ -91,6 +91,7 @@ jobs:
           myappLubd.tests_job_property_write_enforcement.JobPropertyWriteApiTests
           myappLubd.tests_admin_job_search
           myappLubd.tests_admin_operations_ux
+          myappLubd.tests_clean_code_regressions
           --noinput
       - name: Run Company billing and authorization regressions
         run: >-

@@ -357,6 +357,26 @@ class PreventiveMaintenanceImageTests(APITestCase):
         self.assertFalse(PreventiveMaintenanceImage.objects.filter(pk=image.pk).exists())
         self.assertEqual(response.data['image_counts']['total'], 0)
 
+    def test_deleting_legacy_image_removes_original_and_jpeg_after_commit(self):
+        from django.core.files.storage import default_storage
+        original = default_storage.save('maintenance_pm_images/legacy.png', self._image('legacy.png', fmt='PNG'))
+        jpeg = default_storage.save('maintenance_pm_images/legacy-preview.jpg', self._image('legacy-preview.jpg'))
+        PreventiveMaintenance.objects.filter(pk=self.pm.pk).update(
+            before_image=original, before_image_jpeg_path=jpeg,
+        )
+        self.client.force_authenticate(self.operator)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.delete(
+                f'/api/v1/preventive-maintenance/{self.pm.pm_id}/images/legacy-before/'
+                f'?property_id={self.property_a.property_id}'
+            )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertFalse(default_storage.exists(original))
+        self.assertFalse(default_storage.exists(jpeg))
+        self.pm.refresh_from_db()
+        self.assertFalse(self.pm.before_image)
+        self.assertIsNone(self.pm.before_image_jpeg_path)
+
     def test_viewer_cannot_delete_image(self):
         image = self._create_evidence()
         self.client.force_authenticate(self.viewer)

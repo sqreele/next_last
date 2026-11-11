@@ -182,7 +182,7 @@ class AdminSaveHookTests(SimpleTestCase):
 
 
 class MachineDateQueryTests(TestCase):
-    def test_serializing_multiple_machines_uses_two_date_queries(self):
+    def test_serializing_multiple_machines_uses_four_date_queries(self):
         tenant = Tenant.objects.create(name='Batch dates')
         property_obj = Property.objects.create(name='Batch hotel', tenant=tenant)
         user = get_user_model().objects.create_user(username='batch-dates')
@@ -193,7 +193,7 @@ class MachineDateQueryTests(TestCase):
         for machine in machines:
             Job.objects.create(property=property_obj, user=user, machine=machine, procedure_template=template,
                                status='completed', completed_at=completed_at, is_preventivemaintenance=True)
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(4):
             data = MachineListSerializer(machines, many=True).data
         self.assertEqual(len(data), 8)
         self.assertTrue(all(row['next_maintenance_date'] is not None for row in data))

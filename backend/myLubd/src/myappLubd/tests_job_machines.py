@@ -12,7 +12,7 @@ from django.utils import timezone
 from PIL import Image
 from rest_framework.test import APITestCase
 
-from .models import Job, JobDocument, Machine, MaintenanceProcedure, Property, Room, Tenant, TenantMembership
+from .models import Job, JobDocument, Machine, MaintenanceProcedure, PMMasterPlan, PreventiveMaintenance, Property, Room, Tenant, TenantMembership
 from .tenancy import get_tenant_storage_usage_bytes
 from .test_plan_helpers import use_canonical_plan
 
@@ -251,6 +251,44 @@ class JobMachineTests(APITestCase):
             self.assertEqual(response.status_code, 201, response.data)
             Job.objects.filter(job_id=response.data['job_id']).update(status='completed', completed_at=completed_at)
         self.assertEqual(self.machine.get_next_maintenance_date(), datetime(2028, 2, 8, tzinfo=datetime_timezone.utc))
+
+    def test_legacy_machine_date_and_linked_template_produce_next_pm(self):
+        self.machine.last_maintenance_date = datetime(2028, 1, 31, tzinfo=datetime_timezone.utc)
+        self.machine.save(update_fields=['last_maintenance_date'])
+        template = MaintenanceProcedure.objects.create(name='Legacy monthly', description='Inspect', frequency='monthly')
+        template.machines.add(self.machine)
+        self.assertEqual(self.machine.get_next_maintenance_date(), datetime(2028, 2, 29, tzinfo=datetime_timezone.utc))
+
+    def test_active_master_plan_is_visible_before_work_is_generated(self):
+        due = timezone.now() + timezone.timedelta(days=7)
+        plan = PMMasterPlan.objects.create(title='Planned inspection', created_by=self.user, start_date=due)
+        plan.machines.add(self.machine)
+        self.assertEqual(self.machine.get_next_maintenance_date(), due)
+        plan.active = False
+        plan.save(update_fields=['active'])
+        self.assertIsNone(self.machine.get_next_maintenance_date())
+
+    def test_pending_pm_without_next_due_keeps_its_overdue_schedule(self):
+        due = timezone.now() - timezone.timedelta(days=1)
+        pm = PreventiveMaintenance.objects.create(pmtitle='Due inspection', created_by=self.user, scheduled_date=due)
+        pm.machines.add(self.machine)
+        self.assertEqual(self.machine.get_next_maintenance_date(), due)
+        pm.status = 'cancelled'
+        pm.save(update_fields=['status'])
+        self.assertIsNone(self.machine.get_next_maintenance_date())
+
+    def test_old_completed_pm_does_not_shadow_an_active_plan(self):
+        old = PreventiveMaintenance.objects.create(
+            pmtitle='Old completed inspection', created_by=self.user,
+            scheduled_date=timezone.now() - timezone.timedelta(days=10),
+            completed_date=timezone.now() - timezone.timedelta(days=9),
+            status='completed', frequency='weekly',
+        )
+        old.machines.add(self.machine)
+        due = timezone.now() + timezone.timedelta(days=1)
+        plan = PMMasterPlan.objects.create(title='Next inspection', created_by=self.user, start_date=due)
+        plan.machines.add(self.machine)
+        self.assertEqual(self.machine.get_next_maintenance_date(), due)
 
     def test_completing_job_updates_machine_date(self):
         response = self.create_job()

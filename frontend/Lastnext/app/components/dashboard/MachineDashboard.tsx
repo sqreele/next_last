@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Search, Wrench } from "lucide-react";
+import { ArrowLeft, Search, Wrench } from "lucide-react";
+import { MachineCategoryPicker } from "./MachineCategoryPicker";
+import { groupMachinesByCategory } from "@/app/lib/machine-categories";
 import { Input } from "@/app/components/ui/input";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import { PriorityBadge } from "@/app/components/PriorityBadge";
@@ -70,6 +72,7 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [selectedId, setSelectedId] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<{ key: string; label: string | null } | null>(null);
   const [snapshot, setSnapshot] = useState<{ machines: Machine[]; jobs: MachineJob[]; maintenance: Maintenance[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -81,6 +84,7 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
     setLoading(true);
     setError(false);
     setSelectedId("");
+    setSelectedCategory(null);
     setQuery("");
     setStatus("all");
     void Promise.all([
@@ -112,7 +116,11 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
   const visible = machines.filter((machine) => (status === "all" || machine.status === status) &&
     [machine.machine_id, machine.name, machine.brand, machine.category, machine.location, machine.asset_tag]
       .some((value) => value?.toLowerCase().includes(query.trim().toLowerCase())));
-  const selected = machines.find((machine) => machine.machine_id === selectedId);
+  const categories = groupMachinesByCategory(visible);
+  const categoryMachines = selectedCategory
+    ? categories.find((category) => category.key === selectedCategory.key)?.machines ?? []
+    : [];
+  const selected = categoryMachines.find((machine) => machine.machine_id === selectedId);
   const history = jobs.filter((job) => job.machine?.machine_id === selectedId);
   const maintenance = plans.filter((plan) => plan.machines?.some((machine) => machine.machine_id === selectedId));
   const openMachineJobs = jobs.filter((job) => job.machine && !["completed", "verified", "cancelled"].includes(job.status));
@@ -133,8 +141,18 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
       [text("งานเครื่องจักรที่เปิดอยู่", "Open machine jobs"), openMachineJobs.length],
       [text("แผน PM เกินกำหนด", "Overdue PM plans"), overdue.length],
     ].map(([label, value]) => <div key={label} className="rounded-xl bg-muted/50 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-bold">{loading ? "—" : value}</p></div>)}</div>
-    <div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><span className="sr-only">{text("ค้นหาเครื่องจักร", "Search machines")}</span><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text("ค้นหาชื่อ รหัส ยี่ห้อ หรือตำแหน่ง…", "Search name, ID, brand or location…")} className="pl-9" /></label><select aria-label={text("สถานะเครื่องจักร", "Machine status")} value={status} onChange={(event) => setStatus(event.target.value)} className="min-h-10 rounded-lg border bg-card px-3 text-sm"><option value="all">{text("ทุกสถานะ", "All statuses")}</option>{Object.entries(statusNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-    {loading ? <p role="status" className="p-4 text-sm text-muted-foreground">{text("กำลังโหลดเครื่องจักร…", "Loading machines…")}</p> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{visible.map((machine) => {
+    <div className="flex flex-col gap-3 sm:flex-row"><label className="relative flex-1"><span className="sr-only">{text("ค้นหาเครื่องจักร", "Search machines")}</span><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setSelectedId(""); }} placeholder={text("ค้นหาชื่อ รหัส ยี่ห้อ หรือตำแหน่ง…", "Search name, ID, brand or location…")} className="pl-9" /></label><select aria-label={text("สถานะเครื่องจักร", "Machine status")} value={status} onChange={(event) => { setStatus(event.target.value); setSelectedId(""); }} className="min-h-10 rounded-lg border bg-card px-3 text-sm"><option value="all">{text("ทุกสถานะ", "All statuses")}</option>{Object.entries(statusNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+    {loading ? <p role="status" className="p-4 text-sm text-muted-foreground">{text("กำลังโหลดเครื่องจักร…", "Loading machines…")}</p> : selectedCategory ? <div id="machine-category-machines" className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => { setSelectedCategory(null); setSelectedId(""); }}
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <ArrowLeft className="h-4 w-4" aria-hidden />{text("หมวดหมู่ทั้งหมด", "All categories")}
+        </button>
+        <h3 className="font-semibold" aria-live="polite">
+          {selectedCategory.label || text("ไม่ระบุหมวดหมู่", "Uncategorized")} · {categoryMachines.length} {text("เครื่อง", "machines")}
+        </h3>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{categoryMachines.map((machine) => {
       const open = summaries.get(machine.machine_id)?.openJobs ?? 0;
       const latestJob = latestJobFor(machine.machine_id);
       return <button key={machine.machine_id} type="button" aria-expanded={selectedId === machine.machine_id} aria-controls="machine-dashboard-details" onClick={() => setSelectedId(machine.machine_id)} className={`min-w-0 rounded-xl border p-4 text-left transition [overflow-wrap:anywhere] hover:border-teal-400 ${selectedId === machine.machine_id ? "border-teal-500 bg-teal-500/10" : "border-border"}`}>
@@ -145,8 +163,11 @@ export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { p
           <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{text("PM ครั้งถัดไป", "Next PM due")}</dt><dd>{displayDate(machine.next_maintenance_date)}</dd></div>
         </dl><p className="mt-3 text-xs font-semibold text-teal-700">{text("ดูรายละเอียดและประวัติ →", "View details & history →")}</p>
       </button>;
-    })}</div>}
-    {!loading && !visible.length && <p className="p-6 text-center text-sm text-muted-foreground">{text("ไม่พบเครื่องจักรตามเงื่อนไข", "No machines match your filters")}</p>}
+    })}</div>
+      {!categoryMachines.length && <p className="p-6 text-center text-sm text-muted-foreground">{text("ไม่พบเครื่องจักรในหมวดนี้ตามเงื่อนไข", "No machines in this category match your filters")}</p>}
+    </div> : <MachineCategoryPicker categories={categories} summaries={summaries} text={text}
+      onSelect={(category) => { setSelectedCategory(category); setSelectedId(""); }} />}
+    {!loading && !selectedCategory && !visible.length && <p className="p-6 text-center text-sm text-muted-foreground">{text("ไม่พบเครื่องจักรตามเงื่อนไข", "No machines match your filters")}</p>}
     <div id="machine-dashboard-details">{selected && <div className="space-y-5 border-t pt-5">
       <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">{selected.name}</h3><button type="button" onClick={() => setSelectedId("")} className="min-h-10 px-3 text-sm font-semibold text-teal-700">{text("ปิดรายละเอียด", "Close details")}</button></div>
       <div className="rounded-xl border bg-muted/50 p-4"><dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">{[

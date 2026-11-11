@@ -80,6 +80,7 @@ interface Machine {
   };
   installation_date?: string;
   last_maintenance_date?: string;
+  next_maintenance_date?: string | null;
   warranty_expiry?: string;
   notes?: string;
   preventive_maintenances?: PMHistory[];
@@ -789,6 +790,17 @@ export default function MachineDetailPage({
                 </p>
               </div>
             )}
+            <div>
+              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                Next PM due / PM ครั้งถัดไป
+              </p>
+              <p className="font-medium text-foreground">
+                {machine.next_maintenance_date
+                  ? new Date(machine.next_maintenance_date).toLocaleDateString()
+                  : "ยังไม่มีแผนหรือวันที่บำรุงรักษาสำหรับคำนวณ"}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -2,6 +2,8 @@ import apiClient from './api-client';
 
 export interface MaintenanceProcedureTemplate {
   id: number;
+  property_id?: string;
+  property_name?: string;
   name: string;
   group_id?: string | null;
   description?: string;
@@ -42,7 +44,9 @@ const MAX_PAGES_TO_FETCH = 50;
 
 export async function fetchAllMaintenanceProcedures(options: {
   pageSize?: number;
+  propertyId?: string | null;
 } = {}): Promise<MaintenanceProcedureTemplate[]> {
+  if (options.propertyId === null) return [];
   const pageSize = options.pageSize ?? 100;
   const aggregated: MaintenanceProcedureTemplate[] = [];
   let page = 1;
@@ -57,6 +61,7 @@ export async function fetchAllMaintenanceProcedures(options: {
         params: {
           page,
           page_size: pageSize,
+          property_id: options.propertyId,
         },
       }
     );

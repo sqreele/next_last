@@ -312,9 +312,11 @@ def get_operable_properties(user, tenant=None):
     return qs.filter(tenant=tenant) if tenant is not None else qs
 
 
-def get_accessible_jobs(user):
+def get_accessible_jobs(user, queryset=None):
     """Company-model technicians see assigned work; legacy scope is preserved."""
-    qs = Job.objects.filter(property__in=get_accessible_properties(user)).select_related('assigned_to', 'created_by', 'property__tenant')
+    if queryset is None:
+        queryset = Job.objects.all()
+    qs = queryset.filter(property__in=get_accessible_properties(user)).select_related('assigned_to', 'created_by', 'property__tenant')
     if getattr(user, 'is_superuser', False):
         return qs
     restricted = get_user_tenant_memberships(user).filter(

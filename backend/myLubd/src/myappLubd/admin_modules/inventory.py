@@ -1,6 +1,7 @@
 """Inventory administration."""
 import os
 import re
+from .property_scope import OperationalPropertyAdminMixin
 from django.contrib import admin
 from django.utils.html import format_html, format_html_join
 from django.utils import timezone
@@ -132,7 +133,7 @@ class InventoryCategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Inventory)
-class InventoryAdmin(admin.ModelAdmin):
+class InventoryAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     form = InventoryAdminForm
     list_per_page = 27
     list_display = [
@@ -1113,7 +1114,7 @@ class InventoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(InventoryUsage)
-class InventoryUsageAdmin(admin.ModelAdmin):
+class InventoryUsageAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = [
         'inventory', 'property', 'quantity', 'source', 'job',

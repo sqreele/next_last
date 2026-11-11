@@ -1,5 +1,6 @@
 """Machines definitions."""
 from rest_framework import serializers
+from django.core.exceptions import ValidationError as DjangoValidationError
 from ..models import Property, Machine
 from .shared import _validate_request_property_access
 
@@ -153,6 +154,11 @@ class MachineUpdateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Custom validation for machine updates"""
         _validate_request_property_access(self, data.get('property') or getattr(self.instance, 'property', None))
+        if self.instance is not None and 'property' in data:
+            try:
+                self.instance.validate_property_change(data['property'])
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError({'property_id': exc.message_dict['property']}) from exc
         installation_date = data.get('installation_date')
         last_maintenance_date = data.get('last_maintenance_date')
 

@@ -356,6 +356,9 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         # Validate machine_ids exist and belong to the same property
         machines = _validate_machine_ids_in_request_scope(self, machine_ids)
         machine_property = machines[0].property
+        template = data.get('procedure_template', getattr(self.instance, 'procedure_template', None))
+        if template and template.property_id != machine_property.pk:
+            raise serializers.ValidationError({'procedure_template': 'Template must belong to the machine property.'})
 
         property_ref = data.get('property_id')
         if creating and not property_ref:

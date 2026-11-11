@@ -115,7 +115,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     Promise.all([
       machineService.getMachines(selectedPropertyId),
       topicService.getTopics(selectedPropertyId),
-      fetchAllMaintenanceProcedures({ pageSize: 100 }),
+      fetchAllMaintenanceProcedures({ pageSize: 100, propertyId: selectedPropertyId }),
       service.getMaintenanceStatistics({ property_id: selectedPropertyId }),
       planId ? service.getPMMasterPlan(planId, selectedPropertyId) : Promise.resolve(null),
     ])

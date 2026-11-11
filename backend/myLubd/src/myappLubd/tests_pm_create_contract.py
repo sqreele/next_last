@@ -74,7 +74,7 @@ class PreventiveMaintenanceCreateContractTests(APITestCase):
         )
         self.topic = Topic.objects.create(title='Electrical')
         self.topic_two = Topic.objects.create(title='Safety')
-        self.procedure = MaintenanceProcedure.objects.create(
+        self.procedure = MaintenanceProcedure.objects.create(property=self.property,
             name='Inspect pump',
             description='Inspect seals and controls.',
             frequency='monthly',

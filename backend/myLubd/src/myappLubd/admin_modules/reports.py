@@ -1,5 +1,6 @@
 """Reports administration."""
 import os
+from .property_scope import OperationalPropertyAdminMixin
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
@@ -24,7 +25,7 @@ CompletedDateMonthFilter = create_month_filter('completed_date', 'Completed Mont
 
 
 @admin.register(WorkspaceReport)
-class WorkspaceReportAdmin(admin.ModelAdmin):
+class WorkspaceReportAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     """Admin interface for managing Workspace Reports with PDF export functionality"""
 
     def save_model(self, request, obj, form, change):

@@ -1,7 +1,9 @@
 """Procedures definitions."""
 from rest_framework import serializers
-from ..models import MaintenanceProcedure, MaintenanceTaskImage
+from ..models import MaintenanceProcedure, MaintenanceTaskImage, Property
+from .shared import _validate_request_property_access
 from .shared import get_user_display_name, get_user_public_username
+from ..procedure_access import visible_procedure_machines
 
 
 class MaintenanceStepSerializer(serializers.Serializer):
@@ -35,6 +37,8 @@ class MaintenanceStepSerializer(serializers.Serializer):
 
 class MaintenanceProcedureSerializer(serializers.ModelSerializer):
     """Serializer for MaintenanceTask (MaintenanceProcedure) - Generic task templates"""
+    property_id = serializers.SlugRelatedField(source="property", slug_field="property_id", queryset=Property.objects.all())
+    property_name = serializers.CharField(source="property.name", read_only=True)
     # steps field removed from API - not needed in frontend
     machine_ids = serializers.SerializerMethodField()
     machines = serializers.SerializerMethodField()
@@ -42,7 +46,7 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaintenanceProcedure
         fields = [
-            'id', 'name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration',
+            'id', 'property_id', 'property_name', 'name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration',
             'responsible_department', 'required_tools', 'safety_notes',
             'difficulty_level', 'machine_ids', 'machines', 'created_at', 'updated_at'
         ]
@@ -50,7 +54,7 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
 
     def get_machine_ids(self, obj):
         """Return machine identifiers explicitly linked to this template."""
-        return list(obj.machines.values_list('machine_id', flat=True))
+        return [machine.machine_id for machine in visible_procedure_machines(obj, self.context)]
 
     def get_machines(self, obj):
         """Return lightweight machine details for filtering template concerns in clients."""
@@ -61,8 +65,17 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
                 'group_id': machine.group_id,
                 'property_id': machine.property_id,
             }
-            for machine in obj.machines.all()
+            for machine in visible_procedure_machines(obj, self.context)
         ]
+
+    def validate(self, data):
+        property_obj = data.get('property', getattr(self.instance, 'property', None))
+        if property_obj is None:
+            raise serializers.ValidationError({'property_id': 'Property is required.'})
+        _validate_request_property_access(self, property_obj, 'property_id')
+        if self.instance and self.instance.property_id != property_obj.pk:
+            raise serializers.ValidationError({'property_id': 'Template property is immutable.'})
+        return data
 
     def validate_steps(self, value):
         """Validate steps data"""
@@ -108,6 +121,8 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
 
 
 class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
+    property_id = serializers.CharField(source="property.property_id", read_only=True)
+    property_name = serializers.CharField(source="property.name", read_only=True)
     """Simplified serializer for listing maintenance tasks - Generic templates"""
     # steps_count and total_estimated_time removed - steps not used
     schedule_count = serializers.SerializerMethodField()
@@ -117,18 +132,22 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaintenanceProcedure
         fields = [
-            'id', 'name', 'group_id', 'category', 'frequency', 'estimated_duration',
+            'id', 'property_id', 'property_name', 'name', 'group_id', 'category', 'frequency', 'estimated_duration',
             'responsible_department', 'difficulty_level',
             'schedule_count', 'machine_ids', 'machines', 'created_at'
         ]
 
     def get_schedule_count(self, obj):
         """Get count of maintenance schedules for this task"""
-        return obj.maintenance_schedules.count()
+        request = self.context.get('request')
+        if request is None:
+            return 0
+        from ..pm_access import canonical_pm_queryset
+        return canonical_pm_queryset(request.user).filter(procedure_template=obj).count()
 
     def get_machine_ids(self, obj):
         """Return machine identifiers explicitly linked to this template."""
-        return list(obj.machines.values_list('machine_id', flat=True))
+        return [machine.machine_id for machine in visible_procedure_machines(obj, self.context)]
 
     def get_machines(self, obj):
         """Return lightweight machine details for filtering template concerns in clients."""
@@ -139,7 +158,7 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
                 'group_id': machine.group_id,
                 'property_id': machine.property_id,
             }
-            for machine in obj.machines.all()
+            for machine in visible_procedure_machines(obj, self.context)
         ]
 
 

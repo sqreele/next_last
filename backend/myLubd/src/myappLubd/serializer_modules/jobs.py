@@ -342,6 +342,8 @@ class JobSerializer(serializers.ModelSerializer):
             'procedure_template', instance.procedure_template if instance is not None else None,
         )
         if future_template:
+            if future_template.property_id != resolved_property.pk:
+                raise serializers.ValidationError({'procedure_template': 'Select a PM template owned by the active property.'})
             if not future_machine or not data.get('is_preventivemaintenance'):
                 raise serializers.ValidationError({
                     'procedure_template': 'PM templates require a machine preventive maintenance job.',

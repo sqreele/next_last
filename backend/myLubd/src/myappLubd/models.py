@@ -1014,6 +1014,12 @@ class PreventiveMaintenance(models.Model):
     def clean(self):
         super().clean()
         # Mark images as changed if they differ from the original
+        if self.procedure_template_id:
+            owner_id = self.procedure_template.property_id
+            if self.job_id and self.job.property_id != owner_id:
+                raise ValidationError({'procedure_template': 'Template must belong to the Job property.'})
+            if self.pk and self.machines.exclude(property_id=owner_id).exists():
+                raise ValidationError({'procedure_template': 'Template must belong to the machine property.'})
         if self.before_image != self._original_before_image:
             self._before_image_changed = True
         if self.after_image != self._original_after_image:
@@ -1923,6 +1929,8 @@ class Job(models.Model):
         super().clean()
         if self.machine_id and self.property_id != self.machine.property_id:
             raise ValidationError({'machine': 'Selected machine must belong to the Job property.'})
+        if self.procedure_template_id and self.procedure_template.property_id != self.property_id:
+            raise ValidationError({'procedure_template': 'Template must belong to the Job property.'})
         if self.property_id and self.area_id and self.area.property_id != self.property_id:
             raise ValidationError({
                 'area': 'Selected area must belong to the Job property.',
@@ -2363,6 +2371,19 @@ class Machine(models.Model):
     def __str__(self):
         return f"{self.name} ({self.machine_id})"
     
+    def validate_property_change(self, property_obj):
+        if not self.pk or property_obj is None:
+            return
+        original_property_id = type(self).objects.filter(pk=self.pk).values_list('property_id', flat=True).first()
+        if original_property_id == property_obj.pk:
+            return
+        if Job.all_objects.filter(machine=self).exists() or self.preventive_maintenances.exists() or self.pm_master_plans.exists():
+            raise ValidationError({'property': 'A machine with linked jobs or PM records cannot be moved to another property.'})
+
+    def clean(self):
+        super().clean()
+        self.validate_property_change(self.property if self.property_id else None)
+
     def save(self, *args, **kwargs):
         if not self.machine_id:
             timestamp = timezone.now().strftime('%y')
@@ -2400,6 +2421,22 @@ class Machine(models.Model):
 
 class MaintenanceProcedure(models.Model):
     """Model for storing detailed maintenance procedures / tasks (templates)"""
+
+    property = models.ForeignKey(
+        'Property', on_delete=models.PROTECT, related_name='maintenance_procedures',
+        null=True, help_text='Owning property. Legacy unassigned templates must be assigned before use.',
+    )
+
+    def clean(self):
+        super().clean()
+        if not self.property_id:
+            raise ValidationError({'property': 'Property is required.'})
+        if self.pk:
+            previous = type(self).objects.filter(pk=self.pk).values_list('property_id', flat=True).first()
+            if previous is not None and previous != self.property_id:
+                raise ValidationError({'property': 'Template property cannot be changed after assignment.'})
+            if self.machines.exclude(property_id=self.property_id).exists():
+                raise ValidationError({'property': 'Every linked machine must belong to the template property.'})
     
     # Equipment field removed - tasks are now generic templates
     
@@ -2622,7 +2659,12 @@ class MaintenanceProcedure(models.Model):
     def duplicate_procedure(self, new_name):
         """Create a duplicate of this procedure with a new name"""
         duplicate = MaintenanceProcedure.objects.create(
+            property=self.property,
             name=new_name,
+            group_id=self.group_id,
+            category=self.category,
+            frequency=self.frequency,
+            responsible_department=self.responsible_department,
             description=self.description,
             steps=self.steps.copy() if self.steps else [],
             estimated_duration=self.estimated_duration,
@@ -2630,6 +2672,7 @@ class MaintenanceProcedure(models.Model):
             safety_notes=self.safety_notes,
             difficulty_level=self.difficulty_level
         )
+        duplicate.machines.set(self.machines.all())
         return duplicate
 
 
@@ -2770,12 +2813,12 @@ class MaintenanceTaskImage(models.Model):
     
     def delete(self, *args, **kwargs):
         """Remove image file when model instance is deleted"""
-        if self.image_url:
+        if self.image_url and not type(self).objects.exclude(pk=self.pk).filter(image_url=self.image_url.name).exists():
             if os.path.isfile(self.image_url.path):
                 os.remove(self.image_url.path)
         
         # Remove JPEG version if exists
-        if self.jpeg_path:
+        if self.jpeg_path and not type(self).objects.exclude(pk=self.pk).filter(jpeg_path=self.jpeg_path).exists():
             jpeg_full_path = os.path.join(settings.MEDIA_ROOT, self.jpeg_path)
             if os.path.isfile(jpeg_full_path):
                 os.remove(jpeg_full_path)

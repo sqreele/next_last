@@ -8,15 +8,16 @@ from django.db.models import Count, Avg
 from ..models import MaintenanceProcedure
 from ..serializers import MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer
 from django_filters.rest_framework import DjangoFilterBackend
-from .common import IsPlatformSuperuser, MaintenancePagination
+from .common import MaintenancePagination
+from ..tenancy import get_accessible_properties, user_can_manage_pm_master, get_operable_properties
+from ..procedure_access import procedure_machine_prefetch
 
 
 class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
     """
     ViewSet for MaintenanceProcedure model.
     Provides CRUD operations for maintenance procedures and step management.
-    Note: Maintenance procedures are shared templates accessible to all users.
-    Only admin users can create, update, or delete procedures.
+    Templates belong to one property and use canonical membership grants.
     """
     serializer_class = MaintenanceProcedureSerializer
     pagination_class = MaintenancePagination
@@ -27,38 +28,37 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
     ordering = ['name']
     permission_classes = [IsAuthenticated]
 
-    def get_permissions(self):
-        shared_template_writes = {
-            'create', 'update', 'partial_update', 'destroy',
-            'add_step', 'update_step', 'delete_step', 'reorder_steps', 'duplicate',
-        }
-        if self.action in shared_template_writes:
-            return [IsPlatformSuperuser()]
-        return super().get_permissions()
-
     def get_queryset(self):
-        """
-        Return all maintenance procedures for all users (they are shared templates).
-        However, only admin users can create/update/delete them.
-        """
-        return MaintenanceProcedure.objects.prefetch_related('machines').all()
+        queryset = MaintenanceProcedure.objects.filter(
+            property__in=get_accessible_properties(self.request.user)
+        ).select_related('property').prefetch_related(procedure_machine_prefetch(self.request.user))
+        property_id = self.request.query_params.get('property_id')
+        if property_id:
+            queryset = queryset.filter(property__property_id=property_id)
+        return queryset
+
+    def _require_management(self, property_obj):
+        if not user_can_manage_pm_master(self.request.user, property_obj):
+            raise PermissionDenied('You cannot manage templates for this property.')
+        if not get_operable_properties(self.request.user).filter(pk=property_obj.pk).exists():
+            raise PermissionDenied('This property is not operable.')
+
+    def get_object(self):
+        instance = super().get_object()
+        if self.action not in {'retrieve', 'validate_procedure'}:
+            self._require_management(instance.property)
+        return instance
 
     def perform_create(self, serializer):
-        """Only the platform break-glass user can create shared procedures."""
-        if not self.request.user.is_superuser:
-            raise PermissionDenied("Only a platform superuser can create maintenance procedures")
+        self._require_management(serializer.validated_data['property'])
         serializer.save()
 
     def perform_update(self, serializer):
-        """Only the platform break-glass user can update shared procedures."""
-        if not self.request.user.is_superuser:
-            raise PermissionDenied("Only a platform superuser can update maintenance procedures")
+        self._require_management(serializer.instance.property)
         serializer.save()
 
     def perform_destroy(self, instance):
-        """Only the platform break-glass user can delete shared procedures."""
-        if not self.request.user.is_superuser:
-            raise PermissionDenied("Only a platform superuser can delete maintenance procedures")
+        self._require_management(instance.property)
         instance.delete()
 
     def get_serializer_class(self):
@@ -235,7 +235,9 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
 
         for procedure in queryset:
             if procedure.required_tools and tool_query.lower() in procedure.required_tools.lower():
-                matching_procedures.append(MaintenanceProcedureListSerializer(procedure).data)
+                matching_procedures.append(MaintenanceProcedureListSerializer(
+                    procedure, context=self.get_serializer_context()
+                ).data)
 
         return Response({
             'success': True,

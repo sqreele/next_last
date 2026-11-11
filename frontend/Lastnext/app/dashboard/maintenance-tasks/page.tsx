@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "@/app/lib/session.client";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/app/lib/stores/mainStore";
 import apiClient from "@/app/lib/api-client";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import { PageContainer } from "@/app/components/layout/PageContainer";
@@ -83,6 +84,7 @@ const difficultyColors: Record<string, string> = {
 };
 
 export default function MaintenanceTasksPage() {
+  const { selectedPropertyId } = useUser();
   const { status } = useSession();
   const router = useRouter();
 
@@ -112,6 +114,13 @@ export default function MaintenanceTasksPage() {
   const fetchTasks = useCallback(
     async (pageToLoad: number = page, pageSizeToUse: number = pageSize) => {
       const requestId = ++requestIdRef.current;
+      if (!selectedPropertyId) {
+        setTasks([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        setLoading(false);
+        return;
+      }
       const loaderGeneration = recordLoaderShown();
       setLoading(true);
       setError(null);
@@ -122,6 +131,7 @@ export default function MaintenanceTasksPage() {
             params: {
               page: pageToLoad,
               page_size: pageSizeToUse,
+              property_id: selectedPropertyId,
             },
           },
         );
@@ -203,7 +213,7 @@ export default function MaintenanceTasksPage() {
         }
       }
     },
-    [page, pageSize, recordLoaderShown, clearLoadingAfterMinTime],
+    [page, pageSize, selectedPropertyId, recordLoaderShown, clearLoadingAfterMinTime],
   );
 
   useEffect(() => {

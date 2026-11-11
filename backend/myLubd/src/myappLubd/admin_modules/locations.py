@@ -1,4 +1,5 @@
 """Locations definitions."""
+from .property_scope import OperationalPropertyAdminMixin
 from django.contrib import admin, messages
 from django.utils import timezone
 from django.db import transaction
@@ -15,7 +16,7 @@ from ..admin_modules.shared import CreatedAtMonthFilter
 
 
 @admin.register(Property)
-class PropertyAdmin(admin.ModelAdmin):
+class PropertyAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
     change_form_template = 'admin/myappLubd/property/change_form.html'
@@ -445,7 +446,7 @@ class RoomAdminForm(forms.ModelForm):
 
 
 @admin.register(Room)
-class RoomAdmin(admin.ModelAdmin):
+class RoomAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     form = RoomAdminForm
     list_per_page = 25
     list_display = ['name', 'property', 'room_type', 'is_active', 'created_at']
@@ -562,7 +563,7 @@ class TopicAdmin(admin.ModelAdmin):
 
 
 @admin.register(Area)
-class AreaAdmin(admin.ModelAdmin):
+class AreaAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = ['id', 'name', 'property', 'is_active', 'created_at', 'updated_at']
     list_filter = ['is_active', 'property', 'created_at']
@@ -583,7 +584,7 @@ class AreaAdmin(admin.ModelAdmin):
 
 
 @admin.register(JobComment)
-class JobCommentAdmin(admin.ModelAdmin):
+class JobCommentAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = ['id', 'job', 'author', 'short_comment', 'created_at']
     list_filter = ['created_at', 'updated_at']

@@ -1,4 +1,5 @@
 """Utilities definitions."""
+from .property_scope import OperationalPropertyAdminMixin
 from django.contrib import admin
 from django.utils import timezone
 from django.http import HttpResponse
@@ -8,7 +9,7 @@ from ..admin_modules.shared import CreatedAtMonthFilter
 
 
 @admin.register(UtilityConsumption)
-class UtilityConsumptionAdmin(admin.ModelAdmin):
+class UtilityConsumptionAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     ordering = ['year', 'month', 'property']
     list_display = [

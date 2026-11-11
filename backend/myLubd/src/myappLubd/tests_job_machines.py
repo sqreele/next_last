@@ -127,7 +127,7 @@ class JobMachineTests(APITestCase):
         self.assertFalse(response.data['is_defective'])
 
     def test_pm_template_requires_linked_machine_and_pm_category(self):
-        template = MaintenanceProcedure.objects.create(name='Pump PM', description='Inspect pump')
+        template = MaintenanceProcedure.objects.create(property=self.property, name='Pump PM', description='Inspect pump')
         template.machines.add(self.machine)
         other_machine = Machine.objects.create(
             property=self.property, name='Second pump', machine_id='PUMP-002',
@@ -212,7 +212,7 @@ class JobMachineTests(APITestCase):
         self.assertEqual(self.client.get(f"/api/v1/jobs/{second.data['job_id']}/documents/{document_id}/").status_code, 404)
 
     def test_completed_pm_with_documents_and_photos_calculates_next_date(self):
-        template = MaintenanceProcedure.objects.create(
+        template = MaintenanceProcedure.objects.create(property=self.property,
             name='Monthly pump inspection', description='Check pump', frequency='monthly',
         )
         template.machines.add(self.machine)
@@ -245,7 +245,7 @@ class JobMachineTests(APITestCase):
             ('Annual inspection', 'annual', datetime(2028, 1, 31, tzinfo=datetime_timezone.utc)),
             ('Weekly check', 'weekly', datetime(2028, 2, 1, tzinfo=datetime_timezone.utc)),
         ):
-            template = MaintenanceProcedure.objects.create(name=name, description=name, frequency=frequency)
+            template = MaintenanceProcedure.objects.create(property=self.property, name=name, description=name, frequency=frequency)
             template.machines.add(self.machine)
             response = self.create_job(category='PM', procedure_template=template.pk)
             self.assertEqual(response.status_code, 201, response.data)
@@ -255,7 +255,7 @@ class JobMachineTests(APITestCase):
     def test_legacy_machine_date_and_linked_template_produce_next_pm(self):
         self.machine.last_maintenance_date = datetime(2028, 1, 31, tzinfo=datetime_timezone.utc)
         self.machine.save(update_fields=['last_maintenance_date'])
-        template = MaintenanceProcedure.objects.create(name='Legacy monthly', description='Inspect', frequency='monthly')
+        template = MaintenanceProcedure.objects.create(property=self.property, name='Legacy monthly', description='Inspect', frequency='monthly')
         template.machines.add(self.machine)
         self.assertEqual(self.machine.get_next_maintenance_date(), datetime(2028, 2, 29, tzinfo=datetime_timezone.utc))
 

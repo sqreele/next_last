@@ -1,5 +1,7 @@
 """Preventive Maintenance definitions."""
+from .property_scope import OperationalPropertyAdminMixin
 from django.contrib import admin
+from django import forms
 from django.utils.html import format_html
 from django.utils import timezone
 from django.db.models import Count
@@ -13,8 +15,30 @@ from ..models import PreventiveMaintenance, PMMasterPlan
 from ..admin_modules.shared import ScheduledDateMonthFilter, CompletedDateMonthFilter, DueDateMonthFilter
 
 
+class PMMasterPlanAdminForm(forms.ModelForm):
+    class Meta:
+        model = PMMasterPlan
+        fields = '__all__'
+
+    def clean(self):
+        data = super().clean()
+        machines = list(data.get('machines', []))
+        property_ids = {machine.property_id for machine in machines}
+        template = data.get('procedure_template')
+        if template and property_ids != {template.property_id}:
+            self.add_error('procedure_template', 'Template must belong to the plan property.')
+        if len(property_ids) != 1:
+            self.add_error('machines', 'Select at least one machine, all from the same property.')
+        assigned_to = data.get('assigned_to')
+        if assigned_to and len(property_ids) == 1:
+            from ..tenancy import get_accessible_properties
+            if not get_accessible_properties(assigned_to).filter(pk=next(iter(property_ids))).exists():
+                self.add_error('assigned_to', 'Assigned user must have access to the plan property.')
+        return data
+
+
 @admin.register(PreventiveMaintenance)
-class PreventiveMaintenanceAdmin(admin.ModelAdmin):
+class PreventiveMaintenanceAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = (
         'pm_id',
@@ -495,8 +519,10 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
 
 
 @admin.register(PMMasterPlan)
-class PMMasterPlanAdmin(admin.ModelAdmin):
+class PMMasterPlanAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     """Manage recurring PM rules separately from generated PM work records."""
+
+    form = PMMasterPlanAdminForm
 
     list_per_page = 25
     list_display = (

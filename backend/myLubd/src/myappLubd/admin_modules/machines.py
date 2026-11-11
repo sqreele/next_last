@@ -1,4 +1,5 @@
 """Machines administration."""
+from .property_scope import OperationalPropertyAdminMixin
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
@@ -40,9 +41,21 @@ class MachineAdminForm(forms.ModelForm):
                 key=str.casefold,
             )
 
+    def clean(self):
+        data = super().clean()
+        property_obj = data.get('property')
+        if property_obj is None:
+            return data
+        from ..serializer_modules.pm_list import get_pm_property
+        for pm in data.get('preventive_maintenances', []):
+            if get_pm_property(pm) != property_obj:
+                self.add_error('preventive_maintenances', 'Every maintenance record must belong to the machine property.')
+                break
+        return data
+
 
 @admin.register(Machine)
-class MachineAdmin(admin.ModelAdmin):
+class MachineAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     form = MachineAdminForm
     list_per_page = 25
     list_display = [

@@ -1,20 +1,37 @@
 """Procedures definitions."""
 from django.contrib import admin
+from django import forms
 from django.utils.html import format_html
 from django.utils import timezone
 from django.http import HttpResponse
 import csv
 from ..models import MaintenanceProcedure, MaintenanceTaskImage, MaintenanceChecklist, MaintenanceHistory, MaintenanceSchedule
 from ..admin_modules.shared import CreatedAtMonthFilter, UploadedAtMonthFilter, CompletedAtMonthFilter, TimestampMonthFilter, NextOccurrenceMonthFilter, LastOccurrenceMonthFilter
+from .property_scope import OperationalPropertyAdminMixin, MaintenanceChildAdminMixin
+from ..procedure_access import procedure_machine_prefetch
+
+
+class MaintenanceProcedureAdminForm(forms.ModelForm):
+    class Meta:
+        model = MaintenanceProcedure
+        fields = '__all__'
+
+    def clean(self):
+        data = super().clean()
+        property_obj = data.get('property')
+        if property_obj and any(machine.property_id != property_obj.pk for machine in data.get('machines', [])):
+            self.add_error('machines', 'Every machine must belong to the template property.')
+        return data
 
 
 @admin.register(MaintenanceProcedure)
-class MaintenanceProcedureAdmin(admin.ModelAdmin):
+class MaintenanceProcedureAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
+    form = MaintenanceProcedureAdminForm
     list_per_page = 25
-    list_display = ['name', 'group_id', 'category', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'machine_count', 'created_at']
-    list_filter = ['group_id', 'category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at', CreatedAtMonthFilter]
+    list_display = ['name', 'property', 'group_id', 'category', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'machine_count', 'created_at']
+    list_filter = ['property', 'group_id', 'category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at', CreatedAtMonthFilter]
     search_fields = ['name', 'group_id', 'category', 'description']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at', 'visible_machines_display']
 
     def _machines_field_accessible(self):
         """Check if machines field/table is accessible"""
@@ -46,7 +63,7 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
         """Get fieldsets, conditionally including machines field"""
         fieldsets = [
             ('Task Information', {
-                'fields': ('name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration')
+                'fields': ('property', 'name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration')
             }),
             ('Responsibility', {
                 'fields': ('responsible_department', 'difficulty_level')
@@ -69,7 +86,7 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
         if self._machines_field_accessible():
             fieldsets.insert(2, ('Related Machines', {
                 'fields': ('machines',),
-                'description': 'Select the machines (equipment) that use this maintenance procedure template'
+                'description': 'Save the owning Property first, then select machines from that Property.'
             }))
 
         return fieldsets
@@ -77,7 +94,7 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
     def machine_count(self, obj):
         """Display the number of machines using this procedure"""
         try:
-            return obj.machines.count()
+            return len(obj._visible_machines)
         except (AttributeError, Exception) as e:
             # Handle case where migration hasn't been applied or table doesn't exist
             import logging
@@ -85,12 +102,30 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
             logger.warning(f"Could not count machines for maintenance procedure {obj.id}: {e}")
             return 0
     machine_count.short_description = 'Machines'
-    machine_count.admin_order_field = 'machines__count'
+
+    @admin.display(description='Properties using template')
+    def properties_display(self, obj):
+        return ', '.join(sorted({machine.property.name for machine in obj._visible_machines})) or '—'
+
+    @admin.display(description='Related Machines')
+    def visible_machines_display(self, obj):
+        return ', '.join(f'{machine.name} ({machine.machine_id})' for machine in obj._visible_machines) or '—'
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == 'machines':
+            from ..tenancy import get_accessible_machines
+            machines = get_accessible_machines(request.user)
+            property_pk = request.POST.get('property') or request.GET.get('property')
+            object_id = getattr(getattr(request, 'resolver_match', None), 'kwargs', {}).get('object_id')
+            if not property_pk and object_id:
+                property_pk = self.get_queryset(request).filter(pk=object_id).values_list('property_id', flat=True).first()
+            kwargs['queryset'] = machines.filter(property_id=property_pk) if property_pk else machines.none()
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
 
     def get_queryset(self, request):
         """Get queryset with optimizations, handling potential migration issues"""
         try:
-            return super().get_queryset(request).prefetch_related('machines')
+            return super().get_queryset(request).select_related('property').prefetch_related(procedure_machine_prefetch(request.user))
         except Exception as e:
             # Fallback if machines relationship doesn't exist yet
             import logging
@@ -103,7 +138,7 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
     def export_maintenance_procedures_csv(self, request, queryset):
         """Export selected/filtered maintenance procedures to CSV"""
         try:
-            qs = queryset.prefetch_related('machines').order_by('name')
+            qs = queryset.prefetch_related(None).prefetch_related(procedure_machine_prefetch(request.user)).order_by('name')
         except Exception:
             qs = queryset.order_by('name')
 
@@ -115,6 +150,8 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
         writer.writerow([
             'ID',
+            'Property ID',
+            'Property',
             'Name',
             'Group ID',
             'Category',
@@ -133,14 +170,16 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
 
         for proc in qs:
             try:
-                machines = ", ".join([f"{m.name} ({m.machine_id})" for m in proc.machines.all()])
-                machine_count = proc.machines.count()
+                machines = ", ".join([f"{m.name} ({m.machine_id})" for m in proc._visible_machines])
+                machine_count = len(proc._visible_machines)
             except Exception:
                 machines = ''
                 machine_count = 0
 
             writer.writerow([
                 proc.id,
+                proc.property.property_id if proc.property_id else '',
+                proc.property.name if proc.property_id else '',
                 proc.name or '',
                 proc.group_id or '',
                 proc.category or '',
@@ -162,11 +201,11 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
 
 
 @admin.register(MaintenanceTaskImage)
-class MaintenanceTaskImageAdmin(admin.ModelAdmin):
+class MaintenanceTaskImageAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = ['id', 'task', 'image_type', 'image_preview', 'uploaded_by', 'uploaded_at']
     list_filter = ['image_type', 'uploaded_at', UploadedAtMonthFilter, 'task']
-    search_fields = ['task__name', 'task__equipment__name']
+    search_fields = ['task__name']
     readonly_fields = ['uploaded_at', 'jpeg_path', 'image_preview_large']
     raw_id_fields = ['task', 'uploaded_by']
 
@@ -241,7 +280,7 @@ class MaintenanceTaskImageAdmin(admin.ModelAdmin):
 
 
 @admin.register(MaintenanceChecklist)
-class MaintenanceChecklistAdmin(admin.ModelAdmin):
+class MaintenanceChecklistAdmin(MaintenanceChildAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = ['maintenance', 'item', 'is_completed', 'completed_by', 'completed_at', 'order']
     list_filter = ['is_completed', 'completed_at', CompletedAtMonthFilter, 'order']
@@ -301,7 +340,7 @@ class MaintenanceChecklistAdmin(admin.ModelAdmin):
 
 
 @admin.register(MaintenanceHistory)
-class MaintenanceHistoryAdmin(admin.ModelAdmin):
+class MaintenanceHistoryAdmin(MaintenanceChildAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = ['maintenance', 'action', 'performed_by', 'timestamp']
     list_filter = ['action', 'timestamp', TimestampMonthFilter, 'performed_by']
@@ -357,7 +396,7 @@ class MaintenanceHistoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(MaintenanceSchedule)
-class MaintenanceScheduleAdmin(admin.ModelAdmin):
+class MaintenanceScheduleAdmin(MaintenanceChildAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = ['maintenance', 'is_recurring', 'next_occurrence', 'last_occurrence', 'total_occurrences', 'is_active']
     list_filter = ['is_recurring', 'is_active', 'next_occurrence', NextOccurrenceMonthFilter, 'last_occurrence', LastOccurrenceMonthFilter]

@@ -27,6 +27,7 @@ import {
   fetchAllMaintenanceProcedures,
   type MaintenanceProcedureTemplate,
 } from "@/app/lib/maintenanceProcedures";
+import { useUser } from "@/app/lib/stores/mainStore";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 interface FormState {
@@ -63,6 +64,7 @@ type MaintenanceTaskOption = {
 };
 
 export default function EditPreventiveMaintenancePage() {
+  const { selectedPropertyId } = useUser();
   const t = useT();
   const router = useRouter();
   const params = useParams();
@@ -115,7 +117,7 @@ export default function EditPreventiveMaintenancePage() {
     const fetchAvailableMaintenanceTasks = async () => {
       setLoadingMaintenanceTasks(true);
       try {
-        const tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+        const tasks = await fetchAllMaintenanceProcedures({ pageSize: 100, propertyId: selectedPropertyId });
         setAvailableMaintenanceTasks(
           tasks.map<MaintenanceTaskOption>(
             (task: MaintenanceProcedureTemplate) => ({
@@ -136,7 +138,7 @@ export default function EditPreventiveMaintenancePage() {
       }
     };
     fetchAvailableMaintenanceTasks();
-  }, []);
+  }, [selectedPropertyId]);
 
   // Load maintenance data
   useEffect(() => {

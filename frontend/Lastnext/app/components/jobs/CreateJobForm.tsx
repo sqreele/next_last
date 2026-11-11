@@ -658,7 +658,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       setAreas(propertyAreas);
       setMachines(machinesResponse.data || []);
       setFloors(deriveFloorsFromRooms(initialRooms));
-      const templates = await fetchAllMaintenanceProcedures();
+      const templates = await fetchAllMaintenanceProcedures({ propertyId: activePropertyId });
       if (requestId !== dataRequestIdRef.current) return;
       setPmTemplates(templates);
 

@@ -186,7 +186,7 @@ class MachineDateQueryTests(TestCase):
         tenant = Tenant.objects.create(name='Batch dates')
         property_obj = Property.objects.create(name='Batch hotel', tenant=tenant)
         user = get_user_model().objects.create_user(username='batch-dates')
-        template = MaintenanceProcedure.objects.create(name='Weekly', description='Inspect', frequency='weekly')
+        template = MaintenanceProcedure.objects.create(property=property_obj, name='Weekly', description='Inspect', frequency='weekly')
         completed_at = timezone.now()
         machines = [Machine.objects.create(name=f'Pump {index}', property=property_obj) for index in range(8)]
         template.machines.set(machines)

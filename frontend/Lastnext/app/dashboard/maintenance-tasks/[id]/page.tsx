@@ -203,7 +203,7 @@ export default function MaintenanceTaskDetailPage({
     try {
       const response = await apiClient.get<MaintenanceTask>(
         `/api/v1/maintenance-procedures/${unwrappedParams.id}/`,
-        { signal },
+        { signal, params: { property_id: selectedProperty } },
       );
       if (requestId !== taskRequestRef.current) return;
       setTask(response.data);
@@ -222,6 +222,7 @@ export default function MaintenanceTaskDetailPage({
     }
   }, [
     unwrappedParams.id,
+    selectedProperty,
     fetchMaintenanceHistory,
     recordLoaderShown,
     clearLoadingAfterMinTime,

@@ -32,7 +32,7 @@ def get_next_maintenance_dates(machines):
     completed = Job.objects.filter(
         machine_id__in=dates, status='completed', is_preventivemaintenance=True,
         completed_at__isnull=False, procedure_template__isnull=False,
-        procedure_template__machines=F('machine_id'),
+        procedure_template__machines=F('machine_id'), procedure_template__property_id=F('property_id'),
     ).values('machine_id', 'procedure_template_id').annotate(last_completed=Max('completed_at'))
     for row in completed:
         completions[(row['machine_id'], row['procedure_template_id'])] = row['last_completed']
@@ -45,7 +45,7 @@ def get_next_maintenance_dates(machines):
         record(row['machines__pk'], row['due'])
 
     baselines = {machine.pk: machine.last_maintenance_date for machine in machines}
-    templates = MaintenanceProcedure.objects.filter(machines__pk__in=dates).values(
+    templates = MaintenanceProcedure.objects.filter(machines__pk__in=dates, property_id=F('machines__property_id')).values(
         'id', 'machines__pk', 'frequency',
     )
     for row in templates:

@@ -69,7 +69,7 @@ class MachineDetailSerializer(serializers.ModelSerializer):
             if not hasattr(obj, 'maintenance_procedures'):
                 return []
 
-            procedures = obj.maintenance_procedures.all()
+            procedures = obj.maintenance_procedures.filter(property_id=obj.property_id)
             return [
                 {
                     'id': proc.id,

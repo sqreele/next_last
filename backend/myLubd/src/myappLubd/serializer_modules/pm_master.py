@@ -130,6 +130,9 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
                 })
 
         assigned_to = data.get('assigned_to', getattr(self.instance, 'assigned_to', None))
+        template = data.get('procedure_template', getattr(self.instance, 'procedure_template', None))
+        if template and machines and template.property_id != machines[0].property_id:
+            raise serializers.ValidationError({'procedure_template': 'Template must belong to the plan property.'})
         if assigned_to is not None and machines:
             if not get_accessible_properties(assigned_to).filter(pk=machines[0].property_id).exists():
                 raise serializers.ValidationError({

@@ -18,7 +18,19 @@ from django.db import transaction
 from django.db.models.signals import m2m_changed, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import Inventory, InventoryCategory, Job, JobComment, Room, Tenant
+from .models import Inventory, InventoryCategory, Job, JobComment, Room, Tenant, MaintenanceProcedure
+
+
+@receiver(m2m_changed, sender=MaintenanceProcedure.machines.through)
+def _enforce_template_machine_property(sender, instance, action, reverse, pk_set, **kwargs):
+    if action != 'pre_add' or not pk_set:
+        return
+    if reverse:
+        invalid = MaintenanceProcedure.objects.filter(pk__in=pk_set).exclude(property_id=instance.property_id).exists()
+    else:
+        invalid = not instance.property_id or instance.machines.model.objects.filter(pk__in=pk_set).exclude(property_id=instance.property_id).exists()
+    if invalid:
+        raise ValidationError('Every machine must belong to the template property.')
 
 
 @receiver(post_save, sender=Tenant)

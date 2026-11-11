@@ -115,6 +115,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [loadingCapability, setLoadingCapability] = useState(false);
   const [propertyTimezone, setPropertyTimezone] = useState<string | null>(null);
   const machineRequestRef = useRef(0);
+  const templateRequestRef = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -558,6 +559,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   // Fetch available maintenance tasks (templates) - filtered by selected machines
   const fetchAvailableMaintenanceTasks = useCallback(
     async (machineIds?: string[]) => {
+      const requestId = ++templateRequestRef.current;
+      setAvailableMaintenanceTasks([]);
       const mergeTemplatesById = (
         templates: MaintenanceProcedureTemplate[],
       ): MaintenanceProcedureTemplate[] => {
@@ -623,7 +626,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
           // Fetch all available tasks
           const allTasks = await fetchAllMaintenanceProcedures({
-            pageSize: 100,
+            pageSize: 100, propertyId: selectedProperty,
           });
 
           // Log all tasks to show their group_ids for debugging
@@ -671,9 +674,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           }
         } else {
           // No machines selected, show all tasks
-          tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+          tasks = await fetchAllMaintenanceProcedures({ pageSize: 100, propertyId: selectedProperty });
         }
 
+        if (requestId !== templateRequestRef.current) return;
         setAvailableMaintenanceTasks(
           tasks.map<MaintenanceTaskOption>(
             (task: MaintenanceProcedureTemplate) => ({
@@ -691,13 +695,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           ),
         );
       } catch (err: any) {
+        if (requestId !== templateRequestRef.current) return;
         console.error("Error fetching maintenance tasks:", err);
         setAvailableMaintenanceTasks([]);
       } finally {
-        setLoadingMaintenanceTasks(false);
+        if (requestId === templateRequestRef.current) setLoadingMaintenanceTasks(false);
       }
     },
-    [],
+    [selectedProperty],
   );
 
   // Handle property ID changes and fetch machines

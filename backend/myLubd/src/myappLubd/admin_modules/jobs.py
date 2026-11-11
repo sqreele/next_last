@@ -2,6 +2,7 @@
 from ..room_names import floor_from_room_name
 import os
 import re
+from .property_scope import OperationalPropertyAdminMixin
 from django.contrib import admin, messages
 from django.utils.html import format_html, format_html_join
 from django.utils import timezone
@@ -16,6 +17,7 @@ import csv
 from io import BytesIO
 from ..models import Property, Room, Topic, Job, DeletedJob, JobImage, Area
 from ..admin_job_summary import build_missing_rooms_summary
+from ..tenancy import get_accessible_properties
 from .shared import CreatedAtBeforeYearFilter, CreatedAtMonthFilter, UpdatedAtMonthFilter, UploadedAtMonthFilter, _absolute_file_url, _excel_image_for_export, _image_export_note, _spreadsheet_image_formula
 
 
@@ -85,7 +87,7 @@ class PropertyFilter(admin.SimpleListFilter):
     parameter_name = 'property'
 
     def lookups(self, request, model_admin):
-        return [(str(p.id), p.name) for p in Property.objects.all().order_by('name')]
+        return [(str(p.id), p.name) for p in get_accessible_properties(getattr(request, 'user', None)).order_by('name')]
 
     def queryset(self, request, queryset):
         if self.value():
@@ -98,7 +100,9 @@ class AreaFilter(admin.SimpleListFilter):
     parameter_name = 'area'
 
     def lookups(self, request, model_admin):
-        areas_queryset = Area.objects.select_related('property').filter(jobs__isnull=False)
+        areas_queryset = Area.objects.select_related('property').filter(
+            property__in=get_accessible_properties(getattr(request, 'user', None)), jobs__isnull=False
+        )
 
         selected_property = request.GET.get('property')
         if selected_property:
@@ -120,7 +124,9 @@ class FloorFilter(admin.SimpleListFilter):
     parameter_name = 'floor'
 
     def lookups(self, request, model_admin):
-        rooms_queryset = Room.objects.filter(jobs__isnull=False)
+        rooms_queryset = Room.objects.filter(
+            property__in=get_accessible_properties(getattr(request, 'user', None)), jobs__isnull=False
+        )
 
         selected_property = request.GET.get('property')
         if selected_property:
@@ -150,7 +156,9 @@ class RoomFilter(admin.SimpleListFilter):
     parameter_name = 'room'
 
     def lookups(self, request, model_admin):
-        jobs_queryset = Job.objects.all()
+        jobs_queryset = model_admin.get_queryset(request) if model_admin else Job.objects.filter(
+            property__in=get_accessible_properties(getattr(request, 'user', None))
+        )
 
         selected_topic = request.GET.get('topic')
         if selected_topic:
@@ -227,7 +235,7 @@ class JobImagePropertyFilter(admin.SimpleListFilter):
     parameter_name = 'property'
 
     def lookups(self, request, model_admin):
-        return [(str(p.id), p.name) for p in Property.objects.all().order_by('name')]
+        return [(str(p.id), p.name) for p in get_accessible_properties(getattr(request, 'user', None)).order_by('name')]
 
     def queryset(self, request, queryset):
         if self.value():
@@ -240,7 +248,7 @@ class JobImageRoomFilter(admin.SimpleListFilter):
     parameter_name = 'room'
 
     def lookups(self, request, model_admin):
-        return [(str(r.room_id), r.name) for r in Room.objects.all().order_by('name')]
+        return [(str(r.room_id), r.name) for r in Room.objects.filter(property__in=get_accessible_properties(getattr(request, 'user', None))).order_by('name')]
 
     def queryset(self, request, queryset):
         if self.value():
@@ -262,7 +270,7 @@ class JobImageTopicFilter(admin.SimpleListFilter):
 
 
 @admin.register(Job)
-class JobAdmin(admin.ModelAdmin):
+class JobAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     form = JobAdminForm
     ordering = ['-job_id']
@@ -1536,7 +1544,7 @@ class JobAdmin(admin.ModelAdmin):
 
 
 @admin.register(DeletedJob)
-class DeletedJobAdmin(admin.ModelAdmin):
+class DeletedJobAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     """Read-only trash with an explicit recovery action."""
 
     list_per_page = 25
@@ -1595,7 +1603,7 @@ class DeletedJobAdmin(admin.ModelAdmin):
 
 
 @admin.register(JobImage)
-class JobImageAdmin(admin.ModelAdmin):
+class JobImageAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin):
     list_per_page = 25
     list_display = ('image_preview', 'job_link', 'uploaded_by', 'uploaded_at')
     list_filter = (

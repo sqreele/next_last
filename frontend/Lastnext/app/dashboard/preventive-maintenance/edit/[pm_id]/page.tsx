@@ -1,5 +1,7 @@
 // app/dashboard/preventive-maintenance/edit/[pm_id]/page.tsx
 "use client";
+import { toAppDateTimeInput, appDateTimeInputToISO, nextAppScheduleDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -64,6 +66,7 @@ type MaintenanceTaskOption = {
 };
 
 export default function EditPreventiveMaintenancePage() {
+  const appTimeZone = useAppTimeZone();
   const { selectedPropertyId } = useUser();
   const t = useT();
   const router = useRouter();
@@ -156,7 +159,6 @@ export default function EditPreventiveMaintenancePage() {
 
           if (data) {
             setMaintenance(data);
-            populateForm(data);
           } else {
             console.error(
               "[EDIT FORM] No maintenance data returned for PM ID:",
@@ -189,97 +191,20 @@ export default function EditPreventiveMaintenancePage() {
   }, [pmId, fetchMaintenanceById]);
 
   // Helper to convert Date to datetime-local format
-  const formatDateTimeLocal = useCallback((date: Date): string => {
-    if (isNaN(date.getTime())) return "";
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  }, []);
+  const formatDateTimeLocal = useCallback(
+    (date: Date): string => toAppDateTimeInput(date, appTimeZone),
+    [appTimeZone],
+  );
 
   const calculateNextScheduledDate = (
-    frequency: FrequencyType,
-    customDays: number | null,
-    baseDate: Date,
-  ): Date => {
-    const nextDate = new Date(baseDate);
-
-    switch (frequency) {
-      case "daily":
-        nextDate.setDate(nextDate.getDate() + 1);
-        break;
-      case "weekly":
-        nextDate.setDate(nextDate.getDate() + 7);
-        break;
-      case "monthly":
-        nextDate.setMonth(nextDate.getMonth() + 1);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-        break;
-      case "quarterly":
-        nextDate.setMonth(nextDate.getMonth() + 3);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-        break;
-      case "semi_annual":
-        nextDate.setMonth(nextDate.getMonth() + 6);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-        break;
-      case "annual":
-        nextDate.setFullYear(nextDate.getFullYear() + 1);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-        break;
-      case "custom":
-        if (customDays && customDays > 0) {
-          nextDate.setDate(nextDate.getDate() + customDays);
-        } else {
-          nextDate.setMonth(nextDate.getMonth() + 1);
-          if (nextDate.getDate() !== baseDate.getDate()) {
-            nextDate.setDate(0);
-          }
-        }
-        break;
-      default:
-        nextDate.setMonth(nextDate.getMonth() + 1);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-    }
-
-    return nextDate;
-  };
+    frequency: FrequencyType, customDays: number | null, baseDate: Date,
+  ): Date => nextAppScheduleDate(baseDate, frequency, customDays, appTimeZone);
 
   // Populate form with existing data
-  const populateForm = (data: PreventiveMaintenance) => {
+  const populateForm = useCallback((data: PreventiveMaintenance) => {
     // Helper function to convert ISO datetime to datetime-local format
-    const convertToDateTimeLocal = (
-      isoString: string | null | undefined,
-    ): string => {
-      if (!isoString) return "";
-      try {
-        const date = new Date(isoString);
-        if (isNaN(date.getTime())) return "";
-
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        const hours = String(date.getHours()).padStart(2, "0");
-        const minutes = String(date.getMinutes()).padStart(2, "0");
-
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
-      } catch (error) {
-        console.error("Error converting date:", error);
-        return "";
-      }
-    };
+    const convertToDateTimeLocal = (value?: string | null): string =>
+      value ? toAppDateTimeInput(value, appTimeZone) : "";
 
     // Fix image URLs before setting them
     const fixedBeforeImageUrl = data.before_image_url
@@ -315,7 +240,11 @@ export default function EditPreventiveMaintenancePage() {
       before_image_preview: fixedBeforeImageUrl,
       after_image_preview: fixedAfterImageUrl,
     });
-  };
+  }, [appTimeZone]);
+
+  useEffect(() => {
+    if (maintenance) populateForm(maintenance);
+  }, [maintenance, populateForm]);
 
   useEffect(() => {
     if (!completeRequested || !maintenance || hasAppliedCompletionRef.current) {
@@ -460,38 +389,8 @@ export default function EditPreventiveMaintenancePage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Helper function to convert datetime-local to Django-compatible format
-  const convertDateTimeForBackend = (dateTimeLocal: string): string => {
-    if (!dateTimeLocal) return "";
-
-    try {
-      // If it's already in the right format (YYYY-MM-DDTHH:mm), return as is
-      if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
-        return dateTimeLocal;
-      }
-
-      // If it's a date only (YYYY-MM-DD), add default time
-      if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        return `${dateTimeLocal}T09:00`;
-      }
-
-      // Try to parse and convert
-      const date = new Date(dateTimeLocal);
-      if (!isNaN(date.getTime())) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        const hours = String(date.getHours()).padStart(2, "0");
-        const minutes = String(date.getMinutes()).padStart(2, "0");
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
-      }
-
-      return dateTimeLocal;
-    } catch (error) {
-      console.error("Error converting date:", error);
-      return dateTimeLocal;
-    }
-  };
+  const convertDateTimeForBackend = (value: string): string =>
+    appDateTimeInputToISO(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T09:00` : value, appTimeZone);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -512,7 +411,7 @@ export default function EditPreventiveMaintenancePage() {
         ? convertDateTimeForBackend(completionValue)
         : undefined;
       const parsedCompletionDate = completionValue
-        ? new Date(completionValue)
+        ? new Date(convertDateTimeForBackend(completionValue))
         : new Date();
       const baseCompletionDate = isNaN(parsedCompletionDate.getTime())
         ? new Date()

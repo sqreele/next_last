@@ -1,4 +1,7 @@
 "use client";
+import { appDateKey, formatAppDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
@@ -63,6 +66,7 @@ export function RoomMaintenanceHistory({
   jobs,
   className,
 }: RoomMaintenanceHistoryProps) {
+  const appTimeZone = useAppTimeZone();
   const [filter, setFilter] = useState<HistoryFilter>("all");
 
   const stats = useMemo(() => {
@@ -100,7 +104,7 @@ export function RoomMaintenanceHistory({
     jobs.forEach((j) => {
       const d = new Date(j.created_at);
       if (Number.isNaN(d.getTime())) return;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const key = appDateKey(j.created_at, appTimeZone).slice(0, 7);
       byMonth.set(key, (byMonth.get(key) || 0) + 1);
     });
     const monthEntries = Array.from(byMonth.entries()).sort(([a], [b]) =>
@@ -119,7 +123,7 @@ export function RoomMaintenanceHistory({
       monthEntries,
       monthMax,
     };
-  }, [jobs]);
+  }, [jobs, appTimeZone]);
 
   const filtered = useMemo(() => {
     const base = [...jobs].sort((a, b) => {
@@ -185,11 +189,9 @@ export function RoomMaintenanceHistory({
               </p>
               <p className="text-sm font-bold text-foreground">
                 {stats.lastService
-                  ? new Date(stats.lastService).toLocaleDateString("en-US", {
-                      month: "short",
+                  ? formatAppDate(stats.lastService, "en-US", { timeZone: appTimeZone, month: "short",
                       day: "numeric",
-                      year: "numeric",
-                    })
+                      year: "numeric", })
                   : "No completed jobs yet"}
               </p>
             </div>
@@ -338,14 +340,9 @@ export function RoomMaintenanceHistory({
                         </p>
                         <p className="text-xs font-semibold text-muted-foreground">
                           #{job.job_id} ·{" "}
-                          {new Date(job.created_at).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
+                          {formatAppDate(job.created_at, "en-US", { timeZone: appTimeZone, month: "short",
                               day: "numeric",
-                              year: "numeric",
-                            },
-                          )}
+                              year: "numeric", })}
                           {responseDays !== null && (
                             <> · resolved in {responseDays}d</>
                           )}

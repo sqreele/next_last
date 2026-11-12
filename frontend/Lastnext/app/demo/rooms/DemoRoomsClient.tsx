@@ -1,4 +1,6 @@
 "use client";
+import { DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -13,6 +15,7 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 
 export default function DemoRoomsClient() {
+  const appTimeZone = DEFAULT_APP_TIME_ZONE;
   const { snapshot, loading, error, refresh } = useDemo();
   const { language, text } = useDemoLanguage();
   const params = useSearchParams();
@@ -41,7 +44,7 @@ export default function DemoRoomsClient() {
           <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase text-teal-700">{text("ประวัติห้อง", "Room history")}</p><h2 className="mt-1 text-2xl font-bold">{text("ห้อง", "Room")} {selected}</h2></div><Button variant="outline" onClick={() => router.push("/demo/rooms/")}>{text("ล้างห้องที่เลือก", "Clear selection")}</Button></div>
           <div className="my-5 grid grid-cols-3 gap-2">{[[text("ทั้งหมด", "Total"), roomJobs.length], [text("งานเปิด", "Open"), open], [text("งาน PMM", "PMM jobs"), roomJobs.filter((job) => job.is_preventive_maintenance).length]].map(([label, value]) => <div key={label} className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-xl font-bold">{value}</p></div>)}</div>
           <label className="mb-5 block text-sm font-medium">{text("ประเภทงาน", "Work type")}<select value={kind} onChange={(event) => setKind(event.target.value)} className="ml-3 h-11 rounded-lg border bg-white px-3"><option value="all">{text("ทุกงาน", "All jobs")}</option><option value="pm">{text("งาน PMM / PM", "PMM / PM jobs")}</option><option value="repair">{text("งานซ่อมทั่วไป", "Corrective jobs")}</option></select></label>
-          <div className="space-y-3">{history.map((job) => <Link key={job.id} href={`/demo/jobs/${encodeURIComponent(job.id)}/`} className="block rounded-xl border border-slate-200 p-4 hover:border-teal-300 hover:bg-teal-50/40"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs font-bold text-teal-700">{job.id}</span><StatusBadge status={job.status} size="sm" /><PriorityBadge priority={job.priority} size="sm" /></div><h3 className="mt-2 font-semibold">{job.title}</h3><p className="mt-1 text-xs text-slate-500">{categoryLabel(job.category, language)} · {job.technician}</p><p className="mt-2 text-xs text-slate-500">{text("สร้างเมื่อ", "Created")} {displayDate(job.created, language)}</p>{job.completed && <p className="mt-1 text-xs text-teal-700">{text("เสร็จเมื่อ", "Completed")} {displayDate(job.completed, language)}</p>}<span className="mt-3 inline-block text-xs font-semibold text-teal-700">{text(`ดูงานและรูปหลักฐาน (${job.images.length}) →`, `View job & evidence (${job.images.length}) →`)}</span></Link>)}</div>
+          <div className="space-y-3">{history.map((job) => <Link key={job.id} href={`/demo/jobs/${encodeURIComponent(job.id)}/`} className="block rounded-xl border border-slate-200 p-4 hover:border-teal-300 hover:bg-teal-50/40"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs font-bold text-teal-700">{job.id}</span><StatusBadge status={job.status} size="sm" /><PriorityBadge priority={job.priority} size="sm" /></div><h3 className="mt-2 font-semibold">{job.title}</h3><p className="mt-1 text-xs text-slate-500">{categoryLabel(job.category, language)} · {job.technician}</p><p className="mt-2 text-xs text-slate-500">{text("สร้างเมื่อ", "Created")} {displayDate(job.created, language, appTimeZone)}</p>{job.completed && <p className="mt-1 text-xs text-teal-700">{text("เสร็จเมื่อ", "Completed")} {displayDate(job.completed, language, appTimeZone)}</p>}<span className="mt-3 inline-block text-xs font-semibold text-teal-700">{text(`ดูงานและรูปหลักฐาน (${job.images.length}) →`, `View job & evidence (${job.images.length}) →`)}</span></Link>)}</div>
           {!loading && !history.length && <p className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">{text("ยังไม่มีประวัติงานตามประเภทที่เลือก", "No job history for the selected work type")}</p>}
           <p className="mt-5 text-xs text-slate-400">{text("แสดงประวัติจากข้อมูล Demo ปัจจุบัน ข้อมูลรีเซ็ตทุก 45 นาที", "History uses the current Demo dataset, which resets every 45 minutes.")}</p>
         </>}

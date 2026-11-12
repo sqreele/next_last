@@ -1,4 +1,5 @@
 "use client";
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
 
 import { useLocale } from "@/app/lib/i18n/LocaleProvider";
 import { billingStatusKey } from "@/app/lib/i18n/billing-status";
@@ -22,7 +23,7 @@ import {
   rows,
 } from "@/app/lib/billing-ui.mjs";
 
-type Tenant = { tenant_id: string; name: string; billing_model?: string };
+type Tenant = { tenant_id: string; name: string; billing_model?: string; timezone?: string };
 type Plan = { id: number; code: string; name: string; description?: string; monthly_price: string; billing_interval: string };
 type BillingState = {
   tenant_id: string;
@@ -47,6 +48,7 @@ function message(payload: unknown, fallback = "billing.failed") {
 }
 
 export default function BillingSettingsClient() {
+  const appTimeZone = useAppTimeZone();
   const { t, locale } = useLocale();
   const statusLabel = (status: string) => t(billingStatusKey(status));
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ requireAuth: true });
@@ -59,7 +61,7 @@ export default function BillingSettingsClient() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [action, setAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const lifecycle = getBillingLifecycleMessage(billing, locale, t);
+  const lifecycle = getBillingLifecycleMessage(billing, locale, t, tenant?.timezone || appTimeZone);
   // Older backends omit billing_model and do not expose Company/document APIs.
   // Allow frontend language updates to roll out before the additive DB migration.
   const companyBillingAvailable = Boolean(tenant?.billing_model);

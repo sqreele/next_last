@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -27,6 +30,7 @@ function InvitationLoading() {
 }
 
 function AcceptInvitationContent() {
+  const appTimeZone = useAppTimeZone();
   const router = useRouter();
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ requireAuth: false, showToast: false });
   const [token, setToken] = useState("");
@@ -157,7 +161,7 @@ function AcceptInvitationContent() {
               <div className="rounded-xl border bg-muted/40 p-4">
                 <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted-foreground">Role</span><Badge>{preview.role.replace(/\b\w/g, (letter) => letter.toUpperCase())}</Badge></div>
                 <div className="mt-3"><p className="text-sm text-muted-foreground">Property access</p><p className="mt-1 text-sm font-medium">{preview.properties.length ? preview.properties.map((property) => property.name).join(", ") : "Tenant-wide or no explicit grants"}</p></div>
-                <div className="mt-3"><p className="text-sm text-muted-foreground">Expires</p><p className="mt-1 text-sm font-medium">{new Date(preview.expires_at).toLocaleString()}</p></div>
+                <div className="mt-3"><p className="text-sm text-muted-foreground">Expires</p><p className="mt-1 text-sm font-medium">{formatAppDateTime(preview.expires_at, undefined, { timeZone: appTimeZone })}</p></div>
               </div>
               {isAuthenticated ? (
                 <Button onClick={() => void accept()} disabled={accepting} className="h-12 w-full">{accepting ? "Accepting…" : "Accept invitation"}</Button>

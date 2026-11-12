@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import * as React from "react";
 import { useEffect, useState } from "react";
@@ -577,6 +580,7 @@ export default function SearchContent() {
 
 // Updated JobCard with safer property access
 function JobCard({ job, query, highlightMatch }: JobCardProps) {
+  const appTimeZone = useAppTimeZone();
   const displayId =
     typeof job?.job_id === "number" ? `#${job.job_id}` : job?.job_id;
 
@@ -602,7 +606,7 @@ function JobCard({ job, query, highlightMatch }: JobCardProps) {
           <CalendarClock className="h-3.5 w-3.5" />
           <span>
             {job?.created_at
-              ? new Date(job.created_at).toLocaleDateString()
+              ? formatAppDate(job.created_at, undefined, { timeZone: appTimeZone })
               : "N/A"}
           </span>
         </div>
@@ -704,6 +708,7 @@ function PropertyCard({ property, query, highlightMatch }: PropertyCardProps) {
 
 // RoomCard with safer property access
 function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
+  const appTimeZone = useAppTimeZone();
   if (!room) return null;
 
   const displayId =
@@ -735,7 +740,7 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
           <CalendarClock className="h-3.5 w-3.5" />
           <span>
             {room.created_at
-              ? new Date(room.created_at).toLocaleDateString()
+              ? formatAppDate(room.created_at, undefined, { timeZone: appTimeZone })
               : "N/A"}
           </span>
         </div>

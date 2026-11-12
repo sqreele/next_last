@@ -1,4 +1,7 @@
 'use client';
+import { formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -28,6 +31,7 @@ const PROPERTY_MISMATCH = 'pm-detail:property-mismatch';
 const PLAN_DELETE_FAILED = 'pm-detail:plan-delete-failed';
 
 export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoaderProps) {
+  const appTimeZone = useAppTimeZone();
   const { locale, t } = useLocale();
   const dateLocale = locale === 'th' ? 'th-TH-u-ca-gregory' : 'en-US';
   const router = useRouter();
@@ -177,7 +181,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
           </div>
         </header>
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft"><span className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-warning/10 text-warning-emphasis"><CalendarClock className="h-5 w-5" aria-hidden="true" /></span><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('pmDetail.plan.nextDue')}</p><p className="mt-1 break-words font-semibold text-foreground">{new Date(masterPlan.next_due_date || masterPlan.start_date).toLocaleString(dateLocale)}</p></div>
+          <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft"><span className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-warning/10 text-warning-emphasis"><CalendarClock className="h-5 w-5" aria-hidden="true" /></span><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('pmDetail.plan.nextDue')}</p><p className="mt-1 break-words font-semibold text-foreground">{formatAppDateTime(masterPlan.next_due_date || masterPlan.start_date, dateLocale, { timeZone: appTimeZone })}</p></div>
           <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft"><span className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-info/10 text-info"><Repeat2 className="h-5 w-5" aria-hidden="true" /></span><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('pmDetail.plan.frequency')}</p><p className="mt-1 break-words font-semibold text-foreground">{frequencyLabel}{masterPlan.custom_days ? ` (${t('pmDetail.plan.days', { count: masterPlan.custom_days })})` : ''}</p></div>
           <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft"><span className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary"><Wrench className="h-5 w-5" aria-hidden="true" /></span><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('pmDetail.plan.equipment')}</p><p className="mt-1 break-words font-semibold text-foreground">{masterPlan.machines?.map((machine) => machine.name || machine.machine_id).join(', ') || t('pmDetail.plan.noEquipment')}</p></div>
         </div>

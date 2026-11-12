@@ -1,3 +1,7 @@
+import { appCalendarDate, appDateKey } from '@/app/lib/date-time.mjs';
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from '../session.client';
 import { jobsApi, JobsApiError } from '../api/jobsApi';
@@ -101,6 +105,9 @@ const initialState: JobsDashboardState = {
 };
 
 export function useJobsDashboard(): UseJobsDashboardReturn {
+  const appTimeZone = useAppTimeZone();
+  const currentTime = useCurrentTime();
+  const today = appCalendarDate(currentTime, appTimeZone).getTime();
   const { data: session } = useSession();
   const { toast } = useToast();
   const [state, setState] = useState<JobsDashboardState>(initialState);
@@ -414,7 +421,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
             includeRoomDetails: true,
             includePropertyDetails: true,
             dateFormat: 'readable'
-          }
+          }, appTimeZone
         );
         
         toast({
@@ -428,13 +435,13 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
           state.properties,
           state.filters,
           {
-            filename: `jobs-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+            filename: `jobs-export-${appDateKey(new Date(), appTimeZone)}.xlsx`,
             includeImages: false,
             includeUserDetails: true,
             includeRoomDetails: true,
             includePropertyDetails: true,
             dateFormat: 'readable'
-          }
+          }, appTimeZone
         );
         
         toast({
@@ -443,8 +450,8 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         });
       } else if (format === 'pdf') {
         await exportJobsReportToPdf(state.jobs, state.properties, {
-          filename: `jobs-export-${new Date().toISOString().split('T')[0]}.pdf`,
-        });
+          filename: `jobs-export-${appDateKey(new Date(), appTimeZone)}.pdf`,
+        }, appTimeZone);
         toast({
           title: "Export Successful",
           description: `Exported ${state.jobs.length} jobs as PDF`
@@ -460,7 +467,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         description: 'Failed to export jobs'
       });
     }
-  }, [isAuthenticated, state.jobs, state.properties, state.filters, toast]);
+  }, [isAuthenticated, state.jobs, state.properties, state.filters, toast, appTimeZone]);
 
   // Computed values - return raw jobs for JobList to handle filtering
   const filteredJobs = useMemo(() => {
@@ -572,7 +579,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
 
   // Calculate trends by comparing current week vs last week
   const trends = useMemo(() => {
-    const now = new Date();
+    const now = new Date(today);
     const currentWeekStart = new Date(now);
     currentWeekStart.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
     currentWeekStart.setHours(0, 0, 0, 0);
@@ -581,12 +588,12 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     lastWeekStart.setDate(currentWeekStart.getDate() - 7);
     
     const currentWeekJobs = state.jobs.filter(job => {
-      const jobDate = new Date(job.created_at);
+      const jobDate = appCalendarDate(job.created_at, appTimeZone);
       return jobDate >= currentWeekStart && jobDate <= now;
     });
     
     const lastWeekJobs = state.jobs.filter(job => {
-      const jobDate = new Date(job.created_at);
+      const jobDate = appCalendarDate(job.created_at, appTimeZone);
       return jobDate >= lastWeekStart && jobDate < currentWeekStart;
     });
 
@@ -622,7 +629,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
       inProgress: inProgressTrend,
       completed: completedTrend,
     };
-  }, [state.jobs]);
+  }, [state.jobs, appTimeZone, today]);
 
   return {
     ...state,

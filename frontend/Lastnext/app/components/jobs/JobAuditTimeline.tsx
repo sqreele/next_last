@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDateTime, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useEffect, useState } from "react";
@@ -90,20 +93,19 @@ function KindIcon({ kind }: { kind: AuditEventKind }) {
   }
 }
 
-function formatTime(at: string | null): string {
+function formatTime(at: string | null, appTimeZone: string = DEFAULT_APP_TIME_ZONE): string {
   if (!at) return "";
   const date = new Date(at);
   if (Number.isNaN(date.getTime())) return at;
-  return date.toLocaleString("en-US", {
-    month: "short",
+  return formatAppDateTime(at, "en-US", { timeZone: appTimeZone, month: "short",
     day: "numeric",
     year: "numeric",
     hour: "2-digit",
-    minute: "2-digit",
-  });
+    minute: "2-digit", });
 }
 
 export function JobAuditTimeline({ jobId, className }: JobAuditTimelineProps) {
+  const appTimeZone = useAppTimeZone();
   const [data, setData] = useState<AuditLogResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -211,7 +213,7 @@ export function JobAuditTimeline({ jobId, className }: JobAuditTimelineProps) {
                         {event.message}
                       </p>
                       <p className="break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">
-                        by {event.actor || "unknown"} · {formatTime(event.at)}
+                        by {event.actor || "unknown"} · {formatTime(event.at, appTimeZone)}
                       </p>
                     </div>
                     {event.new_status && (

@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDate, formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import React, { useState, useEffect, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -99,6 +102,7 @@ export default function MaintenanceTaskDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const appTimeZone = useAppTimeZone();
   // Unwrap params using React.use() for Next.js 15 compatibility
   const unwrappedParams = use(params);
   const { status } = useSession();
@@ -498,9 +502,7 @@ export default function MaintenanceTaskDetailPage({
                                 Scheduled:
                               </span>
                               <p className="font-medium text-foreground">
-                                {new Date(
-                                  record.scheduled_date,
-                                ).toLocaleDateString()}
+                                {formatAppDate(record.scheduled_date, undefined, { timeZone: appTimeZone })}
                               </p>
                             </div>
                           </div>
@@ -512,9 +514,7 @@ export default function MaintenanceTaskDetailPage({
                                   Completed:
                                 </span>
                                 <p className="font-medium text-green-700">
-                                  {new Date(
-                                    record.completed_date,
-                                  ).toLocaleDateString()}
+                                  {formatAppDate(record.completed_date, undefined, { timeZone: appTimeZone })}
                                 </p>
                               </div>
                             </div>
@@ -660,10 +660,10 @@ export default function MaintenanceTaskDetailPage({
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
             <div>
-              <p>Created: {new Date(task.created_at).toLocaleString()}</p>
+              <p>Created: {formatAppDateTime(task.created_at, undefined, { timeZone: appTimeZone })}</p>
             </div>
             <div>
-              <p>Updated: {new Date(task.updated_at).toLocaleString()}</p>
+              <p>Updated: {formatAppDateTime(task.updated_at, undefined, { timeZone: appTimeZone })}</p>
             </div>
           </div>
         </CardContent>

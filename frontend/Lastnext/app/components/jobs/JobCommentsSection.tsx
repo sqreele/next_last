@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDateTime, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -26,17 +29,15 @@ type Props = {
   canComment: boolean;
 };
 
-function formatTimestamp(value?: string): string {
+function formatTimestamp(value?: string, appTimeZone: string = DEFAULT_APP_TIME_ZONE): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-US", {
-    year: "numeric",
+  return formatAppDateTime(value, "en-US", { timeZone: appTimeZone, year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
-    minute: "2-digit",
-  });
+    minute: "2-digit", });
 }
 
 function getErrorMessage(err: unknown, fallback: string): string {
@@ -66,6 +67,7 @@ const JobCommentsSection: React.FC<Props> = ({
   propertyId,
   canComment,
 }) => {
+  const appTimeZone = useAppTimeZone();
   const { toast } = useToast();
   const { data: session } = useSession();
   const { queue } = useOfflineQueue();
@@ -309,7 +311,7 @@ const JobCommentsSection: React.FC<Props> = ({
                     className="break-words text-xs text-muted-foreground [overflow-wrap:anywhere]"
                     dateTime={c.created_at}
                   >
-                    {formatTimestamp(c.created_at)}
+                    {formatTimestamp(c.created_at, appTimeZone)}
                   </time>
                 )}
               </div>

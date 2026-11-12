@@ -1,4 +1,7 @@
 "use client";
+import { appDateKey } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import React from "react";
 
@@ -6,7 +9,6 @@ import { useMainStore } from "@/app/lib/stores/mainStore";
 
 import { Job, JobStatus, JobPriority } from "@/app/lib/types";
 
-import { format } from "date-fns";
 import { exportJobsToExcel } from "@/app/lib/utils/excel-export";
 import { exportJobsReportToPdf } from "@/app/lib/utils/pdf-export";
 import { type PmFilterType, type TopicFilterValue, type UserFilterValue } from "@/app/lib/jobs-report-data";
@@ -48,11 +50,12 @@ interface Options {
 }
 
 export function useJobsReportExports({ currentProperty, selectedProperty, statusFilter, priorityFilter, pmFilter, topicFilter, userFilter, monthFilter, yearFilter, createdFrom, createdTo, searchFilter, exportInFlightRef, dateRangeInvalid, filteredReportJobs, isGeneratingCsv, activeFilters, exportControllerRef, setExportError, setIsGeneratingCsv, setIsGeneratingExcel, userProperties, statistics, setIsGeneratingPdf }: Options) {
+  const appTimeZone = useAppTimeZone();
   // Shared filename + filter-description helpers used by all exports.
   const buildExportFilename = (extension: string) => {
     const propertyName =
       currentProperty?.name || `Property ${selectedProperty}`;
-    const date = format(new Date(), "yyyy-MM-dd");
+    const date = appDateKey(new Date(), appTimeZone);
     const filterParts = [
       statusFilter !== "all" ? statusFilter : "",
       priorityFilter !== "all" ? priorityFilter : "",
@@ -145,7 +148,7 @@ export function useJobsReportExports({ currentProperty, selectedProperty, status
       const blob = await response.blob();
       const filename = getCsvFilename(
         response.headers.get("content-disposition"),
-        `jobs-report-${exportPropertyId}-${format(new Date(), "yyyy-MM-dd")}.csv`,
+        `jobs-report-${exportPropertyId}-${appDateKey(new Date(), appTimeZone)}.csv`,
       );
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -190,7 +193,7 @@ export function useJobsReportExports({ currentProperty, selectedProperty, status
         includeRoomDetails: true,
         includePropertyDetails: true,
         dateFormat: "readable",
-      });
+      }, appTimeZone);
     } catch (error: unknown) {
       console.error("Error generating Excel:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -219,7 +222,7 @@ export function useJobsReportExports({ currentProperty, selectedProperty, status
         filename: buildExportFilename("pdf"),
         includeImages: true,
         maxImageColumns: 3,
-      });
+      }, appTimeZone);
     } catch (error: unknown) {
       console.error("Error generating PDF:", error);
       const message = error instanceof Error ? error.message : "Unknown error";

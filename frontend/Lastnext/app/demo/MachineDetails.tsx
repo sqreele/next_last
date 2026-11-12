@@ -1,10 +1,13 @@
 "use client";
+import { DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+
 import { displayDate, type DemoMachine } from "./types";
 import { useDemoLanguage } from "./DemoLanguageProvider";
 
 export default function MachineDetails({ machine }: { machine: DemoMachine }) {
+  const appTimeZone = DEFAULT_APP_TIME_ZONE;
   const { language, text } = useDemoLanguage();
-  const date = (value: string | null) => value ? displayDate(value, language) : null;
+  const date = (value: string | null) => value ? displayDate(value, language, appTimeZone) : null;
   const fields = [
     [text("รหัสเครื่อง", "Machine ID"), machine.machine_id], [text("ชื่อเครื่อง", "Machine name"), machine.name],
     [text("ยี่ห้อ", "Brand"), machine.brand], ["Serial Number", machine.serial_number],

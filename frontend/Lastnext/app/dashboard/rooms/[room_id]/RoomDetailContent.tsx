@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import {
   Card,
@@ -26,6 +29,7 @@ export default function RoomDetailContent({
   properties,
   jobs,
 }: RoomDetailContentProps) {
+  const appTimeZone = useAppTimeZone();
   // Filter the jobs to only include those related to this room
   const roomJobs = jobs.filter((job) =>
     job.rooms?.some(
@@ -77,7 +81,7 @@ export default function RoomDetailContent({
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <CalendarClock className="w-4 h-4" />
-            <span>Created: {new Date(room.created_at).toLocaleString()}</span>
+            <span>Created: {formatAppDateTime(room.created_at, undefined, { timeZone: appTimeZone })}</span>
           </div>
 
           {preventiveMaintenanceJobs.length > 0 && (

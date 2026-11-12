@@ -4,7 +4,8 @@ import React from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 
-import { format } from "date-fns";
+import { formatAppDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
 
 import type { JobsReportModel } from "./useJobsReportModel";
 
@@ -22,6 +23,7 @@ export function JobsReportSummary({
   roomsJobsSummary,
   visibleReportJobs,
 }: Props) {
+  const appTimeZone = useAppTimeZone();
   return (<>
     {/* Summary */}
     <Card>
@@ -30,7 +32,7 @@ export function JobsReportSummary({
       </CardHeader>
       <CardContent>
         <div className="space-y-2 text-sm text-muted-foreground">
-          <p>• Generated on: {format(new Date(), "PPP")}</p>
+          <p>• Generated on: {formatAppDate(new Date(), "en-US", { dateStyle: "long", timeZone: appTimeZone })}</p>
           <p>• Property: {currentProperty?.name}</p>
           <p>
             • Total jobs in this report (after filters): {statistics.total}

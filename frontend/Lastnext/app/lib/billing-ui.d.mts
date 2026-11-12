@@ -30,6 +30,7 @@ export function getBillingLifecycleMessage(
   billing: BillingLifecycleState | null | undefined,
   locale?: string,
   translate?: (key: DictKey, values?: Record<string, string | number>) => string,
+  timeZone?: string,
 ): BillingLifecycleMessage | null;
 export function isSafeStripeHostedUrl(value: string): boolean;
 export function redirectToStripe(value: string, locationObject?: { assign(value: string): void }): void;

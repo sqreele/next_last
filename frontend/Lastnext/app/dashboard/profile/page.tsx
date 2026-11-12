@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -96,6 +99,7 @@ function ProfileLoading() {
 }
 
 export default function ProfilePage() {
+  const appTimeZone = useAppTimeZone();
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({
     requireAuth: true,
   });
@@ -234,7 +238,7 @@ export default function ProfilePage() {
             <InfoRow
               icon={CalendarDays}
               label="Member since"
-              value={new Date(profile.created_at).toLocaleDateString()}
+              value={formatAppDate(profile.created_at, undefined, { timeZone: appTimeZone })}
             />
           </CardContent>
         </Card>

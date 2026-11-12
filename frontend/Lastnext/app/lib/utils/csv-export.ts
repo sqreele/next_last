@@ -2,6 +2,8 @@
  * CSV Export utilities for jobs data
  */
 
+
+import { appDateKey, formatAppDateTime, formatAppDate, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
 import { Job, Property } from '@/app/lib/types';
 import { getDisplayName, getUserEmail } from '@/app/lib/utils/display-name';
 
@@ -39,7 +41,7 @@ export function getJobImageUrls(job: Job): string[] {
 export function jobToCSVRow(
   job: Job, 
   properties: Property[] = [],
-  options: CSVExportOptions = {}
+  options: CSVExportOptions = {}, appTimeZone: string = DEFAULT_APP_TIME_ZONE
 ): string[] {
   const {
     includeImages = false,
@@ -59,16 +61,14 @@ export function jobToCSVRow(
       case 'iso':
         return date.toISOString();
       case 'local':
-        return date.toLocaleString();
+        return formatAppDateTime(dateString, undefined, { timeZone: appTimeZone });
       case 'readable':
       default:
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
+        return formatAppDate(dateString, 'en-US', { timeZone: appTimeZone, year: 'numeric',
           month: 'short',
           day: 'numeric',
           hour: '2-digit',
-          minute: '2-digit'
-        });
+          minute: '2-digit' });
     }
   };
 
@@ -215,10 +215,10 @@ export function getJobsCSVHeaders(options: CSVExportOptions = {}): string[] {
 export function jobsToCSV(
   jobs: Job[],
   properties: Property[] = [],
-  options: CSVExportOptions = {}
+  options: CSVExportOptions = {}, appTimeZone: string = DEFAULT_APP_TIME_ZONE
 ): string {
   const headers = getJobsCSVHeaders(options);
-  const rows = jobs.map(job => jobToCSVRow(job, properties, options));
+  const rows = jobs.map(job => jobToCSVRow(job, properties, options, appTimeZone));
   
   // Escape CSV values
   const escapeCSVValue = (value: string): string => {
@@ -264,13 +264,13 @@ export function downloadCSV(
 export function exportJobsToCSV(
   jobs: Job[],
   properties: Property[] = [],
-  options: CSVExportOptions = {}
+  options: CSVExportOptions = {}, appTimeZone: string = DEFAULT_APP_TIME_ZONE
 ): void {
   const {
-    filename = `jobs-export-${new Date().toISOString().split('T')[0]}.csv`
+    filename = `jobs-export-${appDateKey(new Date(), appTimeZone)}.csv`
   } = options;
 
-  const csvContent = jobsToCSV(jobs, properties, options);
+  const csvContent = jobsToCSV(jobs, properties, options, appTimeZone);
   downloadCSV(csvContent, filename);
 }
 
@@ -281,7 +281,7 @@ export function exportFilteredJobsToCSV(
   jobs: Job[],
   properties: Property[] = [],
   filters: any = {},
-  options: CSVExportOptions = {}
+  options: CSVExportOptions = {}, appTimeZone: string = DEFAULT_APP_TIME_ZONE
 ): void {
   // Apply filters
   let filteredJobs = [...jobs];
@@ -307,18 +307,17 @@ export function exportFilteredJobsToCSV(
   }
 
   if (filters.dateFrom) {
-    const fromDate = new Date(filters.dateFrom);
+    const fromDate = filters.dateFrom;
     filteredJobs = filteredJobs.filter(job => {
-      const jobDate = new Date(job.created_at);
+      const jobDate = appDateKey(job.created_at, appTimeZone);
       return jobDate >= fromDate;
     });
   }
 
   if (filters.dateTo) {
-    const toDate = new Date(filters.dateTo);
-    toDate.setHours(23, 59, 59, 999); // End of day
+    const toDate = filters.dateTo;
     filteredJobs = filteredJobs.filter(job => {
-      const jobDate = new Date(job.created_at);
+      const jobDate = appDateKey(job.created_at, appTimeZone);
       return jobDate <= toDate;
     });
   }
@@ -326,7 +325,7 @@ export function exportFilteredJobsToCSV(
   // Generate filename with filter info
   const filterSuffix = filters.status ? `-${filters.status}` : '';
   const dateSuffix = filters.dateFrom ? `-${filters.dateFrom}` : '';
-  const filename = `jobs-export${filterSuffix}${dateSuffix}-${new Date().toISOString().split('T')[0]}.csv`;
+  const filename = `jobs-export${filterSuffix}${dateSuffix}-${appDateKey(new Date(), appTimeZone)}.csv`;
 
-  exportJobsToCSV(filteredJobs, properties, { ...options, filename });
+  exportJobsToCSV(filteredJobs, properties, { ...options, filename }, appTimeZone);
 }

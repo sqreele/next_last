@@ -1,4 +1,5 @@
 "use client";
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
 
 import * as React from "react";
 import { AlertTriangle } from "lucide-react";
@@ -10,6 +11,7 @@ import {
 import { formatBillingDateTime } from "@/app/lib/billing-ui.mjs";
 
 export function SubscriptionWarningBanner() {
+  const appTimeZone = useAppTimeZone();
   const propertyId = useMainStore((state) => state.selectedPropertyId);
   const [entitlement, setEntitlement] = React.useState<SubscriptionEntitlement | null>(null);
 
@@ -40,8 +42,8 @@ export function SubscriptionWarningBanner() {
 
   const graceDateLabel = React.useMemo(() => {
     if (!entitlement?.grace_ends_at) return undefined;
-    return formatBillingDateTime(entitlement.grace_ends_at);
-  }, [entitlement?.grace_ends_at]);
+    return formatBillingDateTime(entitlement.grace_ends_at, appTimeZone);
+  }, [entitlement?.grace_ends_at, appTimeZone]);
   const warning = getSubscriptionWarning(entitlement, graceDateLabel);
   if (!warning) return null;
 

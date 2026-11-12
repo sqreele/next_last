@@ -1,4 +1,6 @@
 "use client";
+import { toAppDateTimeInput, appDateTimeInputToISO } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -62,18 +64,11 @@ const emptyForm = (): FormState => ({
   remarks: "",
 });
 
-const toDateTimeLocal = (value?: string | null) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-};
-
 const messageFromError = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
 export default function PMMasterPlanForm({ planId }: { planId?: string }) {
+  const appTimeZone = useAppTimeZone();
   const t = useT();
   const router = useRouter();
   const { status } = useSession();
@@ -132,7 +127,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
             title: plan.title,
             machineIds: plan.machines?.map((machine) => machine.machine_id) || [],
             topicIds: plan.topics?.map((topic) => topic.id) || [],
-            startDate: toDateTimeLocal(plan.start_date),
+            startDate: toAppDateTimeInput(plan.start_date, appTimeZone),
             frequency: plan.frequency,
             customDays: plan.custom_days == null ? "" : String(plan.custom_days),
             leadTimeDays: String(plan.lead_time_days),
@@ -156,7 +151,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
     return () => {
       requestRef.current += 1;
     };
-  }, [planId, selectedPropertyId, status]);
+  }, [planId, selectedPropertyId, status, appTimeZone]);
 
   const selectedMachineNames = useMemo(
     () => machines.filter((machine) => form.machineIds.includes(machine.machine_id)),
@@ -191,6 +186,11 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
       nextErrors.customDays = t("pmPlanForm.validationInterval");
     }
     if (Number(form.leadTimeDays) < 0) nextErrors.leadTimeDays = t("pmPlanForm.validationLeadTime");
+    let startDateISO = "";
+    if (form.startDate) {
+      try { startDateISO = appDateTimeInputToISO(form.startDate, appTimeZone); }
+      catch { nextErrors.startDate = t("pmPlanForm.validationStart"); }
+    }
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0 || !selectedPropertyId) return;
     const submitPropertyId = selectedPropertyId;
@@ -199,7 +199,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
       title: form.title.trim(),
       machine_ids: form.machineIds,
       topic_ids: form.topicIds,
-      start_date: new Date(form.startDate).toISOString(),
+      start_date: startDateISO,
       frequency: form.frequency,
       custom_days: form.frequency === "custom" ? Number(form.customDays) : undefined,
       lead_time_days: Number(form.leadTimeDays),

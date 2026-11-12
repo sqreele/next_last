@@ -1,4 +1,7 @@
 "use client";
+import { appCalendarDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
 
 import { useMemo } from "react";
 
@@ -25,6 +28,9 @@ import {
 } from "./jobs-report-config";
 
 export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { filteredReportJobs: Job[]; utilityRows: UtilityConsumptionRow[] }) {
+  const appTimeZone = useAppTimeZone();
+  const currentTime = useCurrentTime();
+  const today = appCalendarDate(currentTime, appTimeZone).getTime();
   const roomsJobsSummary = useMemo((): RoomJobsSummaryRow[] => {
     const map = new Map<
       string,
@@ -106,7 +112,7 @@ export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { fi
       { sortKey: string; label: string; count: number }
     >();
     filteredReportJobs.forEach((job) => {
-      const d = new Date(job.created_at);
+      const d = appCalendarDate(job.created_at, appTimeZone);
       const sortKey = format(d, "yyyy-MM");
       const label = format(d, "MMM yyyy");
       const cur = map.get(sortKey);
@@ -119,7 +125,7 @@ export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { fi
     return Array.from(map.values()).sort((a, b) =>
       a.sortKey.localeCompare(b.sortKey),
     );
-  }, [filteredReportJobs]);
+  }, [filteredReportJobs, appTimeZone]);
 
   const jobsAndNightSaleByMonthChart = useMemo(() => {
     const monthMap = new Map<
@@ -184,7 +190,7 @@ export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { fi
   }, [jobsByMonthChart, utilityRows]);
 
   const monthlyAndYearlyComparisons = useMemo(() => {
-    const now = new Date();
+    const now = new Date(today);
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     const previousMonthDate = new Date(currentYear, currentMonth - 1, 1);
@@ -194,17 +200,17 @@ export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { fi
       date.getFullYear() === year && date.getMonth() === month;
 
     const currentMonthJobs = filteredReportJobs.filter((job) =>
-      inMonth(new Date(job.created_at), currentYear, currentMonth),
+      inMonth(appCalendarDate(job.created_at, appTimeZone), currentYear, currentMonth),
     );
     const previousMonthJobs = filteredReportJobs.filter((job) =>
       inMonth(
-        new Date(job.created_at),
+        appCalendarDate(job.created_at, appTimeZone),
         previousMonthDate.getFullYear(),
         previousMonthDate.getMonth(),
       ),
     );
     const sameMonthLastYearJobs = filteredReportJobs.filter((job) =>
-      inMonth(new Date(job.created_at), previousYear, currentMonth),
+      inMonth(appCalendarDate(job.created_at, appTimeZone), previousYear, currentMonth),
     );
     const currentMonthUtilityRows = utilityRows.filter(
       (row) =>
@@ -290,7 +296,7 @@ export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { fi
         ),
       },
     };
-  }, [filteredReportJobs, utilityRows]);
+  }, [filteredReportJobs, utilityRows, appTimeZone, today]);
 
   // Calculate comprehensive statistics (respects export filters)
   const statistics: ReportStatistics = useMemo(() => {
@@ -331,7 +337,7 @@ export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { fi
       .map(
         (job) =>
           new Date(job.completed_at!).getTime() -
-          new Date(job.created_at).getTime(),
+          appCalendarDate(job.created_at, appTimeZone).getTime(),
       );
 
     const averageResponseTime =
@@ -346,7 +352,7 @@ export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { fi
     // Group jobs by month
     const jobsByMonth = filteredReportJobs.reduce(
       (acc, job) => {
-        const month = format(new Date(job.created_at), "MMM yyyy");
+        const month = format(appCalendarDate(job.created_at, appTimeZone), "MMM yyyy");
         const existing = acc.find((item) => item.month === month);
         if (existing) {
           existing.count++;
@@ -392,7 +398,7 @@ export function useJobsReportAnalytics({ filteredReportJobs, utilityRows }: { fi
       jobsByMonth,
       jobsByStatus,
     };
-  }, [filteredReportJobs]);
+  }, [filteredReportJobs, appTimeZone]);
 
   const pmVsNonPmChartRows = useMemo(
     () => [

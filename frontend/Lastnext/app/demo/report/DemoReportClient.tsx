@@ -1,4 +1,7 @@
 "use client";
+import { appDateKey } from '@/app/lib/date-time.mjs';
+import { DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+
 
 import Image from "next/image";
 import Link from "next/link";
@@ -115,6 +118,7 @@ function DistributionBars({
 }
 
 export default function DemoReportClient() {
+  const appTimeZone = DEFAULT_APP_TIME_ZONE;
   const { language, text } = useDemoLanguage();
   const [snapshot, setSnapshot] = useState<DemoSnapshot | null>(null);
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
@@ -214,7 +218,7 @@ export default function DemoReportClient() {
 
   const exportHeaders = () => language === "th" ? ["รหัสงาน", "รายละเอียด", "ห้อง/พื้นที่", "หมวดหมู่", "ช่าง", "สถานะ", "ความสำคัญ", "อัปเดต", "ลิงก์รูปก่อนซ่อม", "ลิงก์รูปหลังซ่อม"] : ["Job ID", "Description", "Room/Area", "Category", "Technician", "Status", "Priority", "Updated", "Before photo links", "After photo links"];
   const exportRows = () => filteredJobs.map((job) => [
-      job.id, job.title, job.room, job.category || "", job.technician, language === "th" ? statusLabelsThai[job.status] : statusLabels[job.status], priorityLabels[job.priority], displayDate(job.updated, language),
+      job.id, job.title, job.room, job.category || "", job.technician, language === "th" ? statusLabelsThai[job.status] : statusLabels[job.status], priorityLabels[job.priority], displayDate(job.updated, language, appTimeZone),
       imageLinks(job.images, "before", window.location.origin).join("\n"),
       imageLinks(job.images, "after", window.location.origin).join("\n"),
     ]);
@@ -227,7 +231,7 @@ export default function DemoReportClient() {
       const failed = await exportDemoExcel(
         [...exportHeaders(), text("รูปก่อนซ่อม", "Before photos"), text("รูปหลังซ่อม", "After photos")],
         exportRows(), filteredJobs.map((job) => job.images ?? []),
-        `staymaint-demo-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        `staymaint-demo-report-${appDateKey(new Date(), appTimeZone)}.xlsx`,
       );
       setExportMessage(failed ? text(`ส่งออกแล้ว แต่โหลดรูปไม่ได้ ${failed} รูป โดยยังเก็บลิงก์ไว้`, `Exported with ${failed} unavailable images; photo links are retained.`) : text("ส่งออก Excel พร้อมรูปภาพแล้ว", "Excel exported with embedded photos."));
     } catch {
@@ -245,7 +249,7 @@ export default function DemoReportClient() {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `staymaint-demo-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.download = `staymaint-demo-report-${appDateKey(new Date(), appTimeZone)}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -257,7 +261,7 @@ export default function DemoReportClient() {
             <p className="text-sm font-semibold text-teal-700">{text("ข้อมูลสด · ฐานข้อมูล Demo แยก", "Live data · Isolated Demo Database")}</p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">{text("รายงานงานซ่อม Demo", "Maintenance Demo Report")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              {snapshot?.property.name ?? "StayMaint Demo Hotel - Chinatown"} · {text("อัปเดต ณ", "Updated at")} {refreshedAt ? displayDate(refreshedAt, language) : "—"}
+              {snapshot?.property.name ?? "StayMaint Demo Hotel - Chinatown"} · {text("อัปเดต ณ", "Updated at")} {refreshedAt ? displayDate(refreshedAt, language, appTimeZone) : "—"}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 print:hidden sm:flex sm:flex-wrap">
@@ -383,7 +387,7 @@ export default function DemoReportClient() {
                     <td className="whitespace-nowrap px-4 py-3">{job.technician}</td>
                     <td className="whitespace-nowrap px-4 py-3"><StatusBadge status={job.status} size="sm" /></td>
                     <td className="whitespace-nowrap px-4 py-3"><PriorityBadge priority={job.priority} size="sm" /></td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">{displayDate(job.updated, language)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">{displayDate(job.updated, language, appTimeZone)}</td>
                   </tr>
                 ))}
               </tbody>

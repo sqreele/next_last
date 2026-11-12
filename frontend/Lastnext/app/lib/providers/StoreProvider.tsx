@@ -34,7 +34,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const currentProfileProperties = Array.isArray(currentProfile?.properties) ? currentProfile.properties : [];
         const profilePropertiesChanged =
           currentProfileProperties.length !== sessionProperties.length ||
-          !currentProfileProperties.every((prop, index) => getPropertyId(prop) === getPropertyId(sessionProperties[index]));
+          !currentProfileProperties.every((prop, index) => getPropertyId(prop) === getPropertyId(sessionProperties[index]) && prop.timezone === sessionProperties[index]?.timezone);
         const profileChanged = !currentProfile || 
           currentProfile.id !== userProfile.id ||
           currentProfile.username !== userProfile.username ||
@@ -50,7 +50,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const currentProperties = useMainStore.getState().properties;
         const propertiesChanged =
           currentProperties.length !== sessionProperties.length ||
-          !currentProperties.every((prop, index) => getPropertyId(prop) === getPropertyId(sessionProperties[index]));
+          !currentProperties.every((prop, index) => getPropertyId(prop) === getPropertyId(sessionProperties[index]) && prop.timezone === sessionProperties[index]?.timezone);
         
         if (propertiesChanged) {
           setProperties(sessionProperties);

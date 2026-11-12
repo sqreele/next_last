@@ -1,12 +1,12 @@
+
+import { formatAppDate, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
 import { PreventiveMaintenance, determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
 
-export function formatDate(dateString: string, locale: 'en' | 'th' = 'en'): string {
+export function formatDate(dateString: string, locale: 'en' | 'th' = 'en', appTimeZone: string = DEFAULT_APP_TIME_ZONE): string {
   if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString(locale === 'th' ? 'th-TH-u-ca-gregory' : 'en-US', {
-    year: 'numeric',
+  return formatAppDate(dateString, locale === 'th' ? 'th-TH-u-ca-gregory' : 'en-US', { timeZone: appTimeZone, year: 'numeric',
     month: 'short',
-    day: 'numeric'
-  });
+    day: 'numeric' });
 }
 
 export function getFrequencyText(frequency: string): string {

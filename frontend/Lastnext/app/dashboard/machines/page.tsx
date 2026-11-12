@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import React, { useCallback, useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -75,6 +78,7 @@ interface PreventiveMaintenanceRow {
 }
 
 export default function MachinesListPage() {
+  const appTimeZone = useAppTimeZone();
   const { status } = useSession();
   const router = useRouter();
   const { selectedPropertyId: selectedProperty } = useUser();
@@ -519,9 +523,7 @@ export default function MachinesListPage() {
                           <Calendar className="h-3 w-3" />
                           <span>
                             Last PM:{" "}
-                            {new Date(
-                              machine.last_maintenance,
-                            ).toLocaleDateString()}
+                            {formatAppDate(machine.last_maintenance, undefined, { timeZone: appTimeZone })}
                           </span>
                         </div>
                       )}
@@ -596,9 +598,7 @@ export default function MachinesListPage() {
                       <span className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         {machine.last_maintenance
-                          ? new Date(
-                              machine.last_maintenance,
-                            ).toLocaleDateString()
+                          ? formatAppDate(machine.last_maintenance, undefined, { timeZone: appTimeZone })
                           : "No maintenance yet"}
                       </span>
                       <span>
@@ -744,9 +744,7 @@ export default function MachinesListPage() {
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
                               <span>
-                                {new Date(
-                                  machine.last_maintenance,
-                                ).toLocaleDateString()}
+                                {formatAppDate(machine.last_maintenance, undefined, { timeZone: appTimeZone })}
                               </span>
                             </div>
                           ) : (

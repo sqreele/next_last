@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -29,6 +32,7 @@ const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
 export default function PMMasterPlansPage() {
+  const appTimeZone = useAppTimeZone();
   const { locale, t } = useLocale();
   const { status } = useSession();
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
@@ -142,7 +146,7 @@ export default function PMMasterPlansPage() {
       : t(`pm.frequency.${frequency === "semi_annual" ? "semiAnnual" : frequency}` as Parameters<typeof t>[0]);
   const readableDate = (value?: string | null) =>
     value
-      ? new Date(value).toLocaleString(locale === "th" ? "th-TH-u-ca-gregory" : "en-US")
+      ? formatAppDateTime(value, locale === "th" ? "th-TH-u-ca-gregory" : "en-US", { timeZone: appTimeZone })
       : t("pmPlans.notScheduled");
 
   const nextProjectionByPlan = useMemo(() => {

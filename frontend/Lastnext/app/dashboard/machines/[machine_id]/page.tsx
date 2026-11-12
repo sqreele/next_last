@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDate, formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import React, { useState, useEffect, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -125,6 +128,7 @@ export default function MachineDetailPage({
 }: {
   params: Promise<{ machine_id: string }>;
 }) {
+  const appTimeZone = useAppTimeZone();
   const unwrappedParams = use(params);
   const { status } = useSession();
   const router = useRouter();
@@ -774,7 +778,7 @@ export default function MachineDetailPage({
                   Installation Date
                 </p>
                 <p className="font-medium text-foreground">
-                  {new Date(machine.installation_date).toLocaleDateString()}
+                  {formatAppDate(machine.installation_date, undefined, { timeZone: appTimeZone })}
                 </p>
               </div>
             )}
@@ -786,7 +790,7 @@ export default function MachineDetailPage({
                   Last Maintenance
                 </p>
                 <p className="font-medium text-foreground">
-                  {new Date(machine.last_maintenance_date).toLocaleDateString()}
+                  {formatAppDate(machine.last_maintenance_date, undefined, { timeZone: appTimeZone })}
                 </p>
               </div>
             )}
@@ -797,7 +801,7 @@ export default function MachineDetailPage({
               </p>
               <p className="font-medium text-foreground">
                 {machine.next_maintenance_date
-                  ? new Date(machine.next_maintenance_date).toLocaleDateString()
+                  ? formatAppDate(machine.next_maintenance_date, undefined, { timeZone: appTimeZone })
                   : "ยังไม่มีแผนหรือวันที่บำรุงรักษาสำหรับคำนวณ"}
               </p>
             </div>
@@ -892,9 +896,7 @@ export default function MachineDetailPage({
                               Scheduled
                             </p>
                             <p className="font-medium text-foreground">
-                              {new Date(
-                                record.scheduled_date,
-                              ).toLocaleDateString()}
+                              {formatAppDate(record.scheduled_date, undefined, { timeZone: appTimeZone })}
                             </p>
                           </div>
                         </div>
@@ -907,9 +909,7 @@ export default function MachineDetailPage({
                                 Completed
                               </p>
                               <p className="font-medium text-green-700">
-                                {new Date(
-                                  record.completed_date,
-                                ).toLocaleDateString()}
+                                {formatAppDate(record.completed_date, undefined, { timeZone: appTimeZone })}
                               </p>
                             </div>
                           </div>
@@ -957,14 +957,14 @@ export default function MachineDetailPage({
               {machine.created_at && (
                 <div>
                   <p>
-                    Created: {new Date(machine.created_at).toLocaleString()}
+                    Created: {formatAppDateTime(machine.created_at, undefined, { timeZone: appTimeZone })}
                   </p>
                 </div>
               )}
               {machine.updated_at && (
                 <div>
                   <p>
-                    Updated: {new Date(machine.updated_at).toLocaleString()}
+                    Updated: {formatAppDateTime(machine.updated_at, undefined, { timeZone: appTimeZone })}
                   </p>
                 </div>
               )}

@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDate, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import * as React from "react";
@@ -130,15 +133,13 @@ const defaultFilters: FilterState = {
   room: "",
 };
 
-function formatDate(value: string | null | undefined, locale: "en" | "th") {
+function formatDate(value: string | null | undefined, locale: "en" | "th", appTimeZone: string = DEFAULT_APP_TIME_ZONE) {
   if (!value) return "Not set";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Not set";
-  return date.toLocaleDateString(locale === "th" ? "th-TH-u-ca-gregory" : "en-US", {
-    month: "short",
+  return formatAppDate(value, locale === "th" ? "th-TH-u-ca-gregory" : "en-US", { timeZone: appTimeZone, month: "short",
     day: "numeric",
-    year: "numeric",
-  });
+    year: "numeric", });
 }
 
 function getJobTitle(job: Job) {
@@ -462,6 +463,7 @@ function JobCard({
   onDelete,
   onStatusUpdated,
 }: JobActionProps) {
+  const appTimeZone = useAppTimeZone();
   const { locale, t } = useLocale();
   const router = useRouter();
   const description = job.description || t("myJobs.noDescription");
@@ -521,7 +523,7 @@ function JobCard({
         </div>
         <div className="flex min-w-0 items-center gap-2">
           <Calendar className="h-4 w-4 shrink-0" />
-          <span>{t("myJobs.updatedDate", { date: formatDate(job.updated_at, locale) })}</span>
+          <span>{t("myJobs.updatedDate", { date: formatDate(job.updated_at, locale, appTimeZone) })}</span>
         </div>
       </div>
 

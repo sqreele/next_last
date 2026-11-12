@@ -5,6 +5,8 @@
  * Produces a one-page-summary + paginated jobs table.
  */
 
+
+import { appDateKey, formatAppDate, formatAppDateTime, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
 import { jsPDF } from 'jspdf';
 import { Job, Property } from '@/app/lib/types';
 import { JobsReportSummary } from '@/app/lib/utils/excel-export';
@@ -31,11 +33,11 @@ function safe(value: unknown, fallback = ''): string {
   return str.length ? str : fallback;
 }
 
-function formatDate(value?: string | null): string {
+function formatDate(value?: string | null, appTimeZone: string = DEFAULT_APP_TIME_ZONE): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatAppDate(value, 'en-US', { timeZone: appTimeZone, year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function getRoomLabel(job: Job): string {
@@ -227,7 +229,7 @@ interface TableColumn {
   key: string;
   label: string;
   width: number;
-  value: (job: Job, properties: Property[]) => string;
+  value: (job: Job, properties: Property[], timeZone: string) => string;
 }
 
 const COLUMNS: TableColumn[] = [
@@ -237,8 +239,8 @@ const COLUMNS: TableColumn[] = [
   { key: 'room', label: 'Room', width: 110, value: (j) => getRoomLabel(j) },
   { key: 'property', label: 'Property', width: 90, value: (j, p) => getPropertyLabel(j, p) },
   { key: 'user', label: 'Assigned', width: 90, value: (j) => getDisplayName(j.user, safe(j.technician_name || j.user_name, 'Unassigned')) },
-  { key: 'created', label: 'Created', width: 60, value: (j) => formatDate(j.created_at) },
-  { key: 'completed', label: 'Completed', width: 60, value: (j) => formatDate(j.completed_at) },
+  { key: 'created', label: 'Created', width: 60, value: (j, _properties, timeZone) => formatDate(j.created_at, timeZone) },
+  { key: 'completed', label: 'Completed', width: 60, value: (j, _properties, timeZone) => formatDate(j.completed_at, timeZone) },
 ];
 
 function drawTableHeader(doc: jsPDF, y: number, columns: TableColumn[]): number {
@@ -263,6 +265,7 @@ function drawTableRow(
   properties: Property[],
   columns: TableColumn[],
   zebra: boolean,
+  appTimeZone: string,
 ): number {
   const totalWidth = columns.reduce((s, c) => s + c.width, 0);
   doc.setFont('helvetica', 'normal');
@@ -274,7 +277,7 @@ function drawTableRow(
   }
   let x = MARGIN;
   columns.forEach((col) => {
-    const text = col.value(job, properties);
+    const text = col.value(job, properties, appTimeZone);
     const wrapped = doc.splitTextToSize(text || '—', col.width - 6);
     doc.text(wrapped[0] ?? '', x + 4, y);
     x += col.width;
@@ -287,12 +290,12 @@ function drawTableRow(
 export async function exportJobsReportToPdf(
   jobs: Job[],
   properties: Property[] = [],
-  options: PdfExportOptions = {},
+  options: PdfExportOptions = {}, appTimeZone: string = DEFAULT_APP_TIME_ZONE
 ): Promise<void> {
   const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
   const generated = options.generatedAt ?? new Date();
   const title = `${options.propertyName ?? 'All properties'} — Jobs Report`;
-  const subtitle = `${jobs.length} jobs · Generated ${generated.toLocaleString()}`;
+  const subtitle = `${jobs.length} jobs · Generated ${formatAppDateTime(generated, undefined, { timeZone: appTimeZone })}`;
 
   drawHeader(doc, title, subtitle);
   let y = drawSummary(doc, options);
@@ -316,7 +319,7 @@ export async function exportJobsReportToPdf(
       y = MARGIN + 40;
       y = drawTableHeader(doc, y, COLUMNS);
     }
-    y = drawTableRow(doc, y, job, properties, COLUMNS, index % 2 === 1);
+    y = drawTableRow(doc, y, job, properties, COLUMNS, index % 2 === 1, appTimeZone);
   });
 
   if (options.includeImages) {
@@ -329,7 +332,7 @@ export async function exportJobsReportToPdf(
     drawFooter(doc, i, pageCount);
   }
 
-  const date = generated.toISOString().split('T')[0];
+  const date = appDateKey(generated, appTimeZone);
   const slug = (options.propertyName ?? 'jobs').replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]+/g, '-');
   const filename = options.filename ?? `${slug}-jobs-report-${date}.pdf`;
   doc.save(filename);

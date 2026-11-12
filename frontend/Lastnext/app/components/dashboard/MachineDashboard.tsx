@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -62,12 +65,13 @@ async function loadAll<T>(endpoint: string, propertyId: string, signal: AbortSig
 
 
 export default function MachineDashboard({ propertyId, refreshVersion = 0 }: { propertyId: string; refreshVersion?: number }) {
+  const appTimeZone = useAppTimeZone();
   const { locale } = useLocale();
   const text = (th: string, en: string) => locale === "th" ? th : en;
   const displayDate = (value?: string | null) => {
     if (!value) return "—";
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString(locale === "th" ? "th-TH-u-ca-gregory" : "en-US");
+    return Number.isNaN(date.getTime()) ? "—" : formatAppDate(value, locale === "th" ? "th-TH-u-ca-gregory" : "en-US", { timeZone: appTimeZone });
   };
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");

@@ -1,4 +1,7 @@
 "use client";
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+import { appDateKey } from '@/app/lib/date-time.mjs';
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -63,11 +66,11 @@ function saveReadSet(set: Set<string>) {
   }
 }
 
-function relativeTime(iso?: string | null): string {
+function relativeTime(iso: string | null | undefined, now: number): string {
   if (!iso) return "";
   const target = new Date(iso).getTime();
   if (Number.isNaN(target)) return "";
-  const diff = target - Date.now();
+  const diff = target - now;
   const absMinutes = Math.abs(Math.round(diff / 60000));
   const tense = diff >= 0 ? "in " : "";
   const suffix = diff >= 0 ? "" : " ago";
@@ -80,14 +83,15 @@ function relativeTime(iso?: string | null): string {
 
 function classify(
   notification: PMNotification,
+  now: number,
+  timeZone: string,
 ): "overdue" | "today" | "upcoming" | "completed" {
   if (notification.completed_date) return "completed";
   if (!notification.scheduled_date) return "upcoming";
   const scheduled = new Date(notification.scheduled_date).getTime();
   if (Number.isNaN(scheduled)) return "upcoming";
-  if (scheduled < Date.now()) return "overdue";
-  const dayMs = 24 * 60 * 60 * 1000;
-  if (scheduled - Date.now() <= dayMs) return "today";
+  if (scheduled < now) return "overdue";
+  if (appDateKey(scheduled, timeZone) === appDateKey(now, timeZone)) return "today";
   return "upcoming";
 }
 
@@ -118,6 +122,8 @@ export function NotificationBell({
   variant = "compact",
   className,
 }: NotificationBellProps) {
+  const now = useCurrentTime();
+  const appTimeZone = useAppTimeZone();
   const t = useT();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<NotificationsResponse | null>(null);
@@ -196,10 +202,10 @@ export function NotificationBell({
       completed: [],
     };
     (data?.results || []).forEach((n) => {
-      out[classify(n)].push(n);
+      out[classify(n, now, appTimeZone)].push(n);
     });
     return out;
-  }, [data]);
+  }, [data, now, appTimeZone]);
 
   return (
     <div ref={containerRef} className={cn("relative inline-flex", className)}>
@@ -311,7 +317,7 @@ export function NotificationBell({
                             </div>
                             <p className="text-xs font-semibold text-muted-foreground">
                               #{item.pm_id} · {styles.label} ·{" "}
-                              {relativeTime(item.scheduled_date)}
+                              {relativeTime(item.scheduled_date, now)}
                             </p>
                           </div>
                         </Link>

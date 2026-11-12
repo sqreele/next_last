@@ -1,3 +1,5 @@
+import { resolveTimeZone } from './date-time.mjs';
+
 const STRIPE_HOST_SUFFIX = '.stripe.com';
 
 export function rows(payload) {
@@ -31,7 +33,7 @@ export function formatBillingDateTime(value, timeZone, locale = 'en') {
   return new Intl.DateTimeFormat(locale === 'th' ? 'th-TH' : 'en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
-    ...(timeZone ? { timeZone } : {}),
+    timeZone: resolveTimeZone(timeZone),
   }).format(date);
 }
 
@@ -70,13 +72,13 @@ export function getLifecycleDisplay(billing, timeZone, now) {
   return unavailable;
 }
 
-export function getBillingLifecycleMessage(billing, locale = 'en', translate) {
+export function getBillingLifecycleMessage(billing, locale = 'en', translate, timeZone) {
   const tr = (key, fallback, values) => translate ? translate(key, values) : fallback;
   if (!billing) return null;
 
   const periodEnd = formatBillingDate(billing.current_period_end, locale);
-  const trialEnd = formatBillingDateTime(billing.trial_ends_at, undefined, locale);
-  const graceEnd = formatBillingDateTime(billing.grace_period_ends_at, undefined, locale);
+  const trialEnd = formatBillingDateTime(billing.trial_ends_at, timeZone, locale);
+  const graceEnd = formatBillingDateTime(billing.grace_period_ends_at, timeZone, locale);
 
   if (billing.status === 'active') {
     if (billing.reason_code === 'active_period_expired') {

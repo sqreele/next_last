@@ -1,3 +1,5 @@
+
+import { formatAppDateTime, resolveTimeZone } from '@/app/lib/date-time.mjs';
 import { notFound } from "next/navigation";
 import { fetchJob, fetchProperties } from "@/app/lib/data.server";
 import type { Metadata, ResolvingMetadata } from "next";
@@ -179,16 +181,17 @@ export default async function JobPage({ params, searchParams }: Props) {
       notFound();
     }
 
+    const appTimeZone = resolveTimeZone(properties.find(
+      (property) => String(property.property_id || property.id) === String(job.property_id || requestedPropertyId),
+    )?.timezone);
     const propertyFilteredImageUrls = getPropertyFilteredImageUrls(job);
 
     const formatDate = (dateString: string) => {
-      return new Date(dateString).toLocaleString("en-US", {
-        year: "numeric",
+      return formatAppDateTime(dateString, "en-US", { timeZone: appTimeZone, year: "numeric",
         month: "short",
         day: "numeric",
         hour: "2-digit",
-        minute: "2-digit",
-      });
+        minute: "2-digit", });
     };
 
     const propertyNames = (job.properties || []).map((propId, index) => {

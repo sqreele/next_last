@@ -1,4 +1,7 @@
 "use client";
+import { appDateKey } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useState } from "react";
@@ -37,6 +40,7 @@ export function JobBatchActionBar({
   onComplete,
   className,
 }: JobBatchActionBarProps) {
+  const appTimeZone = useAppTimeZone();
   const { data: session } = useSession();
   const [working, setWorking] = useState<null | "status" | "csv" | "xlsx">(
     null,
@@ -92,10 +96,10 @@ export function JobBatchActionBar({
       includeRoomDetails: true,
       includePropertyDetails: true,
       dateFormat: "readable",
-    });
+    }, appTimeZone);
     downloadCSV(
       csv,
-      `selected-jobs-${new Date().toISOString().split("T")[0]}.csv`,
+      `selected-jobs-${appDateKey(new Date(), appTimeZone)}.csv`,
     );
   };
 
@@ -105,13 +109,13 @@ export function JobBatchActionBar({
       exportJobsToExcel(selected, properties, {
         propertyName: "Selected jobs",
         filterDescription: `Selected ${selected.length} jobs`,
-        filename: `selected-jobs-${new Date().toISOString().split("T")[0]}.xlsx`,
+        filename: `selected-jobs-${appDateKey(new Date(), appTimeZone)}.xlsx`,
         includeImages: false,
         includeUserDetails: true,
         includeRoomDetails: true,
         includePropertyDetails: true,
         dateFormat: "readable",
-      });
+      }, appTimeZone);
     } finally {
       setWorking(null);
     }

@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, MailPlus, RefreshCw, RotateCw, UserRoundX } from "lucide-react";
@@ -117,6 +120,7 @@ function statusVariant(status: InvitationStatus): "default" | "secondary" | "des
 }
 
 export default function TenantUsersSettingsPage() {
+  const appTimeZone = useAppTimeZone();
   const { canUseFeature } = usePlanCapabilities();
   const canManageAdvancedGrants = canUseFeature("advanced_property_permissions");
   const t = useT();
@@ -474,7 +478,7 @@ export default function TenantUsersSettingsPage() {
                   <TableCell mobileLabel="Role">{localizedRoleLabel(invitation.role)}</TableCell>
                   <TableCell mobileLabel="Properties">{invitationPropertyNames(invitation).join(", ")}</TableCell>
                   <TableCell mobileLabel="Status"><Badge variant={statusVariant(invitation.status)}>{localizedRoleLabel(invitation.status)}</Badge></TableCell>
-                  <TableCell mobileLabel="Expires">{new Date(invitation.expires_at).toLocaleString()}</TableCell>
+                  <TableCell mobileLabel="Expires">{formatAppDateTime(invitation.expires_at, undefined, { timeZone: appTimeZone })}</TableCell>
                   <TableCell mobileLabel="Actions" className="text-right">
                     {invitation.status === "pending" || invitation.status === "expired" ? (
                       <div className="flex justify-end gap-2">

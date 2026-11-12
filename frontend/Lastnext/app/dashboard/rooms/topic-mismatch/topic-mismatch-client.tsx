@@ -1,4 +1,6 @@
 "use client";
+import { appDateKey, appCalendarDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
 
 import React from "react";
 import Link from "next/link";
@@ -56,6 +58,7 @@ function normalizeRoomId(id: unknown): number | null {
 }
 
 export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
+  const appTimeZone = useAppTimeZone();
   const { selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
   const [selectedTopicId, setSelectedTopicId] = React.useState<number | null>(
@@ -159,7 +162,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
       )
         return false;
 
-      const createdMs = new Date(job.created_at).getTime();
+      const createdMs = appCalendarDate(job.created_at, appTimeZone).getTime();
       if (createdFrom.trim()) {
         const fromDay = parseYmd(createdFrom);
         if (fromDay) {
@@ -183,6 +186,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
     createdFrom,
     createdTo,
     getUserKey,
+    appTimeZone,
   ]);
 
   // topicId -> room IDs where at least one job has this topic
@@ -483,7 +487,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
       ...rows.map((row) => row.map(escapeCsv).join(",")),
     ].join("\n");
 
-    const date = new Date().toISOString().split("T")[0];
+    const date = appDateKey(new Date(), appTimeZone);
     const topicSlug = selectedTopic.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -505,6 +509,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
     createdFrom,
     createdTo,
     roomJobCountMap,
+    appTimeZone,
   ]);
 
   return (

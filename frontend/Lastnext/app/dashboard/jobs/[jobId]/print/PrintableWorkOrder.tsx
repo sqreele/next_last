@@ -1,4 +1,7 @@
 'use client';
+import { appDateKey, formatAppDateTime, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { BouncingDotsLoader } from '@/app/components/ui/BouncingDotsLoader';
 
 import { getRoomPropertyId } from '@/app/lib/utils/property-filter';
@@ -17,17 +20,15 @@ interface PrintableWorkOrderProps {
   properties: Property[];
 }
 
-function formatDate(value: string | null | undefined): string {
+function formatDate(value: string | null | undefined, appTimeZone: string = DEFAULT_APP_TIME_ZONE): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
+  return formatAppDateTime(value, 'en-US', { timeZone: appTimeZone, year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit',
-  });
+    minute: '2-digit', });
 }
 
 const MAX_PRINTABLE_PHOTOS = 6;
@@ -99,9 +100,9 @@ function getPropertyName(job: Job, properties: Property[]): string {
   );
 }
 
-function buildPdfFilename(jobId: string | undefined): string {
+function buildPdfFilename(jobId: string | undefined, appTimeZone: string): string {
   const safeJobId = String(jobId || 'work-order').replace(/[^a-z0-9_-]+/gi, '-');
-  const date = new Date().toISOString().slice(0, 10);
+  const date = appDateKey(new Date(), appTimeZone);
   return `work-order-${safeJobId}-${date}.pdf`;
 }
 
@@ -216,6 +217,7 @@ function applyPdfColorFallbacks(clonedDocument: Document) {
 }
 
 export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps) {
+  const appTimeZone = useAppTimeZone();
   const printableContentRef = useRef<HTMLDivElement | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -349,7 +351,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
       }
 
       exportStage = 'saving the PDF file';
-      pdf.save(buildPdfFilename(job.job_id));
+      pdf.save(buildPdfFilename(job.job_id, appTimeZone));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       console.error(`Failed to download work order PDF while ${exportStage}:`, error);
@@ -454,9 +456,9 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
             {getDisplayName(job.user, job.technician_name || job.user_name || '—')}
           </Field>
           <Field label="Area">{job.area?.name || job.area_name || '—'}</Field>
-          <Field label="Created">{formatDate(job.created_at)}</Field>
-          <Field label="Updated">{formatDate(job.updated_at)}</Field>
-          <Field label="Completed">{formatDate(job.completed_at)}</Field>
+          <Field label="Created">{formatDate(job.created_at, appTimeZone)}</Field>
+          <Field label="Updated">{formatDate(job.updated_at, appTimeZone)}</Field>
+          <Field label="Completed">{formatDate(job.completed_at, appTimeZone)}</Field>
         </section>
 
         <section className="mt-6">
@@ -527,7 +529,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
         </section>
 
         <footer className="mt-8 border-t border-slate-200 pt-3 text-[10px] font-medium text-slate-500">
-          Printed {new Date().toLocaleString()} · StayMaint Hotel Maintenance
+          Printed {formatAppDateTime(new Date(), undefined, { timeZone: appTimeZone })} · StayMaint Hotel Maintenance
         </footer>
       </div>
     </div>

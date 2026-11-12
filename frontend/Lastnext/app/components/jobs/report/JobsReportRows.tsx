@@ -6,7 +6,8 @@ import { Button } from "@/app/components/ui/button";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 
-import { format } from "date-fns";
+import { formatAppDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
 
 import { getReportUserLabel } from "@/app/lib/jobs-report-data";
 
@@ -40,6 +41,7 @@ export function JobsReportRows({
   totalPages,
   setCurrentPage,
 }: Props) {
+  const appTimeZone = useAppTimeZone();
   return (<>
     <Card>
       <CardHeader className="pb-3">
@@ -121,7 +123,7 @@ export function JobsReportRows({
                       <div className="flex justify-between gap-3">
                         <dt>Created</dt>
                         <dd className="text-right text-foreground">
-                          {format(new Date(job.created_at), "PP")}
+                          {formatAppDate(job.created_at, "en-US", { dateStyle: "medium", timeZone: appTimeZone })}
                         </dd>
                       </div>
                     </dl>
@@ -164,7 +166,7 @@ export function JobsReportRows({
                       <tr key={job.job_id} className="align-top hover:bg-muted/40">
                         <td className="whitespace-nowrap px-3 py-3 font-semibold">#{job.job_id}</td>
                         <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
-                          {format(new Date(job.created_at), "PP")}
+                          {formatAppDate(job.created_at, "en-US", { dateStyle: "medium", timeZone: appTimeZone })}
                         </td>
                         <td className="px-3 py-3">
                           <StatusBadge size="sm" status={job.status} />

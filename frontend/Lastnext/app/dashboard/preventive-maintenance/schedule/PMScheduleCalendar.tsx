@@ -1,4 +1,8 @@
 "use client";
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
+import { appDateKey, formatAppTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { BouncingDotsLoader } from "@/app/components/ui/BouncingDotsLoader";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -86,6 +90,8 @@ function startOfWeekMonday(date: Date): Date {
 }
 
 export function PMScheduleCalendar() {
+  const appTimeZone = useAppTimeZone();
+  const currentTime = useCurrentTime();
   const { locale, t } = useLocale();
   const dateLocale = locale === "th" ? "th-TH-u-ca-gregory" : "en-US";
   const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
@@ -104,8 +110,8 @@ export function PMScheduleCalendar() {
 
   const activeAnchor = anchor?.propertyId === selectedPropertyId ? anchor.date : null;
   const gridStart = useMemo(
-    () => activeAnchor || startOfWeekMonday(parseISODate(visibleData?.from || toISODate(new Date()))),
-    [activeAnchor, visibleData?.from],
+    () => activeAnchor || startOfWeekMonday(parseISODate(visibleData?.from || appDateKey(new Date(), appTimeZone))),
+    [activeAnchor, visibleData?.from, appTimeZone],
   );
   const gridCells = useMemo(() => {
     const cells: Date[] = [];
@@ -173,7 +179,7 @@ export function PMScheduleCalendar() {
   }, [visibleData]);
 
   const selectedBucket = selectedDate ? dayIndex.get(selectedDate) : null;
-  const todayKey = visibleData?.today || toISODate(new Date());
+  const todayKey = appDateKey(currentTime, visibleData?.timezone || appTimeZone);
   const windowLabel = `${gridStart.toLocaleDateString(dateLocale, { month: "short", day: "numeric" })} – ${gridCells[gridCells.length - 1]?.toLocaleDateString(dateLocale, { month: "short", day: "numeric" })}`;
   const weekdayLabels = Array.from({ length: 7 }, (_, index) => {
     const day = new Date(gridStart);
@@ -642,14 +648,11 @@ export function PMScheduleCalendar() {
                               ? t("pmSchedule.nextDue")
                               : t("status.scheduled")}{" "}
                           ·{" "}
-                          {new Date(item.calendar_date).toLocaleTimeString(
-                            dateLocale,
-                            {
+                          {formatAppTime(item.calendar_date, dateLocale, {
                               hour: "numeric",
                               minute: "2-digit",
                               timeZone: visibleData?.timezone,
-                            },
-                          )}
+                            })}
                         </p>
                       )}
                     </div>

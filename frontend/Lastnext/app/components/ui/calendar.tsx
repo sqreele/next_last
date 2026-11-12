@@ -1,6 +1,9 @@
 "use client"
 
 import React from "react";
+import { appCalendarDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils/cn";
@@ -38,9 +41,12 @@ type BaseCalendarProps = {
 type CalendarProps = BaseCalendarProps & (SingleMode | RangeMode | MultipleMode);
 
 function Calendar(props: CalendarProps) {
+  const appTimeZone = useAppTimeZone();
+  const currentTime = useCurrentTime();
+  const today = React.useMemo(() => appCalendarDate(currentTime, appTimeZone), [currentTime, appTimeZone]);
   const {
     className,
-    month = new Date(),
+    month = today,
     selected,
     onSelect,
     onMonthChange,
@@ -188,7 +194,6 @@ function Calendar(props: CalendarProps) {
 
   // Today checking
   const isToday = (day: number): boolean => {
-    const today = new Date();
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     return date.toDateString() === today.toDateString();
   };

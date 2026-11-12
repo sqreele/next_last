@@ -1,4 +1,7 @@
 "use client";
+import { nextAppScheduleDate, appDateKey, toAppDateTimeInput, appDateTimeInputToISO, formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { PMTemplateSection } from "./PMTemplateSection";
 import { PMScheduleSection } from "./PMScheduleSection";
 import { PMMachineSection } from "./PMMachineSection";
@@ -59,6 +62,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   onCancel,
   machineId,
 }) => {
+  const appTimeZone = useAppTimeZone();
   const { toast } = useToast();
   const { data: session } = useSession();
   const user = session?.user || null;
@@ -151,152 +155,22 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     };
   }, [pmId, selectedProperty]);
 
-  const formatDateForInput = useCallback((date: Date): string => {
-    // Use local methods to match the user's timezone for datetime-local inputs
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    const result = `${year}-${month}-${day}T${hours}:${minutes}`;
-    return result;
-  }, []);
-
-  // Helper function to calculate next scheduled date based on frequency
-  const calculateNextScheduledDate = useCallback(
-    (frequency: string, customDays?: number, baseDate?: Date): Date => {
-      const now = baseDate ?? new Date();
-      let nextDate: Date;
-
-      switch (frequency) {
-        case "daily":
-          nextDate = new Date(now);
-          nextDate.setDate(nextDate.getDate() + 1);
-          break;
-        case "weekly":
-          nextDate = new Date(now);
-          nextDate.setDate(nextDate.getDate() + 7);
-          break;
-        case "monthly":
-          nextDate = new Date(now);
-          nextDate.setMonth(nextDate.getMonth() + 1);
-          // Handle month overflow (e.g., Jan 31 + 1 month = Feb 28/29)
-          if (nextDate.getDate() !== now.getDate()) {
-            nextDate.setDate(0); // Set to last day of previous month
-          }
-          break;
-        case "quarterly":
-          nextDate = new Date(now);
-          nextDate.setMonth(nextDate.getMonth() + 3);
-          if (nextDate.getDate() !== now.getDate()) {
-            nextDate.setDate(0);
-          }
-          break;
-        case "semi_annual":
-          nextDate = new Date(now);
-          nextDate.setMonth(nextDate.getMonth() + 6);
-          if (nextDate.getDate() !== now.getDate()) {
-            nextDate.setDate(0);
-          }
-          break;
-        case "annual":
-          nextDate = new Date(now);
-          nextDate.setFullYear(nextDate.getFullYear() + 1);
-          // Handle leap year edge case (Feb 29)
-          if (nextDate.getDate() !== now.getDate()) {
-            nextDate.setDate(0);
-          }
-          break;
-        case "custom":
-          if (customDays) {
-            nextDate = new Date(now);
-            nextDate.setDate(nextDate.getDate() + customDays);
-          } else {
-            nextDate = new Date(now);
-            nextDate.setMonth(nextDate.getMonth() + 1);
-          }
-          break;
-        default:
-          // Default to monthly
-          nextDate = new Date(now);
-          nextDate.setMonth(nextDate.getMonth() + 1);
-          if (nextDate.getDate() !== now.getDate()) {
-            nextDate.setDate(0);
-          }
-      }
-
-      return nextDate;
-    },
-    [],
+  const formTimeZone = propertyTimezone || appTimeZone;
+  const formatDateForInput = useCallback(
+    (date: Date): string => toAppDateTimeInput(date, formTimeZone),
+    [formTimeZone],
   );
 
-  // Helper function to convert datetime-local values to ISO 8601 format
-  const convertToISO8601 = useCallback((dateTimeLocal: string): string => {
-    if (!dateTimeLocal) {
-      return "";
-    }
+  const calculateNextScheduledDate = useCallback(
+    (frequency: string, customDays?: number, baseDate?: Date): Date =>
+      nextAppScheduleDate(baseDate ?? new Date(), frequency, customDays, formTimeZone),
+    [formTimeZone],
+  );
 
-    try {
-      // Create a Date object from the datetime-local value
-      // This assumes the datetime-local value is in the user's local timezone
-      const date = new Date(dateTimeLocal);
-
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        throw new Error("Invalid date");
-      }
-
-      // Create a format that Django can parse: YYYY-MM-DDThh:mm
-      // This matches Django's expected format without seconds
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hours = String(date.getHours()).padStart(2, "0");
-      const minutes = String(date.getMinutes()).padStart(2, "0");
-
-      const isoString = `${year}-${month}-${day}T${hours}:${minutes}`;
-      return isoString;
-    } catch (error) {
-      console.error(
-        "[convertToISO8601] Error converting datetime-local to ISO 8601:",
-        error,
-        "Input:",
-        dateTimeLocal,
-      );
-
-      // If it's already in ISO format, return as is
-      if (
-        dateTimeLocal.includes("T") &&
-        (dateTimeLocal.includes("Z") || dateTimeLocal.includes("+"))
-      ) {
-        return dateTimeLocal;
-      }
-
-      // If it's in YYYY-MM-DDTHH:mm format, add seconds and convert to ISO
-      if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
-        const fallbackDate = new Date(dateTimeLocal + ":00");
-        if (!isNaN(fallbackDate.getTime())) {
-          // Use the same format: YYYY-MM-DDThh:mm
-          const year = fallbackDate.getFullYear();
-          const month = String(fallbackDate.getMonth() + 1).padStart(2, "0");
-          const day = String(fallbackDate.getDate()).padStart(2, "0");
-          const hours = String(fallbackDate.getHours()).padStart(2, "0");
-          const minutes = String(fallbackDate.getMinutes()).padStart(2, "0");
-
-          const fallbackISO = `${year}-${month}-${day}T${hours}:${minutes}`;
-          return fallbackISO;
-        }
-      }
-
-      // Last resort: try to construct ISO string manually
-      const fallback = `${dateTimeLocal}:00`;
-      console.warn(
-        "[convertToISO8601] Using last resort fallback format:",
-        fallback,
-      );
-      return fallback;
-    }
-  }, []);
+  const convertToISO8601 = useCallback(
+    (dateTimeLocal: string): string => appDateTimeInputToISO(dateTimeLocal, formTimeZone),
+    [formTimeZone],
+  );
 
   // Helper function to ensure datetime-local input format
   const ensureDateTimeLocalFormat = useCallback(
@@ -334,13 +208,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Set the default date after component mounts to avoid hydration issues
   useEffect(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    const defaultDate = `${year}-${month}-${day}T09:00`;
-    setDefaultScheduledDate(defaultDate);
-  }, []);
+    setDefaultScheduledDate(`${appDateKey(new Date(), formTimeZone)}T09:00`);
+  }, [formTimeZone]);
 
   const getPropertyName = useCallback(
     (propertyId: string | null): string => {
@@ -934,8 +803,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         values.completed_date.trim() !== "" &&
         values.scheduled_date
       ) {
-        const scheduledDate = new Date(values.scheduled_date);
-        const completedDate = new Date(values.completed_date);
+        const scheduledDate = new Date(convertToISO8601(values.scheduled_date));
+        const completedDate = new Date(convertToISO8601(values.completed_date));
 
         if (completedDate < scheduledDate) {
           setSubmitError(
@@ -1262,22 +1131,24 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               return null;
             }
 
-            const baseDate = new Date(values.scheduled_date);
+            let baseDate: Date;
+            try { baseDate = new Date(convertToISO8601(values.scheduled_date)); }
+            catch { return null; }
             if (isNaN(baseDate.getTime())) {
               return null;
             }
 
-            return calculateNextScheduledDate(
-              values.frequency,
-              values.frequency === "custom" && values.custom_days
-                ? Number(values.custom_days)
-                : undefined,
-              baseDate,
-            );
+            try {
+              return calculateNextScheduledDate(
+                values.frequency,
+                values.frequency === "custom" && values.custom_days ? Number(values.custom_days) : undefined,
+                baseDate,
+              );
+            } catch { return null; }
           })();
 
           const nextDueLabel = nextDueDate
-            ? nextDueDate.toLocaleString()
+            ? formatAppDateTime(nextDueDate, undefined, { timeZone: formTimeZone })
             : "Not available";
 
           return (
@@ -1352,7 +1223,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
               <PMTemplateSection loadingMaintenanceTasks={loadingMaintenanceTasks} availableMaintenanceTasks={availableMaintenanceTasks}
                 calculateNextScheduledDate={calculateNextScheduledDate} formatDateForInput={formatDateForInput} />
-              <PMScheduleSection pmId={pmId} propertyTimezone={propertyTimezone} nextDueLabel={nextDueLabel} />
+              <PMScheduleSection pmId={pmId} propertyTimezone={formTimeZone} nextDueLabel={nextDueLabel} />
               {/* Notes */}
               <div className="mb-4 sm:mb-6">
                 <label

@@ -1,4 +1,6 @@
 'use client';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
@@ -50,6 +52,7 @@ const getServerOrdering = (field: SortField, order: 'asc' | 'desc') => {
 };
 
 function PreventiveMaintenanceListPageContent() {
+  const appTimeZone = useAppTimeZone();
   const { locale, t } = useLocale();
   const selectedProperty = useMainStore(state => state.selectedPropertyId);
   const { 
@@ -524,7 +527,7 @@ function PreventiveMaintenanceListPageContent() {
               onDelete={setDeleteConfirm}
               sortBy={sortBy}
               sortOrder={sortOrder}
-              formatDate={(date) => formatDate(date, locale)}
+              formatDate={(date) => formatDate(date, locale, appTimeZone)}
               getMachineNames={(machines) => {
                 const names = getMachineNames(machines);
                 return names === 'None' || names === 'Unknown' ? t('common.none') : names;

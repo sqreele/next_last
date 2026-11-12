@@ -8,6 +8,8 @@
  *   - Jobs: row-per-job detail (reuses the existing CSV column shape).
  */
 
+
+import { appDateKey, formatAppDateTime, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
 import * as XLSX from 'xlsx';
 import { Job, Property } from '@/app/lib/types';
 import {
@@ -55,14 +57,14 @@ function autoSizeColumns(rows: (string | number)[][]): XLSX.ColInfo[] {
   return widths;
 }
 
-function buildSummarySheet(opts: ExcelExportOptions): XLSX.WorkSheet {
+function buildSummarySheet(opts: ExcelExportOptions, appTimeZone: string = DEFAULT_APP_TIME_ZONE): XLSX.WorkSheet {
   const generated = opts.generatedAt ?? new Date();
   const summary = opts.summary;
   const rows: (string | number)[][] = [
     ['Hotel Maintenance — Jobs Report'],
     [],
     ['Property', opts.propertyName ?? 'All properties'],
-    ['Generated', generated.toLocaleString()],
+    ['Generated', formatAppDateTime(generated, undefined, { timeZone: appTimeZone })],
   ];
   if (opts.filterDescription) {
     rows.push(['Filters', opts.filterDescription]);
@@ -114,10 +116,10 @@ function excelImageFormula(url: string): string {
 function buildJobsSheet(
   jobs: Job[],
   properties: Property[],
-  options: CSVExportOptions,
+  options: CSVExportOptions, appTimeZone: string = DEFAULT_APP_TIME_ZONE
 ): XLSX.WorkSheet {
   const headers = getJobsCSVHeaders(options);
-  const dataRows = jobs.map((job) => jobToCSVRow(job, properties, options));
+  const dataRows = jobs.map((job) => jobToCSVRow(job, properties, options, appTimeZone));
   const rows: (string | number)[][] = [headers, ...dataRows];
   const sheet = XLSX.utils.aoa_to_sheet(rows);
 
@@ -149,10 +151,10 @@ function buildJobsSheet(
 export function buildJobsReportWorkbook(
   jobs: Job[],
   properties: Property[] = [],
-  options: ExcelExportOptions = {},
+  options: ExcelExportOptions = {}, appTimeZone: string = DEFAULT_APP_TIME_ZONE
 ): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, buildSummarySheet(options), 'Summary');
+  XLSX.utils.book_append_sheet(workbook, buildSummarySheet(options, appTimeZone), 'Summary');
 
   if (options.summary) {
     XLSX.utils.book_append_sheet(
@@ -173,17 +175,17 @@ export function buildJobsReportWorkbook(
     );
   }
 
-  XLSX.utils.book_append_sheet(workbook, buildJobsSheet(jobs, properties, options), 'Jobs');
+  XLSX.utils.book_append_sheet(workbook, buildJobsSheet(jobs, properties, options, appTimeZone), 'Jobs');
   return workbook;
 }
 
 export function exportJobsToExcel(
   jobs: Job[],
   properties: Property[] = [],
-  options: ExcelExportOptions = {},
+  options: ExcelExportOptions = {}, appTimeZone: string = DEFAULT_APP_TIME_ZONE
 ): void {
-  const workbook = buildJobsReportWorkbook(jobs, properties, options);
-  const date = (options.generatedAt ?? new Date()).toISOString().split('T')[0];
+  const workbook = buildJobsReportWorkbook(jobs, properties, options, appTimeZone);
+  const date = appDateKey(options.generatedAt ?? new Date(), appTimeZone);
   const slug = (options.propertyName ?? 'jobs').replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]+/g, '-');
   const filename = options.filename ?? `${slug}-jobs-report-${date}.xlsx`;
   XLSX.writeFile(workbook, filename);

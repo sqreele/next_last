@@ -1,0 +1,12 @@
+export const DEFAULT_APP_TIME_ZONE: 'Asia/Bangkok';
+export type AppDateValue = string | number | Date;
+export function resolveTimeZone(value?: string | null): string;
+export function formatAppDate(value: AppDateValue, locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions): string;
+export function formatAppDateTime(value: AppDateValue, locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions): string;
+export function formatAppTime(value: AppDateValue, locales?: Intl.LocalesArgument, options?: Intl.DateTimeFormatOptions): string;
+export function appDateKey(value?: AppDateValue, timeZone?: string): string;
+export function appCalendarDayDifference(value: AppDateValue, now?: AppDateValue, timeZone?: string): number;
+export function toAppDateTimeInput(value: AppDateValue, timeZone?: string): string;
+export function appDateTimeInputToISO(value: string, timeZone?: string): string;
+export function appCalendarDate(value?: AppDateValue, timeZone?: string): Date;
+export function nextAppScheduleDate(value: AppDateValue, frequency: string, customDays?: number | null, timeZone?: string): Date;

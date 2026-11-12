@@ -1,4 +1,8 @@
 "use client";
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
+import { appCalendarDayDifference, appDateKey, formatAppDate, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
@@ -47,22 +51,19 @@ interface MaintenanceJobCardProps {
 
 type Translate = (key: DictKey, values?: Record<string, string | number>) => string;
 
-function formatDate(dateString: string | null | undefined, locale: Locale, t: Translate): string {
+function formatDate(dateString: string | null | undefined, locale: Locale, t: Translate, appTimeZone: string = DEFAULT_APP_TIME_ZONE, now: number = Date.now()): string {
   if (!dateString) return t("jobs.notSet");
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return t("jobs.notSet");
 
-  const now = new Date();
-  const diffInDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
+  const diffInDays = appCalendarDayDifference(dateString, now, appTimeZone);
   if (diffInDays === 0) return t("action.today");
   if (diffInDays === 1) return t("jobs.yesterday");
   if (diffInDays > 1 && diffInDays < 7) return t("jobs.daysAgo", { count: diffInDays });
 
-  return date.toLocaleDateString(locale === "th" ? "th-TH-u-ca-gregory" : "en-US", {
-    month: "short",
+  return formatAppDate(dateString, locale === "th" ? "th-TH-u-ca-gregory" : "en-US", { timeZone: appTimeZone, month: "short",
     day: "numeric",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-  });
+    year: appDateKey(dateString, appTimeZone).slice(0, 4) !== appDateKey(now, appTimeZone).slice(0, 4) ? "numeric" : undefined, });
 }
 
 function getLocation(job: Job, fallback = "Unassigned location"): string {
@@ -167,6 +168,8 @@ export default function MaintenanceJobCard({
   job,
   viewMode = "grid",
 }: MaintenanceJobCardProps) {
+  const appTimeZone = useAppTimeZone();
+  const now = useCurrentTime();
   const { locale, t } = useLocale();
   const location = getLocation(job, t("jobs.unassignedLocation"));
   const detailHref = job.property_id
@@ -264,14 +267,14 @@ export default function MaintenanceJobCard({
               <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
               <dt className="sr-only">Created time</dt>
               <dd className="truncate">
-                {formatDate(job.created_at, locale, t)}
+                {formatDate(job.created_at, locale, t, appTimeZone, now)}
               </dd>
             </div>
           </dl>
 
           <div className="job-card-footer mt-auto pt-3 sm:pt-4">
             <span className="hidden truncate text-xs text-muted-foreground sm:block">
-              {t("myJobs.updatedDate", { date: formatDate(job.updated_at, locale, t) })}
+              {t("myJobs.updatedDate", { date: formatDate(job.updated_at, locale, t, appTimeZone, now) })}
             </span>
             <span className="job-card-action mt-1 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-2 text-[11px] font-semibold text-primary shadow-xs transition-colors group-hover:bg-primary/15 sm:min-h-11 sm:text-sm">
               {t("action.viewDetails")}

@@ -1,4 +1,7 @@
 "use client";
+import { appCalendarDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
 
 import { useState, useEffect, useMemo } from "react";
 import { Check } from "lucide-react";
@@ -48,6 +51,9 @@ export default function JobList({
   viewMode = "grid",
   onRefresh,
 }: JobListProps) {
+  const appTimeZone = useAppTimeZone();
+  const currentTime = useCurrentTime();
+  const today = appCalendarDate(currentTime, appTimeZone).getTime();
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("Newest first");
@@ -128,10 +134,10 @@ export default function JobList({
   };
 
   const applyDateFilter = (job: Job): boolean => {
-    const jobDate = job.created_at ? new Date(job.created_at) : null;
+    const jobDate = job.created_at ? appCalendarDate(job.created_at, appTimeZone) : null;
     if (!jobDate) return true;
 
-    const now = new Date();
+    const now = new Date(today);
 
     switch (dateFilter) {
       case "today":
@@ -317,10 +323,10 @@ export default function JobList({
       );
     }
     if (mobileFilters.dateFilter !== "all") {
-      const now = new Date();
+      const now = new Date(today);
       out = out.filter((j) => {
         if (!j.created_at) return false;
-        const d = new Date(j.created_at);
+        const d = appCalendarDate(j.created_at, appTimeZone);
         switch (mobileFilters.dateFilter) {
           case "today":
             return isWithinInterval(d, {
@@ -350,7 +356,7 @@ export default function JobList({
       });
     }
     return out;
-  }, [filteredJobs, mobileFilters]);
+  }, [filteredJobs, mobileFilters, appTimeZone, today]);
 
   const sortedJobs = [...filteredJobsWithMobile].sort((a, b) => {
     const dateA = new Date(a.created_at || "").getTime();

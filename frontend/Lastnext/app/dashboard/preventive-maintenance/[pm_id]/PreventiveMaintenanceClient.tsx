@@ -1,6 +1,9 @@
 // app/dashboard/preventive-maintenance/[pm_id]/PreventiveMaintenanceClient.tsx
 
 "use client";
+import { appDateKey, formatAppDate, formatAppDateTime } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 import { preventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
 import { useState, useMemo, useEffect, useRef, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -48,6 +51,7 @@ interface PreventiveMaintenanceClientProps {
 export default function PreventiveMaintenanceClient({
   maintenanceData: initialMaintenanceData,
 }: PreventiveMaintenanceClientProps) {
+  const appTimeZone = useAppTimeZone();
   const { locale, t } = useLocale();
   const dateLocale = locale === "th" ? "th-TH-u-ca-gregory" : "en-US";
   const router = useRouter();
@@ -201,8 +205,8 @@ export default function PreventiveMaintenanceClient({
         );
 
         if (daysDiff < -15 || daysDiff > 15) {
-          const scheduledDateStr = scheduledDate.toLocaleDateString(dateLocale);
-          const completedDateStr = completedDate.toLocaleDateString(dateLocale);
+          const scheduledDateStr = formatAppDate(scheduledDate, dateLocale, { timeZone: appTimeZone });
+          const completedDateStr = formatAppDate(completedDate, dateLocale, { timeZone: appTimeZone });
           const proceed = window.confirm(t("pmDetail.outsideWindow", {
             scheduled: scheduledDateStr,
             completed: completedDateStr,
@@ -237,14 +241,11 @@ export default function PreventiveMaintenanceClient({
 
         // Show success message with next scheduled date
         if (nextScheduledDate) {
-          const nextDate = new Date(nextScheduledDate);
-          const formattedDate = nextDate.toLocaleDateString(dateLocale, {
-            year: "numeric",
+          const formattedDate = formatAppDate(nextScheduledDate, dateLocale, { timeZone: appTimeZone, year: "numeric",
             month: "long",
             day: "numeric",
             hour: "2-digit",
-            minute: "2-digit",
-          });
+            minute: "2-digit", });
 
           // Show success message
           alert(
@@ -727,7 +728,7 @@ export default function PreventiveMaintenanceClient({
         }
       }
 
-      const generatedDate = new Date().toISOString().slice(0, 10);
+      const generatedDate = appDateKey(new Date(), appTimeZone);
       pdf.save(
         `preventive-maintenance-${maintenanceData.pm_id}-${generatedDate}.pdf`,
       );
@@ -818,13 +819,11 @@ export default function PreventiveMaintenanceClient({
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return t("pmDetail.invalidDate");
-      return date.toLocaleString(dateLocale, {
-        year: "numeric",
+      return formatAppDateTime(dateString, dateLocale, { timeZone: appTimeZone, year: "numeric",
         month: "long",
         day: "numeric",
         hour: "numeric",
-        minute: "2-digit",
-      });
+        minute: "2-digit", });
     } catch (error) {
       console.error("Error formatting date:", error);
       return t("pmDetail.invalidDate");
@@ -833,15 +832,11 @@ export default function PreventiveMaintenanceClient({
 
   // Helper functions use the selected UI locale and the app's Gregorian Thai convention.
   const formatCurrentDateTime = () => {
-    return new Date().toLocaleString(dateLocale, {
-      year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
-    });
+    return formatAppDateTime(new Date(), dateLocale, { timeZone: appTimeZone, year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", });
   };
 
   const formatCurrentDate = () => {
-    return new Date().toLocaleDateString(dateLocale, {
-      year: "numeric", month: "short", day: "numeric",
-    });
+    return formatAppDate(new Date(), dateLocale, { timeZone: appTimeZone, year: "numeric", month: "short", day: "numeric", });
   };
 
   // Status functions - use useState/useEffect to avoid hydration issues with Date.now()

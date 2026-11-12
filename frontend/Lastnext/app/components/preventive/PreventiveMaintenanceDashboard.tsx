@@ -1,4 +1,7 @@
 "use client";
+import { formatAppDate } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
@@ -21,6 +24,7 @@ interface FrequencyDistributionItem {
 }
 
 export default function PreventiveMaintenanceDashboard() {
+  const appTimeZone = useAppTimeZone();
   const { locale, t } = useLocale();
   const dateLocale = locale === "th" ? "th-TH-u-ca-gregory" : "en-US";
   // Use our store hook to access all maintenance data and actions
@@ -158,11 +162,9 @@ export default function PreventiveMaintenanceDashboard() {
     if (!dateString) return t("common.notAvailable");
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return t("common.notAvailable");
-    return date.toLocaleDateString(dateLocale, {
-      year: "numeric",
+    return formatAppDate(dateString, dateLocale, { timeZone: appTimeZone, year: "numeric",
       month: "short",
-      day: "numeric",
-    });
+      day: "numeric", });
   };
 
   // Get completion rate percentage

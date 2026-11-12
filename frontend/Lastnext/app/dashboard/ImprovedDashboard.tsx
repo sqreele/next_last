@@ -1,4 +1,8 @@
 'use client';
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
+import { appCalendarDayDifference, appDateKey, formatAppDate, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -104,27 +108,28 @@ function localeTag(locale: Locale) {
   return locale === 'th' ? 'th-TH-u-ca-gregory' : 'en-US';
 }
 
-function formatDate(dateString: string | null | undefined, locale: Locale) {
+function formatDate(dateString: string | null | undefined, locale: Locale, appTimeZone: string = DEFAULT_APP_TIME_ZONE) {
   if (!dateString) return 'Not set';
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return 'Not set';
-  return date.toLocaleDateString(localeTag(locale), { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatAppDate(dateString, localeTag(locale), { timeZone: appTimeZone, month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function relativeTime(dateString: string | null | undefined, locale: Locale) {
+function relativeTime(dateString: string | null | undefined, locale: Locale, appTimeZone: string = DEFAULT_APP_TIME_ZONE, now: number = Date.now()) {
   if (!dateString) return '';
   const date = new Date(dateString).getTime();
   if (Number.isNaN(date)) return '';
-  const diff = Date.now() - date;
+  const diff = now - date;
   const minutes = Math.round(diff / 60000);
   const formatter = new Intl.RelativeTimeFormat(localeTag(locale), { numeric: 'auto' });
-  if (minutes < 1) return formatter.format(0, 'minute');
+  if (Math.abs(minutes) < 1) return formatter.format(0, 'minute');
+  if (minutes < 0) return formatter.format(-minutes, 'minute');
   if (minutes < 60) return formatter.format(-minutes, 'minute');
   const hours = Math.round(minutes / 60);
   if (hours < 24) return formatter.format(-hours, 'hour');
   const days = Math.round(hours / 24);
   if (days < 7) return formatter.format(-days, 'day');
-  return formatDate(dateString, locale);
+  return formatDate(dateString, locale, appTimeZone);
 }
 
 function isOverdue(job: Job) {
@@ -173,6 +178,8 @@ function DashboardLoading() {
 }
 
 export default function ImprovedDashboard() {
+  const appTimeZone = useAppTimeZone();
+  const currentTime = useCurrentTime();
   const { canUseFeature } = usePlanCapabilities();
   useSessionGuard();
   const { locale, t } = useLocale();
@@ -256,21 +263,19 @@ export default function ImprovedDashboard() {
 
     // Weekly line series (last 7 days job count)
     const buckets: Array<{ label: string; count: number }> = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = new Date(`${appDateKey(currentTime, appTimeZone)}T12:00:00Z`);
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
-      d.setDate(today.getDate() - i);
+      d.setUTCDate(today.getUTCDate() - i);
       buckets.push({
-        label: d.toLocaleDateString(localeTag(locale), { weekday: 'short' }),
+        label: formatAppDate(d.toISOString().slice(0, 10), localeTag(locale), { weekday: 'short' }),
         count: 0,
       });
     }
     jobs.forEach((job) => {
       const created = new Date(job.created_at);
       if (Number.isNaN(created.getTime())) return;
-      created.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor((today.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+      const diffDays = appCalendarDayDifference(created, currentTime, appTimeZone);
       if (diffDays >= 0 && diffDays <= 6) {
         buckets[6 - diffDays].count += 1;
       }
@@ -356,7 +361,7 @@ export default function ImprovedDashboard() {
       weeklyPeakIndex: peakIndex,
       weeklyTotal: buckets.reduce((sum, b) => sum + b.count, 0),
     };
-  }, [jobs, locale, stats]);
+  }, [jobs, locale, stats, appTimeZone, currentTime]);
 
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && event.key !== 'Home' && event.key !== 'End') return;
@@ -872,7 +877,7 @@ export default function ImprovedDashboard() {
                       <div key={job.job_id || job.id} className={`sneat-timeline__item sneat-timeline__item--${tone} min-w-0`}>
                         <div className="sneat-timeline__top">
                           <span className="sneat-timeline__title min-w-0 break-words">#{job.job_id} &middot; {title}</span>
-                          <span className="sneat-timeline__time">{relativeTime(job.created_at, locale)}</span>
+                          <span className="sneat-timeline__time">{relativeTime(job.created_at, locale, appTimeZone, currentTime)}</span>
                         </div>
                         <p className="sneat-timeline__body break-words">
                           {t('dashboard.assignedTo', { location: getRoomOrArea(job), name: getUserName(job.user) })}

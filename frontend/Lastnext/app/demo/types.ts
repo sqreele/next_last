@@ -1,3 +1,5 @@
+
+import { formatAppDateTime, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
 export type DemoStatus = "pending" | "in_progress" | "waiting_sparepart" | "completed" | "cancelled";
 export type DemoPriority = "low" | "medium" | "high" | "critical";
 
@@ -102,10 +104,10 @@ export function categoryLabel(value: string, language: "th" | "en" = "th") {
   return value;
 }
 
-export function displayDate(value: string | null, language: "th" | "en" = "th") {
+export function displayDate(value: string | null, language: "th" | "en" = "th", appTimeZone: string = DEFAULT_APP_TIME_ZONE) {
   if (!value) return "—";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(language === "th" ? "th-TH" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
+  return Number.isNaN(date.getTime()) ? value : formatAppDateTime(value, language === "th" ? "th-TH" : "en-GB", { timeZone: appTimeZone, dateStyle: "medium", timeStyle: "short" });
 }
 
 export function floorOf(room: string) {

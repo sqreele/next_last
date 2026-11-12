@@ -1,4 +1,8 @@
 "use client";
+import { useCurrentTime } from '@/app/lib/hooks/useCurrentTime';
+import { formatAppDate, DEFAULT_APP_TIME_ZONE } from '@/app/lib/date-time.mjs';
+import { useAppTimeZone } from '@/app/lib/hooks/useAppTimeZone';
+
 
 import React, { useMemo } from "react";
 import Link from "next/link";
@@ -44,8 +48,8 @@ function getJobTitle(job: Job): string {
   return job.topics?.[0]?.title || job.title || "Maintenance job";
 }
 
-function relativeTime(ts: number): string {
-  const diff = Date.now() - ts;
+function relativeTime(ts: number, appTimeZone: string = DEFAULT_APP_TIME_ZONE, now: number = Date.now()): string {
+  const diff = now - ts;
   if (diff < 0) return "soon";
   const minutes = Math.round(diff / 60000);
   if (minutes < 1) return "just now";
@@ -54,11 +58,10 @@ function relativeTime(ts: number): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.round(hours / 24);
   if (days < 7) return `${days}d ago`;
-  const date = new Date(ts);
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatAppDate(ts, "en-US", { timeZone: appTimeZone, month: "short", day: "numeric" });
 }
 
-function categorize(job: Job): { kind: ActivityKind; timestamp: number } {
+function categorize(job: Job, now: number): { kind: ActivityKind; timestamp: number } {
   const status = normalizeStatus(job.status);
   const created = new Date(job.created_at).getTime();
   const updated = job.updated_at ? new Date(job.updated_at).getTime() : created;
@@ -78,7 +81,7 @@ function categorize(job: Job): { kind: ActivityKind; timestamp: number } {
     return { kind: "in_progress", timestamp: updated };
   }
   // Job aged > 3 days without completion = overdue surface
-  const ageDays = (Date.now() - created) / (1000 * 60 * 60 * 24);
+  const ageDays = (now - created) / (1000 * 60 * 60 * 24);
   if (ageDays >= 3 && status !== "cancelled") {
     return { kind: "overdue", timestamp: updated };
   }
@@ -158,12 +161,14 @@ export function RecentActivityFeed({
   className,
   inline = false,
 }: RecentActivityFeedProps) {
+  const appTimeZone = useAppTimeZone();
+  const now = useCurrentTime();
   const [filter, setFilter] = React.useState<ActivityKind | "all">("all");
 
   const activity = useMemo<ActivityRow[]>(() => {
     return jobs
       .map((job) => {
-        const { kind, timestamp } = categorize(job);
+        const { kind, timestamp } = categorize(job, now);
         const meta = KIND_META[kind];
         return {
           key: `${job.job_id || job.id}-${kind}-${timestamp}`,
@@ -177,7 +182,7 @@ export function RecentActivityFeed({
         };
       })
       .sort((a, b) => b.timestamp - a.timestamp);
-  }, [jobs]);
+  }, [jobs, now]);
 
   const filtered = useMemo(() => {
     const slice =
@@ -268,7 +273,7 @@ export function RecentActivityFeed({
                         {getJobTitle(row.job)}
                       </p>
                       <span className="flex-none text-[11px] font-semibold text-muted-foreground">
-                        {relativeTime(row.timestamp)}
+                        {relativeTime(row.timestamp, appTimeZone, now)}
                       </span>
                     </div>
                     <p className="break-words text-xs leading-5 text-muted-foreground">

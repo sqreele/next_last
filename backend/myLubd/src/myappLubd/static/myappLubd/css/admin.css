@@ -540,12 +540,25 @@ html.job-filter-dialog-open {
 
 input[type="text"], input[type="password"], input[type="email"], input[type="url"],
 input[type="number"], input[type="tel"], textarea, select, .vTextField {
+  box-sizing: border-box;
   padding: 9px 11px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;
   background: var(--body-bg);
   color: var(--body-fg);
   transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+/* Django's fixed 30px select height leaves too little room for this theme's
+   vertical padding, especially for Thai vowels and tone marks. */
+input[type="text"], input[type="password"], input[type="email"], input[type="url"],
+input[type="number"], input[type="tel"], select:not([multiple]):not([size]), .vTextField {
+  min-height: 40px;
+  line-height: 20px;
+}
+
+select:not([multiple]):not([size]) {
+  height: auto;
 }
 
 input:focus, textarea:focus, select:focus, .vTextField:focus {
@@ -581,6 +594,32 @@ input:focus, textarea:focus, select:focus, .vTextField:focus {
   padding: 9px 15px;
   border-radius: 7px;
   font-weight: 700;
+}
+
+.submit-row input[type="submit"],
+body .submit-row a.deletelink,
+body .submit-row a.closelink {
+  box-sizing: border-box;
+  height: auto;
+  min-height: 40px;
+  padding: 10px 15px;
+  line-height: 20px;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .aligned .flex-container > label:not(.vCheckboxLabel) {
+    display: flex;
+    align-items: center;
+    align-self: flex-start;
+    min-height: 40px;
+    padding-top: 0;
+    line-height: 20px;
+  }
+
+  .aligned .flex-container > label:not(.vCheckboxLabel)::after {
+    display: none;
+  }
 }
 
 .messagelist {
@@ -673,6 +712,11 @@ body.login {
 
   .aligned .form-row > div {
     flex-direction: column;
+  }
+
+  .aligned .form-row > .checkbox-row {
+    flex-direction: row;
+    align-items: center;
   }
 
   .job-changelist-controls {

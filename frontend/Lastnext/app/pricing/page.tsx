@@ -10,10 +10,17 @@ import { seoConfig } from "@/app/lib/seo-config";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "StayMaint Pricing | Hotel Maintenance Plans",
+  title: "Pricing | Hotel Maintenance Plans",
   description: "Choose the StayMaint plan that fits your hotel maintenance operation, from daily work tracking to multi-property management.",
   alternates: { canonical: "/pricing/" },
   openGraph: { title: "StayMaint Pricing | Hotel Maintenance Plans", description: "Straightforward monthly plans for hotel maintenance teams.", url: `${seoConfig.siteUrl}/pricing/`, siteName: seoConfig.siteName, type: "website", locale: "en_US", images: seoConfig.openGraph.images },
+  twitter: {
+    card: seoConfig.twitter.cardType,
+    title: "StayMaint Pricing | Hotel Maintenance Plans",
+    description: "Choose the StayMaint plan that fits your hotel maintenance operation, from daily work tracking to multi-property management.",
+    creator: seoConfig.twitter.handle,
+    images: seoConfig.openGraph.images.map((image) => image.url),
+  },
 };
 
 const descriptions: Record<string, string> = {

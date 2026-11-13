@@ -6,7 +6,7 @@ const description =
   "Manage work orders, preventive maintenance, assets, rooms, technicians and engineering reports in one StayMaint platform.";
 
 export const metadata: Metadata = {
-  title: "Smart Hotel Maintenance and Engineering Management Software",
+  title: { absolute: "StayMaint | Smart Hotel Maintenance and Engineering Management Software" },
   description,
   alternates: { canonical: "/" },
   openGraph: {

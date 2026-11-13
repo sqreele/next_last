@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { isWithinRoute } from "@/app/lib/security/route-matching.mjs";
 import { logSessionDiagnostic } from "@/app/lib/auth0/session-diagnostics.mjs";
+import { getPublicPageLocale, isMissingPublicPage, publicNotFoundHtml } from "@/app/lib/public-seo.mjs";
 
 const AUTH0_SESSION_COOKIE = "auth0_session";
 const OPAQUE_SESSION_REFERENCE = /^v2\.[A-Za-z0-9_-]{43}$/;
@@ -71,6 +72,14 @@ export async function middleware(request: NextRequest) {
     PUBLIC_FILE.test(pathname)
   ) {
     return NextResponse.next();
+  }
+
+  // Reject missing public pages before the root loading boundary starts streaming.
+  if (isMissingPublicPage(pathname)) {
+    return new NextResponse(publicNotFoundHtml(pathname.startsWith('/th/') ? 'th' : 'en'), {
+      status: 404,
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' },
+    });
   }
 
   // Check if the route is protected
@@ -147,7 +156,12 @@ export async function middleware(request: NextRequest) {
     // They can stay on landing page or navigate to dashboard
   }
 
-  return NextResponse.next();
+  // Overwrite client-supplied values; the root layout uses this trusted locale.
+  const requestHeaders = new Headers(request.headers);
+  const documentLocale = getPublicPageLocale(pathname);
+  requestHeaders.delete('x-staymaint-document-locale');
+  if (documentLocale) requestHeaders.set('x-staymaint-document-locale', documentLocale);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

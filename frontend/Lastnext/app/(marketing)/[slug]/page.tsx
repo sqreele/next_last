@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SeoLandingPage } from "@/app/components/marketing/SeoLandingPage";
 import { englishMarketingPages } from "@/app/lib/marketing-pages";
 import { seoConfig } from "@/app/lib/seo-config";
+import { getMarketingAlternates } from "@/app/lib/public-seo.mjs";
 
 export function generateStaticParams() {
   return Object.keys(englishMarketingPages).map((slug) => ({ slug }));
@@ -28,7 +29,7 @@ export async function generateMetadata({
       "StayMaint",
       "hotel maintenance software",
     ],
-    alternates: { canonical: url },
+    alternates: getMarketingAlternates(page.slug, 'en', seoConfig.siteUrl),
     openGraph: {
       title: page.metaTitle,
       description: page.description,

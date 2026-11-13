@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SeoLandingPage } from "@/app/components/marketing/SeoLandingPage";
 import { thaiMarketingPages } from "@/app/lib/marketing-pages";
 import { seoConfig } from "@/app/lib/seo-config";
+import { getMarketingAlternates } from "@/app/lib/public-seo.mjs";
 
 export function generateStaticParams() {
   return Object.keys(thaiMarketingPages).map((slug) => ({ slug }));
@@ -24,7 +25,7 @@ export async function generateMetadata({
     title: page.metaTitle,
     description: page.description,
     keywords: [page.slug, "StayMaint", "โปรแกรมซ่อมบำรุงโรงแรม"],
-    alternates: { canonical: url },
+    alternates: getMarketingAlternates(page.slug, 'th', seoConfig.siteUrl),
     openGraph: {
       title: page.metaTitle,
       description: page.description,

@@ -6,7 +6,7 @@ const description =
   'Contact StayMaint for product questions, technical support, billing, partnerships, or general inquiries.';
 
 export const metadata: Metadata = {
-  title: 'Contact StayMaint',
+  title: 'Contact',
   description,
   alternates: {
     canonical: `${seoConfig.siteUrl}/contact/`,

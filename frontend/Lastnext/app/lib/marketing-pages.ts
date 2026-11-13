@@ -240,7 +240,7 @@ export const englishMarketingPages: Record<string, MarketingPage> = {
   "hotel-cmms": en(
     "hotel-cmms",
     "A hotel CMMS designed around rooms, guests and engineering teams",
-    "Hotel CMMS Software | StayMaint",
+    "Hotel CMMS Software",
     "Combine corrective work, preventive maintenance, assets, inventory and engineering reports in a CMMS tailored to hospitality operations.",
     [
       {
@@ -496,7 +496,7 @@ export const thaiMarketingPages: Record<string, MarketingPage> = {
     slug: "ระบบบริหารงานซ่อมบำรุงโรงแรม",
     locale: "th",
     title: "ระบบบริหารงานซ่อมบำรุงโรงแรมแบบครบวงจร",
-    metaTitle: "ระบบบริหารงานซ่อมบำรุงโรงแรม | StayMaint",
+    metaTitle: "ระบบบริหารงานซ่อมบำรุงโรงแรม",
     description:
       "บริหารใบงาน แผนบำรุงรักษาเชิงป้องกัน เครื่องจักร อะไหล่ ห้องพัก ทีมช่าง และรายงานวิศวกรรมในแพลตฟอร์มเดียว",
     eyebrow: "แพลตฟอร์มบริหารฝ่ายช่างโรงแรม",

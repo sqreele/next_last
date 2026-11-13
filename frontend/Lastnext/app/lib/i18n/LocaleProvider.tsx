@@ -9,6 +9,8 @@ import {
   getDictionary,
 } from '@/app/lib/i18n/dictionary';
 import { interpolateTranslation, resolveClientLocale } from '@/app/lib/i18n/runtime.mjs';
+import { usePathname } from 'next/navigation';
+import { getPublicPageLocale } from '@/app/lib/public-seo.mjs';
 
 export const LOCALE_STORAGE_KEY = 'pcms-locale';
 export const LOCALE_COOKIE_KEY = 'pcms-locale';
@@ -42,6 +44,7 @@ export function LocaleProvider({
   initialLocale?: Locale;
 }) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const pathname = usePathname();
 
   useEffect(() => {
     const detected = detectLocale(initialLocale);
@@ -62,9 +65,9 @@ export function LocaleProvider({
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('lang', locale);
+      document.documentElement.setAttribute('lang', getPublicPageLocale(pathname) ?? locale);
     }
-  }, [locale]);
+  }, [locale, pathname]);
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);

@@ -8,6 +8,11 @@
   <link rel="stylesheet" href="{% static 'myappLubd/css/admin.css' %}">
 {% endblock %}
 
+{% block extrahead %}
+  {{ block.super }}
+  <script src="{% static 'myappLubd/js/admin_property_selector.js' %}" defer></script>
+{% endblock %}
+
 {% block branding %}
   <div id="site-branding">
     <a class="brand-link" href="{% url 'admin:index' %}" aria-label="StayMaint administration home">
@@ -21,5 +26,19 @@
 {% endblock %}
 
 {% block nav-global %}
+  {% if available_admin_properties is not None %}
+    <form class="admin-property-selector" method="post" action="{% url 'admin:select_property' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <label for="admin-property">Available sites</label>
+      <select id="admin-property" name="property">
+        <option value="">All available properties</option>
+        {% for property in available_admin_properties %}
+          <option value="{{ property.pk }}"{% if selected_admin_property.pk == property.pk %} selected{% endif %}>{{ property.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Apply</button>
+    </form>
+  {% endif %}
   {% if user.is_superuser %}<nav aria-label="Operations"><a href="{% url 'admin:myappLubd_scheduledtaskrun_changelist' %}">Cron &amp; email status</a></nav>{% endif %}
 {% endblock %}

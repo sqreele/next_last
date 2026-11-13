@@ -178,7 +178,7 @@ AUTH_USER_MODEL = 'myappLubd.User'
 
 # Applications
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'myappLubd.admin_config.PropertyAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

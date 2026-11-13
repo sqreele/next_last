@@ -119,6 +119,11 @@ class MaintenanceProcedureAdmin(OperationalPropertyAdminMixin, admin.ModelAdmin)
             object_id = getattr(getattr(request, 'resolver_match', None), 'kwargs', {}).get('object_id')
             if not property_pk and object_id:
                 property_pk = self.get_queryset(request).filter(pk=object_id).values_list('property_id', flat=True).first()
+            if not property_pk and hasattr(request, 'session'):
+                from ..admin_site import selected_property
+                property_obj = selected_property(request)
+                if property_obj is not None:
+                    property_pk = property_obj.pk
             kwargs['queryset'] = machines.filter(property_id=property_pk) if property_pk else machines.none()
         return super().formfield_for_manytomany(db_field, request, **kwargs)
 

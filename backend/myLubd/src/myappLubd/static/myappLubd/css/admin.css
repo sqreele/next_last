@@ -66,6 +66,27 @@ body {
   align-items: center;
 }
 
+.admin-property-selector {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 16px;
+}
+
+.admin-property-selector select {
+  max-width: min(280px, 65vw);
+}
+
+.admin-property-selector button {
+  background: var(--button-bg);
+  color: var(--button-fg);
+  border: 0;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
 .brand-link {
   display: inline-flex;
   align-items: center;

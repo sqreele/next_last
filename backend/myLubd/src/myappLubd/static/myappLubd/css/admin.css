@@ -682,6 +682,44 @@ select:not([multiple]):not([size]) {
   height: auto;
 }
 
+/* Keep the text line centered even when Django's responsive form styles load
+   after this stylesheet. Include date/time and search widgets as well. */
+#content input:is([type="text"], [type="password"], [type="email"], [type="url"],
+  [type="number"], [type="tel"], [type="search"], [type="date"],
+  [type="time"], [type="datetime-local"]),
+#content select:not([multiple]):not([size]),
+#content select[size="1"] {
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--body-bg);
+  color: var(--body-fg);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+#content .select2-container--admin-autocomplete .select2-selection--single {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+}
+
+#content .select2-container--admin-autocomplete .select2-selection--single .select2-selection__rendered {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+#content .select2-container--admin-autocomplete .select2-selection--single .select2-selection__arrow {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 input:focus, textarea:focus, select:focus, .vTextField:focus {
   border-color: #14b8a6;
   outline: none;

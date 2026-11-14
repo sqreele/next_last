@@ -152,21 +152,34 @@
   list-style: none;
 }
 
-.job-filter-group li {
+#job-filter-dialog #changelist-filter ul {
   margin: 0;
+  padding: 0;
+  border: 0;
 }
 
-.job-filter-group a {
-  display: block;
-  padding: 7px 9px;
+#job-filter-dialog #changelist-filter li,
+#job-filter-dialog #changelist-filter li.selected {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+#job-filter-dialog #changelist-filter a {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: 7px;
   background: var(--body-bg);
   color: var(--body-fg);
+  line-height: 22px;
   text-decoration: none;
 }
 
-.job-filter-group li.selected a {
+#job-filter-dialog #changelist-filter li.selected a {
   border-color: var(--primary);
   background: var(--selected-bg);
   color: var(--link-selected-fg);
@@ -232,6 +245,17 @@
 
 .job-filter-dialog__footer-spacer {
   flex: 1 1 auto;
+}
+
+.job-filter-dialog__footer .button,
+.job-filter-trigger {
+  box-sizing: border-box;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  line-height: 22px;
 }
 
 .job-filter-dialog__clear {

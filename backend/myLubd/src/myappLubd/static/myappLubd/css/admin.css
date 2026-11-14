@@ -688,7 +688,8 @@ select:not([multiple]):not([size]) {
   [type="number"], [type="tel"], [type="search"], [type="date"],
   [type="time"], [type="datetime-local"]),
 #content select:not([multiple]):not([size]),
-#content select[size="1"] {
+#content select[size="1"],
+#header .admin-property-selector select {
   box-sizing: border-box;
   height: 44px;
   min-height: 44px;

@@ -26,6 +26,10 @@ class AdminChangelistControlsTests(TestCase):
                 response = self.client.get(reverse(f'admin:myappLubd_{model}_changelist'), secure=True)
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'myappLubd/js/admin_changelist.js')
+                self.assertRegex(response.content.decode(), r'css/admin\.css\?v=[0-9a-f]{12}')
+                self.assertRegex(response.content.decode(), r'js/admin_changelist\.js\?v=[0-9a-f]{12}')
+                if model == 'job':
+                    self.assertRegex(response.content.decode(), r'css/job_filter_dialog\.css\?v=[0-9a-f]{12}')
 
     def test_active_filter_returns_only_matching_rows(self):
         response = self.client.get(

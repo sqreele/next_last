@@ -1,14 +1,14 @@
 {% extends "admin/change_list.html" %}
-{% load admin_list i18n static %}
+{% load admin_list i18n static admin_assets %}
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'myappLubd/css/job_filter_dialog.css' %}">
+  <link rel="stylesheet" href="{% admin_asset 'myappLubd/css/job_filter_dialog.css' %}">
 {% endblock %}
 
 {% block extrahead %}
   {{ block.super }}
-  <script src="{% static 'myappLubd/js/job_filter_dialog.js' %}" defer></script>
+  <script src="{% admin_asset 'myappLubd/js/job_filter_dialog.js' %}" defer></script>
 {% endblock %}
 
 {% block search %}

@@ -1,17 +1,17 @@
 {% extends "admin/base.html" %}
-{% load static %}
+{% load static admin_assets %}
 
 {% block title %}{{ title }} | StayMaint Admin{% endblock %}
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'myappLubd/css/admin.css' %}">
+  <link rel="stylesheet" href="{% admin_asset 'myappLubd/css/admin.css' %}">
 {% endblock %}
 
 {% block extrahead %}
   {{ block.super }}
-  <script src="{% static 'myappLubd/js/admin_property_selector.js' %}" defer></script>
-  <script src="{% static 'myappLubd/js/admin_changelist.js' %}" defer></script>
+  <script src="{% admin_asset 'myappLubd/js/admin_property_selector.js' %}" defer></script>
+  <script src="{% admin_asset 'myappLubd/js/admin_changelist.js' %}" defer></script>
 {% endblock %}
 
 {% block branding %}

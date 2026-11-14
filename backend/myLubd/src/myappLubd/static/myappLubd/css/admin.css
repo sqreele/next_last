@@ -689,7 +689,8 @@ select:not([multiple]):not([size]) {
   [type="time"], [type="datetime-local"]),
 #content select:not([multiple]):not([size]),
 #content select[size="1"],
-#header .admin-property-selector select {
+#header .admin-property-selector select,
+#nav-sidebar #nav-filter {
   box-sizing: border-box;
   height: 44px;
   min-height: 44px;

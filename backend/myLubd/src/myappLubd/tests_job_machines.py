@@ -238,6 +238,8 @@ class JobMachineTests(APITestCase):
         Job.objects.filter(job_id=second.data['job_id']).update(
             status='completed', completed_at=datetime(2028, 2, 29, 10, tzinfo=datetime_timezone.utc),
         )
+        from .serializer_modules.jobs import JobSerializer
+        JobSerializer.record_machine_completion(Job.objects.get(job_id=second.data['job_id']))
         self.assertEqual(self.machine.get_next_maintenance_date(), datetime(2028, 3, 29, 10, tzinfo=datetime_timezone.utc))
 
     def test_machine_pm_dates_are_tracked_per_template(self):
@@ -297,6 +299,136 @@ class JobMachineTests(APITestCase):
         job = Job.objects.get(job_id=response.data['job_id'])
         self.machine.refresh_from_db()
         self.assertEqual(self.machine.last_maintenance_date, job.completed_at)
+
+    def test_machine_pm_completion_schedules_calendar_and_reminders_once(self):
+        from .notifications.pm_reminders import get_due_groups
+        from .service_modules.notifications import NotificationService
+        from zoneinfo import ZoneInfo
+        template = MaintenanceProcedure.objects.create(
+            property=self.property, name='Quarterly tank service', frequency='quarterly',
+        )
+        template.machines.add(self.machine)
+        response = self.create_job(category='PM', procedure_template=template.pk)
+        self.assertEqual(response.status_code, 201, response.data)
+        job = Job.objects.get(job_id=response.data['job_id'])
+        completed_at = datetime(2026, 11, 13, 23, 37, tzinfo=datetime_timezone.utc)
+        with patch('myappLubd.view_modules.jobs.timezone.now', return_value=completed_at):
+            result = self.client.patch(f'/api/v1/jobs/{job.job_id}/update_status/', {'status': 'completed'}, format='json')
+        self.assertEqual(result.status_code, 200, result.data)
+        pm = PreventiveMaintenance.objects.get(recurrence_source_job=job)
+        expected = datetime(2027, 2, 13, 23, 37, tzinfo=datetime_timezone.utc)
+        self.assertEqual(pm.scheduled_date, expected)
+        self.assertIsNone(pm.job_id)
+        self.assertEqual(list(pm.machines.all()), [self.machine])
+        self.assertEqual(self.machine.get_next_maintenance_date(), expected)
+        calendar = self.client.get('/api/v1/preventive-maintenance/schedule/', {
+            'property_id': self.property.property_id, 'from': '2027-02-14', 'days': 1,
+        })
+        self.assertEqual(calendar.status_code, 200, calendar.data)
+        # The calendar uses the property's local timezone (Bangkok by default).
+        items = [item for day in calendar.data['days'] for item in day['items']]
+        self.assertIn(pm.pm_id, [item['pm_id'] for item in items])
+        with patch('myappLubd.service_modules.notifications.timezone.now', return_value=expected - timezone.timedelta(days=3)):
+            alerts = NotificationService.get_upcoming_alerts(self.user, property_id=self.property.property_id)
+        self.assertIn(pm.pk, [item.pk for item in alerts])
+        due_day = timezone.localtime(expected, ZoneInfo('Asia/Bangkok')).date()
+        groups = get_due_groups(run_date=due_day)
+        self.assertTrue(any(pm.pk in [task.pk for task in group['tasks']] for group in groups))
+        for _ in range(2):
+            update = self.client.patch(f'/api/v1/jobs/{job.job_id}/', {'remarks': 'Updated notes'}, format='json')
+            self.assertEqual(update.status_code, 200, update.data)
+        self.assertEqual(PreventiveMaintenance.objects.count(), 1)
+
+    def test_new_machine_pm_completion_fulfils_previous_automatic_appointment(self):
+        from .serializer_modules.jobs import JobSerializer
+        template = MaintenanceProcedure.objects.create(property=self.property, name='Monthly', frequency='monthly')
+        template.machines.add(self.machine)
+        first = self.create_job(category='PM', procedure_template=template.pk, status='completed')
+        self.assertEqual(first.status_code, 201, first.data)
+        job = Job.objects.get(job_id=first.data['job_id'])
+        first_pm = PreventiveMaintenance.objects.get(recurrence_source_job=job)
+        second = self.create_job(category='PM', procedure_template=template.pk)
+        self.assertEqual(second.status_code, 201, second.data)
+        next_job = Job.objects.get(job_id=second.data['job_id'])
+        next_job.status = 'completed'
+        next_job.completed_at = job.completed_at + timezone.timedelta(days=20)
+        next_job.save()
+        JobSerializer.record_machine_completion(next_job)
+        first_pm.refresh_from_db()
+        self.assertEqual(first_pm.status, 'completed')
+        self.assertIsNone(first_pm.next_due_date)
+        self.assertEqual(PreventiveMaintenance.objects.filter(completed_date__isnull=True).count(), 1)
+        JobSerializer.record_machine_completion(job)
+        self.assertEqual(PreventiveMaintenance.objects.count(), 2)
+
+    def test_machine_repair_does_not_schedule_pm(self):
+        result = self.create_job(status='completed')
+        self.assertEqual(result.status_code, 201, result.data)
+        self.assertFalse(PreventiveMaintenance.objects.exists())
+
+    def test_existing_manual_pm_is_not_duplicated(self):
+        template = MaintenanceProcedure.objects.create(property=self.property, name='Monthly', frequency='monthly')
+        template.machines.add(self.machine)
+        pm = PreventiveMaintenance.objects.create(
+            created_by=self.user, procedure_template=template,
+            scheduled_date=timezone.now() + timezone.timedelta(days=30),
+        )
+        pm.machines.add(self.machine)
+        result = self.create_job(category='PM', procedure_template=template.pk, status='completed')
+        self.assertEqual(result.status_code, 201, result.data)
+        self.assertEqual(PreventiveMaintenance.objects.count(), 1)
+
+    def test_existing_master_plan_keeps_ownership_of_recurrence(self):
+        template = MaintenanceProcedure.objects.create(property=self.property, name='Monthly', frequency='monthly')
+        template.machines.add(self.machine)
+        plan = PMMasterPlan.objects.create(
+            title='Existing plan', procedure_template=template, created_by=self.user,
+            start_date=timezone.now() + timezone.timedelta(days=30),
+        )
+        plan.machines.add(self.machine)
+        result = self.create_job(category='PM', procedure_template=template.pk, status='completed')
+        self.assertEqual(result.status_code, 201, result.data)
+        self.assertFalse(PreventiveMaintenance.objects.exists())
+
+    def test_backfill_is_preview_only_by_default_and_apply_is_idempotent(self):
+        from django.core.management import call_command
+        from io import StringIO
+        template = MaintenanceProcedure.objects.create(property=self.property, name='Monthly', frequency='monthly')
+        template.machines.add(self.machine)
+        result = self.create_job(category='PM', procedure_template=template.pk)
+        self.assertEqual(result.status_code, 201, result.data)
+        Job.objects.filter(job_id=result.data['job_id']).update(status='completed', completed_at=timezone.now())
+        call_command('backfill_machine_pm_recurrence', machine_id=self.machine.machine_id, stdout=StringIO())
+        self.assertFalse(PreventiveMaintenance.objects.exists())
+        for _ in range(2):
+            call_command('backfill_machine_pm_recurrence', machine_id=self.machine.machine_id, apply=True, stdout=StringIO())
+        self.assertEqual(PreventiveMaintenance.objects.count(), 1)
+
+    def test_due_automatic_pm_creates_machine_job_and_repeats_on_completion(self):
+        from django.core.management import call_command
+        from io import StringIO
+        from .serializer_modules.jobs import JobSerializer
+        template = MaintenanceProcedure.objects.create(property=self.property, name='Monthly', frequency='monthly')
+        template.machines.add(self.machine)
+        result = self.create_job(category='PM', procedure_template=template.pk)
+        self.assertEqual(result.status_code, 201, result.data)
+        job = Job.objects.get(job_id=result.data['job_id'])
+        job.status = 'completed'
+        job.completed_at = timezone.now() - timezone.timedelta(days=40)
+        job.save()
+        JobSerializer.record_machine_completion(job)
+        pm = PreventiveMaintenance.objects.get(recurrence_source_job=job)
+        call_command('materialize_due_pm_jobs', stdout=StringIO())
+        pm.refresh_from_db()
+        self.assertEqual(pm.job.machine_id, self.machine.pk)
+        self.assertEqual(pm.job.procedure_template_id, template.pk)
+        update = self.client.patch(f'/api/v1/jobs/{pm.job.job_id}/update_status/', {'status': 'completed'}, format='json')
+        self.assertEqual(update.status_code, 200, update.data)
+        pm.refresh_from_db()
+        self.assertEqual(pm.status, 'completed')
+        self.assertTrue(PreventiveMaintenance.objects.filter(
+            recurrence_source_job=pm.job, completed_date__isnull=True,
+        ).exists())
 
     def test_completed_job_does_not_move_maintenance_date_backwards(self):
         future = timezone.now() + timezone.timedelta(days=1)

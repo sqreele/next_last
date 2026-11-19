@@ -166,6 +166,8 @@ class Command(BaseCommand):
                         status="pending",
                         priority=(pm.priority or "medium") if pm.priority != "critical" else "high",
                         is_preventivemaintenance=True,
+                        machine=pm.machines.first() if pm.machines.count() == 1 else None,
+                        procedure_template=pm.procedure_template,
                     )
                     if target_rooms:
                         job.rooms.set(target_rooms)

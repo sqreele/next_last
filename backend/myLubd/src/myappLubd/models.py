@@ -681,6 +681,11 @@ class PreventiveMaintenance(models.Model):
     # Maximum image dimensions
     MAX_SIZE = (400, 400)
     job = models.ForeignKey('Job', on_delete=models.SET_NULL, null=True, blank=True)
+    recurrence_source_job = models.OneToOneField(
+        'Job', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='next_machine_pm',
+        help_text='Completed machine work order that scheduled this PM occurrence',
+    )
     master_plan = models.ForeignKey(
         'PMMasterPlan',
         on_delete=models.SET_NULL,

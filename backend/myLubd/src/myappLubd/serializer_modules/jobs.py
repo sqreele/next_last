@@ -153,6 +153,8 @@ class JobSerializer(serializers.ModelSerializer):
                 Q(last_maintenance_date__isnull=True) | Q(last_maintenance_date__lt=job.completed_at)
             ).update(last_maintenance_date=job.completed_at)
             job._state.fields_cache.pop('machine', None)
+            from ..machine_pm_recurrence import schedule_next_machine_pm
+            schedule_next_machine_pm(job)
 
     updated_by = serializers.SlugRelatedField(
         slug_field='username',

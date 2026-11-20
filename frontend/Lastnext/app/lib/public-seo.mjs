@@ -13,8 +13,8 @@ export const MARKETING_LANGUAGE_PAIRS = [
 
 const applicationRoots = new Set([
   'api', 'internal-api', 'auth', 'dashboard', 'platform', 'report', 'demo',
-  'invitations', 'ai-chat', 'login', 'offline', 'admin', '_next', 'static',
-  'images', 'fonts', 'branding', 'media', 'jobs', 'preventive-maintenance',
+  'invitations', 'ai-chat', 'login', 'offline', 'admin', '_next',
+  'media', 'jobs', 'preventive-maintenance',
   'rooms', 'profile', 'createJob', 'myJobs', 'jobs-report',
 ]);
 

@@ -54,7 +54,7 @@ test('equivalent languages have reciprocal, self-inclusive alternatives', () => 
 });
 
 test('missing marketing URLs are rejected without intercepting application routes', () => {
-  for (const path of ['/missing/', '/th/missing/', '/th/', '/hotel-cmms/extra/', '/contact/extra/', '/%ZZ/']) {
+  for (const path of ['/missing/', '/th/missing/', '/th/', '/hotel-cmms/extra/', '/contact/extra/', '/%ZZ/', '/missing.jpg', '/images/missing.png', '/fonts/missing.woff2', '/branding/missing.svg', '/favicon.ico']) {
     assert.equal(isMissingPublicPage(path), true, path);
   }
   for (const path of ['/auth/login/', '/dashboard/', '/platform/tenants/123/', '/api/v1/billing/webhooks/stripe/', '/report/property/room/', '/demo/jobs/123/', '/profile/']) {

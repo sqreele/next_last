@@ -75,7 +75,7 @@ export const metadata: Metadata = {
     title: 'StayMaint - Hotel Engineering & Maintenance Dashboard',
     description: 'StayMaint - Professional hotel engineering and maintenance management. Track and manage hotel maintenance tasks seamlessly.',
     creator: '@StayMaint',
-    images: ['https://staymaint.com/twitter-image.jpg'],
+    images: ['https://staymaint.com/og-image.jpg'],
   },
   icons: {
     icon: [

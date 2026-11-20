@@ -46,7 +46,11 @@ const protectedRoutes = [
 ];
 
 // Define public routes that don't require authentication
-const PUBLIC_FILE = /\.[^/]+$/;
+const publicFiles = new Set<string>([
+  ...JSON.parse(process.env.STAYMAINT_PUBLIC_FILES || '[]'),
+  '/robots.txt',
+  '/sitemap.xml',
+]);
 
 // Define API routes that require authentication
 const protectedApiRoutes = [
@@ -59,17 +63,14 @@ const protectedApiRoutes = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  let decodedPath = pathname;
+  try { decodedPath = decodeURIComponent(pathname); } catch { /* Invalid paths become 404s below. */ }
 
   // Skip middleware for static files and API routes that don't need auth
   if (
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/static") ||
-    pathname.startsWith("/images") ||
-    pathname.startsWith("/favicon.ico") ||
     pathname.startsWith("/api/auth") ||
-    pathname === "/sw.js" ||
-    pathname === "/manifest.json" ||
-    PUBLIC_FILE.test(pathname)
+    publicFiles.has(decodedPath)
   ) {
     return NextResponse.next();
   }
@@ -170,8 +171,7 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
      */
-    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json).*)",
+    "/((?!_next/static|_next/image).*)",
   ],
 };

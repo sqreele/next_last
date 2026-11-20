@@ -1,9 +1,19 @@
 // @ts-check
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { readdirSync } from 'node:fs'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(projectRoot, '..', '..')
+// Embed the real public files at build time; Edge middleware cannot read disk.
+const publicRoot = path.join(projectRoot, 'public')
+/** @returns {string[]} */
+function publicFiles(directory = publicRoot) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const file = path.join(directory, entry.name)
+    return entry.isDirectory() ? publicFiles(file) : [`/${path.relative(publicRoot, file).split(path.sep).join('/')}`]
+  })
+}
 /**
  * @type {import('next').NextConfig}
  */
@@ -60,6 +70,7 @@ const nextConfig = {
   trailingSlash: true, // Optional, depending on your backend
   
   env: {
+    STAYMAINT_PUBLIC_FILES: JSON.stringify(publicFiles()),
     // Only expose non-sensitive envs to the client
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_BASE_PATH: process.env.NEXT_PUBLIC_BASE_PATH,

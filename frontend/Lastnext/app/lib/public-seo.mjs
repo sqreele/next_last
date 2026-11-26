@@ -9,6 +9,9 @@ export const ENGLISH_PUBLIC_PATHS = [
 export const MARKETING_LANGUAGE_PAIRS = [
   { en: 'hotel-maintenance-software', th: 'ระบบบริหารงานซ่อมบำรุงโรงแรม' },
   { en: 'hotel-work-order-system', th: 'ระบบแจ้งซ่อมโรงแรม' },
+  { en: 'preventive-maintenance-hotel', th: 'ระบบบำรุงรักษาเชิงป้องกันโรงแรม' },
+  { en: 'hotel-asset-management', th: 'ระบบจัดการเครื่องจักรโรงแรม' },
+  { en: 'hotel-engineering-report', th: 'รายงานงานช่างโรงแรม' },
 ];
 
 const applicationRoots = new Set([

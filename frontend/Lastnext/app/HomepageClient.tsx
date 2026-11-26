@@ -12,7 +12,6 @@ import {
   CheckCircle,
   ArrowRight,
   Play,
-  Star,
   Zap,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
@@ -45,9 +44,9 @@ const features = [
   {
     icon: Shield,
     iconClass: "text-purple-600 bg-purple-50",
-    title: "Security & Compliance",
+    title: "Security & Access",
     description:
-      "Keep every facility aligned with safety and regulatory requirements.",
+      "Control access to property data with user roles and permissions.",
   },
   {
     icon: Users,
@@ -60,24 +59,24 @@ const features = [
     icon: BarChart3,
     iconClass: "text-rose-600 bg-rose-50",
     title: "Analytics & Reporting",
-    description: "Track performance, downtime, and cost across every property.",
+    description: "Review work order status, preventive maintenance and technician activity.",
   },
   {
     icon: CheckCircle,
     iconClass: "text-teal-600 bg-teal-50",
-    title: "Quality Assurance",
+    title: "Maintenance Evidence",
     description:
-      "Automated quality checks and approvals keep service standards high.",
+      "Keep before-and-after photos, notes and job status together for review.",
   },
 ];
 
 const benefits = [
-  "Reduce maintenance costs by up to 30%",
-  "Increase equipment lifespan by 40%",
-  "Improve team productivity by 50%",
-  "Ensure 99.9% compliance rate",
-  "Real-time monitoring and alerts",
-  "Mobile-first responsive design",
+  "Track work orders by property, room and equipment",
+  "Plan preventive maintenance with recurring schedules",
+  "Keep before-and-after photos with each work order",
+  "Review technician assignments and job status",
+  "Use maintenance history to prepare engineering reports",
+  "Update work from a phone, tablet or desktop",
 ];
 
 export default function HomepageClient() {
@@ -151,7 +150,7 @@ export default function HomepageClient() {
         <div className="mx-auto max-w-5xl text-center">
           <span className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-white/85 px-3 py-1.5 text-xs font-semibold text-blue-800 shadow-[var(--pcms-shadow-sm)] sm:text-sm">
             <Zap className="h-3.5 w-3.5" />
-            New: AI-Powered Maintenance Predictions
+            Work orders, preventive maintenance and engineering reports
           </span>
 
           <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--pcms-primary-strong)]">
@@ -273,8 +272,8 @@ export default function HomepageClient() {
                 Transform your hotel engineering operations
               </h2>
               <p className="mb-8 text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
-                Join thousands of hotel engineers who have revolutionized their
-                maintenance processes with StayMaint.
+                Bring work orders, preventive maintenance and equipment records
+                together so your team can review the work behind each report.
               </p>
 
               <ul className="space-y-3">
@@ -295,27 +294,26 @@ export default function HomepageClient() {
 
             <Card className="overflow-hidden border border-[var(--pcms-border)] bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow)]">
               <CardContent className="p-8 sm:p-10">
-                <Star className="mx-auto mb-4 h-10 w-10 sm:h-12 sm:w-12" />
+                <Play className="mx-auto mb-4 h-10 w-10 sm:h-12 sm:w-12" aria-hidden />
                 <h3 className="mb-2 text-center text-xl font-bold sm:text-2xl">
-                  Trusted by hotel industry leaders
+                  Explore a sample hotel workflow
                 </h3>
                 <p className="mb-8 text-center text-sm text-blue-100 sm:text-base">
-                  Join hotels that trust StayMaint with their engineering
-                  management
+                  This interactive walkthrough uses sample hotel data. Explore
+                  work orders, photo evidence and reports before setting up your own property.
                 </p>
-                <div className="grid grid-cols-2 gap-6 text-center">
-                  <div>
-                    <div className="text-2xl font-bold sm:text-3xl">500+</div>
-                    <div className="text-xs text-blue-100 sm:text-sm">
-                      Hotels
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold sm:text-3xl">10K+</div>
-                    <div className="text-xs text-blue-100 sm:text-sm">
-                      Engineers
-                    </div>
-                  </div>
+                <ol className="space-y-3 text-base text-blue-50">
+                  <li>Open a sample work order and review its location and priority.</li>
+                  <li>Follow job status, technician notes and photo evidence.</li>
+                  <li>Review the sample maintenance report.</li>
+                </ol>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <Button variant="secondary" asChild>
+                    <Link href="/demo/jobs">Explore demo jobs</Link>
+                  </Button>
+                  <Button variant="secondary" asChild>
+                    <Link href="/demo/report">View sample report</Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -330,8 +328,8 @@ export default function HomepageClient() {
             Ready to get started?
           </h2>
           <p className="mb-8 text-balance text-base text-slate-300 sm:text-lg">
-            Join thousands of hotel engineers who have already transformed their
-            maintenance operations with StayMaint.
+            Explore the demo, review the plans, or discuss your hotel’s
+            maintenance workflow with our team.
           </p>
 
           <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">

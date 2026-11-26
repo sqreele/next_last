@@ -686,6 +686,11 @@ class PreventiveMaintenance(models.Model):
         related_name='next_machine_pm',
         help_text='Completed machine work order that scheduled this PM occurrence',
     )
+    recurrence_source_pm = models.OneToOneField(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='next_occurrence',
+        help_text='Completed PM record that scheduled this occurrence',
+    )
     master_plan = models.ForeignKey(
         'PMMasterPlan',
         on_delete=models.SET_NULL,

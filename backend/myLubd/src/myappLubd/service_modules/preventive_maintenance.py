@@ -8,10 +8,10 @@ from django.db import transaction, connection
 from django.db.utils import IntegrityError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 import logging
-from ..models import Topic, PreventiveMaintenance, Machine, MaintenanceProcedure, PMMasterPlan
+from ..models import Topic, PreventiveMaintenance, Machine, MaintenanceProcedure, PMMasterPlan, MaintenanceHistory
 from ..timezones import object_timezone
 from ..tenancy import get_operable_properties
 
@@ -275,17 +275,24 @@ class PreventiveMaintenanceService:
         }
 
     @staticmethod
+    @transaction.atomic
     def update_status(
         maintenance: PreventiveMaintenance,
         new_status: str,
         user,
         completed_date: Optional[datetime] = None,
+        completion_notes: str = '',
     ) -> Dict[str, Optional[PreventiveMaintenance]]:
         normalized_status = PreventiveMaintenanceService.normalize_status(new_status)
         if not normalized_status:
             raise ValidationError("Invalid status value")
 
+        # Read the current state under a lock, including when the caller holds
+        # a stale instance or two completion requests arrive together.
+        maintenance = PreventiveMaintenance.objects.select_for_update().get(pk=maintenance.pk)
         current_status = maintenance.status
+        if normalized_status == 'completed' and (current_status == 'completed' or maintenance.completed_date):
+            raise ValidationError('This maintenance task is already completed.')
         allowed = PreventiveMaintenanceService.STATUS_TRANSITIONS.get(current_status, set())
         if normalized_status not in allowed and normalized_status != current_status:
             raise ValidationError(f"Invalid status transition from {current_status} to {normalized_status}")
@@ -294,12 +301,9 @@ class PreventiveMaintenanceService:
         tzinfo = object_timezone(maintenance)
 
         if normalized_status == 'completed':
-            if completed_date is None:
-                completed_date = timezone.now()
-            if timezone.is_naive(completed_date):
-                completed_date = timezone.make_aware(completed_date, tzinfo)
-            else:
-                completed_date = timezone.localtime(completed_date, tzinfo)
+            completed_date = PreventiveMaintenanceService.parse_datetime_value(
+                completed_date or timezone.now(), 'completed_date', tzinfo,
+            )
 
             base_date = completed_date or maintenance.scheduled_date
             next_due_date = PreventiveMaintenanceService.calculate_next_due_date(
@@ -311,8 +315,9 @@ class PreventiveMaintenanceService:
 
             maintenance.status = normalized_status
             maintenance.completed_date = completed_date
+            maintenance.completed_by = user
             maintenance.next_due_date = next_due_date
-            maintenance.save(update_fields=['status', 'completed_date', 'next_due_date', 'updated_at'])
+            maintenance.save(update_fields=['status', 'completed_date', 'completed_by', 'next_due_date', 'updated_at'])
 
             if maintenance.master_plan_id:
                 plan = maintenance.master_plan
@@ -325,6 +330,13 @@ class PreventiveMaintenanceService:
                     next_due_date,
                     user,
                 )
+            maintenance.machines.filter(
+                Q(last_maintenance_date__isnull=True) | Q(last_maintenance_date__lt=completed_date),
+            ).update(last_maintenance_date=completed_date)
+            MaintenanceHistory.objects.create(
+                maintenance=maintenance, action='completed',
+                notes=completion_notes, performed_by=user,
+            )
         else:
             maintenance.status = normalized_status
             maintenance.save(update_fields=['status', 'updated_at'])
@@ -372,7 +384,7 @@ class PreventiveMaintenanceService:
             procedure_template=maintenance.procedure_template,
             assigned_to=maintenance.assigned_to,
             created_by=maintenance.created_by,
-            job=maintenance.job,
+            recurrence_source_pm=maintenance,
             remarks=maintenance.remarks,
         )
 

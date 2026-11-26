@@ -274,6 +274,21 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        completed_date = validated_data.pop('completed_date', None)
+        should_complete = completed_date is not None and not (
+            instance.status == 'completed' or instance.completed_date
+        )
+        # The edit form uses datetime-local inputs with minute precision. A
+        # round trip through that form must not rewrite or repeat completion.
+        same_completion_minute = (
+            completed_date is not None and instance.completed_date is not None
+            and completed_date.replace(second=0, microsecond=0)
+            == instance.completed_date.replace(second=0, microsecond=0)
+        )
+        if completed_date is not None and not should_complete and not same_completion_minute:
+            raise serializers.ValidationError({
+                'completed_date': 'The completion date of a completed task cannot be changed.'
+            })
         topic_ids = validated_data.pop('topic_ids', None)
         machine_ids = validated_data.pop('machine_ids', None)
         validated_data.pop('property_id', None)
@@ -294,6 +309,18 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             instance.topics.set(topic_ids)
         if machine_ids is not None:
             instance.machines.set(self._validated_machines)
+        if should_complete:
+            from ..services import PreventiveMaintenanceService
+
+            try:
+                result = PreventiveMaintenanceService.update_status(
+                    instance, 'completed', self.context['request'].user,
+                    completed_date=completed_date,
+                    completion_notes=instance.notes or '',
+                )
+            except ValidationError as exc:
+                raise serializers.ValidationError({'completed_date': exc.messages}) from exc
+            instance = result['current']
         return instance
 
     def validate(self, data):

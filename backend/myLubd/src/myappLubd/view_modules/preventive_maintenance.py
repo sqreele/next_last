@@ -9,7 +9,8 @@ import math
 import csv
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Exists, OuterRef, Min, IntegerField
 from django.db import transaction
-from ..models import Property, PreventiveMaintenance, PreventiveMaintenanceImage, PMMasterPlan, Machine, Tenant, MaintenanceChecklist, MaintenanceHistory
+from django.core.exceptions import ValidationError as DjangoValidationError
+from ..models import Property, PreventiveMaintenance, PreventiveMaintenanceImage, PMMasterPlan, Machine, Tenant, MaintenanceChecklist
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from ..serializers import PreventiveMaintenanceSerializer, PreventiveMaintenanceCreateUpdateSerializer, PreventiveMaintenanceCompleteSerializer, PreventiveMaintenanceListSerializer, PreventiveMaintenanceDetailSerializer, PMMasterPlanSerializer, InventoryUsageSerializer
 from django.core.files.base import ContentFile
@@ -779,10 +780,33 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         # Use only tenant/property/machine scoping here. Generic list filters such
         # as date_from/date_to target scheduled_date only, which would hide a
         # completed recurring PM whose next_due_date is inside this schedule window.
-        qs = self._get_base_queryset().filter(occurrence_filter)
+        base_queryset = self._get_base_queryset()
+        qs = base_queryset.filter(occurrence_filter).annotate(
+            has_next_occurrence=Exists(
+                PreventiveMaintenance.objects.filter(recurrence_source_pm_id=OuterRef('pk'))
+            ),
+        )
         if status_filter == 'open':
             qs = qs.exclude(status='cancelled')
         qs = qs.distinct().order_by('scheduled_date')
+
+        def occurrence_key(pm, due):
+            machine_ids = tuple(sorted(machine.pk for machine in pm.machines.all()))
+            return (
+                due, pm.pmtitle, pm.procedure_template_id,
+                pm.frequency, pm.custom_days, machine_ids,
+                pm.job_id if not machine_ids else None,
+            )
+
+        # Legacy records have no explicit recurrence link. Suppress their
+        # virtual next_due entry when the corresponding actual record exists,
+        # including when that record has since been completed or cancelled.
+        actual_occurrences = set()
+        if status_filter in {'open', 'all'}:
+            actual_occurrences = {
+                occurrence_key(pm, pm.scheduled_date)
+                for pm in base_queryset.filter(scheduled_in_window)
+            }
 
         serializer = PreventiveMaintenanceListSerializer(qs, many=True, context={'request': request})
         items_by_id = {str(item.get('pm_id')): item for item in serializer.data}
@@ -857,6 +881,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 and pm.completed_date is not None
                 and pm.next_due_date is not None
                 and start_dt <= pm.next_due_date < end_dt
+                and not pm.master_plan_id
+                and not pm.has_next_occurrence
+                and occurrence_key(pm, pm.next_due_date) not in actual_occurrences
             ):
                 add_occurrence(pm, pm.next_due_date, 'next_due', 'open')
 
@@ -960,11 +987,12 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
         completed_date = request.data.get('completed_date')
         if completed_date:
-            from django.utils.dateparse import parse_datetime
-
-            parsed_date = parse_datetime(str(completed_date))
-            if parsed_date:
-                completed_date = parsed_date
+            try:
+                completed_date = PreventiveMaintenanceService.parse_datetime_value(
+                    completed_date, 'completed_date', object_timezone(scoped_instance),
+                )
+            except (DjangoValidationError, ValueError) as exc:
+                raise ValidationError({'completed_date': 'Completed Date must be a valid datetime.'}) from exc
 
         checklist_updates = request.data.get('checklist_items') or request.data.get('checklist') or []
         inventory_usage = request.data.get('inventory_usage') or request.data.get('parts_used') or []
@@ -1053,6 +1081,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                     new_status='completed',
                     user=request.user,
                     completed_date=completed_date,
+                    completion_notes=request.data.get('completion_notes') or request.data.get('notes') or '',
                 )
 
                 if prepared_after_image:
@@ -1075,15 +1104,6 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                         raise
                     created_file = (evidence.image.storage, evidence.image.name)
 
-                if instance.machines.exists():
-                    instance.machines.update(last_maintenance_date=result['current'].completed_date or timezone.now())
-
-                MaintenanceHistory.objects.create(
-                    maintenance=result['current'],
-                    action='completed',
-                    notes=request.data.get('completion_notes') or request.data.get('notes') or '',
-                    performed_by=request.user,
-                )
         except Exception:
             if created_file:
                 try:
@@ -1210,8 +1230,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 new_status=new_status,
                 user=request.user,
                 completed_date=parsed_completed_date,
+                completion_notes=request.data.get('completion_notes') or request.data.get('notes') or '',
             )
-        except Exception as exc:
+        except DjangoValidationError as exc:
             return Response(
                 {'detail': str(exc)},
                 status=status.HTTP_400_BAD_REQUEST
